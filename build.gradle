@@ -1,0 +1,45 @@
+apply plugin: 'groovy'
+
+VERSION="0.0.1"
+STAGE="build/stage/groovybioutils-$VERSION"
+
+/*
+ TODO: use proguard to shrink down the output jars
+ */
+buildscript {
+    repositories {
+        flatDir dirs: '/Users/simon/work/proguard/proguard4.9/lib'
+    }
+    dependencies {
+        classpath ':proguard'
+    }
+}
+
+repositories {
+    mavenCentral()
+    maven { 
+        name "biojava"
+        url "http://www.biojava.org/download/maven/" 
+    }
+}
+
+configurations {
+  compile
+}
+
+dependencies {
+     groovy group: 'org.codehaus.groovy', name: 'groovy', version: '2.1.0'
+     groovy group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
+     groovy group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
+     groovy group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
+     groovy 'org.utgenome.thirdparty:picard:1.86.0'
+     groovy 'log4j:log4j:1.2.17'
+     compile files(fileTree(dir:'lib', includes:['*.jar']))
+}
+
+// Bundle all dependencies into output library
+jar {
+    from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+}
+
+
