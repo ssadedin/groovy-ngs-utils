@@ -19,7 +19,7 @@ easily write command line scripts, such as:
 
   cat my.vcf | groovy -e 'VCF.filter { it.qual > 20 && it.info.DP.toInteger()>5 }' > filtered.vcf
 
-  cat my.bam | 'SAM.eachRead { if(it.mappingQuality == 0) { println it.readName } }'
+  cat my.bam | groovy -e 'SAM.eachRead { if(it.mappingQuality == 0) { println it.readName } }'
   
 These functions are all built upon Samtools, Picard Tools and BioJava. The jar file that is built bundles all
 the necessary libraries so that you can easily include them all with just one classpath entry (or put it into
