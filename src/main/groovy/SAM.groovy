@@ -242,4 +242,13 @@ class SAM {
         if(this.samFileReader != null)
             this.samFileReader.close()
     }
+    
+    @CompileStatic
+    static void eachRead(Closure c) {
+        SAMFileReader reader = new SAMFileReader(System.in)
+        Iterator<SAMRecord> iter = reader.iterator()
+        while(iter.hasNext()) {
+            c(iter.next())
+        }
+    }
 }
