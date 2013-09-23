@@ -53,8 +53,15 @@ public class PileupState {
         // Since soft clipped reads are before the alignment
         // start position, we have to skip over them
         // to be consistent with the overall pileup
-        if(cigar == CigarOperator.S || cigar == CigarOperator.H) {
+        if(cigar == CigarOperator.S) {
             this.nextReadPos = cigarLength;
+            this.cigarElement = cigarIterator.next();
+            this.cigarLength = cigarElement.getLength();
+            this.cigar = cigarElement.getOperator();
+        }
+        else
+        if(cigar == CigarOperator.H) { 
+            this.nextReadPos = 0;
             this.cigarElement = cigarIterator.next();
             this.cigarLength = cigarElement.getLength();
             this.cigar = cigarElement.getOperator();
@@ -108,6 +115,19 @@ public class PileupState {
                 cigarPos = 0;
                 ++nextReadPos;
                 break;
+                
+            case H:
+                // Skip the bases that were hard clipped - this should be happening
+                // at the ends of reads (in theory)
+                // In practise, we just have to skip this cigar element as if it 
+                // never happened - the bases should have been physically removed
+                cigarPos = 0;
+                if(cigarIterator.hasNext()) {
+                    System.err.println("Warning: CIGAR has more elements after hard clipping - unexpected");
+                }
+                base = 0;
+                qual = 0;
+                return false;
                 
             default:
                 if(nextReadPos >= readBases.length) {

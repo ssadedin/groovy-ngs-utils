@@ -131,14 +131,18 @@ class SAM {
         executor.shutdown()
     }
     
-    @CompileStatic
     void filter(Closure c) {
+        filter("/dev/stdout",c)
+    }
+    
+    @CompileStatic
+    void filter(String outputFile, Closure c) {
         
         SAMFileReader reader = new SAMFileReader(samFile, indexFile, false)
         
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = reader.fileHeader
-        SAMFileWriter w = f.makeBAMWriter(header, false, new File("/dev/stdout"))
+        SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFile))
         SAMRecordIterator i = reader.iterator()
         int count = 0
         long lastPrintMs = System.currentTimeMillis()
@@ -189,7 +193,7 @@ class SAM {
         this.pileup(chr, pos, end) { PileupIterator.Pileup p ->
             total += p.alignments.size()
         }
-        return ((float)total)/ (end - pos)
+        return ((float)total)/ (end - pos + 1)
     }
      
     /**
