@@ -53,7 +53,7 @@ public class PileupState {
         // Since soft clipped reads are before the alignment
         // start position, we have to skip over them
         // to be consistent with the overall pileup
-        if(cigar == CigarOperator.S) {
+        if(cigar == CigarOperator.S || cigar == CigarOperator.H) {
             this.nextReadPos = cigarLength;
             this.cigarElement = cigarIterator.next();
             this.cigarLength = cigarElement.getLength();

@@ -482,6 +482,10 @@ class Variant {
     
     boolean snpEffDirty = false
     
+    void update(Closure c) {
+        update("Groovy Variant Processing " + (new Date()).toString(),c)
+    }
+    
     /**
      * Allows various fields to be updated and then synchronises the 
      * rest of the data with those updated fields
@@ -490,7 +494,7 @@ class Variant {
      * The only update to snpEFF information is to remove individual 
      * annotations.
      */
-    void update(Closure c) {
+    void update(String desc, Closure c) {
         this.snpEffDirty = false
         c()
         def fields = line.split('[\t ]{1,}')
@@ -527,9 +531,13 @@ class Variant {
                 if(v instanceof Float) {
                     valueType = "Float"
                 }
-                
+                else
+                if(v instanceof Double) {
+                    valueType = "Double"
+                }
+                 
                 header.headerLines = header.headerLines[0..lastInfo] + 
-                    ["##INFO=<ID=$k,Number=1,Type=${valueType},Description=\"Added by groovy Variant processor\">"] +
+                    ["##INFO=<ID=$k,Number=1,Type=${valueType},Description=\"$desc\">"] +
                     header.headerLines[(lastInfo+1)..-1]
             }
         }

@@ -135,6 +135,7 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
         this.end = end;
         this.chr = chr;
         this.readIterator = samFile.query(chr, start, end, false);
+//        System.out.println("Open read iterator " + readIterator + " ofh = " + SAM.getOpenFileDescriptorCount());
         this.samFile = samFile;
         this.iteratorPosition = -1;
     } 

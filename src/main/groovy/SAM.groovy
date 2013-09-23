@@ -18,8 +18,12 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
+import com.sun.management.UnixOperatingSystemMXBean;
 
 import groovy.transform.CompileStatic;
 import net.sf.samtools.BAMRecord;
@@ -226,8 +230,13 @@ class SAM {
     @CompileStatic
     void pileup(String chr, int start, int end, Closure c) {
         PileupIterator i = pileup(chr,start,end)
-        while(i.hasNext()) {
-            c(i.next())
+        try {
+          while(i.hasNext()) {
+              c(i.next())
+          }
+        }
+        finally {
+            i.close()
         }
     }
     
@@ -250,5 +259,13 @@ class SAM {
         while(iter.hasNext()) {
             c(iter.next())
         }
+    }
+    
+    public static long getOpenFileDescriptorCount() {
+        OperatingSystemMXBean osStats = ManagementFactory.getOperatingSystemMXBean();
+        if(osStats instanceof UnixOperatingSystemMXBean) {
+           return ((UnixOperatingSystemMXBean)osStats).getOpenFileDescriptorCount();
+        }
+        return 0;
     }
 }
