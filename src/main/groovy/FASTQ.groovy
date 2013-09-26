@@ -27,7 +27,10 @@ import groovy.transform.CompileStatic;
 class FASTQRead {
     FASTQRead(String header, String bases, String quals) {
         this.header = header
-        this.name = header.subSequence(0, header.indexOf(' '))
+        int spaceIndex = header.indexOf(' ')
+        if(spaceIndex<0)
+            throw new ParseException("Read header line does not contain a space: " + header,0)
+        this.name = header.subSequence(0, spaceIndex)
         this.bases = bases
         this.quals = quals
     }
