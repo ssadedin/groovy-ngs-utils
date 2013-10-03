@@ -1,7 +1,7 @@
 apply plugin: 'groovy'
 
 VERSION="0.0.1"
-STAGE="build/stage/groovybioutils-$VERSION"
+STAGE="build/stage/groovy-ngs-utils-$VERSION"
 
 /*
  TODO: use proguard to shrink down the output jars
@@ -29,6 +29,7 @@ configurations {
 
 dependencies {
      groovy group: 'org.codehaus.groovy', name: 'groovy', version: '2.1.0'
+     groovy group: 'org.codehaus.groovy', name: 'groovy-xml', version: '2.1.0'
      groovy group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
      groovy group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
      groovy group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
@@ -37,9 +38,15 @@ dependencies {
      compile files(fileTree(dir:'lib', includes:['*.jar']))
 }
 
+println jar
+
 // Bundle all dependencies into output library
 jar {
     from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+    exclude "groovy/**"
+    exclude "org/codehaus/**"
+    exclude "META-INF/groovy*"
+    exclude "META-INF/**/*groovy*"
 }
 
 
