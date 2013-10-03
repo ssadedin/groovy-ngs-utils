@@ -90,6 +90,8 @@ class VCF {
     
     List<Pedigree> samplePedigrees 
     
+    Map<String,List<Variant>> chrPosIndex = [:]
+    
     String fileName
     
     RandomAccessFile indexedFile
@@ -130,6 +132,18 @@ class VCF {
     public static final int ONE_GIG = 1024*1024*1024
     
     List<MappedByteBuffer> vcfBuffers = null
+    
+    /**
+     * Return a list of variants starting at the given location
+     * 
+     * @param chr
+     * @param pos
+     * @return
+     */
+    @CompileStatic
+    List variantsAt(String chr, int pos) {
+        chrPosIndex[chr+":"+pos]
+    }
     
     /**
      * Query the current VCF file for all variants in the specified
@@ -304,6 +318,7 @@ class VCF {
         long lastPrintTimeMs = System.currentTimeMillis()
         int count = 0
         boolean flushedHeader = false
+        Map chrPosIndex = vcf.chrPosIndex
         f.eachLine { String line ->
             
             ++count
@@ -331,8 +346,15 @@ class VCF {
                       }
                       println v.line
                   }
-                  else
+                  else {
                     variants << v 
+                    String key = v.chr+":"+v.pos
+                    List chrPosVars = chrPosIndex[key]
+                    if(!chrPosVars) 
+                        chrPosIndex[key] = [v]
+                    else
+                        chrPosVars.add(v)
+                  }
             }
           }
           catch(Exception e) {

@@ -95,4 +95,51 @@ class RangeIndexTest {
         RangeIndex index = new RangeIndex()
         [0..50, 70..90, 60..65].each {index.add(it.from, it.to)}
     }
+    
+    @Test
+    void testNextRange() {
+        RangeIndex index = new RangeIndex()
+        [0..50, 
+         70..90, 
+         60..65].each {index.add(it.from, it.to)}
+         
+         println index.dump()
+        
+        assert index.nextRange(60).from == 70
+        assert index.nextRange(25).from == 60
+        assert index.nextRange(69).from == 70
+        
+    }
+    
+    @Test
+    void testPreviousRange() {
+        RangeIndex index = new RangeIndex()
+        [0..50, 
+         70..90, 
+         60..65].each {index.add(it.from, it.to)}
+         
+         println index.dump()
+        
+        assert index.previousRange(59).from == 0
+        assert index.previousRange(70).from == 60
+        assert index.previousRange(69).from == 60
+        assert index.previousRange(65).from == 60
+        assert index.previousRange(64).from == 60
+        assert index.previousRange(63).from == 0
+        
+    } 
+    
+    @Test
+    void testNearest() {
+       RangeIndex index = new RangeIndex()
+        [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it.from, it.to)}
+            
+        assert index.nearest(51).from == 0
+        assert index.nearest(30).from == 0
+        assert index.nearest(54).from == 0
+        assert index.nearest(82).from == 80
+    }
 }

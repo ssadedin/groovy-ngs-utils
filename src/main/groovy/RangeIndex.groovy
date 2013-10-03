@@ -29,9 +29,9 @@ import groovy.transform.CompileStatic;
 class RangeIndex {
     
     /**
-     * The actual index - a map from contig / chromosome to the breakpoints
-     * formed by the ranges added to the index, with the list of ranges
-     * valid for each interval after the breakpoint.
+     * The actual index - a map from position to the list of ranges
+     * covering the region after the position. There is an entry in this
+     * index for each position where a range starts or ends.
      */
     TreeMap<Integer,List<IntRange>> ranges = new TreeMap()
     
@@ -219,10 +219,53 @@ class RangeIndex {
         return result
     }    
     
+    Range nextRange(int pos) {
+        def entry = [key: pos]
+        while(true) {
+          entry = ranges.higherEntry(entry.key)
+          if(!entry)
+              return null
+          List<IntRange> nextRanges = entry.value.grep { it.from >= pos } 
+          if(nextRanges)
+              return nextRanges[0]
+        }
+    }
+    
+    Range previousRange(int pos) {
+        def entry = [key: pos]
+        while(true) {
+          entry = ranges.lowerEntry(entry.key)
+          if(!entry)
+              return null
+          List<IntRange> nextRanges = entry.value.grep { it.to <= pos } 
+          if(nextRanges)
+              return nextRanges[0]
+        }
+    }
+    
+    Range nearest(int pos) {
+        List<IntRange> overlaps = this.getOverlaps(pos)
+        if(overlaps) {
+            return overlaps.min {Math.min(it.to-pos, pos-it.from)}
+        }
+        else {
+            IntRange prv = previousRange(pos)
+            IntRange nxt = nextRange(pos)
+            if(!prv)
+                return nxt
+            if(!nxt)
+                return prv
+            
+            return (pos-prv.to) < (nxt.from - pos) ? prv : nxt
+        }
+    }
+    
     void dump() {
         // Get the starting point of all the regions
         def regions = ranges.keySet() as List
-        regions += ranges.lastEntry().value[0].to
+        def lastRange = ranges.lastEntry().value[0]
+        if(lastRange)
+          regions += lastRange.to
         
         def sizes = []
         for(int i=0; i<regions.size(); ++i) {

@@ -44,7 +44,7 @@ class BED {
         int start
         int end
         Object extra
-        String toString() { "$chr:$start-$end" }
+        String toString() { "$start-$end" }
     } 
     
     /**
@@ -261,6 +261,47 @@ class BED {
             return []
         
         return chrIndex.endingAt(pos)
+    }
+    
+    /**
+     * Returns the prior range that has its end closest
+     * to the given position.
+     */
+    groovy.lang.IntRange previousRange(String chr,int pos) {
+        RangeIndex chrIndex = this.index[chr]
+        if(chrIndex == null)
+            return null
+        return chrIndex.previousRange(pos)
+    } 
+    
+    /**
+     * Returns the next range that has its beginning
+     * closest to the given position.
+     */
+    groovy.lang.IntRange nextRange(String chr, int pos) {
+        RangeIndex chrIndex = this.index[chr]
+        if(chrIndex == null)
+            return null
+        return chrIndex.nextRange(pos)
+    }
+    
+    /**
+     * Returns the range that is "closest" to the given
+     * position.
+     * 
+     *   1. if no range overlaps, the closer of a) the end
+     *      of the nearest prior range vs b) the start of the
+     *      nearest following range is returned. 
+     *      
+     *   2. if one or more ranges overlap, returns the overlapping
+     *      range with the start or end closest to the specified position
+     *   
+     * @param chr
+     * @param pos
+     * @return
+     */
+    groovy.lang.IntRange nearest(String chr, int pos) {
+        this.index[chr]?.nearest(pos)
     }
     
     List<Object> getExtrasAtPosition(String chr, int position) {
