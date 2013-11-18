@@ -45,6 +45,17 @@ class RangeIndexTest {
     }
     
     @Test
+    void testOneBaseOverlap() {
+        RangeIndex index = new RangeIndex()
+        
+        [20..20].each {index.add(it)}
+        
+        index.dump()
+        
+        assert index.getOverlaps(20,20).size() == 1
+    }
+    
+    @Test
     void testDisjointRange() {
         RangeIndex index = new RangeIndex()
         
@@ -130,6 +141,17 @@ class RangeIndexTest {
     } 
     
     @Test
+    void getOverlapsHigherDisjoint() {
+       RangeIndex index = new RangeIndex()
+       index.ranges[48672868] = [48672868..48672928]
+       index.ranges[48672929] = [48672929..48672956]
+       
+       def overlaps = index.getOverlaps(76763881,76763892)
+       assert overlaps.size()==0
+    }
+    
+    
+    @Test
     void testNearest() {
        RangeIndex index = new RangeIndex()
         [0..50, 
@@ -142,4 +164,119 @@ class RangeIndexTest {
         assert index.nearest(54).from == 0
         assert index.nearest(82).from == 80
     }
+    
+    @Test
+    void testRemove() {
+       RangeIndex index = new RangeIndex()
+        [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it.from, it.to+1)}
+            
+         index.remove(0..50)
+         
+         assert index.getOverlaps(30).isEmpty()
+         assert index.getOverlaps(82).size() == 2
+         index.remove(80..85)
+         assert index.getOverlaps(82).size() == 1
+         index.remove(70..90)
+         assert index.getOverlaps(82).isEmpty()
+         
+    }
+    
+    @Test 
+    void testIterate() {
+       RangeIndex index = new RangeIndex()
+       [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it.from, it.to+1)}
+            
+       for(Range r in index) {
+//           println "${r.from} - ${r.to}"
+           println r
+       }
+    }
+    
+    @Test 
+    void testBigIterate() {
+//        BED bed = new BED("/Users/simon/work/dsd/batch3/design/tmp.bed")
+//        bed.load()
+        
+       RangeIndex index = new RangeIndex()
+        [
+          6079..6350,
+          6257..6494,
+          6923..7296,
+          7168..7274,
+          7220..7359,
+          7226..7401
+        ].each {index.add(it.from, it.to+1)}
+        
+        int count = 0 
+        ProgressCounter c = new ProgressCounter()
+        for(Range r in index) {
+            println "$r.from\t$r.to"
+            ++ count
+            c.count()
+        }
+        println "Counted $count ranges"
+        assert count == 6
+    }
+    
+    
+    @Test 
+    void testIterate3() {
+//        BED bed = new BED("/Users/simon/work/dsd/batch3/design/tmp.bed")
+        BED bed = new BED("/Users/simon/work/dsd/batch3/design/amplicons_with_filtered_enzymes.bed")
+        bed.load()
+        
+        int count = 0 
+        ProgressCounter c = new ProgressCounter()
+        for(Range r in bed.index["chrX"]) {
+//            println "$r.from\t$r.to"
+            ++ count
+            c.count()
+        }
+        println "Counted $count ranges"
+    }
+    
+    @Test
+    void testRemove2() {
+        RangeIndex index = new RangeIndex()
+        index.ranges[1581349]=[1581349..1581360]
+        index.ranges[1581360]=[1581360..1581360]
+        
+        index.remove(1581349..1581360)
+    }
+    
+    @Test
+    void testRemove3() {
+        RangeIndex index = new RangeIndex()
+        index.ranges[50155286]=[]
+        index.ranges[50155287]=[50155285..50155296]
+        index.ranges[50155288]=[50155285..50155296]
+        index.ranges[50155289]=[50155285..50155296]
+        index.ranges[50155290]=[50155285..50155296]
+        index.ranges[50155291]=[50155285..50155296]
+        index.ranges[50155292]=[50155285..50155296]
+        index.ranges[50155293]=[50155285..50155296]
+        index.ranges[50155294]=[50155285..50155296]
+        index.ranges[50155295]=[50155285..50155296]
+        
+        index.remove(50155285..50155296)
+    }
+    
+    @Test
+    void getOverlaps4() {
+        RangeIndex index = new RangeIndex()
+        index.ranges[1273475] = [1273475..1273503]
+        index.ranges[1273504]= []
+        
+        assert index.getOverlaps(1273503,1273504).size() == 1
+    }
+    
+    // 1273475:[1273475..1273503], 1273503:[1273503..1273503], 1273504:[], 1284266:[1284266..1284268], 1284268:[1284268..1284268], 1284269:[], 1575676:[1575676..1575676], 1575677:[], 1581349:[1581349..1581360], 1581360:[1581360..1581360], 1581361:[], 182992872:[182992872..182992971], 182992971:[182992971..182992971], 182992972:[]]:
+
+    
 }

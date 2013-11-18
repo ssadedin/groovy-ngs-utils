@@ -164,9 +164,14 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
               }
 
               if(iteratorPosition == -1) {
-                  if(r == null) // no valid reads over the current position
+                  
+                  if(r != null) {
+                    iteratorPosition = Math.min(r.getAlignmentStart(),start);
+                  }
+                  else { // No valid reads left
+                      iteratorPosition = start;
                       break;
-                  iteratorPosition = r.getAlignmentStart();
+                  }
               }
 
               // Pile up all the reads at this position
@@ -198,7 +203,7 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
 
     @Override
     public boolean hasNext() {
-        return iteratorPosition < end && !(!readIterator.hasNext() && iteratorPosition == -1);
+        return iteratorPosition < end; // && !(!readIterator.hasNext() && iteratorPosition == -1);
     }
 
     @Override

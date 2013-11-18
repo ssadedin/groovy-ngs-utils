@@ -36,6 +36,8 @@ import net.sf.samtools.SAMFileReader.ValidationStringency;
 import net.sf.samtools.SAMRecord;
 import net.sf.samtools.SAMRecordIterator;
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+
 
 class XA {
     String chr
@@ -188,14 +190,27 @@ class SAM {
     }
     
     @CompileStatic
-    float meanCoverage(String chr, int pos, int end, Closure c=null) {
+    float meanCoverage(String chr, int pos, int end) {
         int total = 0
         this.pileup(chr, pos, end) { PileupIterator.Pileup p ->
             total += p.alignments.size()
         }
         return ((float)total)/ (end - pos + 1)
     }
-     
+    
+    /**
+     * Create a DescriptiveStatistics object
+     */
+    @CompileStatic
+    DescriptiveStatistics coverageStatistics(String chr, int pos, int end) {
+        DescriptiveStatistics stats = new DescriptiveStatistics()
+        int total = 0
+        this.pileup(chr, pos, end) { PileupIterator.Pileup p ->
+            stats.addValue(p.alignments.size())
+        }
+        stats
+    }
+      
     /**
      * Return the number of mapped reads overlapping the given position
      * 

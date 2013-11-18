@@ -175,6 +175,27 @@ class BEDTest {
         assert b.subtractFrom("chr1", 80, 120) == [80..99]
 
         b.add("chr1",90,95)
-        assert b.subtractFrom("chr1", 80, 120) == [80..89,95..100]
+        assert b.subtractFrom("chr1", 80, 120) == [80..89,95..99]
+        
+        assert b.subtractFrom("chr1", 92, 120) == [95..99]
     }
+    
+    @Test
+    void testGetOverlaps() {
+        BED b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t150
+          chr1\t190\t250
+          chr1\t300\t350
+          """.stripIndent().trim().bytes
+        ))
+        b.load()
+        
+        List<Range> o = b.getOverlaps("chr1", 80,120)
+        assert o.size() == 1
+        assert o[0] == 100..149
+        
+        o = b.getOverlaps("chr1", 145,195)
+        assert o == [100..149, 190..249]
+    } 
 }

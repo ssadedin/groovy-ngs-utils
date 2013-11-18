@@ -38,16 +38,6 @@ import groovy.transform.CompileStatic;
 class BED {
     
     /**
-     * Internal class to hold details of a range of positions
-     */
-    static class Range {
-        int start
-        int end
-        Object extra
-        String toString() { "$start-$end" }
-    } 
-    
-    /**
      * Some functions require loading of the BED file into memory. Others can use 
      * it optionally. So keep a flag to know if the BED was loaded, and if it was,
      * use memory for all operations to be faster.
@@ -55,7 +45,7 @@ class BED {
     boolean isLoaded = false
     
     /**
-     * Use 'extra' field to allow additional data to be attached to amplicons
+     * Use 'extra' field to allow additional data to be attached to ranges in the bed file
      */
     boolean withExtra = false
     
@@ -97,16 +87,18 @@ class BED {
     /**
      * Empty bed file
      */
-    BED() {
+    BED(Map attributes=[:]) {
     }
     
-    BED(String fileName) {
+    BED(Map attributes=[:], String fileName) {
         this(new File(fileName))
     }
     
-    BED(File file, Closure c = null) {
+    BED(Map attributes=[:], File file, Closure c = null) {
         this.bedFile = file
         this.bedFileStream = new FileInputStream(file)
+        if(attributes && attributes.withExtra != null)
+            this.withExtra = attributes.withExtra
     }
     
     BED(InputStream inStream, Closure c = null) {
@@ -217,6 +209,13 @@ class BED {
         return chrIndex.intersect(start,end)
     }
     
+    List<Range> getOverlaps(String chr, int start, int end) {
+        RangeIndex chrIndex = this.index[chr]
+        if(chrIndex == null)
+            return []
+        return chrIndex.getOverlaps(start,end)
+    }
+    
     List<Range> subtractFrom(String chr, int start, int end) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
@@ -285,6 +284,17 @@ class BED {
         return chrIndex.nextRange(pos)
     }
     
+    @CompileStatic
+    void remove(String chr, Range r) {
+        RangeIndex chrIndex = this.index[chr]
+        if(!chrIndex) 
+            throw new IllegalArgumentException("Cannot remove region from chrosomome $chr : it does not have any regions")
+        chrIndex.remove(r)
+        
+        if(this.allRanges[chr]) // Could be really slow?
+            this.allRanges[chr].removeAll { Range r2 -> r.from == r2.from && r.to == r2.to }
+    }
+    
     /**
      * Returns the range that is "closest" to the given
      * position.
@@ -345,12 +355,29 @@ class BED {
         }
     }
     
+    /**
+     * Load the data for this BED file into memory.
+     * <p>
+     * If withExtra is false, only the range data will be loaded. This is very compact and fast.
+     * Otherwise, the optional 4th column will be loaded as well and stored in memory too,
+     * as the 'extra' attribute on the GRange objects.
+     * <p>
+     * Note: this method returns the same BED object as a result to enable chaining
+     */
     @CompileStatic
-    void load() {
-        eachRange { String chr, int start, int end ->
-            add(chr,start,end)
+    BED load() {
+        if(!withExtra) {
+          eachRange { String chr, int start, int end ->
+              add(chr,start,end)
+          }
+        }
+        else {
+          eachRange { String chr, int start, int end, String extra ->
+              add(chr,start,end,extra)
+          }
         }
         isLoaded = true
+        return this
     }
     
     /**
@@ -387,15 +414,13 @@ class BED {
         // Add to reduced index for fast lookups 
         // TODO: remove
         long base = chrToBaseOffset(chr)
-        Range r = new Range()
-        r.start = start
-        r.end = end
-        r.extra = extra
+        GRange r = new GRange(start, end, extra)
 
         long startKey = base + start
         if(startRanges.containsKey(startKey)) {
-            if(r.end < end) {
-                r.end = end
+            if(r.to < end) {
+                assert false : "Should never come here!"
+                r = new GRange(r.from,end,r.extra)
             }
         }
         startRanges[startKey] = r
@@ -439,6 +464,10 @@ class BED {
         return allRanges.isEmpty()
     }
     
+    /**
+     * Iterate every single base in the regions of the specified bed file
+     * @param fileName
+     */
     static void eachPosition(String fileName, Closure c) {
         new BED(fileName).eachPosition(c)
     }

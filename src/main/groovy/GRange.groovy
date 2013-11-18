@@ -28,8 +28,8 @@ import groovy.transform.CompileStatic;
 class GRange extends IntRange {
     
     @CompileStatic
-    GRange(int to, int from, Object extra) {
-        super(to,from)
+    GRange(int from, int to, Object extra) {
+        super(from,to)
         this.extra = extra
     }
     

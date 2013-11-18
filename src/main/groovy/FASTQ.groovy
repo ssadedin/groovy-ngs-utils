@@ -119,7 +119,11 @@ class FASTQ {
             // Read the file 4 lines at a time
             while(true) {
               FASTQRead read = consumeRead(reader)
-              c(read.name,read.bases,read.quals)
+//              c(read.name,read.bases,read.quals)
+              if(read == null)
+                  break
+                  
+              c(read)
               progress.count()
             }
         }
