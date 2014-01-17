@@ -84,6 +84,17 @@ class VCFIndex {
          this.headerVCF = new VCF(fileName)
      }
     
+    Variant find(String chr, int start, int end, Closure c) {
+        Variant result = null
+        query(chr,start,end) { Variant v ->
+            if(c(v)) {
+                result = v
+                return false
+            }
+        }
+        return result
+    }
+    
     /**
      * Query the current VCF file for all variants in the specified
      * region
