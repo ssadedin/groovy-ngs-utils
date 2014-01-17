@@ -28,5 +28,3 @@ your .groovy/lib).
 NOTE: To get the full functions you may need to copy sam.jar, picard-private-parts.jar, and tribble.jar 
 (eg: from GATK) into the lib directory and build the library. Do this if you get ClassNotFound exceptions 
 when running the code.
-
-test change
