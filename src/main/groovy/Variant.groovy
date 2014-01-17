@@ -95,21 +95,37 @@ class Variant {
               genoTypeFields = fields[8].split(':')
           
           // Split the genoTypes field into separate values and parse them out
+          def numericGTFields = ["DP","GQ"] as Set
+          def numericListFields = ["AD"] as Set
           genoTypes = fields[9..-1].collect { String gt -> 
-              [genoTypeFields, gt.split(':')].transpose().collectEntries { it }
+              [genoTypeFields, gt.split(':')].transpose().collectEntries { 
+                  if(it[0] in numericGTFields) 
+                      [it[0],it[1].toFloat()] 
+                  else
+                  if(it[0] in numericListFields) {
+                      return [it[0],it[1].split(",")*.toFloat()] 
+                  }
+                  else
+                      it
+              }
           } 
         }
           
         pos = Integer.parseInt(fields[1])
         
-        type = "SNP"
-        if(ref.size() < alt.size())
-            type = 'INS'
+        type = convertType(ref,alt)
+        altByte = (byte)alt.charAt(0)
+    }
+    
+    String convertType(String refSeq, String altSeq) {
+        String result = "SNP"
+        if(refSeq.size() < altSeq.size())
+            result = 'INS'
         else
-        if(ref.size() > alt.size())
-            type = 'DEL'
-        
-         altByte = (byte)alt.charAt(0)
+        if(refSeq.size() > altSeq.size())
+            result = 'DEL'
+            
+        return result
     }
     
     boolean snpEffDirty = false
@@ -236,6 +252,16 @@ class Variant {
         snpEffInfo = [genes,effs,ranks,infos,txs].transpose().collect { new SnpEffInfo(gene:it[0], type: it[1], impact:it[2], info: it[3], transcript:it[4]) }
     }
     
+    /**
+     * Return the most impactful SnpEff effect for this variant
+     */
+    SnpEffInfo getMaxEffect() {
+        def info = getSnpEffInfo()
+        // TODO: at the moment the max effect is just abitrarily chosen, but we know we could / should 
+        // do better
+        return info?.max { it.rank }
+    }
+    
     List<Integer> getDosages() {
         if(dosages != null)
             return dosages
@@ -259,6 +285,20 @@ class Variant {
     @CompileStatic 
     int sampleDosage(String sampleName) {
         return getDosages()[header.samples.indexOf(sampleName)]
+    }
+    
+    @CompileStatic 
+    /**
+     * Return a Map of fields from the genotype column corresponding
+     * to the given sample. Common fields include:
+     * <li>AD - allele depth (list of numeric values)
+     * <li>GQ - genotype qualities for each genotype (string value)
+     * <li>GT - list of actual genotypes for sample for each allele (string)
+     * <li>DP - total depth (integer)
+     * @param sampleName
+     */
+    Map sampleGenoType(String sampleName) {
+        return genoTypes[header.samples.indexOf(sampleName)]
     }
     
     /**
@@ -390,5 +430,49 @@ class Variant {
     
     String toString() {
         "$chr:$pos $ref/$alt"
+    }
+    
+    /**
+     * Return true if the given Annovar formattd position and observation
+     * match those of this variant
+     * <p>
+     * Annovar outputs non-standard formatting that makes it difficult to trace
+     * an Annovar variant back to it's VCF source. This method implements
+     * the tricky logic to compare an Annovar variant to a VCF equivalent
+     * and say if they are the same.
+     */
+    boolean equalsAnnovar(String chr, int pos, String obs) {
+        if(this.chr != chr) 
+            return false
+            
+        for(alleleTypePair in this.getAllelesAndTypes()) {
+            
+            def alleleAlt = alleleTypePair[0]
+            def alleleType = alleleTypePair[1]
+            
+            if(this.pos == pos && alleleAlt == obs)  
+                return true
+              
+            if(this.pos == (pos-this.ref.size()+1) && alleleType=="INS" && alleleAlt.endsWith(obs))
+                return true
+            else {
+            }
+                
+            if(this.pos == (pos-alleleAlt.size()) && alleleType=="DEL" && obs=="-")
+                return true
+        }
+                
+        return false
+    }
+    
+    /**
+     * Return a list of each allele and its type.
+     * Yes, VCF allows multiple types (INS,DEL) to be on the same line of 
+     * a VCF file!
+     */
+    def getAllelesAndTypes() {
+        return alts.collect {
+            [it, convertType(ref,it)]
+        }
     }
 }
