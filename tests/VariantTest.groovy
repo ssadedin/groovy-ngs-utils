@@ -49,5 +49,19 @@ class VariantTest {
         assert v.line.split('\t')[8] == 'GT:AD:DP:GQ:PL'
         assert v.line.split('\t')[9] == '0/1:.:40:80:80,0,255'
     }
+    
+    @Test
+    void testAnnovarEqual() {
+        
+        v = Variant.parse("chr1 12908064    .   CA  C   2444.73 PASS    AC=1;AF=0.500;AN=2;BaseQRankSum=-2.337;DP=273;FS=1.058;HaplotypeScore=340.4396;MLEAC=1;MLEAF=0.500;MQ=46.84;MQ0=0;MQRankSum=2.472;QD=8.96;RPA=2,1;RU=A;ReadPosRankSum=-0.877;STR;set=Intersection   GT:AD:DP:GQ:PL  0/1:180,77:264:99:2482,0,6848")
+        assert v.equalsAnnovar("chr1", 12908065, "-")
+        
+        v = Variant.parse("chr3 40503520    .   ACTGCTG ACTGCTGCTGCTGCTG,A  4028.19 PASS    AC=1,1;AF=0.500,0.500;AN=2;DP=70;FS=0.000;HaplotypeScore=190.6420;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.60;MQ0=0;QD=57.55;RPA=10,13,8;RU=CTG;STR;set=Intersection   GT:AD:DP:GQ:PL  1/2:0,32,12:55:99:4008,964,1808,3176,0,5166")
+        assert v.equalsAnnovar("chr3", 40503526, "CTGCTGCTG")
+        assert v.equalsAnnovar("chr3", 40503521, "-")
+        
+        v = Variant.parse("chr3 46751073    rs10578999  TAAGAAG T,TAAG  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
+        assert v.equalsAnnovar("chr3", 46751077, "-")
+    }
 
 }
