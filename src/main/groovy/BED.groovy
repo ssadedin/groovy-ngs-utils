@@ -414,17 +414,19 @@ class BED {
         // Add to reduced index for fast lookups 
         // TODO: remove
         long base = chrToBaseOffset(chr)
-        GRange r = new GRange(start, end, extra)
-
-        long startKey = base + start
-        if(startRanges.containsKey(startKey)) {
-            if(r.to < end) {
-                assert false : "Should never come here!"
-                r = new GRange(r.from,end,r.extra)
+        if(base >= 0L) { // base < 0 indicates a "weird" chromosome that we don't handle
+            GRange r = new GRange(start, end, extra)
+    
+            long startKey = base + start
+            if(startRanges.containsKey(startKey)) {
+                if(r.to < end) {
+                    assert false : "Should never come here!"
+                    r = new GRange(r.from,end,r.extra)
+                }
             }
+            startRanges[startKey] = r
+            endRanges[base + end] = r
         }
-        startRanges[startKey] = r
-        endRanges[base + end] = r
         isLoaded = true
         return this
     }
@@ -444,10 +446,20 @@ class BED {
         }
         else
         if(chr.startsWith("chr")) {
-            return ((chr.substring(3).toLong()-1) << 32)
+            try {
+                return ((chr.substring(3).toLong()-1) << 32)
+            }
+            catch (NumberFormatException e) {
+                return -1L
+            }
         }
         else {
-            return ((chr.toLong()-1) << 32)
+            try {
+              return ((chr.toLong()-1) << 32)
+            }
+            catch(NumberFormatException e) {
+                return -1L
+            }
         }
     }
     
