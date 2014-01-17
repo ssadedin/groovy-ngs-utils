@@ -68,6 +68,8 @@ class IlluminaFileNameParser {
             }
         }
         
+        result.sample = result.sample.replaceAll('_$', '')
+        
         return result
     }
 }
