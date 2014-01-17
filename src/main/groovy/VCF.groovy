@@ -343,4 +343,8 @@ class VCF implements Iterable<Variant> {
     public Iterator<Variant> iterator() {
         return this.variants.iterator()
     }
+    
+    int getSize() {
+            this.variants.size()
+    }
 }
