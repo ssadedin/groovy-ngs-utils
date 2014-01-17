@@ -33,8 +33,12 @@ class FASTQRead {
         if(spaceIndex<0) {
             this.name = slashIndex>0?header.subSequence(0, slashIndex):header
         }
-        else
+        else // There is a space, but if a slash comes before use that
+        if(slashIndex>=0) {
             this.name = header.subSequence(0, Math.min(spaceIndex,slashIndex))
+        }
+        else
+          this.name = header.subSequence(0, spaceIndex)
             
         this.bases = bases
         this.quals = quals
