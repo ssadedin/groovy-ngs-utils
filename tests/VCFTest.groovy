@@ -4,6 +4,21 @@ import org.junit.Test;
 
 
 class VCFTest {
+    
+    @Test
+    public void testInfoMetaData() {
+        String info = """##INFO=<ID=CSQ,Number=.,Type=String,Description="Consequence type as predicted by VEP. Format: Allele|Gene|Feature|Feature_type|Consequence|cDNA_position|CDS_position|Protein_position|Amino_acids|Codons|Existing_variation|CLIN_SIG|CANONICAL|AFR_MAF|AMR_MAF|ASN_MAF|EUR_MAF|SYMBOL|SYMBOL_SOURCE|PUBMED|AA_MAF|EA_MAF|PolyPhen|HGVSc|HGVSp|ENSP|DISTANCE|SIFT|Condel">"""
+        VCF vcf = new VCF()
+        vcf.headerLines = [info]
+        
+        def csqInfo = vcf.getInfoMetaData("CSQ")
+        println "csqInfo = $csqInfo"
+        
+        def vepColumns = vcf.getVepColumns()
+        println "Vep columns are $vepColumns"
+        
+        assert "Feature" in vepColumns
+    }
 
     @Test
     public void testIn() {

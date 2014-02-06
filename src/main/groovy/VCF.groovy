@@ -19,6 +19,7 @@
  */
 import groovy.transform.CompileStatic;
 
+import java.awt.event.ItemEvent;
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
 
@@ -87,6 +88,17 @@ class VCF implements Iterable<Variant> {
     Map<String,List<Variant>> chrPosIndex = [:]
     
     String fileName
+    
+    /**
+     * Cached list of VEP columns, when they exist in the VCF file.
+     * Lazily populated when getVepColumns() is called.
+     */
+    private String [] vepColumns = null
+    
+    /**
+     * Lazily populated when getInfoMetaData is called
+     */
+    private Map<String, Map> infoMetaDatas
     
     VCF() {
     }
@@ -283,6 +295,56 @@ class VCF implements Iterable<Variant> {
         for(int i=9; i<this.lastHeaderLine.size(); ++i) {
             this.samples.add(this.lastHeaderLine[i])
         }
+    }
+    
+    
+    Map<String,Object> getInfoMetaData(String id) {
+        if(this.infoMetaDatas == null) {
+          this.infoMetaDatas = 
+              this.headerLines.grep { it.startsWith("##INFO") }.collect { parseInfoMetaData(it) }.collectEntries { [ it.ID, it ] }
+        }
+        return this.infoMetaDatas[id]
+    }
+    
+    /**
+     * Dedicated support for dynamically returning the VEP columns present in this VCF file
+     * 
+     * @return
+     */
+    String[] getVepColumns() {
+        
+        if(vepColumns != null)
+            return vepColumns
+        
+        Map csqInfo = getInfoMetaData("CSQ")
+        if(csqInfo==null) 
+            throw new IllegalArgumentException("VCF does not contain VEP annotations")
+            
+        String fields = (csqInfo.Description =~ 'Format: (.*)')[0][1]
+        
+        vepColumns = fields.split("\\|")
+        return vepColumns
+    }
+    
+    /**
+     * Parse a VCF INFO meta data line and return the values as a Map
+     * 
+     * @param info
+     * @return  map containing entries: ID, Number, Type, Description
+     */
+    Map<String, Object> parseInfoMetaData(String info) {
+        
+        String contents = (info =~ /##INFO=<(.*)>/)[0][1]
+            
+        // remove description
+        String description = contents.substring(contents.indexOf('Description='))
+            
+        Map metaFields = contents.substring(0,contents.indexOf('Description=')).split(",").collectEntries {
+                                [it.split("=")[0], it.split("=")[1]] }
+        
+        metaFields.Description = (description =~ /"(.*)"/)[0][1]
+            
+        return metaFields
     }
     
     BED toBED() {

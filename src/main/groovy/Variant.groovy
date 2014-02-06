@@ -40,10 +40,9 @@ class SnpEffInfo {
     }
 }
 
-
-
 /**
  * Help with parsing VCFs
+ * 
  * @author simon.sadedin@mcri.edu.au
  */
 class Variant {
@@ -117,6 +116,14 @@ class Variant {
         altByte = (byte)alt.charAt(0)
     }
     
+    /**
+     * Convert reference and alternate allele strings into a 
+     * mutation type, being one of "SNP","INS","DEL"
+     * 
+     * @param refSeq
+     * @param altSeq
+     * @return
+     */
     String convertType(String refSeq, String altSeq) {
         String result = "SNP"
         if(refSeq.size() < altSeq.size())
@@ -250,6 +257,11 @@ class Variant {
         def infos = eff.split(',')
         
         snpEffInfo = [genes,effs,ranks,infos,txs].transpose().collect { new SnpEffInfo(gene:it[0], type: it[1], impact:it[2], info: it[3], transcript:it[4]) }
+    }
+    
+    List<Map<String,Object>> getVepInfo() {
+        def vepFields = this.header.vepColumns
+        this.getInfo().CSQ.split(",").collect { csq -> [vepFields,csq.split("\\|")].transpose().collectEntries() }
     }
     
     /**
@@ -440,29 +452,35 @@ class Variant {
      * an Annovar variant back to it's VCF source. This method implements
      * the tricky logic to compare an Annovar variant to a VCF equivalent
      * and say if they are the same.
+     * 
+     * @return if the Annovar variant is not the same variant as this VCF variant,
+     *         returns 0. If it is the same, returns the number of the alternate
+     *         allele (if the variant has only one alternate, the return value will 
+     *         be 1).
      */
-    boolean equalsAnnovar(String chr, int pos, String obs) {
+    @CompileStatic
+    int equalsAnnovar(String chr, int pos, String obs) {
         if(this.chr != chr) 
-            return false
+            return 0
             
+        int count = 1
         for(alleleTypePair in this.getAllelesAndTypes()) {
             
             def alleleAlt = alleleTypePair[0]
             def alleleType = alleleTypePair[1]
             
             if(this.pos == pos && alleleAlt == obs)  
-                return true
+                return count
               
             if(this.pos == (pos-this.ref.size()+1) && alleleType=="INS" && alleleAlt.endsWith(obs))
-                return true
-            else {
-            }
+                return count
                 
             if(this.pos == (pos-alleleAlt.size()) && alleleType=="DEL" && obs=="-")
-                return true
-        }
+                return count
                 
-        return false
+            ++count
+        }
+        return 0
     }
     
     /**
@@ -470,7 +488,7 @@ class Variant {
      * Yes, VCF allows multiple types (INS,DEL) to be on the same line of 
      * a VCF file!
      */
-    def getAllelesAndTypes() {
+    List<List<String>> getAllelesAndTypes() {
         return alts.collect {
             [it, convertType(ref,it)]
         }

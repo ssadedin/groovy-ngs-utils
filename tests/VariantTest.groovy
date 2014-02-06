@@ -39,6 +39,13 @@ class VariantTest {
         
     }
     
+    @Test
+    void testGetVepInfo() {
+        v = new Variant(ref:"CAG", alt:"C", pos: 20)
+        v.line = "chr1  57179502    .   G   T   51.8    PASS    AC=1;AF=0.5;AN=2;BaseQRankSum=-4.147;DP=42;Dels=0;FS=17.681;HaplotypeScore=72.6709;MLEAC=1;MLEAF=0.5;MQ=41.17;MQ0=0;MQRankSum=-2.887;QD=1.23;ReadPosRankSum=4.331;set=Intersection;CSQ=G|ENSG00000171456|ENST00000375687|Transcript|missense_variant|2937|2513|838|K/R|aAg/aGg|rs35632616||YES|0.03|0.01|0|0|ASXL1|HGNC||0.0335906|0.000116279|probably_damaging(0.977)|ENST00000375687.4:c.2513A>G|ENSP00000364839.4:p.Lys838Arg|ENSP00000364839||deleterious(0.05)|0.764   AD:DP:GQ:GT:PL  .:40:80:0/1:80,0,255"
+        println v.vepInfo
+    }
+    
     @Test void testFixGenotypeOrder() {
         v = new Variant(ref:"CAG", alt:"C", pos: 20)
         v.line = "chr1  57179502    .   G   T   51.8    PASS    AC=1;AF=0.5;AN=2;BaseQRankSum=-4.147;DP=42;Dels=0;FS=17.681;HaplotypeScore=72.6709;MLEAC=1;MLEAF=0.5;MQ=41.17;MQ0=0;MQRankSum=-2.887;QD=1.23;ReadPosRankSum=4.331;set=Intersection;EFF=DOWNSTREAM(MODIFIER||||728|C1orf168||CODING|NM_001004303|),UTR_3_PRIME(MODIFIER||||552|PRKAA2||CODING|NM_006252|9)   AD:DP:GQ:GT:PL  .:40:80:0/1:80,0,255"
@@ -62,6 +69,12 @@ class VariantTest {
         
         v = Variant.parse("chr3 46751073    rs10578999  TAAGAAG T,TAAG  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
         assert v.equalsAnnovar("chr3", 46751077, "-")
+        
+        v = Variant.parse("chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
+        assert v.equalsAnnovar("chr3", 46751077, "C") == 2
+        
+        v = Variant.parse("chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
+        assert v.equalsAnnovar("chr3", 46751077, "T") == 1
     }
 
 }
