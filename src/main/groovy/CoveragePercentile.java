@@ -32,7 +32,7 @@ public class CoveragePercentile {
      * Count the given coverage value in calculating the median
      * @param coverage
      */
-    void count(int coverage) {
+    void addValue(int coverage) {
         if(coverage>=values.length)
             ++values[values.length-1];
         else
