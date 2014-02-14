@@ -21,7 +21,7 @@ class CoveragePercentileTest {
           def c = new CoveragePercentile(1000)
           def d = new DescriptiveStatistics()
           
-          values.each { c.count(it); d.addValue(it) }
+          values.each { c.addValue(it); d.addValue(it) }
           
           println c.getPercentile(50)
           println d.getPercentile(50).toInteger()
@@ -36,7 +36,7 @@ class CoveragePercentileTest {
         def values = [20] * 10 + [30]*10
         def c = new CoveragePercentile(1000)
         def d = new DescriptiveStatistics()
-        values.each { c.count(it); d.addValue(it) }
+        values.each { c.addValue(it); d.addValue(it) }
         assert c.getPercentile(50) == d.getPercentile(50).toInteger()
     }
 
