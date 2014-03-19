@@ -18,6 +18,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
 
 /**
@@ -296,7 +297,9 @@ class Variant {
 
     @CompileStatic 
     int sampleDosage(String sampleName) {
-        return getDosages()[header.samples.indexOf(sampleName)]
+        int sampleIndex = header.samples.indexOf(sampleName)
+        List<Integer> allDosages = getDosages()
+        return (int)allDosages[sampleIndex]
     }
     
     @CompileStatic 
@@ -310,7 +313,8 @@ class Variant {
      * @param sampleName
      */
     Map sampleGenoType(String sampleName) {
-        return genoTypes[header.samples.indexOf(sampleName)]
+        int sampleIndex = header.samples.indexOf(sampleName)
+        return (Map)genoTypes[sampleIndex]
     }
     
     /**
@@ -466,8 +470,8 @@ class Variant {
         int count = 1
         for(alleleTypePair in this.getAllelesAndTypes()) {
             
-            def alleleAlt = alleleTypePair[0]
-            def alleleType = alleleTypePair[1]
+            String alleleAlt = alleleTypePair[0]
+            String alleleType = alleleTypePair[1]
             
             if(this.pos == pos && alleleAlt == obs)  
                 return count
@@ -481,6 +485,16 @@ class Variant {
             ++count
         }
         return 0
+    }
+    
+    String toJson() {
+        JsonOutput.toJson([
+            chr : chr,
+            alt : alt, 
+            type: type,
+            alleles : this.getAllelesAndTypes(),
+            info : info
+        ])
     }
     
     /**

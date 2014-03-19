@@ -113,7 +113,7 @@ class SampleInfo {
     }
     
     String toTsv() {
-        [sample, target, files.collect { it.value }.flatten().join(","), geneCategories.collect { it.key + ":" + it.value.join(",") }.join(" "), sex].join("\t")
+        [sample, target, files.collect { it.key == "all" ? [] : it.value }.flatten().join(","), geneCategories.collect { it.key + ":" + it.value.join(",") }.join(" "), sex].join("\t")
     }
 
     String toString() {

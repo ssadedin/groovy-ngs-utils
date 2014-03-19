@@ -79,6 +79,8 @@ class SAM {
     
     int minMappingQuality = 1
     
+    static boolean progress = false
+    
     SAM(String fileName) {
         this(new File(fileName))
     }
@@ -95,7 +97,44 @@ class SAM {
             throw new FileNotFoundException("Please ensure your BAM / SAM file is indexed. File $indexFile could not be found.")
         
         SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
-        this.samFileReader = new SAMFileReader(samFile, indexFile, false) 
+        this.samFileReader = newReader()
+    }
+    
+    SAMFileReader newReader() {
+        new SAMFileReader(samFile, indexFile, false)         
+    }
+    
+    /**
+     * Return a new SAMFileWriter configured with the same settings as this 
+     * SAM. It is the caller's responsibility to close the writer.
+     * 
+     * @param outputFileName    Name of file to write to
+     * @return SAMFileWriter
+     */
+    SAMFileWriter newWriter(String outputFileName) {
+        SAMFileWriterFactory f = new SAMFileWriterFactory()
+        SAMFileHeader header = this.samFileReader.fileHeader
+        SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFileName))
+        return w
+    }
+    
+    /**
+     * Return a new SAMFileWriter configured with the same settings as this 
+     * SAM. It is the caller's responsibility to close the writer.
+     * 
+     * @param outputFileName    Name of file to write to
+     * @return SAMFileWriter
+     */
+    def withWriter(String outputFileName, Closure c) {
+        SAMFileWriterFactory f = new SAMFileWriterFactory()
+        SAMFileHeader header = this.samFileReader.fileHeader
+        SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFileName))
+        try {
+            return c(w)
+        }
+        finally {
+            w.close()
+        }
     }
     
     /**
@@ -105,10 +144,54 @@ class SAM {
     void eachRecord(Closure c) {
         use(SAMRecordCategory) {
           Iterator i = samFileReader.iterator()
-          while(i.hasNext()) {
-              c(i.next())
+          try {
+              while(i.hasNext()) {
+                  c(i.next())
+              }
+          }
+          finally {
+              i.close()
           }
         }
+    }
+    
+    @CompileStatic
+    void eachPair(Closure c) {
+        Iterator<SAMRecord> iter = samFileReader.iterator()
+        eachPair(iter,c)
+    }
+    
+    @CompileStatic
+    void eachPair(Iterator<SAMRecord> iter, Closure c) {
+        SAMFileReader pairReader = newReader()
+        ProgressCounter progress = new ProgressCounter(withTime:true)
+        Map<String,SAMRecord> buffer = new HashMap()
+        try {
+            while(iter.hasNext()) {
+                SAMRecord r1 = (SAMRecord)iter.next();
+                progress.count()
+                if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
+                    continue
+                    
+                if(buffer.containsKey(r1.readName)) {
+                    c(r1,buffer[r1.readName])
+                    buffer.remove(r1.readName)
+                }
+                else {
+                    buffer[r1.readName] = r1
+                }
+            }
+        }
+        finally {
+            pairReader.close()
+            progress.end()
+        }
+    }
+    
+    @CompileStatic
+    void eachPair(String chr, int start, int end, Closure c) {
+        Iterator<SAMRecord> iter = samFileReader.query(chr, start,end,false)
+        eachPair(iter,c)
     }
     
     void eachRecord(int threads, Closure c) {
@@ -224,11 +307,15 @@ class SAM {
     static int coverage(SAMFileReader r, String chr, int pos, int end=-1, Closure c=null, int minMappingQuality=1) {
         if(end == -1)
             end = pos
+            
+        ProgressCounter counter = new ProgressCounter()
         SAMRecordIterator i = r.query(chr, pos, end, false);
         try {
             int count = 0;
             while(i.hasNext()) {
                 SAMRecord rec = (SAMRecord)i.next();
+                if(progress)
+                    counter.count()
                 if(rec.getMappingQuality() < minMappingQuality) {
                     continue;
                 }
@@ -278,6 +365,20 @@ class SAM {
         while(iter.hasNext()) {
             c(iter.next())
         }
+    }
+    
+    /**
+     * Count the total number of reads in the SAM file
+     * 
+     * @return total number of reads (not pairs, each pair is counted as 2 reads)
+     */
+    @CompileStatic
+    int size() {
+        int count = 0
+        eachRecord { SAMRecord r ->
+            ++count
+        }
+        return count
     }
     
     public static long getOpenFileDescriptorCount() {

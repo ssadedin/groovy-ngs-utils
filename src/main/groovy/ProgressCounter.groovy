@@ -35,21 +35,34 @@ class ProgressCounter {
     
     long lastPrintTimeMs = System.currentTimeMillis()
     
+    long startTimeMs = -1L
+    
+    boolean withTime = false
+    
     public ProgressCounter() {
     }
     
     @CompileStatic
     void count(Closure c = null) {
+        if(startTimeMs < 0)
+            startTimeMs = System.currentTimeMillis()
         if(count % lineInterval == 0) {
             if(System.currentTimeMillis() - lastPrintTimeMs > timeInterval) {
                 if(c!=null)
                   c(count)
                 else {
-                    System.err.println "Processed $count"
+                    if(withTime)
+                        System.err.println(new Date().toString() + ":\t Processed $count")
+                    else
+                        System.err.println "Processed $count"
                 }
                 lastPrintTimeMs = System.currentTimeMillis()
             }
         }
         ++count
+    }
+    
+    void end() {
+        System.err.println "Processed $count in ${System.currentTimeMillis() - startTimeMs} ms"
     }
 }

@@ -62,7 +62,7 @@ class IlluminaFileNameParser {
               result.sample = fileName.substring(0,fileName.indexOf(result.lane))
             else {
                 if(strict)
-                    throw new ParseException("Unable to identify machine name or lane in file name $fileName")
+                    throw new RuntimeException("Unable to identify machine name or lane in file name $fileName")
                     
               result.sample = fileName.substring(0, fileName.indexOf("_"))
             }

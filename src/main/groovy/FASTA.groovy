@@ -57,6 +57,10 @@ class FASTA {
       return new String(this.indexedFastaFile.getSubsequenceAt(contig, start, end).bases)
     }
     
+    byte[] baseBytesAt(String contig, long start, long end) {
+      return this.indexedFastaFile.getSubsequenceAt(contig, start, end).bases
+    }
+     
     public static final int T = (int)"T".charAt(0)
     public static final int A = (int)"A".charAt(0)
     public static final int C = (int)"C".charAt(0)
@@ -129,6 +133,11 @@ class FASTA {
         return result.toString()
     }
     
+    /**
+     * Iterates over the FASTA and calls the given closure for each
+     * reference sequence (eg: chromosome) passing the bases of the sequence
+     * as a byte array
+     */
     @CompileStatic
     void eachSequence(Closure c) {
         ReferenceSequence seq
@@ -141,6 +150,21 @@ class FASTA {
                 System.err.println("Processed " + count + " reads")
                 lastPrintTimeMs = System.currentTimeMillis()
             }
+        }
+    }
+    
+    /**
+     * Iterates over the ranges in teh BED file and extracts the bases for the ranges,
+     * passing the bases of the sequence
+     * as a byte array to the given closure for each range.
+     */
+    @CompileStatic
+    void eachSequence(BED bed, Closure c) {
+        boolean includeRegion = false
+//        if(c.maximumNumberOfParameters > 2) 
+//            includeRegion = true
+        bed.eachRange(unique:true) {  String chr, int start, int end ->
+            c(chr+":"+start+"-"+end, this.baseBytesAt(chr,start,end))
         }
     }
     

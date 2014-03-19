@@ -381,7 +381,7 @@ class VCF implements Iterable<Variant> {
               for(SnpEffInfo eff in v.snpEffInfo.grep { SnpEffInfo inf -> inf.gene }) {
                 List geneVars = genes[eff.gene]
                 if(geneVars == null) {
-                    genes[eff.gene] = []
+                    genes[eff.gene] = (List<Variant>)[]
                 }
                 genes[eff.gene] << v
               }

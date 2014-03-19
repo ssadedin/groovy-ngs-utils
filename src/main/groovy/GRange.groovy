@@ -21,6 +21,46 @@
 import groovy.transform.CompileStatic;
 
 /**
+ * Region of a genome
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
+class Region extends Expando {
+    
+    Region() {
+    }
+    
+    Region(String chr, Range range) {
+        this.chr = chr
+        this.range = range
+    }
+    
+    // Causes some weird conflict with toString()
+    // @Delegate
+    IntRange range
+    
+    String chr
+    
+    Integer getFrom() {
+        return range.from
+    }
+    
+    Integer getTo() {
+        return range.to
+    }
+    
+    boolean overlaps(Region other) {
+        if(other.chr != this.chr)
+            return false
+        return this.range.disjoint(other.range)
+    }
+    
+    String toString() {
+        "$chr:$range.from-$range.to"
+    }
+}
+
+/**
  * Range over an interval
  * 
  * @author simon.sadedin@mcri.edu.au

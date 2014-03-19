@@ -25,6 +25,18 @@ import groovy.transform.CompileStatic;
 
 @CompileStatic
 class FASTQRead {
+    
+    /**
+     * This constructor is really just for testing purposes.
+     * @param bases
+     */
+    FASTQRead(String bases) {
+        this.name = Hash.sha1(bases)
+        this.bases = bases
+        this.quals = 'A' * bases.size()
+        this.header = this.name
+    }
+    
     FASTQRead(String header, String bases, String quals) {
         this.header = header
         
@@ -53,6 +65,10 @@ class FASTQRead {
         w.println(bases)
         w.println("+")
         w.println(quals)
+    }
+    
+    int size() {
+        bases.size()
     }
     
     String header

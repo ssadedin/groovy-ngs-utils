@@ -46,9 +46,10 @@ class FASTAIndex {
      * 
      * @param fasta
      */
-    public FASTAIndex(FASTA fasta) {
+    public FASTAIndex(FASTA fasta, BED bed=null) {
         ProgressCounter counter = new ProgressCounter()
-        fasta.eachSequence { String amplicon, byte[] bases ->
+        
+        def handler = { String amplicon, byte[] bases ->
             
             // Ignore stupidly short sequences
             if(bases.size()<40)
@@ -67,6 +68,13 @@ class FASTAIndex {
               sequences[sequence] = amplicon
             }
             counter.count()
+        }
+        
+        if(bed) {
+           fasta.eachSequence(bed, handler)
+        }
+        else {
+           fasta.eachSequence(handler)
         }
     }
 }

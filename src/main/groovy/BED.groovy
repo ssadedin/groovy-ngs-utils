@@ -18,6 +18,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import java.util.Iterator;
+
 import groovy.transform.CompileStatic;
 
 
@@ -32,10 +34,13 @@ import groovy.transform.CompileStatic;
  * into memory. If you don't care too much about performance you can 
  * not care aboaut this. But if you care about performance you should 
  * check how the method is going to operate and choose accordingly.
+ * <p>
+ * Note that the constructor does <i>not</i> load the contents of the BED
+ * file. To actually load the BED file you need to call {@link #load()}.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class BED {
+class BED implements Iterable<Region> {
     
     /**
      * Some functions require loading of the BED file into memory. Others can use 
@@ -105,6 +110,15 @@ class BED {
         this.bedFileStream = inStream
     }
     
+    /**
+     * Create a BED from a list of regions
+     */
+    BED(Map attributes=[:], Iterable<Region> regions) {
+        for(Region r in regions) {
+            add(r.chr, r.from, r.to)
+        }
+    }
+    
     @CompileStatic
     int size() {
         int sizeCount = 0
@@ -114,15 +128,23 @@ class BED {
         return sizeCount
     }
     
+    void eachRange(Closure c) {
+       eachRange(unique:false, c) 
+    }
+    
     /**
      * Iterate over each line in the BED file and invoke the specified
-     * closure with bed file information for the line
+     * closure with bed file information for the line.
+     * <p>
+     * Options can be provided as a Map argument, including:
+     * 
+     * <li>unique (whether identical ranges should be included multiple times or only once)
      */
-    @CompileStatic
-    void eachRange(Closure c) {
+//    @CompileStatic
+    void eachRange(Map options, Closure c) {
         
-        if(bedFileStream == null && isLoaded) {
-            eachLoadedRange(c)
+        if(bedFileStream == null || isLoaded) { // Used to be && isLoaded - why?
+            eachLoadedRange(options,c)
             return
         }
         
@@ -134,7 +156,8 @@ class BED {
                 if(bedFile != null) {
                   bedFileStream = new FileInputStream(bedFile)
                 }
-                
+                else
+                try { bedFileStream.reset() } catch(Exception e) {}
             }
         }
         catch(IOException ex) {
@@ -145,6 +168,9 @@ class BED {
         
         if(bedFileStream == null)
             return
+        
+        HashSet processed = new HashSet()
+        boolean unique = options.unique?true:false
         
         def abort = { throw new Abort("break from BED file iteration") }
         ProgressCounter progress = new ProgressCounter(lineInterval:10, timeInterval:10000)
@@ -158,6 +184,16 @@ class BED {
               if(line.startsWith("browser"))    
                   return
               String [] fields = line.split('\t')
+              
+              if(unique) {
+                  String key = fields[0]+':'+fields[1]+':'+fields[2]   
+                  if(processed.contains(key)) {
+                      progress.count()
+                      return
+                  }
+                  processed.add(key)
+              }
+              
               String chr = fields[0]
               int start = -1, end = -1
               try {
@@ -171,8 +207,9 @@ class BED {
               try {
                 if(includeInfo==true)
                     c.call(chr,start,end,fields[3])
-                else
+                else {
                     c.call(chr,start,end)
+                }
                     
                 progress.count()
               }
@@ -187,16 +224,41 @@ class BED {
         }
     }
     
-//    @CompileStatic
     void eachLoadedRange(Closure c) {
-        boolean includeInfo = c.getMaximumNumberOfParameters()>3;
-        this.allRanges.each { String chr, List ranges ->
+        eachLoadedRange([:],c)
+    }
+    
+//    @CompileStatic
+    void eachLoadedRange(Map options, Closure c) {
+        ProgressCounter progress = new ProgressCounter(lineInterval:10, timeInterval:10000)
+        boolean includeInfo = c.getMaximumNumberOfParameters()==4;
+        boolean useRange = c.getMaximumNumberOfParameters()==2;
+        boolean unique = options.unique?true:false
+        this.allRanges.each { String chr, List<groovy.lang.IntRange> ranges ->
+            HashSet processed = new HashSet()
             for(groovy.lang.IntRange r in ranges) {
-              if(includeInfo) {
-                  c.call(chr,r.from,r.to,r instanceof GRange ? r.extra : null)
+                
+              if(unique) {
+                  String key = r.from + ":" + r.to
+                  if(processed.contains(key)) {
+                      progress.count()
+                      continue
+                  }
+                  processed.add(key)
               }
-              else
+  
+              if(includeInfo) {
+                  c.call(chr,r.from,r.to,r instanceof GRange ? ((GRange)r).getExtra() : null)
+              }
+              else 
+              if(useRange) {
+                  c.call(chr,r)
+              }
+              else {
                   c.call(chr,r.from,r.to)
+              }
+                  
+              progress.count()
             }
         }
     }
@@ -431,6 +493,28 @@ class BED {
         return this
     }
     
+    /**
+     * Simplify all overlapping regions down to a single region
+     * 
+     * @return a new BED that consists of all the overlapping regions of 
+     *          this BED merged together.
+     */
+    BED reduce() {
+        BED result = new BED()
+        eachLoadedRange { String chr, IntRange r ->
+            
+            // Already processed this region
+            if(result.getOverlaps(chr, r.from, r.to))
+                return
+                
+            // Find the overlaps
+            List<Range> overlaps = getOverlaps(chr, r.from, r.to)
+            IntRange mergedRange = new IntRange(overlaps.min { it.from }.from, overlaps.max { it.to }.to)
+            result.add(chr, mergedRange.from, mergedRange.to+1)
+        }
+        return result
+    }
+    
     @CompileStatic
     private long chrToBaseOffset(String chr) {
         if(chr == "chrX") {
@@ -472,6 +556,28 @@ class BED {
         return chrIndex != null && (position in chrIndex)
     }
     
+    /**
+     * Return a new BED that contains the same regions as this one,
+     * but ensuring each identical region is only present once.
+     * 
+     * @return
+     */
+    BED unique() {
+        BED result = new BED()
+        result.withExtra = this.withExtra
+        if(this.withExtra) {
+            this.eachLoadedRange(unique:true) { chr, from, to, extra ->
+                result.add(chr, from, to, extra)
+            }
+        }
+        else {
+            this.eachLoadedRange(unique:true) { chr, from, to ->
+                result.add(chr, from, to)
+            }
+        }
+        return result
+    }
+    
     boolean isEmpty() {
         return allRanges.isEmpty()
     }
@@ -484,13 +590,74 @@ class BED {
         new BED(fileName).eachPosition(c)
     }
     
-    static void each(Closure c) {
-        new BED(System.in).eachRange(c)
+    static BED each(Closure c) {
+        def b = new BED(System.in)
+        b.eachRange(c)
+        return b
+    }
+    
+    static BED parse() {
+        def b = new BED(System.in)
+        b.load()
+        return b
     }
     
     static BED parse(String fileName) {
         BED b = new BED(fileName)
         b.load()
         return b
+    }
+
+    @Override
+    @CompileStatic
+    public Iterator<Region> iterator() {
+        return new Iterator<Region>() {
+            
+            Iterator allIterator = allRanges.iterator()
+            
+            // Iterator chrIterator = allIterator.hasNext() ? allIterator.next().value.iterator() : null
+            Iterator chrIterator =  null
+            
+            
+            Map.Entry<String, RangeIndex> currentChr
+            
+            String chr
+            
+            boolean hasNext() {
+                
+                if(!chr)
+                    return allRanges.any { it.value.size() > 0 }
+                return chrIterator.hasNext() 
+            }
+            
+            Region next() {
+                if(chr == null) 
+                    nextChr()
+               
+                Range range =  chrIterator.next()
+                if(!chrIterator.hasNext()) 
+                    nextChr()
+                 
+                return new Region(chr,range)
+            }
+            
+            void nextChr() {
+               while(allIterator.hasNext()) {
+                   currentChr = allIterator.next()
+                   if(currentChr.value) {
+                       chrIterator = currentChr.value.iterator()
+                       chr = currentChr.key
+                   }
+               }
+            }
+            
+            void remove() {
+                throw new UnsupportedOperationException()
+            }
+        }
+    }
+    
+    int getNumberOfRanges() {
+       allRanges.collect { it }.sum { it.value.size() } 
     }
 }

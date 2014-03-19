@@ -249,4 +249,22 @@ class RestrictionEnzyme {
         
         return enzymes
     }
+    
+    /**
+     * Enzymes possibly used by HaloPlex, extracted from the UCSC cutters database
+     */
+    final static String HALOPLEX_DEFAULT_ENZYMES = """
+        BccI    10  5   CCATCNNNNN  9   1   0   0   0       1   N,  3   571,576,585,
+        DdeI    5   4   CTNAG   1   3   1   0   2   BstDEI,HpyF3I,  7   M,N,O,Q,R,S,X,  4   79,263,316,517,
+        HaeIII  4   4   GGCC    2   0   1   0   4   BshFI,BsnI,BsuRI,PhoI,  13  B,I,J,K,M,N,O,Q,R,S,U,X,Y,  3   77,527,544,
+        HpyCH4V 4   4   TGCA    2   0   1   0   0       1   N,  1   588,
+        MnlI    11  4   CCTCNNNNNNN 11  -1  0   0   0       6   F,I,N,Q,V,X,    5   76,303,435,748,998,
+        AluI    4   4   AGCT    2   0   1   0   1   AluBI,  16  B,C,F,I,J,K,M,N,O,Q,R,S,U,V,X,Y,    6   432,447,727,796,948,993,
+        Tsp509I 4   4   AATT    0   4   1   0   4   TspEI,MluCI,Sse9I,TasI, 1   N,  2   585,845,
+        MseI    4   4   TTAA    1   2   1   0   3   SaqAI,Tru1I,Tru9I,  2   B,N,    3   577,866,867,
+        HpyCH4III   5   4   ACNGT   3   -1  1   0   2   Bst4CI,TaaI,    1   N,  2   590,1020,
+        MspJI   17  2   CNNRNNNNNNNNNNNNN   13  4   0   0   0       1   N,  3   162,1009,1013,
+        NlaIII  4   4   CATG    4   -4  1   0   5   CviAII,FaeI,FatI,Hin1II,Hsp92II,    1   N,  3   446,578,690,
+        BsaJI   6   4   CCNNGG  1   4   1   0   2   BseDI,BssECI,   1   N,  3   416,585,977,
+    """
 }
