@@ -167,28 +167,43 @@ class Matrix {
      */
     @CompileStatic
     Matrix transform(Closure c) {
-        final int rows = matrix.rowDimension
-        final int cols = matrix.columnDimension
-        
-        double[][] newData = new double[rows][cols]
         
         if(c.maximumNumberOfParameters == 1) {
-            for(int i=0; i<rows;++i) {
-                double [] row = matrix.dataRef[i]
-                for(int j=0; j<cols;++j) {
-                    newData[i][j] = (double)c(row[j])
-                }
-            }
+            return transformWithoutIndices(c)
         }
         else 
         if(c.maximumNumberOfParameters == 3) {
-            for(int i=0; i<rows;++i) {
-                double [] row = matrix.dataRef[i]
-                for(int j=0; j<cols;++j) {
-                    newData[i][j] = (double)c(row[j],i,j)
-                }
-            }            
+            return transformWithIndices(c)
         }
+    }
+    
+    @CompileStatic
+    Matrix transformWithoutIndices(Closure c) {
+        final int rows = matrix.rowDimension
+        final int cols = matrix.columnDimension
+        double[][] newData = new double[rows][cols]
+        for(int i=0; i<rows;++i) {
+            double [] row = matrix.dataRef[i]
+            for(int j=0; j<cols;++j) {
+                newData[i][j] = (double)c(row[j])
+            }
+        }                    
+        return new Matrix(new Array2DRowRealMatrix(newData))
+    }
+    
+    @CompileStatic
+    Matrix transformWithIndices(Closure c) {
+        final int rows = matrix.rowDimension
+        final int cols = matrix.columnDimension
+        double[][] newData = new double[rows][cols]
+        for(int i=0; i<rows;++i) {
+            double [] row = matrix.dataRef[i]
+            double [] newRow = newData[i]
+            for(int j=0; j<cols;++j) {
+                double value = row[j] // NOTE: embedding this direclty in call below causes VerifyError with CompileStatic
+                newRow[j] = (double)c.call(value,i,j)
+            }
+        }                    
         return new Matrix(new Array2DRowRealMatrix(newData))
     }
     

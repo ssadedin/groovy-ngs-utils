@@ -18,10 +18,19 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 
 /**
- * Simple utility for displaying progress
+ * Simple utility for displaying progress 
+ * <p>
+ * The code doing the 'work' must call 'count' on the progress counter.
+ * This will print out a progress report at spaced repetitions (the
+ * default is every 500 counts or 30 seconds, whichever happens first).
+ * <p>
+ * Optionally, the 'work' code can call "end()" when it is finished,
+ * which will then print out some brief summary statistics for the whole
+ * operation.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -39,6 +48,10 @@ class ProgressCounter {
     
     boolean withTime = false
     
+    String prefix = null
+    
+    PrintStream out = System.err
+    
     public ProgressCounter() {
     }
     
@@ -52,9 +65,9 @@ class ProgressCounter {
                   c(count)
                 else {
                     if(withTime)
-                        System.err.println(new Date().toString() + ":\t Processed $count")
+                        out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count")
                     else
-                        System.err.println "Processed $count"
+                        out.println((prefix?"\t$prefix :\t":"") + "Processed $count")
                 }
                 lastPrintTimeMs = System.currentTimeMillis()
             }
@@ -63,6 +76,8 @@ class ProgressCounter {
     }
     
     void end() {
-        System.err.println "Processed $count in ${System.currentTimeMillis() - startTimeMs} ms"
+        long endTime = System.currentTimeMillis()
+        def timeDelta = TimeCategory.minus(new Date(endTime),new Date(startTimeMs))
+        out.println "Processed $count in ${timeDelta}. ${1000*count/(endTime-startTimeMs)} per second"
     }
 }

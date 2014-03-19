@@ -9,13 +9,14 @@ import groovy.time.TimeCategory;
  */
 class Utils {
     static time(String desc, Closure c) {
+        System.err.println((" Starting " + desc + " ").center(80, "="))
         Date startTime = new Date()
         try {
             c()
         }
         finally {
             Date endTime = new Date()
-            System.err.println "$desc executed in " + TimeCategory.minus(endTime,startTime)
+            System.err.println(("$desc executed in " + TimeCategory.minus(endTime,startTime)).center(80,"="))
         }
     }
 }
