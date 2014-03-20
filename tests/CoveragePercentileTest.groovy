@@ -18,7 +18,7 @@ class CoveragePercentileTest {
         
         for(values in tests) {
         
-          def c = new CoveragePercentile(1000)
+          def c = new CoverageStats(1000)
           def d = new DescriptiveStatistics()
           
           values.each { c.addValue(it); d.addValue(it) }
@@ -34,7 +34,7 @@ class CoveragePercentileTest {
     @Test
     void testBreakTie() {
         def values = [20] * 10 + [30]*10
-        def c = new CoveragePercentile(1000)
+        def c = new CoverageStats(1000)
         def d = new DescriptiveStatistics()
         values.each { c.addValue(it); d.addValue(it) }
         assert c.getPercentile(50) == d.getPercentile(50).toInteger()

@@ -198,4 +198,88 @@ class BEDTest {
         o = b.getOverlaps("chr1", 145,195)
         assert o == [100..149, 190..249]
     } 
+    
+    @Test
+    void testEachUniqueRange() {
+        BED b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t150
+          chr1\t190\t250
+          chr1\t190\t250
+          chr1\t300\t350
+          """.stripIndent().trim().bytes
+        ))
+        b.load()
+        
+        int count = 0
+        Closure c = { chr, start, end ->
+            ++count
+            println "I was invoked, yes I was: $chr:$start-$end"
+        }
+        println "Calling with closure ${c.hashCode()}"
+        
+        b.eachRange(unique:true, c)
+        
+        assert count == 3
+    }
+    
+    @Test
+    void testIterator() {
+        BED b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t150
+          chr1\t190\t250
+          chr1\t190\t250
+          chr1\t300\t350
+          """.stripIndent().trim().bytes
+        ))
+        b.load()
+        
+        int count = 0
+        for(r in b) {
+            ++count
+        }
+        assert b.grep { println "Examining range $it"; it.from == 300 }[0].to == 349
+        
+        // Conversion to collection is not supposed to be necessary - 
+        // I'm not sure why : 'grep' is found but not 'min', both are part of the Iterable
+        // interface in Groovy ....
+        Iterable i = b as Collection
+        assert i.min { it.from }.from == 100
+    } 
+    
+    @Test
+    void testReduce() {
+        BED b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120
+          chr1\t140\t210
+          chr1\t190\t250
+          chr1\t300\t350
+          """.stripIndent().trim().bytes
+        ))
+        b.load()
+        
+        BED reduced = b.reduce()
+        assert reduced.allRanges["chr1"].size() == 3
+    }
+    
+    @Test
+    void testUnique() { 
+        BED b = new BED(new ByteArrayInputStream(
+            """
+            chrX\t8503465\t8503828
+            chrX\t8503517\t8503763
+            chrX\t8503709\t8503982
+            chrX\t8503752\t8503855
+            chrX\t8503753\t8503935
+            chrX\t8503763\t8504106
+            chrX\t8503828\t8504201
+            """.stripIndent().trim().bytes)).load()
+        
+        assert b.endingAt("chrX", 8503981).size() == 1
+        
+        BED u = b.unique()
+        assert u.endingAt("chrX", 8503981).size() == 1
+    }
 }
