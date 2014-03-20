@@ -1,8 +1,43 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) 2014 Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 import groovy.transform.CompileStatic;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix
 import org.apache.commons.math3.linear.RealMatrix;
 
+/**
+ * A proxy object representing a column in a matrix. 
+ * <p>
+ * The data in a {@link Matrix} is stored natively in row format. That is,
+ * each row is stored as a native Java array of double values. This makes
+ * accessing data by row very efficient, but doesn't give you an easy way to
+ * pass around or treat a column of values as a collection without 
+ * first copying them to another data structure. This class wraps 
+ * an {@link Iterable} interface around a column of values without actually copying
+ * the data. It does this keeps a reference to the underlying matrix and 
+ * implements iteration and random access (via square bracket notation) 
+ * by reflecting values into the appropriate column of the underlying
+ * Matrix.
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
 class MatrixColumn implements Iterable {
     
     int columnIndex
@@ -44,6 +79,50 @@ class MatrixColumn implements Iterable {
     }
 }
 
+/**
+ * Wraps an Apache-Commons-Math matrix of double values with a 
+ * Groovy interface for convenient access. Because it wraps the
+ * underlying matrix as a delegate, all the original methods of
+ * the Commons-Math implementation are available directly, along with
+ * Groovy-enhanced versions.
+ * <p>
+ * The most basic enhancements come in the form of random access operators 
+ * that allowthe Matrix class to be referenced using square-bracket notation:
+ * <pre>
+ * Matrix m = new Matrix(2,2,[1,2,3,4])
+ * assert m[0][0] == 2
+ * assert m[1][1] == 4
+ * </pre>
+ * The rows of the Matrix are directly accessible simply by using
+ * square-bracket indexing:
+ * <pre>
+ * assert m[0] == [1,2]
+ * assert m[1] == [3,4]
+ * </pre>
+ * The columns are accessed by using an empty first index:
+ * <pre>
+ * assert m[][0] == [1,3]
+ * assert m[][1] == [2,4]
+ * </pre>
+ * Rows and columns can both be treated as normal Groovy collections:
+ * <pre>
+ * assert m[0].collect { it.any { it > 2 }  } == [ false, true ]
+ * assert m[][0].collect { it > 1 } == [ false, true ]
+ * </pre>
+ * Note that in the above code, both row-wise and column-wise access
+ * occurs without copying any data.
+ * <p>
+ * Transforming the whole matrix can be done using <code>transform</code>:
+ * <pre>
+ * assert m.transform { it * 2 } == Matrix(2,2,[2,4,6,8])
+ * </pre>
+ * As an option, row and column indexes are available as well:
+ * <pre>
+ * assert m.transform { value, row, column -> value * 2 } == Matrix(2,2,[2,4,6,8])
+ * </pre>
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
 class Matrix {
     
     @Delegate
@@ -81,7 +160,6 @@ class Matrix {
      
     @CompileStatic
     MatrixColumn col(int n) {
-//        matrix.getColumn(n)
         new MatrixColumn(columnIndex:n, sourceMatrix: this)
     }
     
@@ -132,6 +210,14 @@ class Matrix {
     }    
     
     
+    /**
+     * Filter the rows of this matrix and return 
+     * a Matrix as a result
+     * 
+     * @param   c   a Closure to evaluate
+     * 
+     * @return  Matrix for which the closure c returns a non-false value
+     */
     @CompileStatic
     Matrix grep(Closure c) {
         List<Integer> keepRows = []
@@ -162,8 +248,9 @@ class Matrix {
      * three argument version is passed the data value and also the row and column
      * position.
      * 
-     * @param c
-     * @return
+     * @param c A closure taking 1 or 3 arguments (data value, or data value, row,
+     *          column)
+     * @return  A matrix reflecting the transformed data values
      */
     @CompileStatic
     Matrix transform(Closure c) {
@@ -178,7 +265,7 @@ class Matrix {
     }
     
     @CompileStatic
-    Matrix transformWithoutIndices(Closure c) {
+    private Matrix transformWithoutIndices(Closure c) {
         final int rows = matrix.rowDimension
         final int cols = matrix.columnDimension
         double[][] newData = new double[rows][cols]
@@ -192,7 +279,7 @@ class Matrix {
     }
     
     @CompileStatic
-    Matrix transformWithIndices(Closure c) {
+    private Matrix transformWithIndices(Closure c) {
         final int rows = matrix.rowDimension
         final int cols = matrix.columnDimension
         double[][] newData = new double[rows][cols]

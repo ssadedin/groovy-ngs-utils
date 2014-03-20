@@ -1,3 +1,22 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) 2014 Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 import groovy.transform.CompileStatic;
 
 import java.text.ParseException;
@@ -5,6 +24,38 @@ import java.text.ParseException;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 
+/**
+ * A Groovy wrapper for Commons-Math DescriptiveStatistcs, combined
+ * with numerous convenience methods that return SummaryStatistics.
+ * <p>
+ * The summary static methods are used to easily create summary statistics
+ * for various collections and iterables. A special class of methods supports efficient
+ * creation of statistics for defined ranges of integers (eg: Coverage Depth values). The 
+ * motivation of it is to be able to calculate the median of coverage depth values efficiently
+ * without storing the entire set in memory. See {@link CoverageStats} for more information.
+ * <p>
+ * The most basic method takes any Iterable and turns it into a SummaryStatistics object:
+ * <pre>
+ * x = [1,4,5,6]
+ * assert Stats.summary(x).mean == 4
+ * </pre>
+ * As an alternative, a second method accepts a closure, which is called repeatedly 
+ * until an exception occurs such as ArrayIndexOutOfBounds, NoSuchElementException, etc.
+ * This allows an inversion of control, and thus, effectively, a streaming model for objects
+ * that aren't necessarily iterable:
+ * <pre>
+ * int i = 0
+ * assert Stats.summary {  x[i++] }.mean == 4
+ * </pre>
+ * The {@link Stats} class links well with the {@link Matrix} class to allow easy and efficient 
+ * calculation of statistics for matrix columns and rows:
+ * <pre>
+ * Matrix m = new Matrix(2,2,[1,2,3,4])
+ * assert m[][1].mean == 3
+ * </pre>
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
 class Stats extends DescriptiveStatistics {
 
     public Stats() {

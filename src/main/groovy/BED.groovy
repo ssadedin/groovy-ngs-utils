@@ -316,6 +316,16 @@ class BED implements Iterable<Region> {
         return chrIndex.startingAt(pos)
     }
     
+    /**
+     * Return a list of ranges that end exactly at the specified position.
+     * <p>
+     * NOTE: the position is considered <i>inclusive</i> to the range. This
+     * is different to BED file notation.
+     * 
+     * @param chr
+     * @param pos
+     * @return
+     */
     List<Range> endingAt(String chr, int pos) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
@@ -445,7 +455,13 @@ class BED implements Iterable<Region> {
     /**
      * Add the specified range to this BED file.
      * <p>
-     * NOTE: the 'end' is treated as exclusive of the range covered.
+     * NOTE: the 'end' is treated as exclusive of the range covered. This
+     * is consistent with BED file notation, but different to Groovy ranges.
+     * Since most methods in this class use Groovy ranges, you will generally
+     * get a Range object out that has end one less than the end you put in
+     * with add. Thus if you are iterating through one BED file and adding the
+     * ranges to another with this method, you <i>must</i> add one to the
+     * end position that you pass to this method!
      * <p>
      * Will trigger the flag to indicate this BED is loaded in memory.
      */
@@ -567,12 +583,12 @@ class BED implements Iterable<Region> {
         result.withExtra = this.withExtra
         if(this.withExtra) {
             this.eachLoadedRange(unique:true) { chr, from, to, extra ->
-                result.add(chr, from, to, extra)
+                result.add(chr, from, to+1, extra)
             }
         }
         else {
             this.eachLoadedRange(unique:true) { chr, from, to ->
-                result.add(chr, from, to)
+                result.add(chr, from, to+1)
             }
         }
         return result
