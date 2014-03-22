@@ -53,9 +53,21 @@ class MatrixColumn implements Iterable {
     }
     
     int size() {
-        sourceMatrix.matrix.columnDimension
+        sourceMatrix.matrix.rowDimension
     }
     
+    Object asType(Class c) {
+        if(c == List) {
+            return sourceMatrix.matrix.getColumn(columnIndex) as List
+        }
+        else
+        if(c == double[]) {
+            return sourceMatrix.matrix.getColumn(columnIndex)
+        }
+        else {
+            return super.asType(c)
+        }
+    }
     
     Iterator iterator() {
         return new Iterator<Double>() {
@@ -63,7 +75,7 @@ class MatrixColumn implements Iterable {
             int max = MatrixColumn.this.size()
             
             boolean hasNext() {
-                return index<=max
+                return index<max
             }
             
             Double next() {
@@ -125,6 +137,18 @@ class MatrixColumn implements Iterable {
  */
 class Matrix {
     
+    static { 
+        double[][].metaClass.toMatrix = { new Matrix(delegate) }
+        
+        def originalMethod = double[][].metaClass.getMetaMethod("asType", Class)
+        double[][].metaClass.asType = { arg -> arg == Matrix.class ? delegate.toMatrix() : originalMethod(arg)}
+    }
+    
+    /**
+     * How many rows are displayed in toString() and other calls that format output
+     */
+    static final int DISPLAY_ROWS = 50
+    
     @Delegate
     Array2DRowRealMatrix matrix
 
@@ -132,6 +156,15 @@ class Matrix {
         matrix = new Array2DRowRealMatrix(rows, columns)
     }
     
+    public Matrix(MatrixColumn... columns) {
+        matrix = new Array2DRowRealMatrix(columns[0].size(), columns.size())
+        
+    }
+    
+    public Matrix(double [][] values) {
+        matrix = new Array2DRowRealMatrix(values, false)
+    }
+     
     @CompileStatic
     public Matrix(int rows, int columns, List<Double> data) {
         matrix = new Array2DRowRealMatrix(rows, columns)
@@ -178,16 +211,40 @@ class Matrix {
             return getColumns()
         }
         else
-        if(n instanceof Integer)
+        if(n instanceof Number)
             return matrix.dataRef[(int)n]
         else
         if(n instanceof List) {
-            List l = (List)n
+            List<Number> l = (List)n
             if(l.size() == 0) // Seems to happen with m[][2] type syntax
                 return getColumns()
-            else
-                return matrix.dataRef[(int)l[0]][(int)l[1]]
+            else {
+                return subsetRows(l)
+            }
         }
+        else
+        if(n instanceof Iterable) {
+            return subsetRows((n))
+        }
+        else
+        if(n.class.isArray()) {
+            return subsetRows(n as Collection<Number>)
+        }
+        else {
+            throw new IllegalArgumentException("Cannot subset rows by type: " + n?.class?.name)
+        }
+    }
+    
+    @CompileStatic
+    Object subsetRows(Iterable<Number> i) {
+        List indices = new ArrayList(this.matrix.rowDimension)
+        i.each { Number n -> indices.add(n.toInteger()) }
+        return matrix.dataRef[indices]
+    }
+    
+    @CompileStatic
+    void putAt(int n, Object values) {
+       matrix.dataRef[n] = (values as double[])
     }
     
     @CompileStatic
@@ -345,9 +402,28 @@ class Matrix {
         }
     }
     
+    /**
+     * Shorthand to give a familiar function to R users
+     */
+    List<Long> which(Closure c) {
+        this.findIndexValues(c)
+    }
+    
     String toString() {
-        matrix.data.collect { row -> 
-            (row as List).join(",") 
-        }.join("\n")
+        if(matrix.rowDimension<DISPLAY_ROWS) {
+            int rowCount = 0
+            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ matrix.data.collect { row -> 
+                (rowCount++) + ":\t" + (row as List).join(",\t") 
+            }.join("\n")
+        }
+        else {
+            int omitted = matrix.rowDimension-DISPLAY_ROWS
+            int rowCount = 0
+            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ matrix.data[0..DISPLAY_ROWS/2].collect { row -> 
+                ((rowCount++) + ":").padRight(6) + (row as List).join(",\t") 
+            }.join("\n") + "\n... ${omitted} rows omitted ...\n" + matrix.data[-(DISPLAY_ROWS/2)..-1].collect { row -> 
+                (((rowCount++)+omitted-1) + ":").padRight(6) + (row as List).join(",\t") 
+            }.join("\n")
+        }
     }
 }
