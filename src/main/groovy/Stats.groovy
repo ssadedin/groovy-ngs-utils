@@ -225,8 +225,8 @@ class Stats extends DescriptiveStatistics {
     @CompileStatic
     static SummaryStatistics summary(Closure c) {
         SummaryStatistics s = new SummaryStatistics()
-        def value = c()
         try {
+            def value = c()
             while(value != null) {
                 if(value instanceof Double) {
                     s.addValue((Double)value)
