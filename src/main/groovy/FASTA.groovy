@@ -140,21 +140,17 @@ class FASTA {
      */
     @CompileStatic
     void eachSequence(Closure c) {
-        ReferenceSequence seq
-        int count=0
-        long lastPrintTimeMs = System.currentTimeMillis()
-        while((seq = this.indexedFastaFile.nextSequence()) != null) {
-            c(seq.name, seq.bases)
-            ++count
-            if((count % 10000 == 0) && (System.currentTimeMillis() - lastPrintTimeMs) > PRINT_INTERVAL_MS) {
-                System.err.println("Processed " + count + " reads")
-                lastPrintTimeMs = System.currentTimeMillis()
+        ProgressCounter.withProgress { ProgressCounter progress ->
+            ReferenceSequence seq
+            while((seq = this.indexedFastaFile.nextSequence()) != null) {
+                progress.count()
+                c(seq.name, seq.bases)
             }
         }
     }
     
     /**
-     * Iterates over the ranges in teh BED file and extracts the bases for the ranges,
+     * Iterates over the ranges in the BED file and extracts the bases for the ranges,
      * passing the bases of the sequence
      * as a byte array to the given closure for each range.
      */
