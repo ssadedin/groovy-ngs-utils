@@ -172,8 +172,9 @@ class BED implements Iterable<Region> {
         HashSet processed = new HashSet()
         boolean unique = options.unique?true:false
         
-        def abort = { throw new Abort("break from BED file iteration") }
+        c.delegate = new Object() { void abort() { throw new Abort() } }
         ProgressCounter progress = new ProgressCounter(lineInterval:10, timeInterval:10000)
+        c.delegate = progress
         try {
           bedFileStream.eachLine { String line ->
               ++count
@@ -221,6 +222,9 @@ class BED implements Iterable<Region> {
         }
         catch(Abort e) {
             System.err.println "Iteration aborted at line $count"
+        }
+        finally {
+            progress.end()
         }
     }
     
@@ -674,6 +678,20 @@ class BED implements Iterable<Region> {
     }
     
     int getNumberOfRanges() {
-       allRanges.collect { it }.sum { it.value.size() } 
+       def result = allRanges.collect { it }.sum { it.value.size() } 
+       if(result == null)
+           return 0
+       else
+           return result
+    }
+    
+    String toString() {
+        int numRanges = getNumberOfRanges()
+        if(numRanges>0) {
+            "${numRanges} regions starting at ${this.iterator().next()}"
+        }
+        else {
+            "Empty BED (no regions)"
+        }
     }
 }
