@@ -92,19 +92,21 @@ class FASTQ {
         
         openStream(fileName1).withReader { Reader reader1 ->
           openStream(fileName2).withReader { Reader reader2 ->
-            def progress =new ProgressCounter()
-            while(true) {
-              FASTQRead read1 = consumeRead(reader1)
-              FASTQRead read2 = consumeRead(reader2)
-              if(read1 == null) // end of file
-                break
-              if(read2 == null) 
-                  throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
-              
-              if(read1.name != read2.name)
-                  throw new IllegalStateException("Read $read1.name from $fileName1 is not matched by read at same line in $fileName2 ($read2.name). Reads need to be in same order in both files.")
-              c(read1,read2)
-              progress.count()
+            ProgressCounter.withProgress { ProgressCounter progress ->
+                c.delegate = progress
+                while(true) {
+                  FASTQRead read1 = consumeRead(reader1)
+                  FASTQRead read2 = consumeRead(reader2)
+                  if(read1 == null) // end of file
+                    break
+                  if(read2 == null) 
+                      throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
+                  
+                  if(read1.name != read2.name)
+                      throw new IllegalStateException("Read $read1.name from $fileName1 is not matched by read at same line in $fileName2 ($read2.name). Reads need to be in same order in both files.")
+                  c(read1,read2)
+                  progress.count()
+                }
             }        
           }
         }
