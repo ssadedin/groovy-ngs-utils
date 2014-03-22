@@ -76,8 +76,31 @@ class ProgressCounter {
     }
     
     void end() {
+        if(count == 0) {
+            out.println "0 records processed"
+            return
+        }
+            
         long endTime = System.currentTimeMillis()
         def timeDelta = TimeCategory.minus(new Date(endTime),new Date(startTimeMs))
-        out.println "Processed $count in ${timeDelta}. ${1000*count/(endTime-startTimeMs)} per second"
+        out.println "Processed $count in ${timeDelta} @ ${1000*count/((endTime-startTimeMs)+1)} per second"
+    }
+    
+    void getAbort() { 
+        throw new Abort() 
+    }; 
+
+    static withProgress(Closure c) { 
+        ProgressCounter progress = new ProgressCounter(withTime:true)
+        c.delegate = progress
+        try {
+            c(progress)
+        }
+        catch(Abort e) {
+            // Ignore
+        }
+        finally {
+          progress.end()  
+        }
     }
 }

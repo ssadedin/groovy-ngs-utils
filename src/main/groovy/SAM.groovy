@@ -164,27 +164,27 @@ class SAM {
     @CompileStatic
     void eachPair(Iterator<SAMRecord> iter, Closure c) {
         SAMFileReader pairReader = newReader()
-        ProgressCounter progress = new ProgressCounter(withTime:true)
         Map<String,SAMRecord> buffer = new HashMap()
-        try {
-            while(iter.hasNext()) {
-                SAMRecord r1 = (SAMRecord)iter.next();
-                progress.count()
-                if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
-                    continue
-                    
-                if(buffer.containsKey(r1.readName)) {
-                    c(r1,buffer[r1.readName])
-                    buffer.remove(r1.readName)
-                }
-                else {
-                    buffer[r1.readName] = r1
+        ProgressCounter.withProgress { ProgressCounter progress ->
+            try {
+                while(iter.hasNext()) {
+                    SAMRecord r1 = (SAMRecord)iter.next();
+                    progress.count()
+                    if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
+                        continue
+                        
+                    if(buffer.containsKey(r1.readName)) {
+                        c(r1,buffer[r1.readName])
+                        buffer.remove(r1.readName)
+                    }
+                    else {
+                        buffer[r1.readName] = r1
+                    }
                 }
             }
-        }
-        finally {
-            pairReader.close()
-            progress.end()
+            finally {
+                pairReader.close()
+            }
         }
     }
     
