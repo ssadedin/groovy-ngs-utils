@@ -31,6 +31,7 @@ import net.sf.samtools.SAMFileHeader;
 import net.sf.samtools.SAMFileReader;
 import net.sf.samtools.SAMFileWriter;
 import net.sf.samtools.SAMFileWriterFactory;
+import net.sf.samtools.SAMReadGroupRecord;
 import net.sf.samtools.SAMSequenceRecord;
 import net.sf.samtools.SAMFileReader.ValidationStringency;
 import net.sf.samtools.SAMRecord;
@@ -98,6 +99,7 @@ class SAM {
         
         SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
         this.samFileReader = newReader()
+        
     }
     
     SAMFileReader newReader() {
@@ -214,6 +216,14 @@ class SAM {
           }
         }
         executor.shutdown()
+    }
+    
+    List<SAMReadGroupRecord> getReadGroups() {
+        samFileReader.getFileHeader().getReadGroups()
+    }
+    
+    List<String> getSamples() {
+        samFileReader.getFileHeader().getReadGroups()*.sample
     }
     
     void filter(Closure c) {
