@@ -41,8 +41,35 @@ class SnpEffInfo {
     }
 }
 
+class Allele {
+    
+    /**
+     * Actual start position of genomic change for this Allele,
+     * relative to reference
+     */
+    int start
+    
+   /**
+    * Actual end position of genomic change for this Allele
+    * relative to reference
+    */
+    int end
+    
+    String alt
+    
+    /**
+     * INS, DEL or SNP
+     */
+    String type
+    
+    String toString() { start != end ? "$start-$end $alt ($type)" : "$start $alt ($type)" }
+}
+
 /**
- * Help with parsing VCFs
+ * Represents the genetic state at a specific locus in a genome
+ * ie: captures the information at a single line of a VCF file.
+ * Note that this can include multiple alleles that may be present
+ * at the site, having different start and end position.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -275,8 +302,17 @@ class Variant {
         return info?.max { it.rank }
     }
     
+    /**
+     * Return list of dosages (number of copies of allele) for 
+     * each sample for the first alternate allele.
+     * @return
+     */
     List<Integer> getDosages() {
-        if(dosages != null)
+        getDosages(0)
+    }
+    
+    List<Integer> getDosages(int alleleIndex) {
+        if(dosages != null && alleleIndex == 0)
             return dosages
         
         // TODO: dosages work differently in de novo callers, 
@@ -286,13 +322,30 @@ class Variant {
           def alleles = s.split(':')[0].split('/')
           if(alleles[0] in ['A','C','T','G']) 
               alleles[0] == alleles[1] ? 2 : 1
-          else
-              alleles.collect { 
-                  it == '.' ? -1 : Integer.parseInt(it) 
-              }.countBy { it }[1]?:0
- 
+          else { .... }
          */
-        dosages = genoTypes*.GT*.split('/')*.sum { it == '.' ? 0 : Integer.parseInt(it) } 
+            
+        // Actual format is like this:
+        //    1/1 : hom alt 1
+        //    1/2 : het alt 1 / alt 2
+        //    ./. : not called
+        // So to find the dosage for allele 1, we need to split the genotype on slash
+        // and then count the number of times the requested allele appears.
+        def result = genoTypes*.GT*.split('/')*.count { 
+            println "GT = $it"
+            if(!it.isInteger())
+                return 0
+                
+            if(Integer.parseInt(it) == (alleleIndex+1))
+                return 1
+                
+            return 0
+        } 
+        
+        if(alleleIndex == 0)
+            dosages = result
+            
+        return result
     }
 
     @CompileStatic 
@@ -301,6 +354,13 @@ class Variant {
         List<Integer> allDosages = getDosages()
         return (int)allDosages[sampleIndex]
     }
+    
+    @CompileStatic 
+    int sampleDosage(String sampleName, int alleleIndex) {
+        int sampleIndex = header.samples.indexOf(sampleName)
+        List<Integer> allDosages = getDosages(alleleIndex)
+        return (int)allDosages[sampleIndex]
+    }    
     
     @CompileStatic 
     /**
@@ -500,11 +560,50 @@ class Variant {
     /**
      * Return a list of each allele and its type.
      * Yes, VCF allows multiple types (INS,DEL) to be on the same line of 
-     * a VCF file!
+     * a VCF file.
+     * @deprecated  use getAlleles() instead
      */
     List<List<String>> getAllelesAndTypes() {
         return alts.collect {
             [it, convertType(ref,it)]
         }
     }
+    
+    /**
+     * Return the index of the allele (if any) that matches the give other variant
+     * @param other
+     * @return
+     */
+    int findAlleleIndex(Allele other) {
+        alleles.findIndexValues { me ->
+            other.alt == me.alt && other.start == me.start && other.end == me.end && other.type == me.type
+        }[0]
+    }
+    
+    /**
+     * Return a list of Allele objects representing alleles present on this line of the VCF
+     * <p>
+     * Note: currently this computes the results on the fly and they are not cached, so
+     *       use with caution in computationaly intensive situations
+     */
+    List<Allele> getAlleles() {
+        return alts.collect { obs ->
+            String t = convertType(ref,obs)
+            
+            int start = pos
+            int end = pos
+            switch(t) {
+                case "INS":
+                    start = pos + ref.size()-1 // Insertion comes after reference sequence
+                    end = start // since the positions are rel to reference genome, end must be same as start for an insertion
+                    break
+                case "DEL":
+                    start = pos + obs.size()
+                    end = pos + ref.size()
+                    break
+            }
+            
+            new Allele(start: start, end: end, alt: obs, type: t)
+        }
+    } 
 }
