@@ -96,6 +96,24 @@ class VCFIndex {
     }
     
     /**
+     * Returns true if this VCF contains the specified variant
+     * <p>
+     * IMPORTANT: the other variant is required to contain only
+     *            a single allele for this function to return correct 
+     *            results!
+     * 
+     * @param v Variant to test for
+     * @return  The variant iff this VCF contains the variant, null otherwise
+     */
+    Variant contains(Variant v) {
+        Variant found = this.find(v.chr, v.pos-10, v.pos + v.size()+10) { myv ->
+            myv.pos == v.pos && myv.allelesAndTypes.any { it[0] == v.alt && it[1] == v.type }
+        }
+        
+        return found
+    }
+    
+    /**
      * Query the current VCF file for all variants in the specified
      * region
      *
