@@ -41,8 +41,6 @@ dependencies {
      compile files(fileTree(dir:'lib', includes:['*.jar']))
 }
 
-println jar
-
 // Bundle all dependencies into output library
 jar {
     from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
@@ -50,6 +48,8 @@ jar {
     exclude "org/codehaus/**"
     exclude "META-INF/groovy*"
     exclude "META-INF/**/*groovy*"
+    exclude "META-INF/BCKEY*"
+    exclude "org/bouncycastle/**"
 }
 
 
