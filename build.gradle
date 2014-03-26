@@ -6,6 +6,7 @@ STAGE="build/stage/groovy-ngs-utils-$VERSION"
 /*
  TODO: use proguard to shrink down the output jars
  */
+/*
 buildscript {
     repositories {
         flatDir dirs: '/Users/simon/work/proguard/proguard4.9/lib'
@@ -14,7 +15,7 @@ buildscript {
         classpath ':proguard'
     }
 }
-
+*/
 repositories {
     mavenCentral()
     maven { 
@@ -33,6 +34,7 @@ dependencies {
      groovy group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
      groovy group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
      groovy group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
+     groovy 'com.lowagie:itext:2.1.7'
      groovy 'org.apache.commons:commons-math3:3.0'
      groovy 'org.utgenome.thirdparty:picard:1.86.0'
      groovy 'log4j:log4j:1.2.17'
