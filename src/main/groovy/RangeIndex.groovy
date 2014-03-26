@@ -28,9 +28,40 @@ import groovy.transform.CompileStatic;
  * can be identified quickly and easily.
  * <p>
  * The RangeIndex models ranges by their breakpoints. Each time a new range
- * is inserted, the breakpoints are indexed and the list of overlapping ranges
+ * is inserted, the breakpoints are stored in a tree and the list of overlapping ranges
  * at each breakpoint is tracked for each breakpoint entry. This makes it 
- * easy to find overlapping ranges at any point.
+ * easy to find overlapping ranges at any point. This class is the primary driver
+ * for the {@link BED} class which adds support for contigs so that a whole
+ * reference sequence containing multiple contigs (eg: chromosomes) can be
+ * indexed.
+ * <p>
+ * The RangeIndex is built upon Groovy's built in {@link IntRange} class. An 
+ * important aspect of this class is that by default its end point is included
+ * in the range, while by default BED ranges are exclusive of the end point.
+ * Thus care needs to be taken in translating between the two. When you add
+ * a range to the index it is treated as a BED range: that is, the end point
+ * is exclusive. When you retrieve it, the end position will be <i>inclusive</i>
+ * ie: it will be decremented by one from what you inserted.
+ * <p>
+ * RangeIndex does not de-duplicate identical ranges. If you put in multiple 
+ * identical ranges they will be separate stored and separately returned as outputs
+ * for queries and iteration over the index.
+ * <p>
+ * <b>Usage</b>
+ * <p>
+ * Adding ranges is done via the <code>add</code> method:
+ * <pre>
+ * RangeIndex index = new RangeIndex()
+ * index.add(5..10)
+ * index.add(20..30)
+ * index.add(25..35)
+ * </pre>
+ * The {@link RangeIndex} class implements the {@link Iterable} interface, 
+ * allowing generic Groovy collections methods to work:
+ * <code>
+ * index.each { println "A range from $it.from-$it.to" }
+ * assert index.grep { it.from > 15 } == 2
+ * </code>
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -115,7 +146,6 @@ class RangeIndex implements Iterable<IntRange> {
                 // It needs to have the previous range only, not our new range
                 // NOTE: list.clone() causes static compilation to fail with verify error
                 List<IntRange> clonedList = containedEntry.value.grep { endPosition < it.to }
-//                clonedList.addAll(containedEntry.value)
                 ranges[endPosition+1] = clonedList
                 checkRanges(endPosition+1)
             }
