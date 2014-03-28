@@ -59,6 +59,7 @@ enum Consanguinity {
 	static Consanguinity decode(String value) {
 		if(!value?.trim())
 			NOT_CONSANGUINOUS
+		else
 		if(value == "0")
 			NOT_CONSANGUINOUS
 		else
@@ -207,7 +208,11 @@ class SampleInfo {
 		
 		def columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID"," Hospital_Centre","Sequencing_Contact","Pipeline_Contact"]
 		
-		println "Parsing lines ${lines.join('\n')}"
+		// Pad with optional blank fields
+		lines = lines.collect { line ->
+			def fields = line.split("\t")
+			return (fields + [""] * (columns.size() - fields.size())).join("\t")
+		}
 		
 		int lineCount = 0
         def sample_info = new TSV(new StringReader(lines.join("\n")), columns).collect { fields ->
@@ -225,14 +230,23 @@ class SampleInfo {
 					si.sex = Sex.decode(fields.Sex) 
 					si.consanguinity = Consanguinity.decode(fields.Consanguinity)
 					si.ethnicity  = Ethnicity.decode(fields.Ethnicity)
-					si.dnaDates = fields.DNA_Date?.split(",")*.trim().collect { parseDate(it) }
-					si.captureDates = fields.Capture_Date?.split(",")*.trim().collect { parseDate(it) }
-					si.sequencingDates = fields.Sequencing_Date?.split(",")*.trim().collect { parseDate(it) }
-					si.dnaConcentrationNg = fields.DNA_Concentration?.toFloat()
-					si.dnaQuality = fields.DNA_Quality?.toFloat()
-					si.dnaQuantity = fields.DNA_Quantity?.toFloat()
-					si.meanCoverage = fields.Mean_Coverage?.toFloat()
-					si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
+					if(fields.DNA_Date)
+						si.dnaDates = fields.DNA_Date?.split(",")*.trim().collect { parseDate(it) }
+					if(fields.Capture_Date)
+						si.captureDates = fields.Capture_Date.split(",")*.trim().collect { parseDate(it) }
+					if(fields.Sequencing_Date)
+						si.sequencingDates = fields.Sequencing_Date?.split(",")*.trim().collect { parseDate(it) }
+					
+					if(fields.DNA_Concentration)
+						si.dnaConcentrationNg = fields.DNA_Concentration?.toFloat()
+					if(fields.DNA_Quality)
+						si.dnaQuality = fields.DNA_Quality?.toFloat()
+					if(fields.DNA_Quantity)
+						si.dnaQuantity = fields.DNA_Quantity?.toFloat()
+					if(fields.Mean_Coverage)
+						si.meanCoverage = fields.Mean_Coverage?.toFloat()
+					if(fields.Machine_ID)
+						si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
 					si.sequencingContact = fields.Sequencing_Contact
 					si.analysisContact = fields.Pipeline_Contact
 					
@@ -259,6 +273,19 @@ class SampleInfo {
 				}
         }.collectEntries { [it.sample, it] } // Convert to map keyed by sample name
     }
+	
+	/**
+	 * Validates that text fields are in the correct format.
+	 * <p>
+	 * This format validation is specific to melbourne genomics.
+	 */
+	void validate() {
+		if(!(sample ==~ "[0-9]{9}"))
+			throw new IllegalStateException("Sample ID ${sample} does not match prescribed format")
+			
+		if(!(batch ==~ "[0-9]{3}"))
+			throw new IllegalStateException("Sample ID ${batch} does not match prescribed format")
+	}
     
     String toTsv() {
         [sample, target, files.collect { it.key == "all" ? [] : it.value }.flatten().join(","), geneCategories.collect { it.key + ":" + it.value.join(",") }.join(" "), sex].join("\t")
@@ -269,7 +296,7 @@ class SampleInfo {
     }
 	
 	static Date parseDate(String dateValue) {
-		if(dateValue == null)
+		if(!dateValue)
 			return null
 		return Date.parse("yyyyMMdd", dateValue)
 	}
