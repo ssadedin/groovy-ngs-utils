@@ -22,6 +22,43 @@ import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 
+/**
+ * A light weight PDF Builder for creating PDFs to show results.
+ * <p>
+ * To create a PDF, instantiate a {@link PDF} object and use the {@link #document(String, Closure)}
+ * method to initiate the building of a PDF document.
+ * <p>
+ * <b>Example</b>:
+ * <pre>
+ * new PDF().document("test.pdf") {
+ * 		title("This is My PDF")
+ *      br()
+ * 		p("This is a PDF document")
+ * 		color("RED") { bold {
+ * 			p("This paragraph is red and bold")
+ *      } }
+ *      
+ *      table {
+ *      	head {
+ *      		cells("Name","Age","Height")
+ *          }
+ *          cells("Simon", 18, 168)
+ *          color("BLUE") { cell("Peter") } // Peter will be blue!
+ *          cells(28, 92)
+ *      }
+ *      
+ *      // Note: the image will be autoscaled and centered
+ *      img("test.jpg")
+ * }
+ * </pre>
+ * <p>
+ * <b>Note</b>: This implementation is based on iText, a PDF generation library that
+ * changed from MPL to LGPL then to AGPL. This implementation is compatible with the 
+ * original MPL licensed version. Some people consider it unwise or unethical to use 
+ * that version but this is obviously an individual judgement to be made.
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
 class PDF {
 	
 	private static Font defaultFont = new Font(Font.HELVETICA, 12);
@@ -62,6 +99,16 @@ class PDF {
 		Font base = fontStack[-1]
 		c.delegate = this
 		this.fontStack.push(new Font(base.family, size, base.style, base.color))
+		c()
+		this.fontStack.pop()
+	}
+	
+	void color(String color, Closure c) {
+		color = color.toUpperCase()
+		Font base = fontStack[-1]
+		c.delegate = this
+		Color colorObj = java.awt.Color.class.fields.find{ it.name == color }.get(null)
+		this.fontStack.push(new Font(base.family, base.size, base.style, colorObj))
 		c()
 		this.fontStack.pop()
 	}
@@ -161,10 +208,10 @@ class PDF {
 		 while(height<0)
 		 	Thread.sleep(50)
 			 
-		 println "Height = ${height}"
+//		 println "Height = ${height}"
 		 
 		 float aspectRatio = (height/ (float)awtImage.getWidth(null))
-		 println "Aspect ratio = $aspectRatio"
+//		 println "Aspect ratio = $aspectRatio"
 		 img.scaleAbsolute(300,(float)aspectRatio * 300)
 		 img.absoluteX = 150
 		 paragraph.add(img)
