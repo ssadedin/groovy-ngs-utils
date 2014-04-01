@@ -104,10 +104,9 @@ class PDF {
 	}
 	
 	void color(String color, Closure c) {
-		color = color.toUpperCase()
 		Font base = fontStack[-1]
 		c.delegate = this
-		Color colorObj = java.awt.Color.class.fields.find{ it.name == color }.get(null)
+		Color colorObj = toColor(color)
 		this.fontStack.push(new Font(base.family, base.size, base.style, colorObj))
 		c()
 		this.fontStack.pop()
@@ -135,12 +134,21 @@ class PDF {
 	
 	PdfPTable currentTable 
 	
+	List<Map> tableOpts = []
+	
+	void table(Map props, Closure c) {
+		c.delegate = this
+		currentTable = new PdfPTable(props.cols);
+		tableOpts.push(props)
+		c()
+		this.paragraph.add(currentTable)
+	}
+	
 	void table(Closure c) {
 		
 		c.delegate = this
 		c()
 		
-
 		// t.setBorderColor(BaseColor.GRAY);
 		// t.setPadding(4);
 		// t.setSpacing(4);
@@ -150,6 +158,9 @@ class PDF {
 	}
 	
 	List<PdfPCell> headerCells
+	
+	List<Color> tableBackground = []
+	
  	void head(Closure c) {
 		 headerCells = []
 		 c.delegate = this
@@ -159,21 +170,70 @@ class PDF {
 		 headerCells.each { 
 			PdfPCell cell = new PdfPCell(new Phrase(String.valueOf(it), fontStack[-1]));
 			cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-			cell.setBackgroundColor(Color.GRAY)
+			if(tableBackground) {
+				cell.setBackgroundColor(tableBackground[-1])
+			}
+			else {
+				cell.setBackgroundColor(Color.LIGHT_GRAY)
+			}
+			applyCellProperties(cell)
 			currentTable.addCell(cell)
 	     }
 		 headerCells = null
 	 }
 	 
 	 void cell(Object contents) {
+		 
+		// Handle null values as blanks for convenience
+		if(contents == null)
+			contents = ""
+			
 		if(headerCells != null) {
 			headerCells << String.valueOf(contents)
 		}
 		else {
 			PdfPCell cell = new PdfPCell(new Phrase(String.valueOf(contents), fontStack[-1]));
+			if(tableBackground) {
+				cell.setBackgroundColor(tableBackground[-1])
+			}
+		    applyCellProperties(cell)
 			currentTable.addCell(cell);
 		}
 	 }
+	 
+	 void applyCellProperties(PdfPCell cell) {
+		if(tableOpts) {
+			tableOpts[-1].each { key, value ->
+				if(cell.hasProperty(key)) {
+					cell[key] = value
+				}
+			}
+		}
+	}
+	 
+    /**
+     * Set alignment within table cells
+     */
+	void align(String value, Closure c) {
+		Map newOpts = [horizontalAlignment: toAlignment(value)] 
+		if(tableOpts) 
+			newOpts = tableOpts[-1]  + newOpts
+		tableOpts.push(newOpts)
+		c.delegate = this
+		c()
+		tableOpts.pop()
+	}	
+	
+	int toAlignment(String value) {
+		if(value == "center")
+			Element.ALIGN_CENTER
+		else
+		if(value == "left")
+			Element.ALIGN_LEFT
+		else
+		if(value == "right")
+			Element.ALIGN_RIGHT
+	}
 	 
 	 void cells(Iterable i) {
 		 Iterator iter = i.iterator()
@@ -183,6 +243,20 @@ class PDF {
 	 
 	 void cells(Object...values) {
 		 values.each { cell(it) }
+	 }
+	 
+	 void bg(String color, Closure c) {
+		 background(color,c)
+	 }
+	 
+	 /**
+	  * Set background color of table cells
+	  */
+	 void background(String color, Closure c) {
+		 tableBackground.push(toColor(color))
+		 c.delegate = this
+		 c()
+		 tableBackground.pop()
 	 }
 	 
 	 void br(int number=1) {
@@ -215,5 +289,17 @@ class PDF {
 		 img.scaleAbsolute(300,(float)aspectRatio * 300)
 		 img.absoluteX = 150
 		 paragraph.add(img)
+	 }
+	 
+	 Color toColor(String color) {
+		color = color.toUpperCase()
+		
+		// Check for a built in color with the given name
+		def field = java.awt.Color.class.fields.find{ it.name == color }
+		if(field)
+			return field.get(null) 
+		
+		// Not found - try to decode as hex
+	    return Color.decode(color)		
 	 }
 }
