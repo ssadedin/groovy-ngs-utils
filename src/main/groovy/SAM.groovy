@@ -39,7 +39,12 @@ import net.sf.samtools.SAMRecordIterator;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
-
+/**
+ * An alternate alignment for a read. 
+ * eg: constructed from the XA tag as output by bwa aln.
+ * 
+ * @author Simon
+ */
 class XA {
     String chr
     int pos
@@ -65,10 +70,43 @@ class SAMRecordCategory {
 }
 
 /**
- * Utility class for handling SAM / BAM files
+ * Adds various Groovy idioms and convenience features to the 
+ * Picard SAMFileReader.
+ * <p>
+ * There are three major classes of functionality supported:
  * 
+ * <li>Iterating through and filtering reads in various ways
+ * <li>Generating pileups and calculating read depth / coverage
+ * <li>Accessing meta data (read groups, sample information, etc)
+ * 
+ * For simple looping, the {@link #eachRead(Closure)} static method
+ * can be used without creating a SAM object at all:
+ * <pre> SAM.eachRead { SAMRecord r -> println r.readName } </pre>
+ * (this will read from standard input). More sophisticated use requires the construction of a SAM object, 
+ * which allows, for example, iteration of read pairs:
+ * <pre> new SAM("test.bam").eachPair { r1, r2 -> assert r1.readName == r2.readName } </pre>
+ * <p>
+ * A region can be optionally passed to iterate over:
+ * 
+ * <pre> new SAM("test.bam").eachPair("chr1",1000,2000) { r1, r2 -> assert r1.readName == r2.readName }</pre>
+ * 
+ * Filtering a BAM file to create file containing a subset of reads is supported explicitly:
+ * 
+ * <pre>new SAM("test.bam").filter("out.bam") { it.mappingQuality > 30 }</pre>
+ * 
+ * Generating pileups is also straightforward:
+ * <pre> new SAM("test.bam").pileup("chr1",1000,2000) { p -> 
+ *     println "There are ${p.countOf('A')} A bases at position chr1:$p.position" 
+ * }</pre>
+ * See the {@link Pileup} class for more information about operations on pileups.
+ * <p><br>
+ * <i>Notes:</i>
+ * <li>Most operations filter out reads with mapping quality 0 by default. To 
+ * avoid this, set the minMappingQuality property on the SAM object.
+ * <li>All operations with this class require the BAM file to be indexed.
+ * <li>SAM and BAM files are treated transparently the same.
+ * <p>
  * @author simon.sadedin@mcri.edu.au
- *
  */
 class SAM {
     
@@ -157,12 +195,35 @@ class SAM {
         }
     }
     
+	/**
+	 * Call the given closure for every pair of reads in a BAM file containing paired end reads.
+	 * <p>
+	 * Note: the algorithm works by keeping a running buffer of reads, and iterating through
+	 * the reads in order until each single read finds its mate. This means that 
+	 * reads having no mate accumulate in the buffer without ever being removed. Thus 
+	 * a large BAM file containing millions of unpaired reads could cause this method to use
+	 * substantial ammounts of memory.
+	 * 
+	 * @param c		Closure to call
+	 */
     @CompileStatic
     void eachPair(Closure c) {
         Iterator<SAMRecord> iter = samFileReader.iterator()
         eachPair(iter,c)
     }
     
+	/**
+	 * Call the given closure for every pair of reads in a BAM file containing paired end reads.
+	 * <p>
+	 * Note: the algorithm works by keeping a running buffer of reads, and iterating through
+	 * the reads in order until each single read finds its mate. This means that 
+	 * reads having no mate accumulate in the buffer without ever being removed. Thus 
+	 * a large BAM file containing millions of unpaired reads could cause this method to use
+	 * substantial ammounts of memory.
+	 * 
+	 * @param iter	iterator to consumer reads from
+	 * @param c		Closure to call
+	 */
     @CompileStatic
     void eachPair(Iterator<SAMRecord> iter, Closure c) {
         SAMFileReader pairReader = newReader()
@@ -363,11 +424,19 @@ class SAM {
         return p
     }
     
+	/**
+	 * Close the underlying SAMFileReader
+	 */
     void close() {
         if(this.samFileReader != null)
             this.samFileReader.close()
     }
     
+	/**
+	 * Read a BAM or SAM file from standard input and call the given closure for
+	 * each read contained therein.
+	 * @param c
+	 */
     @CompileStatic
     static void eachRead(Closure c) {
         SAMFileReader reader = new SAMFileReader(System.in)
