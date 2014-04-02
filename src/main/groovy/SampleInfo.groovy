@@ -18,6 +18,87 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+import java.text.ParseException;
+
+enum Sex {
+	MALE, FEMALE, OTHER	
+	
+	static Sex decode(String value) {
+		if(!value?.trim())
+			FEMALE
+		else
+		if(value == "1")
+			MALE
+		else
+		if(value == "2")
+			FEMALE
+		else
+			throw new IllegalArgumentException("Bad sex value [$value] specified")
+	}
+}
+
+enum SampleType {
+	NORMAL, TUMOR
+	
+	static Consanguinity decode(String value) {
+		if(!value?.trim())
+			NORMAL
+		if(value == "1")
+			NORMAL
+		else
+		if(value == "2")
+			TUMOR
+		else
+			throw new IllegalArgumentException("Bad sample type value [$value] specified")
+	}
+}
+
+enum Consanguinity {
+	NOT_CONSANGUINOUS, CONSANGUINOUS, SUSPECTED, UNKNOWN
+	
+	static Consanguinity decode(String value) {
+		if(!value?.trim())
+			NOT_CONSANGUINOUS
+		else
+		if(value == "0")
+			NOT_CONSANGUINOUS
+		else
+		if(value == "1")
+			CONSANGUINOUS
+		else
+		if(value == "2")
+			SUSPECTED
+		else
+		if(value == "3" || value == "8")
+			UNKNOWN
+		else
+			throw new IllegalArgumentException("Bad consanguinity value [$value] specified")
+	}
+}
+
+enum Ethnicity {
+	UNKNOWN, EUROPEAN, AFRICAN
+	
+	static Ethnicity decode(String value) {
+		if(!value?.trim())
+			return UNKNOWN
+			
+		switch(value.trim()) {
+			case "0":
+				UNKNOWN
+				break;
+			case "1":
+				EUROPEAN
+				break;
+			case "2":
+				AFRICAN
+				break
+			default:
+				throw new IllegalArgumentException("Bad Ethnicity value [$value] specified")
+		}
+	}
+}
+
 /**
  * Meta data about a sample.
  * <p>
@@ -36,6 +117,17 @@ class SampleInfo {
      *  - bam
      */
     Map    files = new Hashtable() // thread safe
+	
+	static List<String> columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact"]
+	
+	/** Id of batch in which the sample was sequenced */
+	String batch
+	
+	/** Whether the sample type is normal or tumor */
+	SampleType sampleType = SampleType.NORMAL
+	
+	/** Whether the sample is consanguinous */
+	Consanguinity consanguinity = Consanguinity.NOT_CONSANGUINOUS
 
     /** Target (flagship) name */
     String  target
@@ -47,10 +139,37 @@ class SampleInfo {
     String library
 
     /** The sex of the sample */
-    String sex
-
+    Sex sex
+	
+	Ethnicity ethnicity
+	
     /** The pedigree of the family */
     String pedigree
+	
+	/** DNA quality in nanograms */
+	float dnaConcentrationNg
+	
+	float dnaQuality
+	
+	float dnaQuantity
+	
+	List<Date> dnaDates
+	
+	List<Date> captureDates
+	
+	List<Date> sequencingDates
+	
+	/** Mean coverage as reported by sequencing provider */
+	float meanCoverage
+	
+	/** Hospital or organization responsible for the patient from which the sample originated */
+	String institution
+	
+	List<String> machineIds
+	
+	String sequencingContact
+	
+	String analysisContact
 
     Map<String,String> fileMappings = [
         bam : "bam",
@@ -80,37 +199,92 @@ class SampleInfo {
      *              <li>Genes to be classed as high priority (genes)
      */
     static parse_sample_info(fileName) {
-        def lines = new File(fileName).readLines().grep { !it.trim().startsWith('#') }
-        def sample_info = lines.collect { it.split("\t") }.collect { fields ->
-                fields = fields as List
-                def si = new SampleInfo(
-                    sample: fields[0], 
-                    target: fields[1], 
-                    geneCategories:  [:],
-                    library: fields[0],
-                    sex: fields[4],
-                    pedigree: fields[8]
-                ) 
-                si.files.all = fields[2].split(",")*.trim().collect {new File(it).parentFile?it:"../data/$it"}
-                si.indexFileTypes()
-
-                if(fields.size()>3) {
-                    fields[3].split(",")*.trim()
-
-                    // Index category to gene
-                    if(fields[3]) {
-                        def genes = fields[3].split(" ")*.split(":").collect { 
-                            [ /* category */ it[0].trim().toInteger(), /* genes */ it[1].split(",")*.trim() ]
-                        }.collectEntries()
-
-                        // Invert 
-                        genes.each { k,v -> v.each { si.geneCategories[it] = k } }
-                    }
-                }
-
-                return si
+		
+        def lines = new File(fileName).readLines().grep { 
+			!it.trim().startsWith('#') && // ignore comment lines
+			!it.trim().toLowerCase().startsWith("sample_id") && // ignore header line, if it is present
+			it.trim() // ignore completely blank lines
+		}
+		
+		// Pad with optional blank fields
+		lines = lines.collect { line ->
+			def fields = line.split("\t")
+			return (fields + [""] * (columns.size() - fields.size())).join("\t")
+		}
+		
+		int lineCount = 0
+        def sample_info = new TSV(new StringReader(lines.join("\n")), columns).collect { fields ->
+//				println "Found sample " + fields.Sample_ID
+			
+				try {
+	                def si = new SampleInfo(
+	                    sample: fields.Sample_ID,
+	                    target: fields.Cohort,
+	                    geneCategories:  [:],
+						batch: fields.Batch,
+	                    pedigree: fields.Pedigree_File               
+					)
+					
+					si.sex = Sex.decode(fields.Sex) 
+					si.consanguinity = Consanguinity.decode(fields.Consanguinity)
+					si.ethnicity  = Ethnicity.decode(fields.Ethnicity)
+					if(fields.DNA_Date)
+						si.dnaDates = fields.DNA_Date?.split(",")*.trim().collect { parseDate(it) }
+					if(fields.Capture_Date)
+						si.captureDates = fields.Capture_Date.split(",")*.trim().collect { parseDate(it) }
+					if(fields.Sequencing_Date)
+						si.sequencingDates = fields.Sequencing_Date?.split(",")*.trim().collect { parseDate(it) }
+					
+					if(fields.DNA_Concentration)
+						si.dnaConcentrationNg = fields.DNA_Concentration?.toFloat()
+					if(fields.DNA_Quality)
+						si.dnaQuality = fields.DNA_Quality?.toFloat()
+					if(fields.DNA_Quantity)
+						si.dnaQuantity = fields.DNA_Quantity?.toFloat()
+					if(fields.Mean_Coverage)
+						si.meanCoverage = fields.Mean_Coverage?.toFloat()
+					if(fields.Machine_ID)
+						si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
+					si.sequencingContact = fields.Sequencing_Contact
+					si.analysisContact = fields.Pipeline_Contact
+					si.institution = fields.Hospital_Centre
+					
+	                si.files.all = fields.Fastq_Files.split(",")*.trim().collect {new File(it).parentFile?it:"../data/$it"}
+	                si.indexFileTypes()
+	
+	                // Index category to gene
+	                if(fields.Prioritised_Genes) {
+	                    def genes = fields.Prioritised_Genes.split(" ")*.split(":").collect { 
+							// HACK: Excel is exporting character -96 here, not sure why!
+							int category = new String(it[0].bytes.grep { it != -96 } as byte[]).trim().toInteger()
+	                        [ category, /* genes */ it[1].split(",")*.trim() ]
+	                    }.collectEntries()
+	
+	                    // Invert 
+	                    genes.each { k,v -> v.each { si.geneCategories[it] = k } }
+	                }
+	
+					++lineCount
+	                return si
+				}
+				catch(Exception e) {
+					throw new RuntimeException("Error parsing meta data for sample ${fields.Sample_ID} on line $lineCount", e)
+				}
         }.collectEntries { [it.sample, it] } // Convert to map keyed by sample name
     }
+	
+	/**
+	 * Validates that text fields are in the correct format.
+	 * <p>
+	 * This format validation is specific to melbourne genomics.
+	 */
+	void validate() {
+		if(!(sample ==~ "[0-9]{9}"))
+			throw new IllegalStateException("Sample ID ${sample} does not match prescribed format")
+			
+		if(!(batch ==~ "[0-9]{3}"))
+			throw new IllegalStateException("Sample ID ${batch} does not match prescribed format")
+	}
     
     String toTsv() {
         [sample, target, files.collect { it.key == "all" ? [] : it.value }.flatten().join(","), geneCategories.collect { it.key + ":" + it.value.join(",") }.join(" "), sex].join("\t")
@@ -119,4 +293,10 @@ class SampleInfo {
     String toString() {
         "$sample($sex)"
     }
+	
+	static Date parseDate(String dateValue) {
+		if(!dateValue)
+			return null
+		return Date.parse("yyyyMMdd", dateValue)
+	}
 }

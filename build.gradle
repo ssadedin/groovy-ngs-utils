@@ -22,6 +22,10 @@ repositories {
         name "biojava"
         url "http://www.biojava.org/download/maven/" 
     }
+    maven {
+      name "gral" 
+      url "http://mvn.erichseifert.de/maven2"
+    }
 }
 
 configurations {
@@ -36,14 +40,15 @@ dependencies {
      groovy group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
      groovy group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
      groovy group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
+     groovy 'com.lowagie:itext:2.1.7'
      groovy 'org.apache.commons:commons-math3:3.0'
      groovy 'commons-cli:commons-cli:1.1'
      groovy 'org.utgenome.thirdparty:picard:1.86.0'
+     groovy 'com.xlson.groovycsv:groovycsv:1.0'
+     groovy group: 'de.erichseifert.gral', name: 'gral-core', version: '0.10'
      groovy 'log4j:log4j:1.2.17'
      compile files(fileTree(dir:'lib', includes:['*.jar']))
 }
-
-println jar
 
 // Bundle all dependencies into output library
 jar {
@@ -52,6 +57,8 @@ jar {
     exclude "org/codehaus/**"
     exclude "META-INF/groovy*"
     exclude "META-INF/**/*groovy*"
+    exclude "META-INF/BCKEY*"
+    exclude "org/bouncycastle/**"
 }
 
 groovydoc {

@@ -40,7 +40,7 @@ import groovy.transform.CompileStatic;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class BED implements Iterable<Region> {
+class BED extends RegionSource {
     
     /**
      * Some functions require loading of the BED file into memory. Others can use 
@@ -55,16 +55,6 @@ class BED implements Iterable<Region> {
     boolean withExtra = false
     
     /**
-     * Index for looking up overlaps
-     */
-    Map<String, RangeIndex> index = [:]
-    
-    /**
-     * A list of ranges in the order they were loaded
-     */
-    Map<String,List> allRanges = [:]
-    
-    /**
      * The stream from which bed line will be read
      */
     InputStream bedFileStream = null
@@ -73,21 +63,6 @@ class BED implements Iterable<Region> {
      * File from which bed is read
      */
     File bedFile
-    
-    /**
-     * Map containing all the ranges loaded from the bed file,
-     * index by start position, and partially reduced to make
-     * lookups efficient.
-     * Note: only loaded if load() is called!
-     */
-    TreeMap<Long,Range> startRanges = new TreeMap()
-    
-    /**
-     * Map containing all the ranges loaded from the bed file,
-     * indexed by end position, and partially reduced to make
-     * lookups efficient.
-     */
-    TreeMap<Long,Range> endRanges = new TreeMap()
     
     /**
      * Empty bed file
@@ -115,23 +90,10 @@ class BED implements Iterable<Region> {
      */
     BED(Map attributes=[:], Iterable<Region> regions) {
         for(Region r in regions) {
-            add(r.chr, r.from, r.to)
+            addRegion(r.chr, r.from, r.to)
         }
     }
-    
-    @CompileStatic
-    int size() {
-        int sizeCount = 0
-        this.eachRange { String chr, int start, int end ->
-            sizeCount += (end - start + 1)
-        }
-        return sizeCount
-    }
-    
-    void eachRange(Closure c) {
-       eachRange(unique:false, c) 
-    }
-    
+   
     /**
      * Iterate over each line in the BED file and invoke the specified
      * closure with bed file information for the line.
@@ -144,7 +106,7 @@ class BED implements Iterable<Region> {
     void eachRange(Map options, Closure c) {
         
         if(bedFileStream == null || isLoaded) { // Used to be && isLoaded - why?
-            eachLoadedRange(options,c)
+            super.eachRange(options,c)
             return
         }
         
@@ -207,7 +169,7 @@ class BED implements Iterable<Region> {
               }
               try {
                 if(includeInfo==true)
-                    c.call(chr,start,end,fields[3])
+                    c.call(chr,start,end,fields.size()>2?fields[3]:null)
                 else {
                     c.call(chr,start,end)
                 }
@@ -229,67 +191,14 @@ class BED implements Iterable<Region> {
     }
     
     void eachLoadedRange(Closure c) {
-        eachLoadedRange([:],c)
+        super.eachRange([:],c)
     }
     
 //    @CompileStatic
     void eachLoadedRange(Map options, Closure c) {
-        ProgressCounter progress = new ProgressCounter(lineInterval:10, timeInterval:10000)
-        boolean includeInfo = c.getMaximumNumberOfParameters()==4;
-        boolean useRange = c.getMaximumNumberOfParameters()==2;
-        boolean unique = options.unique?true:false
-        this.allRanges.each { String chr, List<groovy.lang.IntRange> ranges ->
-            HashSet processed = new HashSet()
-            for(groovy.lang.IntRange r in ranges) {
-                
-              if(unique) {
-                  String key = r.from + ":" + r.to
-                  if(processed.contains(key)) {
-                      progress.count()
-                      continue
-                  }
-                  processed.add(key)
-              }
-  
-              if(includeInfo) {
-                  c.call(chr,r.from,r.to,r instanceof GRange ? ((GRange)r).getExtra() : null)
-              }
-              else 
-              if(useRange) {
-                  c.call(chr,r)
-              }
-              else {
-                  c.call(chr,r.from,r.to)
-              }
-                  
-              progress.count()
-            }
-        }
+       super.eachRange(options,c) 
     }
-    
-    List<Range> intersect(String chr, int start, int end) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return []
-        
-        return chrIndex.intersect(start,end)
-    }
-    
-    List<Range> getOverlaps(String chr, int start, int end) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return []
-        return chrIndex.getOverlaps(start,end)
-    }
-    
-    List<Range> subtractFrom(String chr, int start, int end) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return [start..end-1]
-        
-        return chrIndex.subtractFrom(start,end)
-    }
-    
+   
     /**
      * Call closure c for each range that overlaps the given position
      */
@@ -303,108 +212,14 @@ class BED implements Iterable<Region> {
           }
         }
         else {
-            RangeIndex chrIndex = this.index[chr]
-            if(chrIndex == null)
-                return
-            for(groovy.lang.Range r in chrIndex.getOverlaps(pos)) {
-                c(chr, r.from, r.to)
-            }
+			super.eachOverlap(chr, pos, c)
         }
     }
-    
-    List<Range> startingAt(String chr, int pos) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return []
-        
-        return chrIndex.startingAt(pos)
-    }
-    
+   
     /**
-     * Return a list of ranges that end exactly at the specified position.
+     * Iterate each position in a BED file and call the given closure with it
      * <p>
-     * NOTE: the position is considered <i>inclusive</i> to the range. This
-     * is different to BED file notation.
-     * 
-     * @param chr
-     * @param pos
-     * @return
-     */
-    List<Range> endingAt(String chr, int pos) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return []
-        
-        return chrIndex.endingAt(pos)
-    }
-    
-    /**
-     * Returns the prior range that has its end closest
-     * to the given position.
-     */
-    groovy.lang.IntRange previousRange(String chr,int pos) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return null
-        return chrIndex.previousRange(pos)
-    } 
-    
-    /**
-     * Returns the next range that has its beginning
-     * closest to the given position.
-     */
-    groovy.lang.IntRange nextRange(String chr, int pos) {
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return null
-        return chrIndex.nextRange(pos)
-    }
-    
-    @CompileStatic
-    void remove(String chr, Range r) {
-        RangeIndex chrIndex = this.index[chr]
-        if(!chrIndex) 
-            throw new IllegalArgumentException("Cannot remove region from chrosomome $chr : it does not have any regions")
-        chrIndex.remove(r)
-        
-        if(this.allRanges[chr]) // Could be really slow?
-            this.allRanges[chr].removeAll { Range r2 -> r.from == r2.from && r.to == r2.to }
-    }
-    
-    /**
-     * Returns the range that is "closest" to the given
-     * position.
-     * 
-     *   1. if no range overlaps, the closer of a) the end
-     *      of the nearest prior range vs b) the start of the
-     *      nearest following range is returned. 
-     *      
-     *   2. if one or more ranges overlap, returns the overlapping
-     *      range with the start or end closest to the specified position
-     *   
-     * @param chr
-     * @param pos
-     * @return
-     */
-    groovy.lang.IntRange nearest(String chr, int pos) {
-        this.index[chr]?.nearest(pos)
-    }
-    
-    List<Object> getExtrasAtPosition(String chr, int position) {
-        List result = []
-        
-        RangeIndex chrIndex = this.index[chr]
-        if(chrIndex == null)
-            return result
-        for(groovy.lang.Range range in chrIndex.getOverlaps(position)) {
-            if(range instanceof GRange)
-                result << range.extra
-        } 
-        return result
-    }
-    
-    /**
-     * Iterate each position in the BED file and call the given closure with it
+     * NOTE: this only works on an actual BED file, not in-memory BED file.
      * 
      * @TODO: merge overlapping regions
      */
@@ -471,135 +286,9 @@ class BED implements Iterable<Region> {
      */
     @CompileStatic
     BED add(String chr, int start, int end, Object extra = null) {
-        
-        // Add to full range index
-        RangeIndex chrIndex = index[chr]
-        if(!chrIndex) {
-            chrIndex = new RangeIndex()
-            index[chr] = chrIndex
-        }
-        
-        groovy.lang.IntRange newRange = null
-        if(extra == null && !withExtra) {
-           newRange = start..(end-1)
-        }
-        else {
-           newRange = new GRange(start,end-1,extra)   
-        }
-        chrIndex.add(newRange)
-        
-        if(!allRanges.containsKey(chr))
-            allRanges[chr] = new ArrayList(1000)
-            
-        allRanges[chr] << newRange
-        
-        // Add to reduced index for fast lookups 
-        // TODO: remove
-        long base = chrToBaseOffset(chr)
-        if(base >= 0L) { // base < 0 indicates a "weird" chromosome that we don't handle
-            GRange r = new GRange(start, end, extra)
-    
-            long startKey = base + start
-            if(startRanges.containsKey(startKey)) {
-                if(r.to < end) {
-                    assert false : "Should never come here!"
-                    r = new GRange(r.from,end,r.extra)
-                }
-            }
-            startRanges[startKey] = r
-            endRanges[base + end] = r
-        }
+		super.addRegion(chr,start,end,extra)
         isLoaded = true
         return this
-    }
-    
-    /**
-     * Simplify all overlapping regions down to a single region
-     * 
-     * @return a new BED that consists of all the overlapping regions of 
-     *          this BED merged together.
-     */
-    BED reduce() {
-        BED result = new BED()
-        eachLoadedRange { String chr, IntRange r ->
-            
-            // Already processed this region
-            if(result.getOverlaps(chr, r.from, r.to))
-                return
-                
-            // Find the overlaps
-            List<Range> overlaps = getOverlaps(chr, r.from, r.to)
-            IntRange mergedRange = new IntRange(overlaps.min { it.from }.from, overlaps.max { it.to }.to)
-            result.add(chr, mergedRange.from, mergedRange.to+1)
-        }
-        return result
-    }
-    
-    @CompileStatic
-    private long chrToBaseOffset(String chr) {
-        if(chr == "chrX") {
-            return (23L << 32)
-        }
-        else
-        if(chr == "chrY") {
-            return (24L << 32)
-        }
-        else
-        if(chr == "chrM") {
-            return (25L << 32)
-        }
-        else
-        if(chr.startsWith("chr")) {
-            try {
-                return ((chr.substring(3).toLong()-1) << 32)
-            }
-            catch (NumberFormatException e) {
-                return -1L
-            }
-        }
-        else {
-            try {
-              return ((chr.toLong()-1) << 32)
-            }
-            catch(NumberFormatException e) {
-                return -1L
-            }
-        }
-    }
-    
-    /**
-     * Return true iff the given chromosome and position fall into 
-     * a range covered by this BED file
-     */
-    boolean contains(String chr, int position) {
-        RangeIndex chrIndex = index[chr]
-        return chrIndex != null && (position in chrIndex)
-    }
-    
-    /**
-     * Return a new BED that contains the same regions as this one,
-     * but ensuring each identical region is only present once.
-     * 
-     * @return
-     */
-    BED unique() {
-        BED result = new BED()
-        result.withExtra = this.withExtra
-        if(this.withExtra) {
-            this.eachLoadedRange(unique:true) { chr, from, to, extra ->
-                result.add(chr, from, to+1, extra)
-            }
-        }
-        else {
-            this.eachLoadedRange(unique:true) { chr, from, to ->
-                result.add(chr, from, to+1)
-            }
-        }
-        return result
-    }
-    
-    boolean isEmpty() {
-        return allRanges.isEmpty()
     }
     
     /**
@@ -627,64 +316,7 @@ class BED implements Iterable<Region> {
         b.load()
         return b
     }
-
-    @Override
-    @CompileStatic
-    public Iterator<Region> iterator() {
-        return new Iterator<Region>() {
-            
-            Iterator allIterator = allRanges.iterator()
-            
-            // Iterator chrIterator = allIterator.hasNext() ? allIterator.next().value.iterator() : null
-            Iterator chrIterator =  null
-            
-            
-            Map.Entry<String, RangeIndex> currentChr
-            
-            String chr
-            
-            boolean hasNext() {
-                
-                if(!chr)
-                    return allRanges.any { it.value.size() > 0 }
-                return chrIterator.hasNext() 
-            }
-            
-            Region next() {
-                if(chr == null) 
-                    nextChr()
-               
-                Range range =  chrIterator.next()
-                if(!chrIterator.hasNext()) 
-                    nextChr()
-                 
-                return new Region(chr,range)
-            }
-            
-            void nextChr() {
-               while(allIterator.hasNext()) {
-                   currentChr = allIterator.next()
-                   if(currentChr.value) {
-                       chrIterator = currentChr.value.iterator()
-                       chr = currentChr.key
-                   }
-               }
-            }
-            
-            void remove() {
-                throw new UnsupportedOperationException()
-            }
-        }
-    }
-    
-    int getNumberOfRanges() {
-       def result = allRanges.collect { it }.sum { it.value.size() } 
-       if(result == null)
-           return 0
-       else
-           return result
-    }
-    
+   
     String toString() {
         int numRanges = getNumberOfRanges()
         if(numRanges>0) {

@@ -23,11 +23,18 @@ import java.util.zip.GZIPInputStream;
 
 import groovy.transform.CompileStatic;
 
+/**
+ * Models a single FASTQ read, including the header (with name), bases and 
+ * quality information.
+ * 
+ * @author Simon
+ */
 @CompileStatic
 class FASTQRead {
     
     /**
      * This constructor is really just for testing purposes.
+     * However you can use it if you want to fake all the data except the bases.
      * @param bases
      */
     FASTQRead(String bases) {
@@ -77,6 +84,20 @@ class FASTQRead {
     String quals
 }
 
+/**
+ * Simple support for reading fastq files.
+ * <p>
+ * This class supports reading either single end reads (via {@link #eachRead(Closure)}) or
+ * paired end reads (via {@link #eachPair(String, String, Closure)}.
+ * <p>
+ * Gzipped files are supported transparently - if the file name ends in 'gz' then 
+ * the file is assumed to be gzipped and decoded as such.
+ * <p>
+ * This class only supports reading FASTQ reads, not writing. However the individual reads
+ * can be written via the {@link FASTQRead} class.
+ * 
+ * @author Simon
+ */
 class FASTQ {
     
     final static long PRINT_INTERVAL_MS = 15000

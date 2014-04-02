@@ -84,6 +84,12 @@ class FASTAIndex {
     public FASTAIndex(FASTA fasta, BED bed=null) {    
         this.index(fasta,bed)
     }
+	
+	/**
+	 * For unit tests only
+	 */
+	public FASTAIndex() {
+	}
     
     /**
      * Index the given fasta, masked using the given BED file
