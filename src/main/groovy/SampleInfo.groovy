@@ -189,6 +189,8 @@ class SampleInfo {
 	String sequencingContact
 	
 	String analysisContact
+    
+    String variantsFile
 
     Map<String,String> fileMappings = [
         bam : "bam",
@@ -262,6 +264,8 @@ class SampleInfo {
 						si.dnaQuantity = fields.DNA_Quantity?.toFloat()
 					if(fields.Mean_Coverage)
 						si.meanCoverage = fields.Mean_Coverage?.toFloat()
+					if(fields.Variants_File)
+						si.variantsFile = fields.Variants_File
 					if(fields.Machine_ID)
 						si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
 					si.sequencingContact = fields.Sequencing_Contact
