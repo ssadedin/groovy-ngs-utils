@@ -145,7 +145,7 @@ class Matrix {
     
     static { 
 		
-		println "Setting Matrix meta class properties ...."
+//		println "Setting Matrix meta class properties ...."
         double[][].metaClass.toMatrix = { new Matrix(delegate) }
         
         def originalMethod = double[][].metaClass.getMetaMethod("asType", Class)
@@ -168,7 +168,18 @@ class Matrix {
     
     public Matrix(MatrixColumn... columns) {
         matrix = new Array2DRowRealMatrix(columns[0].size(), columns.size())
-        
+    }
+    
+    public Matrix(List<Iterable> rows) {
+        double [][] data = null
+        int rowCount = 0
+        for(r in rows) {
+            double[] rowData = r.collect{ (double)it }
+            if(data == null)
+                data = new double[rows.size()][rowData.size()]
+            data[rowCount++] = rowData
+        }
+        matrix = new Array2DRowRealMatrix(data, false)
     }
     
     public Matrix(double [][] values) {
@@ -452,6 +463,18 @@ class Matrix {
         this.findIndexValues(c)
     }
     
+    Matrix multiply(double d) {
+        new Matrix(this.matrix.scalarMultiply(d))
+    }
+    
+    Matrix multiply(Matrix m) {
+        new Matrix(this.matrix.preMultiply(m.dataRef))
+    }
+     
+    Matrix divide(double d) {
+        new Matrix(this.matrix.scalarMultiply(1/d))
+    }
+     
     String toString() {
         if(matrix.rowDimension<DISPLAY_ROWS) {
             int rowCount = 0
