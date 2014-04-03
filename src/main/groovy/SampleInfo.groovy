@@ -23,79 +23,92 @@ import java.text.ParseException;
 enum Sex {
 	MALE, FEMALE, OTHER	
 	
+    private static codes = [
+            "1" : MALE,
+            "2" : FEMALE,
+            "Male" : MALE,
+            "Female": FEMALE
+    ]
+        
 	static Sex decode(String value) {
-		if(!value?.trim())
-			FEMALE
-		else
-		if(value == "1")
-			MALE
-		else
-		if(value == "2")
-			FEMALE
-		else
-			throw new IllegalArgumentException("Bad sex value [$value] specified")
+        value = value?.trim()
+		if(!value)
+			return FEMALE
+            
+        if(codes.containsKey(value))
+            return codes[value]
+
+		throw new IllegalArgumentException("Bad sex value [$value] specified")
 	}
 }
 
 enum SampleType {
 	NORMAL, TUMOR
 	
-	static Consanguinity decode(String value) {
-		if(!value?.trim())
-			NORMAL
-		if(value == "1")
-			NORMAL
-		else
-		if(value == "2")
-			TUMOR
-		else
-			throw new IllegalArgumentException("Bad sample type value [$value] specified")
+    private static Map codes = [
+            "1" : NORMAL,
+            "2" : TUMOR,
+            "Normal" : NORMAL,
+            "Tumour": TUMOR
+    ]
+ 
+	static SampleType decode(String value) {
+        value = value?.trim()
+		if(!value)
+			return NORMAL
+            
+        if(codes.containsKey(value))
+            return codes[value]
+        
+		throw new IllegalArgumentException("Bad sample type value [$value] specified")
 	}
 }
 
 enum Consanguinity {
-	NOT_CONSANGUINOUS, CONSANGUINOUS, SUSPECTED, UNKNOWN
+	NOT_CONSANGUINOUS, CONSANGUINEOUS, SUSPECTED, UNKNOWN
+    
+    private static Map codes = [
+            "0" : NOT_CONSANGUINOUS,
+            "1" : CONSANGUINEOUS,
+            "2" : SUSPECTED,
+            "8" : UNKNOWN,
+            "No" : NOT_CONSANGUINOUS,
+            "Yes": CONSANGUINEOUS,
+            "Suspected" : SUSPECTED,
+            "Unknown" : UNKNOWN
+    ]
 	
 	static Consanguinity decode(String value) {
-		if(!value?.trim())
-			NOT_CONSANGUINOUS
-		else
-		if(value == "0")
-			NOT_CONSANGUINOUS
-		else
-		if(value == "1")
-			CONSANGUINOUS
-		else
-		if(value == "2")
-			SUSPECTED
-		else
-		if(value == "3" || value == "8")
-			UNKNOWN
-		else
-			throw new IllegalArgumentException("Bad consanguinity value [$value] specified")
+        value = value?.trim()
+        if(value && codes.containsKey(value))
+            return codes[value]
+         
+		throw new IllegalArgumentException("Bad consanguinity value [$value] specified")
 	}
 }
 
 enum Ethnicity {
-	UNKNOWN, EUROPEAN, AFRICAN
+	UNKNOWN, EUROPEAN, AFRICAN, ASIAN
 	
+    private static Map codes = [
+            "0" : UNKNOWN,
+            "1" : EUROPEAN,
+            "2" : AFRICAN,
+            "European" : EUROPEAN,
+            "Asian": ASIAN,
+            "African" : AFRICAN,
+            "Unknown" : UNKNOWN
+    ]
+    
 	static Ethnicity decode(String value) {
-		if(!value?.trim())
+        value = value?.trim()
+		if(!value)
 			return UNKNOWN
-			
-		switch(value.trim()) {
-			case "0":
-				UNKNOWN
-				break;
-			case "1":
-				EUROPEAN
-				break;
-			case "2":
-				AFRICAN
-				break
-			default:
-				throw new IllegalArgumentException("Bad Ethnicity value [$value] specified")
-		}
+            
+        if(codes.containsKey(value))
+            return codes[value]
+        
+		throw new IllegalArgumentException("Bad ethnicity value [$value] specified")
 	}
 }
 
