@@ -65,14 +65,14 @@ enum SampleType {
 }
 
 enum Consanguinity {
-	NOT_CONSANGUINOUS, CONSANGUINEOUS, SUSPECTED, UNKNOWN
+	NOT_CONSANGUINEOUS, CONSANGUINEOUS, SUSPECTED, UNKNOWN
     
     private static Map codes = [
-            "0" : NOT_CONSANGUINOUS,
+            "0" : NOT_CONSANGUINEOUS,
             "1" : CONSANGUINEOUS,
             "2" : SUSPECTED,
             "8" : UNKNOWN,
-            "No" : NOT_CONSANGUINOUS,
+            "No" : NOT_CONSANGUINEOUS,
             "Yes": CONSANGUINEOUS,
             "Suspected" : SUSPECTED,
             "Unknown" : UNKNOWN
@@ -80,7 +80,13 @@ enum Consanguinity {
 	
 	static Consanguinity decode(String value) {
         value = value?.trim()
-        if(value && codes.containsKey(value))
+        
+        // Not strictly to spec: but this is the only non-optional field of many
+        // so by itself it forces you to enter many other columns if it is required
+        if(!value)
+            return UNKNOWN
+        
+        if(codes.containsKey(value))
             return codes[value]
          
 		throw new IllegalArgumentException("Bad consanguinity value [$value] specified")
@@ -131,7 +137,7 @@ class SampleInfo {
      */
     Map    files = new Hashtable() // thread safe
 	
-	static List<String> columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact"]
+	static List<String> columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact"]
 	
 	/** Id of batch in which the sample was sequenced */
 	String batch
@@ -140,7 +146,7 @@ class SampleInfo {
 	SampleType sampleType = SampleType.NORMAL
 	
 	/** Whether the sample is consanguinous */
-	Consanguinity consanguinity = Consanguinity.NOT_CONSANGUINOUS
+	Consanguinity consanguinity = Consanguinity.NOT_CONSANGUINEOUS
 
     /** Target (flagship) name */
     String  target
@@ -183,6 +189,8 @@ class SampleInfo {
 	String sequencingContact
 	
 	String analysisContact
+    
+    String variantsFile
 
     Map<String,String> fileMappings = [
         bam : "bam",
@@ -256,6 +264,8 @@ class SampleInfo {
 						si.dnaQuantity = fields.DNA_Quantity?.toFloat()
 					if(fields.Mean_Coverage)
 						si.meanCoverage = fields.Mean_Coverage?.toFloat()
+					if(fields.Variants_File)
+						si.variantsFile = fields.Variants_File
 					if(fields.Machine_ID)
 						si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
 					si.sequencingContact = fields.Sequencing_Contact
@@ -268,8 +278,9 @@ class SampleInfo {
 	                // Index category to gene
 	                if(fields.Prioritised_Genes) {
 	                    def genes = fields.Prioritised_Genes.split(" ")*.split(":").collect { 
-							// HACK: Excel is exporting character -96 here, not sure why!
-							int category = new String(it[0].bytes.grep { it != -96 } as byte[]).trim().toInteger()
+							// HACK: Excel is exporting weird white space characters that are not
+                            // trimmed
+							int category = it[0].replaceAll("[^0-9]","").trim().toInteger()
 	                        [ category, /* genes */ it[1].split(",")*.trim() ]
 	                    }.collectEntries()
 	
