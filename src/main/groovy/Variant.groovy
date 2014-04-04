@@ -332,7 +332,6 @@ class Variant {
         // So to find the dosage for allele 1, we need to split the genotype on slash
         // and then count the number of times the requested allele appears.
         def result = genoTypes*.GT*.split('/')*.count { 
-            println "GT = $it"
             if(!it.isInteger())
                 return 0
                 
