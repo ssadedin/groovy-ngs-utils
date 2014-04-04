@@ -212,4 +212,29 @@ class VCFIndex {
           }
         }
     }
+    
+    /**
+     * Attempts to locate the given Annovar variant in this VCF file.
+     * 
+     * @param chr           chromosome / reference sequence
+     * @param start         Annovar variant start position
+     * @param end           Annovar variant end position
+     * @param windowSize    the size of window to scan. VCF files can include overlapping variants in 
+     *                      arbitrarily long windows. Thus it is necessary to start scanning the VCF
+     *                      significantly before the location of the actual start of the DNA change
+     *                      to be sure of finding the Annovar variant. In general, the window size
+     *                      should be as large as the largest indels you expect to have in your
+     *                      VCF file.
+     * 
+     * @return  if the variant is found, a map containing "variant" and "allele" entries.
+     *          the variant is the Variant object, while the allele is the zero-based index of 
+     *          the allele within the  Variant that corresponds to the Annovar variant specified.
+     */
+    Map findAnnovarVariant(String chr, def start, def end, String obs, int windowSize=15) {
+        start = start.toInteger()
+        end = end.toInteger()
+        int alleleIndex = -1;
+        Variant v = this.find(chr,start-windowSize,end) { variant -> alleleIndex = variant.equalsAnnovar(chr,start,obs) }
+        return v ? [variant:v, allele: alleleIndex-1] : null
+    }
 }
