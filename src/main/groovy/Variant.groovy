@@ -73,9 +73,10 @@ class Allele {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Variant {
+class Variant implements IRegion {
     
     String chr
+	
     int pos
     String ref
     String alt
@@ -101,6 +102,11 @@ class Variant {
     String line
     
     String [] genoTypeFields
+	
+	
+	IntRange getRange() {
+		return pos..(pos+alts.max { it.size() })
+	}
     
     // @CompileStatic
     void parseFields(String line) {

@@ -20,12 +20,20 @@
 
 import groovy.transform.CompileStatic;
 
+interface IRegion {
+	
+	String getChr()
+	
+	IntRange getRange()
+}
+
+
 /**
  * Region of a genome
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Region extends Expando {
+class Region extends Expando implements IRegion {
     
     Region() {
     }
