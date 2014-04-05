@@ -38,6 +38,8 @@ class ProgressCounter {
     
     int count = 0
     
+    int lastPrintCount = 0
+    
     int lineInterval = 500
     
     long timeInterval = 30000
@@ -48,11 +50,14 @@ class ProgressCounter {
     
     boolean withTime = false
     
+    boolean withRate = false
+    
     String prefix = null
     
     PrintStream out = System.err
     
-    public ProgressCounter() {
+    ProgressCounter() {
+        
     }
     
     @CompileStatic
@@ -60,16 +65,23 @@ class ProgressCounter {
         if(startTimeMs < 0)
             startTimeMs = System.currentTimeMillis()
         if(count % lineInterval == 0) {
-            if(System.currentTimeMillis() - lastPrintTimeMs > timeInterval) {
+            long deltaMs = System.currentTimeMillis() - lastPrintTimeMs
+            if(deltaMs > timeInterval) {
                 if(c!=null)
                   c(count)
                 else {
+                    
+                    String rateInfo = ""
+                    if(withRate)
+                        rateInfo = " @ ${1000*(count-lastPrintCount)/(deltaMs+1)} per second"
+                    
                     if(withTime)
-                        out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count")
+                        out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo)
                     else
-                        out.println((prefix?"\t$prefix :\t":"") + "Processed $count")
+                        out.println((prefix?"\t$prefix :\t":"") + "Processed $count" + rateInfo)
                 }
                 lastPrintTimeMs = System.currentTimeMillis()
+                lastPrintCount = count
             }
         }
         ++count

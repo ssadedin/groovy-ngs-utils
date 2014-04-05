@@ -212,14 +212,13 @@ class VCF implements Iterable<Variant> {
         int count = 0
         boolean flushedHeader = false
         Map chrPosIndex = vcf.chrPosIndex
+        ProgressCounter progress = new ProgressCounter(withTime:true)
         f.eachLine { String line ->
             
             ++count
-            if(count % 10000 == 0 || System.currentTimeMillis() - lastPrintTimeMs > 30000) { 
-              System.err.println("Processed $count lines")
-              lastPrintTimeMs = System.currentTimeMillis()
-            }
             
+            progress.count()
+           
             if(line.startsWith('#')) {
                 vcf.headerLines.add(line)
                 return
