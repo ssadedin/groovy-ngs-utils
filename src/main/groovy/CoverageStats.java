@@ -1,3 +1,7 @@
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Arrays;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
@@ -32,13 +36,22 @@ public class CoverageStats extends SummaryStatistics {
         Arrays.fill(values, 0);
     }
     
+    public CoverageStats(int maxPercentileValue, InputStream inStream) throws IOException {
+        values = new int[maxPercentileValue];
+        BufferedReader r = new BufferedReader(new InputStreamReader(inStream));
+        String line = null;
+        while((line = r.readLine()) != null) {
+            leftShift(line);
+        }
+    }
+     
     void leftShift(Object obj) {
         if(obj instanceof Integer) {
             addValue((Integer)obj);
         }
         else 
         if(obj instanceof String) {
-            addValue(Integer.parseInt(String.valueOf(obj)));
+            addValue(Integer.parseInt(String.valueOf(obj).trim()));
         }
         else 
         if(obj instanceof Number) {

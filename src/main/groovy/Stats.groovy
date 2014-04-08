@@ -73,6 +73,15 @@ class Stats extends DescriptiveStatistics {
         return s
     }
     
+    static Stats from(InputStream values, Closure c=null) {
+        Stats s = new Stats()
+        values.eachLine { line ->
+              s.addValue(c==null? Integer.parseInt(line.trim()): c(it))
+        }
+        return s
+    }
+     
+    
     @CompileStatic
     static mean() {
         SummaryStatistics s = new SummaryStatistics()
