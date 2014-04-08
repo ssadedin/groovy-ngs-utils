@@ -370,6 +370,7 @@ class RegionSource implements Iterable<Region> {
 				   if(currentChr.value) {
 					   chrIterator = currentChr.value.iterator()
 					   chr = currentChr.key
+                       break
 				   }
 			   }
 			}
