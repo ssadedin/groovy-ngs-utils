@@ -27,6 +27,24 @@ import groovy.transform.CompileStatic
  * @author simon.sadedin@mcri.edu.au
  */
 class SnpEffInfo {
+    static EFFECTS_RANKED = [
+        'START_LOST',
+        'STOP_GAINED',
+        'STOP_LOST',
+        'NON_SYNONYMOUS_CODING',
+        'EXON',
+        'START_GAINED',
+        'SYNONYMOUS_CODING',
+        'SPLICE_SITE_ACCEPTOR',
+        'SPLICE_SITE_DONOR',
+        'INTRON',
+        '3_PRIME',
+        '5_PRIME',
+        'DOWNSTREAM',
+        'UPSTREAM',
+        'INTRAGENIC'
+    ]
+
     String type
     String impact
     String gene
@@ -136,7 +154,7 @@ class Variant implements IRegion {
                       [it[0],it[1].toFloat()] 
                   else
                   if(it[0] in numericListFields) {
-                      return [it[0],it[1].split(",")*.toFloat()] 
+                      return [it[0],it[1].split(",")*.replaceAll("\\.","0")*.toFloat()] 
                   }
                   else
                       it
@@ -303,9 +321,7 @@ class Variant implements IRegion {
      */
     SnpEffInfo getMaxEffect() {
         def info = getSnpEffInfo()
-        // TODO: at the moment the max effect is just abitrarily chosen, but we know we could / should 
-        // do better
-        return info?.max { it.rank }
+        return info?.min { int r = SnpEffInfo.EFFECTS_RANKED.indexOf(it.impact); r==null?Integer.MAX_VALUE:r }
     }
     
     /**
