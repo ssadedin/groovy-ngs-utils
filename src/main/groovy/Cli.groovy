@@ -1,6 +1,10 @@
-
+import org.apache.commons.cli.Option
 
 class Cli extends CliBuilder {
+    
+    // To avoid script code having to do the above import, make an alias for it
+    static int UNLIMITED = Option.UNLIMITED_VALUES
+    
     public Cli() {
         this.writer = new PrintWriter(System.err)
     }
