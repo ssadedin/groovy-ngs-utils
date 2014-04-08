@@ -356,14 +356,41 @@ class SAM {
      * Create a DescriptiveStatistics object
      */
     @CompileStatic
-    DescriptiveStatistics coverageStatistics(String chr, int pos, int end) {
-        DescriptiveStatistics stats = new DescriptiveStatistics()
+    CoverageStats coverageStatistics(String chr, int pos, int end) {
+        CoverageStats stats = new CoverageStats(10000)
         int total = 0
+        ProgressCounter progress = null
+        if(this.progress)
+            progress = new ProgressCounter(withTime:true, withRate:true)
+            
         this.pileup(chr, pos, end) { PileupIterator.Pileup p ->
             stats.addValue(p.alignments.size())
+            if(this.progress)
+                progress.count()
         }
         stats
     }
+    
+    @CompileStatic
+    CoverageStats coverageStatistics(RegionSource regions) {
+        CoverageStats stats = new CoverageStats(10000)
+        int total = 0
+        ProgressCounter progress = null
+        if(this.progress)
+            progress = new ProgressCounter(withTime:true, withRate:true)
+
+        // Flatten the regions down in case they overlap
+        RegionSource flattenedRegions = regions.reduce()
+        for(Region region in flattenedRegions) {
+            this.pileup(region.chr, region.from, region.to) { PileupIterator.Pileup p ->
+                stats.addValue(p.alignments.size())
+                if(this.progress)
+                    progress.count()
+            }
+        }
+        stats
+    }
+    
       
     /**
      * Return the number of mapped reads overlapping the given position
