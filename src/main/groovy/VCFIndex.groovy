@@ -29,14 +29,44 @@ import org.codehaus.groovy.runtime.StackTraceUtils
 
 
 /**
- * Helper for reading and querying VCF files that are indexed
+ * Support for querying indexed VCF files via random access.
+ * <p>
+ * In general, if you only want to access a small region of a VCF (eg: to look up variants in 
+ * a specific region, etc) then this class is your best bet. If, alternatively, you have a 
+ * smaller VCF file (say, less than 100,000 lines) and you expect to query a significant number 
+ * of the variants in it, you should go straight for the {@link VCF} class instead and just
+ * load everything into memory.
+ * <p>
+ * The VCFIndex class is highly optimised for random access to VCF contents. It 
+ * uses memory mapped files to buffer the VCF to memory to minimize the actual hits to the 
+ * file system.
+ * <p>Using the VCFIndex class to look up variants in a region is very simple:
+ * <pre>
+ * VCFIndex index = new VCFIndex("test.vcf")
+ * index.query("chrX",1000,2000) { Variant v ->
+ *  println "Variant $v is in the range chrX:1000-2000"
+ * }
+ * </pre>
+ * You can also easily test if a Variant exists within the VCF file:
+ * <pre>
+ * Variant v = new Variant(chr:"chrX", alt:"A", ref:"T")
+ * VCFIndex index = new VCFIndex("test.vcf")
+ * if(v in index)
+ *      println "Variant $v is found in test.vcf"
+ * </pre>
  * 
  * @author simon.sadedin@mcri.edu.au
  */
 class VCFIndex {
     
+    /**
+     * File name of VCF file
+     */
     String fileName
     
+    /**
+     * Raw file corresponding to the VCF
+     */
     RandomAccessFile indexedFile
     
     /**
@@ -84,6 +114,24 @@ class VCFIndex {
          this.headerVCF = new VCF(fileName)
      }
     
+    /**
+     * Find the first variant in an interval that returns true from the
+     * given closure
+     * <p>Example:
+     * <pre>
+     * VCFIndex index = new VCFIndex("test.vcf")
+     * Variant v = index.find("chrX", 1000,2000) { it.type == "DEL" && it.size() > 4 }
+     * println "First deletion greater than 4 bases in size is $v"
+     * </pre>
+     * 
+     * @param chr   Chromosome to scan
+     * @param start Starting position in chromosome
+     * @param end   End position in chromosome
+     * @param c     Closure to call, passing each Variant from the VCF as the first argument.
+     *              
+     * @return      The first Variant in the specified range for which the Closure c returns an
+     *              argument that does not evaluate to false (null, 0, etc.)
+     */
     Variant find(String chr, int start, int end, Closure c) {
         Variant result = null
         query(chr,start,end) { Variant v ->
@@ -93,6 +141,10 @@ class VCFIndex {
             }
         }
         return result
+    }
+    
+    boolean isCase(Variant v) {
+        this.contains(v)
     }
     
     /**
@@ -215,6 +267,12 @@ class VCFIndex {
     
     /**
      * Attempts to locate the given Annovar variant in this VCF file.
+     * <p>
+     * Annovar is a popular annotation tool which outputs results in its own 
+     * proprietary CSV format. Unfortunately, this format does not use the same 
+     * reference coordinates, and thus an Annovar variant is not directly translatable 
+     * to a VCF variant, and it is necessary to scan a range of indexes in an original VCF file
+     * to locate the corresponding Annovar variant. This function implements the required logic.
      * 
      * @param chr           chromosome / reference sequence
      * @param start         Annovar variant start position

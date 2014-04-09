@@ -27,6 +27,10 @@ import groovy.transform.CompileStatic
  * @author simon.sadedin@mcri.edu.au
  */
 class SnpEffInfo {
+    
+    /**
+     * Valid values of SnpEFF impacts
+     */
     static EFFECTS_RANKED = [
         'START_LOST',
         'STOP_GAINED',
@@ -45,13 +49,29 @@ class SnpEffInfo {
         'INTRAGENIC'
     ]
 
+    /**
+     * One of INS, DEL or SNP
+     */
     String type
+    
+    /**
+     * The kind of impact. One of the values from {@link SnpEffInfo#EFFECTS_RANKED}
+     */
     String impact
+    
+    /**
+     * The gene impacted (if any) by the variant
+     */
     String gene
+    
+    /**
+     * The transcript impacted (if any) by the variant
+     */
     String transcript
     
-    // The original subclause within the info line from which
-    // this SnpEffInfo object was parsed
+    /**
+     * The original subclause within the info line from which
+     */
     String info
     
     String toString() {
@@ -59,6 +79,14 @@ class SnpEffInfo {
     }
 }
 
+/**
+ * A specific allele in the context of a Variant in a VCF file
+ * <p>
+ * Each variant (line) in a VCF file may contain multiple alternate alleles.
+ * This class represents one alternate allele in a VCF file.
+ * 
+ * @author simon.sadedin@mcri.edu.au
+ */
 class Allele {
     
     /**
@@ -88,23 +116,122 @@ class Allele {
  * ie: captures the information at a single line of a VCF file.
  * Note that this can include multiple alleles that may be present
  * at the site, having different start and end position.
+ * <p>
+ * The {@link Variant} class includes support for accessing the structured
+ * annotations and attributes included in the VCF format and popular
+ * annotation tools such as VEP, Annovar and SnpEFF. See {@link #getSnpEffInfo()}
+ * and {@link #getVepInfo()} for accessors that return parsed annotation
+ * information.
+ * <p>
+ * Although {@link Variant} instances can be constructed manually, typically
+ * you will query them from {@link VCF} or {@link VCFIndex} classes, and this
+ * is required for some operations because the VCF header is required to 
+ * parse and understand some of the fields (for example, sample names). Without
+ * a header many operations still work, but you may experience {@link IllegalStateException}
+ * exceptions if you call methods that depend on the header.
+ * <p>
+ * One of the most useful operations is to determine the dosage (ie: heterozygosity, number of copies)
+ * of a variant in a particular sample. Eg:
+ * <pre>
+ * VCF vcf = new VCF.parse("test.vcf")
+ * 
+ * // Find all the variants that affect sample MYSAMPLE in any way
+ * List<Variant> mySampleVariants = vcf.grep {  Variant v -> v.sampleDosage("MYSAMPLE")>0 }
+ * 
+ * // Find all the homozygous variants (for autosomal + female X chromosomes) 
+ * List<Variant> mySampleVariants = vcf.grep {  Variant v -> v.sampleDosage("MYSAMPLE") == 2 }
+ * ...
+ * </pre>
+ * 
+ * Some support is implemented for understanding pedigrees via the {@link Pedigree} class.
+ * If a pedigree is set on the {@link VCF} class from which the {@link Variant} originates, 
+ * then one can query variants to find variants that segregate with families or conditions.
+ * <p>
+ * A Variant also implements the IRange interface and thus you can use
+ * them seamlessly with a {@link RegionSource}. For example, to check
+ * if a Variant falls within a BED file works simply:
+ * <pre>
+ * Variant v = ...
+ * BED bed = new BED("test.bed").load()
+ * if(v in bed) 
+ *  println "Variant v falls in the ranges included in the BED file"
+ * </pre>
  * 
  * @author simon.sadedin@mcri.edu.au
  */
 class Variant implements IRegion {
     
+    /**
+     * The chromosome on which the variant falls
+     */
     String chr
 	
+    /**
+     * The position at which the reference bases ({@link #ref} attribute) starts.
+     * Note that this is <i>not</i> necessarily the start of the genetic change represented
+     * by the variant.
+     */
     int pos
+    
+    /**
+     * The reference allele at the position. Note that as per VCF spec, this is not necessarily
+     * the start of the change indicated by the Variant. For the start of actual changes,
+     * you need to query the {@link Allele} objects and look at the {@link Allele#start} and
+     * {@link Allele#end} attributes.
+     */
     String ref
+    
+    /**
+     * The sequence for the first alternate allele. This is a convenience for the common case where 
+     * the first alternate allele is the only one of interest. In general you should be aware that
+     * more than one alternate Allele represented by a single Variant.
+     */
     String alt
+    
+    /**
+     * List of alternate alleles represented by the variant.
+     */
     String [] alts
+    
+    /**
+     * ID column as per VCF spec. Usually this contains the rsID (dbSNP) identifer
+     */
     String id
+    
+    /**
+     * One of SNP, INS or DEL indicating the type of change represented by the first alternate 
+     * allele. 
+     */
     String type
+    
+    /**
+     * The whole INFO field as a raw string. Users will generally call {@link #getInfo()} to get
+     * this field in parsed form rather than accessing this field directly.
+     */
     String info
+    
+    /**
+     * The filter field as loaded from the VCF file.
+     */
     String filter
+    
+    /**
+     * The QUAL field as loaded from the VCF file
+     */
     float qual
+    
+    /**
+     * The first character of the first alternate allele in byte form. This is a special case
+     * optimization to allow for fast access when interoperating with Picard (which wants to see
+     * bytes, not char or Strings).
+     */
     byte altByte
+    
+    /**
+     * The VCF to which this Variant is linked. This enables the variant to intelligently
+     * parse INFO fields and be aware of sample names. If the header is not provided,
+     * many functions still work, but some functions will be disabled.
+     */
     VCF header
 
     Map<String,String> infos
@@ -117,6 +244,9 @@ class Variant implements IRegion {
     
     List<Map<String,Object>> genoTypes
     
+    /**
+     * The original line from which this variant was parsed
+     */
     String line
     
     String [] genoTypeFields
@@ -127,7 +257,12 @@ class Variant implements IRegion {
 	}
     
     // @CompileStatic
-    void parseFields(String line) {
+    /**
+     * Parse the given line from a VCF file.
+     * 
+     * @param line
+     */
+    private void parseFields(String line) {
         
         def fields = line.split('[\t ]{1,}')
         
@@ -140,6 +275,12 @@ class Variant implements IRegion {
         filter = fields[6]
         info = fields[7]
         
+        pos = Integer.parseInt(fields[1])
+        
+        setAlt(alt)
+    }
+    
+    private void parseGenotypes(String [] fields) {
         if(fields.length > 8) {
             
           if(genoTypeFields == null)
@@ -161,11 +302,6 @@ class Variant implements IRegion {
               }
           } 
         }
-          
-        pos = Integer.parseInt(fields[1])
-        
-        type = convertType(ref,alt)
-        altByte = (byte)alt.charAt(0)
     }
     
     /**
@@ -189,6 +325,22 @@ class Variant implements IRegion {
     
     boolean snpEffDirty = false
     
+    /**
+     * Update using a default description. 
+     * <p>
+     * Call this method to prepare the Variant for updating and
+     * then make your updates within the Closure that you pass. After 
+     * the closure exits, other internal fields that are impacted by your changes
+     * will be synchronized with the changes you made.
+     * <p>
+     * Not all fields are supported! see {@link #update(String, Closure)}
+     * <p>
+     * It's generally bad form to add INFO fields without annotating what you've done.
+     * Prefer to use {@link #update(String, Closure)} and pass in a description
+     * over this method.
+     * 
+     * @param c     Closure within updates can be made.
+     */
     void update(Closure c) {
         update("Groovy Variant Processing " + (new Date()).toString(),c)
     }
@@ -196,6 +348,12 @@ class Variant implements IRegion {
     /**
      * Allows various fields to be updated and then synchronises the 
      * rest of the data with those updated fields
+     * <p>
+     * Call this method to prepare the Variant for updating and
+     * then make your updates within the Closure that you pass. After 
+     * the closure exits, other internal fields that are impacted by your changes
+     * will be synchronized with the changes you made. 
+     * <p>
      * Not all fields are supported! see the ones that are set below.
      * <p>
      * The only update to snpEFF information is to remove individual 
@@ -222,31 +380,33 @@ class Variant implements IRegion {
         line = fields.join('\t')
         
         // Check if we need to add an INFO header line
-        getInfo().collect { k,v ->
-            
-            if(!header.headerLines.find { it.startsWith("##INFO=<ID=$k") }) {
+        if(this.header != null) {
+            getInfo().collect { k,v ->
                 
-                int lastInfo = header.headerLines.findLastIndexOf { it.startsWith("##INFO=") }
-                if(lastInfo < 0)
-                    lastInfo = 1
-                
-                String valueType = "String"
-                if(v instanceof Integer) {
-                    valueType = "Integer"
+                if(!header.headerLines.find { it.startsWith("##INFO=<ID=$k") }) {
+                    
+                    int lastInfo = header.headerLines.findLastIndexOf { it.startsWith("##INFO=") }
+                    if(lastInfo < 0)
+                        lastInfo = 1
+                    
+                    String valueType = "String"
+                    if(v instanceof Integer) {
+                        valueType = "Integer"
+                    }
+                    else
+                    if(v instanceof Float) {
+                        valueType = "Float"
+                    }
+                    else
+                    if(v instanceof Double) {
+                        valueType = "Double"
+                    }
+                     
+                    header.headerLines = header.headerLines[0..lastInfo] + 
+                        ["##INFO=<ID=$k,Number=1,Type=${valueType},Description=\"$desc\">"] +
+                        header.headerLines[(lastInfo+1)..-1]
                 }
-                else
-                if(v instanceof Float) {
-                    valueType = "Float"
-                }
-                else
-                if(v instanceof Double) {
-                    valueType = "Double"
-                }
-                 
-                header.headerLines = header.headerLines[0..lastInfo] + 
-                    ["##INFO=<ID=$k,Number=1,Type=${valueType},Description=\"$desc\">"] +
-                    header.headerLines[(lastInfo+1)..-1]
-            }
+           }
         }
         this.@info = null
     }
@@ -312,6 +472,9 @@ class Variant implements IRegion {
     }
     
     List<Map<String,Object>> getVepInfo() {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query VEP information")
+            
         def vepFields = this.header.vepColumns
         this.getInfo().CSQ.split(",").collect { csq -> [vepFields,csq.split("\\|")].transpose().collectEntries() }
     }
@@ -371,6 +534,8 @@ class Variant implements IRegion {
 
     @CompileStatic 
     int sampleDosage(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query dosage by sample name")
         int sampleIndex = header.samples.indexOf(sampleName)
         List<Integer> allDosages = getDosages()
         return (int)allDosages[sampleIndex]
@@ -378,6 +543,8 @@ class Variant implements IRegion {
     
     @CompileStatic 
     int sampleDosage(String sampleName, int alleleIndex) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query dosage by sample name")
         int sampleIndex = header.samples.indexOf(sampleName)
         List<Integer> allDosages = getDosages(alleleIndex)
         return (int)allDosages[sampleIndex]
@@ -394,6 +561,8 @@ class Variant implements IRegion {
      * @param sampleName
      */
     Map sampleGenoType(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
         int sampleIndex = header.samples.indexOf(sampleName)
         return (Map)genoTypes[sampleIndex]
     }
@@ -420,6 +589,8 @@ class Variant implements IRegion {
      * Return a list of all the pedigrees that contain this variant
      */
     Set<Pedigree> getPedigrees() {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query pedigrees")
         if(this.@pedigrees == null) {
           def dsgs = getDosages()
           this.@pedigrees = new HashSet()
@@ -627,4 +798,23 @@ class Variant implements IRegion {
             new Allele(start: start, end: end, alt: obs, type: t)
         }
     } 
+    
+    /**
+     * Update the first alternate allele to the given value
+     * 
+     * @param alt   Alternate sequence of bases. Note that this should conform to VCF 
+     *              spec, eg: for deletions it is expected at least one base of context 
+     *              should be provided, and this should be consistent with the {@link #pos}
+     *              field.
+     */
+    void setAlt(String alt) {
+        if(!alts) {
+            alts = [alt]
+        }
+        else {
+            alts[0] = alt
+        }
+        type = convertType(ref,alt)
+        altByte = (byte)alt.charAt(0)
+    }
 }

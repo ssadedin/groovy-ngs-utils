@@ -48,8 +48,10 @@ import org.codehaus.groovy.runtime.StackTraceUtils
  * Most information is lazily computed so the cost of parsing complex fields is
  * deferred unless they are asked for.
  * <p>
- * VCF rows can be updated by entering an update closure:
- * <code>v.update { v.info.FOO='bar' }</code>
+ * VCF variants can be updated by entering an update closure:
+ * <pre>
+ * v.update { v.info.FOO='bar' }
+ * </pre>
  * <p>
  * Limited support for "Pedigrees" is available. At the moment only grouping of
  * samples into families is supported and intra-family relationships are not modeled.
