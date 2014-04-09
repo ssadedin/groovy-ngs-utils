@@ -92,6 +92,11 @@ class MatrixColumn implements Iterable {
         }
     }
     
+    boolean equals(Object o) {
+        int i = 0
+        return (o.every { it == this[i++] })
+    }
+    
     String toString() {
         "[" + this.collect {it}.join(",") + "]"
     }
@@ -150,6 +155,12 @@ class Matrix {
         
         def originalMethod = double[][].metaClass.getMetaMethod("asType", Class)
         double[][].metaClass.asType = { arg -> arg == Matrix.class ? delegate.toMatrix() : originalMethod(arg)}
+        
+        def original2 = Array2DRowRealMatrix.metaClass.getMetaMethod("asType", Class)
+        Array2DRowRealMatrix.metaClass.asType = { arg -> arg == Matrix.class ? new Matrix(arg) : original2(arg)}
+        
+        def originalMultiply = Integer.metaClass.getMetaMethod("multiply", Class)
+        Integer.metaClass.multiply = { arg -> arg instanceof Matrix ? arg.multiply(delegate) : originalMultiply(arg)}
     }
 	
     /**
@@ -166,8 +177,15 @@ class Matrix {
         matrix = new Array2DRowRealMatrix(rows, columns)
     }
     
+    @CompileStatic
     public Matrix(MatrixColumn... columns) {
-        matrix = new Array2DRowRealMatrix(columns[0].size(), columns.size())
+        int rows = columns[0].size()
+        double[][] newData =  new double[rows][]
+        for(int i=0; i<rows;++i) {
+            newData[i] = (double[])columns.collect { MatrixColumn c -> c[i] } as double[]
+        }
+        matrix = new Array2DRowRealMatrix(newData)
+        this.names = columns.collect { MatrixColumn c -> c.name }
     }
     
     public Matrix(List<Iterable> rows) {
@@ -215,6 +233,12 @@ class Matrix {
     @CompileStatic
     MatrixColumn col(int n) {
         new MatrixColumn(columnIndex:n, sourceMatrix: this, name: names[n])
+    }
+    
+    List<MatrixColumn> getColumns(List<String> names) {
+        names.collect { this.names.indexOf(it) }.collect { int index ->
+             assert index >= 0; col(index) 
+        }
     }
     
     List<MatrixColumn> getColumns() {
@@ -470,11 +494,31 @@ class Matrix {
     Matrix multiply(Matrix m) {
         new Matrix(this.matrix.preMultiply(m.dataRef))
     }
-     
-    Matrix divide(double d) {
+    
+    Matrix plus(Matrix m) {
+        new Matrix(this.matrix.add(m.matrix))
+    }
+      
+    Matrix minus(Matrix m) {
+        new Matrix(this.matrix.subtract(m.matrix))
+    }
+    
+     Matrix divide(double d) {
         new Matrix(this.matrix.scalarMultiply(1/d))
     }
-     
+    
+    Matrix plus(double x) {
+        new Matrix(this.matrix.scalarAdd(x))
+    }
+    
+    Matrix minus(double x) {
+        new Matrix(this.matrix.scalarMinus(x))
+    }
+    
+    Matrix transpose() {
+        new Matrix(this.matrix.transpose())
+    }
+       
     String toString() {
         if(matrix.rowDimension<DISPLAY_ROWS) {
             int rowCount = 0
