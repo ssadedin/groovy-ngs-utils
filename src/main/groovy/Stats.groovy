@@ -51,7 +51,7 @@ import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
  * calculation of statistics for matrix columns and rows:
  * <pre>
  * Matrix m = new Matrix(2,2,[1,2,3,4])
- * assert m[][1].mean == 3
+ * assert Stats.from(m[][1]).mean == 3
  * </pre>
  * 
  * @author simon.sadedin@mcri.edu.au
@@ -61,6 +61,11 @@ class Stats extends DescriptiveStatistics {
     public Stats() {
     }
     
+    /**
+     * Convenience function to add sample value to statistics
+     * 
+     * @param value
+     */
     void leftShift(value) {
         this.addValue(value)
     }
@@ -73,14 +78,36 @@ class Stats extends DescriptiveStatistics {
         return s
     }
     
-    static Stats from(InputStream values, Closure c=null) {
+    /**
+     * Compute statistcs from values read from the given input stream. The 
+     * values are expected to  be numeric. This is especially useful for piping 
+     * input in from standard input, eg. in Bash:
+     * <pre>
+     * cut -f 6 coverage.txt | groovy -e 'println(Stats.from())'
+     * </pre>
+     * If a closure is provided then the caller can transorm the values before
+     * they are added. If the closure returns false then the value is not included,
+     * which gives the caller the opportunity to filter out values they might
+     * not be interested in.
+     * 
+     * @param values
+     * @return
+     */
+    static Stats read(InputStream values = System.in, Closure c=null) {
         Stats s = new Stats()
         values.eachLine { line ->
-              s.addValue(c==null? Integer.parseInt(line.trim()): c(it))
+              def value = Double.parseDouble(line.trim())
+              if(c == null) {
+                  s.addValue(value)
+              }
+              else {
+                  value = c(value)
+                  if(value != false)
+                      s.addValue(value)
+              }
         }
         return s
     }
-     
     
     @CompileStatic
     static mean() {
