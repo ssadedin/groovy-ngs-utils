@@ -277,6 +277,8 @@ class Variant implements IRegion {
         
         pos = Integer.parseInt(fields[1])
         
+        parseGenotypes(fields)
+        
         setAlt(alt)
     }
     
