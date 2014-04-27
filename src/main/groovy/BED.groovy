@@ -22,17 +22,14 @@ import java.util.Iterator;
 
 import groovy.transform.CompileStatic;
 
-
 /**
- * Simple utility class to assist in parsing BED files
+ * Support for parsing, filtering, and manipuulating BED files.
  * <p>
- * At the moment it is limited (mainly) to working with human data because 
- * chromosomes chrX, chrY and chrM are handled as special cases. Also, 
- * other contigs and random chromosomes are not handled either.
+ * This class provides and implementation for {@link Regions} that is backed
+ * by a file in BED format.
  * <p>
  * Some methods hit the file directly, while others rely on reading it 
- * into memory. If you don't care too much about performance you can 
- * not care aboaut this. But if you care about performance you should 
+ * into memory. In cases where the data set will not fit into memory, you should
  * check how the method is going to operate and choose accordingly.
  * <p>
  * Note that the constructor does <i>not</i> load the contents of the BED
@@ -40,7 +37,7 @@ import groovy.transform.CompileStatic;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class BED extends RegionSource {
+class BED extends Regions {
     
     /**
      * Some functions require loading of the BED file into memory. Others can use 
@@ -68,17 +65,18 @@ class BED extends RegionSource {
      * Empty bed file
      */
     BED(Map attributes=[:]) {
+        if(attributes && attributes.withExtra != null)
+            this.withExtra = attributes.withExtra
     }
     
     BED(Map attributes=[:], String fileName) {
-        this(new File(fileName))
+        this(attributes, new File(fileName))
     }
     
     BED(Map attributes=[:], File file, Closure c = null) {
+        this(attributes)
         this.bedFile = file
         this.bedFileStream = new FileInputStream(file)
-        if(attributes && attributes.withExtra != null)
-            this.withExtra = attributes.withExtra
     }
     
     BED(InputStream inStream, Closure c = null) {
@@ -89,6 +87,7 @@ class BED extends RegionSource {
      * Create a BED from a list of regions
      */
     BED(Map attributes=[:], Iterable<Region> regions) {
+        this(attributes)
         for(Region r in regions) {
             addRegion(r.chr, r.from, r.to)
         }

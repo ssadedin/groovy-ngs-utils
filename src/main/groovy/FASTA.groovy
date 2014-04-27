@@ -22,24 +22,49 @@ import groovy.transform.CompileStatic;
 import net.sf.picard.reference.IndexedFastaSequenceFile;
 import net.sf.picard.reference.ReferenceSequence;
 
-
 /**
- * Simple wrapper to support groovy interface & utilities for FASTA files
+ * Simple utilities for manipulating FASTA files.
  * <p>
- * Only indexed files are supported
+ * <i>Note: only indexed files are supported</i>
+ * <p>The core function for this class is to make it easy to read
+ * index FASTA files and retrieve sequences of bases corresponding to
+ * regions of the genome:
+ * <pre>
+ * println "The bases at chr1:1000-2000 are " + 
+ *      new FASTA("test.fa").basesAt("chr1", 1000,2000)
+ * </pre>
+ * The above will return the bases as a String object which is 
+ * inefficient: firstly because the internal representation is bytes, so a
+ * conversion must run to turn those into a String object, and secondly because
+ * Strings use wide chars (16 bits) for each character. So if you care a lot about
+ * efficiency you should use the byte version:
+ * <pre>
+ * println "The bases at chr1:1000-2000 are " + 
+ *      new FASTA("test.fa").basesBytesAt("chr1", 1000,2000)
+ * </pre>
+ * 
  * 
  * @author simon.sadedin@mcri.edu.au
  */
 class FASTA {
-    
-    public static final long PRINT_INTERVAL_MS = 15000
-    
+   
+    /**
+     * The internal (Picard) index for the FASTA file.
+     */
     IndexedFastaSequenceFile indexedFastaFile
     
+    /**
+     * Create a FASTA object for the given FASTA file, which must be indexed.
+     * @param fastaFile
+     */
     FASTA(String fastaFile) {
         this(new File(fastaFile))
     }
     
+    /**
+     * Create a FASTA object for the given FASTA file, which must be indexed.
+     * @param fastaFile
+     */
     FASTA(File fastaFile) {
         this.indexedFastaFile  = new IndexedFastaSequenceFile(fastaFile)
     }
@@ -57,6 +82,16 @@ class FASTA {
       return new String(this.indexedFastaFile.getSubsequenceAt(contig, start, end).bases)
     }
     
+    /**
+     * Returns the sequence of bases over the given range
+     * <b>NOTE:</b>The range is <i>inclusive</i>.
+     * 
+     * @param contig    contig to query
+     * @param start     start position (inclusive)
+     * @param end       end position (inclusive)
+     * @return  bytes representing the bases in the range, corresponding to ascii codes
+     *          of DNA symbols (A = 65, etc.)
+     */
     byte[] baseBytesAt(String contig, long start, long end) {
       return this.indexedFastaFile.getSubsequenceAt(contig, start, end).bases
     }
@@ -77,6 +112,16 @@ class FASTA {
     public static final int N = (int)"N".charAt(0)
     public static final int V = (int)"V".charAt(0)
     
+    /**
+     * Compute the reverse complement of the given sequence of bases.
+     * <p>
+     * NOTE: this method understands IUPAC codes.
+     * <p>
+     * NOTE 2: The complement of 'N' is returned as 'N'.
+     * 
+     * @param bases Sequence of bases to compute reverse complement for
+     * @return  the given bases, reversed and converted to their DNA complement.
+     */
     @CompileStatic
     static String reverseComplement(String bases) {
         byte [] bytes = bases.bytes

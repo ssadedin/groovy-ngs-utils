@@ -146,7 +146,7 @@ class MatrixColumn implements Iterable {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Matrix {
+class Matrix implements Iterable {
     
     static { 
 		
@@ -188,7 +188,7 @@ class Matrix {
         this.names = columns.collect { MatrixColumn c -> c.name }
     }
     
-    public Matrix(List<Iterable> rows) {
+    public Matrix(Iterable<Iterable> rows) {
         double [][] data = null
         int rowCount = 0
         for(r in rows) {
@@ -292,6 +292,27 @@ class Matrix {
         else {
             throw new IllegalArgumentException("Cannot subset rows by type: " + n?.class?.name)
         }
+    }
+    
+    @CompileStatic
+    Iterator iterator() {
+       new Iterator() {
+           
+           int i=0
+           final int numRows = matrix.rowDimension
+           
+           boolean hasNext() {
+               return i<numRows;
+           }
+           
+           Object next() {
+               matrix.dataRef[i++]
+           }
+           
+           void remove() { 
+               throw new UnsupportedOperationException() 
+           }
+       } 
     }
     
 	/**
@@ -484,7 +505,7 @@ class Matrix {
      * Shorthand to give a familiar function to R users
      */
     List<Long> which(Closure c) {
-        this.findIndexValues(c)
+        this.matrix.dataRef.findIndexValues(c)
     }
     
     Matrix multiply(double d) {
@@ -517,6 +538,44 @@ class Matrix {
     
     Matrix transpose() {
         new Matrix(this.matrix.transpose())
+    }
+    
+    void save(String fileName) {
+        new File(fileName).withWriter { w ->
+            save(w)
+        }
+    }
+    
+    void save(Writer w) {
+        if(this.names) {
+            w.println "# " + names.join("\t")   
+        }
+        eachRow { row ->
+            
+            w.println((row as List).join("\t"))
+        }
+    }
+    
+    static Matrix load(String fileName) {
+        List rows = new ArrayList(1024)
+        
+        Reader r = new FileReader(fileName)
+        
+        // Sniff the first line
+        String firstLine = r.readLine()
+        List names
+        if(firstLine.startsWith('#')) {
+            names = firstLine.substring(1).trim().split("\t")
+        }
+        else {
+            r.close()
+            r = new FileReader(fileName)
+        }
+        Matrix m = new Matrix(new TSV(readFirstLine:true, r)*.values)
+        if(names)
+            m.names = names
+            
+        return m
     }
        
     String toString() {

@@ -4,7 +4,7 @@ class SexKaryotyper implements Runnable {
     
     SAM bam = null
     
-    RegionSource regions = null
+    Regions regions = null
     
     boolean progress = true
     
@@ -16,7 +16,7 @@ class SexKaryotyper implements Runnable {
     
     Sex sex = null
     
-    public SexKaryotyper(SAM bam, RegionSource regions) {
+    public SexKaryotyper(SAM bam, Regions regions) {
         this.bam = bam
         this.regions = regions.reduce()
     }
@@ -25,9 +25,9 @@ class SexKaryotyper implements Runnable {
         
         bam.progress = progress
         
-        xCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrX" } as RegionSource)
-        yCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrY" } as RegionSource)
-        autosomeCoverage = bam.coverageStatistics(regions.grep { it.chr != "chrX" && it.chr != "chrY" } as RegionSource)
+        xCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrX" } as Regions)
+        yCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrY" } as Regions)
+        autosomeCoverage = bam.coverageStatistics(regions.grep { it.chr != "chrX" && it.chr != "chrY" } as Regions)
         
         if(yCoverage.mean < 5 && xCoverage.mean > 30) {
             sex = Sex.FEMALE

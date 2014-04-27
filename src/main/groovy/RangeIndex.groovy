@@ -283,24 +283,60 @@ class RangeIndex implements Iterable<IntRange> {
         return lowerEntry.value.grep { it.containsWithinBounds(position) }
     }
     
+    /**
+     * Return a list of ranges stored in the index that overlap the specified
+     * range. Both ends of the range are *inclusive*.
+     * 
+     * @param start first position to look for overlaps
+     * @param end   last position to look for overlaps (inclusive)
+     * @return  List of ranges overlapping the specified start -> end range
+     */
     List<Range> getOverlaps(int start, int end) {
+        getOverlaps(start,end,false)
+    }
+    
+    /**
+     * Return true if the given range overlaps at least one range in this
+     * RangeIndex.
+     * 
+     * @param start start of range to test (inclusive)
+     * @param end   end point of range to test (inclusive)
+     * @return  true iff at least one range in this index overlaps the given start and end point
+     */
+    boolean overlaps(int start, int end) {
+        !getOverlaps(start,end, true).isEmpty()
+    }
+    
+    @CompileStatic
+    List<Range> getOverlaps(int start, int end, boolean returnFirst) {
         IntRange interval = start..end-1
         List<Range> result = []
-        Map.Entry entry = ranges.lowerEntry(start+1)
+        Map.Entry<Integer,List<IntRange>> entry = ranges.lowerEntry(start+1)
         if(!entry) 
             entry = ranges.higherEntry(start)
             
         // Iterate as long as we are in the range
         while(entry != null && entry.key <= end) {
-            for(Range r in entry.value) {
-               if(r.from<=end && r.to>=start)
+            for(IntRange r in entry.value) {
+               if(r.from<=end && r.to>=start) {
                    result.add(r)
+                   if(returnFirst)
+                       return result
+               }
             }
             entry = ranges.higherEntry(entry.key)
         }
         return result
     }
     
+    /**
+     * Return a list of ranges that intersect the given start and end points.
+     * <p>
+     * <em>Note:</em>The start and end point are both treated as <b>inclusive</b>.
+     * @param start start of range to find intersections for
+     * @param end   end of range to find intersections for
+     * @return  List of ranges that intersect the specified range.
+     */
     List<Range> intersect(int start, int end) {
        def result = getOverlaps(start,end)
        return result.collect { Math.max(it.from, start)..Math.min(it.to, end)}
@@ -375,6 +411,23 @@ class RangeIndex implements Iterable<IntRange> {
             
             return (pos-prv.to) < (nxt.from - pos) ? prv : nxt
         }
+    }
+    
+    Range first() {
+        if(ranges.isEmpty())
+            return null
+            
+        ranges.firstEntry().value[0]
+    }
+    
+    Range last() {
+        if(ranges.isEmpty())
+            return null
+        Map.Entry last = ranges.lastEntry()
+        while(!last.value)
+            last = ranges.lowerEntry(last.key)
+            
+        return last.value[0]    
     }
     
     void dump() {

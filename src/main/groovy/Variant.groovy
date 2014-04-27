@@ -108,6 +108,10 @@ class Allele {
      */
     String type
     
+    int size(String ref) {
+        (this.alt.size() == ref.size()) ? 1 : Math.abs(this.alt.size() - ref.size())
+    }
+    
     String toString() { start != end ? "$start-$end $alt ($type)" : "$start $alt ($type)" }
 }
 

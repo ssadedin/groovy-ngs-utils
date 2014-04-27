@@ -20,15 +20,29 @@
  */
 import java.text.ParseException;
 
+import com.xlson.groovycsv.CsvIterator;
+import com.xlson.groovycsv.CsvParser;
+
 enum Sex {
-	MALE, FEMALE, OTHER	
+	MALE, FEMALE, OTHER, UNKNOWN
 	
     private static codes = [
             "1" : MALE,
             "2" : FEMALE,
             "Male" : MALE,
-            "Female": FEMALE
+            "Female": FEMALE,
+            "Unknown" : UNKNOWN
     ]
+    
+    String encode() {
+        switch(this) {
+            case MALE: "Male"; break
+            case FEMALE: "Female"; break
+            case OTHER: "Other"; break;
+            case UNKNOWN: "Unknown"; break;
+            break
+        }
+    }
         
 	static Sex decode(String value) {
         value = value?.trim()
@@ -234,7 +248,8 @@ class SampleInfo {
 		}
 		
 		int lineCount = 0
-        def sample_info = new TSV(new StringReader(lines.join("\n")), columns).collect { fields ->
+        CsvIterator parser = CsvParser.parseCsv(new StringReader(lines.join("\n")), columnNames: columns, readFirstLine: true, separator: '\t')
+        def sample_info = parser.collect { fields ->
 //				println "Found sample " + fields.Sample_ID
 			
 				try {
@@ -311,7 +326,14 @@ class SampleInfo {
 	}
     
     String toTsv() {
-        [sample, target, files.collect { it.key == "all" ? [] : it.value }.flatten().join(","), geneCategories.collect { it.key + ":" + it.value.join(",") }.join(" "), sex].join("\t")
+        [   
+            sample, 
+            batch, 
+            target, 
+            files.collect { it.key == "all" ? [] : it.value }.flatten().join(","), 
+            geneCategories.collect { it.key + ":" + it.value.join(",") }.join(" "), 
+            sex.encode()
+        ].join("\t")
     }
 
     String toString() {

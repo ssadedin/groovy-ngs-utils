@@ -372,7 +372,7 @@ class SAM {
     }
     
     @CompileStatic
-    CoverageStats coverageStatistics(RegionSource regions) {
+    CoverageStats coverageStatistics(Regions regions) {
         CoverageStats stats = new CoverageStats(10000)
         int total = 0
         ProgressCounter progress = null
@@ -380,7 +380,7 @@ class SAM {
             progress = new ProgressCounter(withTime:true, withRate:true)
 
         // Flatten the regions down in case they overlap
-        RegionSource flattenedRegions = regions.reduce()
+        Regions flattenedRegions = regions.reduce()
         for(Region region in flattenedRegions) {
             this.pileup(region.chr, region.from, region.to) { PileupIterator.Pileup p ->
                 stats.addValue(p.alignments.size())

@@ -61,6 +61,10 @@ class Stats extends DescriptiveStatistics {
     public Stats() {
     }
     
+    public Stats(int windowSize) {
+        super(windowSize)
+    }
+     
     /**
      * Convenience function to add sample value to statistics
      * 
@@ -70,10 +74,91 @@ class Stats extends DescriptiveStatistics {
         this.addValue(value)
     }
     
-    static Stats from(Collection values, Closure c=null) {
+    static Stats from(double [] values) {
+        from(values,null)    
+    }
+    
+    /**
+     * A concrete implementation of {@link #from(Iterable, Closure)} specialised
+     * for arrays of double[] values. 
+     * 
+     * @param values    values to calculate statistics for
+     * @param c         Closure to filter or transform results
+     * @return          {@link Stats} object containing stastitics about the given values
+     */
+    @CompileStatic
+    static Stats from(double [] values, Closure c) {
         Stats s = new Stats()
-        values.each {
-              s.addValue(c==null? it : c(it))
+        boolean withIndex = (c != null) && c.maximumNumberOfParameters > 1
+        for(int i=0; i<values.size();++i) {
+            double value = values[i];
+            if(c == null) {
+                s.addValue(value)
+            }
+            else {
+                def result = withIndex ? c(value, i) : c(value)
+                if(result != false) {
+                    if(result == true)
+                        s.addValue((double)value)
+                    else
+                        s.addValue(((Number)result).toDouble())
+                }
+            }
+        }
+        return s
+    }
+    
+    /**
+     * A flexible method to generate statistics from any iterable object.
+     * Values can be streamed from any source that can
+     * generate numeric values and behave as an iterator.
+     * <p>
+     * An optional closure can be supplied that has dual functionality:
+     * <li>It can filter the values
+     * <li>It can transform the values
+     * If the result of the closure is a boolean, it is treated as a filter:
+     * <pre>
+     * x = [2,3,4,5,6]
+     * assert Stats.from(x) { it % 2 == 0 }.mean == 4 // mean of 2,4,6
+     * </pre>
+     * Alternatively if the value returned is numeric, it is treated as a transformation:
+     * <pre>
+     * x = [2,3,4,5,6]
+     * assert Stats.from(x) { it % 2 }.mean == 1.6 // (3+5)/5
+     * </pre>
+     * Of course, any {@link Iterable} could be easily transformed using standard 
+     * Groovy collection operations to achieve the same effect:
+     * <pre>
+     * x = [2,3,4,5,6]
+     * assert Stats.from(x.collect { it % 2 }).mean == 1.6 // (3+5)/5
+     * </pre>
+     * However the latter requires a complete copy of the transformed data be 
+     * temporarily created in memory, while the former can potentially stream
+     * any number of values in while never consuming anything more than trivial 
+     * memory overhead.
+     * 
+     * @param values    Iterable object supplying values that can be parsed as numeric
+     * @param c 
+     * @return
+     */
+    @CompileStatic
+    static Stats from(Iterable values, Closure c) {
+        Stats s = new Stats()
+        boolean withIndex = c.maximumNumberOfParameters > 1
+        values.eachWithIndex { rawValue, index ->
+              if(c == null) {
+                  double value = (double) (rawValue instanceof Number ? rawValue : Double.parseDouble(String.valueOf(rawValue)))
+                  s.addValue(value)
+              }
+              else {
+                  def value = withIndex ? c(rawValue, index) : c(rawValue)
+                  if(value != false) {
+                      if(value == true)
+                          s.addValue((double)rawValue)
+                      else
+                          s.addValue(((Number)value).toDouble())
+                  }
+              } 
         }
         return s
     }

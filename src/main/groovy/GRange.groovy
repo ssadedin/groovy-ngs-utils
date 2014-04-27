@@ -57,10 +57,22 @@ class Region extends Expando implements IRegion {
         return range.to
     }
     
+    @CompileStatic
     boolean overlaps(Region other) {
         if(other.chr != this.chr)
             return false
-        return this.range.disjoint(other.range)
+        return this.range.containsWithinBounds(other.to) || 
+               this.range.containsWithinBounds(other.from) ||
+               other.range.containsWithinBounds(this.to)
+               
+    }
+    
+    Region copy() {
+        new Region(chr, range.from..range.to)
+    }
+    
+    int size() {
+        range.size()
     }
     
     String toString() {

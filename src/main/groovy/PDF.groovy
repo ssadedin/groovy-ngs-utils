@@ -63,7 +63,7 @@ class PDF {
 	
 	private static Font defaultFont = new Font(Font.HELVETICA, 12);
 		
-	Paragraph paragraph
+	List<com.lowagie.text.Element> elementStack = []
 	
 	Font currentFont = null
 	
@@ -73,16 +73,20 @@ class PDF {
 		fontStack.push(defaultFont)
 	}
 	
+	void document(File file, Closure c) {
+        document(file.absolutePath,c)
+    }
+    
 	void document(String fileName, Closure c) {
 		Document document = new Document();
 		PdfWriter.getInstance(document, new FileOutputStream(fileName));
 		document.open();
-		paragraph = new Paragraph();
+		elementStack.add(new Paragraph())
 		
 		c.delegate = this
 		c()
 		
-		document.add(paragraph);
+		document.add(elementStack[-1]);
 		document.newPage()
 		document.close();
 	}
@@ -113,7 +117,11 @@ class PDF {
 	}
 	
 	void p(String text) {
-	    paragraph.add(new Paragraph(text, fontStack[-1]));
+	    def e = elementStack[-1]
+        if(e instanceof PdfPCell)
+            e.addElement(new Paragraph(text, fontStack[-1]));
+        else
+    	    elementStack[-1].add(new Paragraph(text, fontStack[-1]));
 	}
 	
 	void bold(Closure c) {
@@ -141,7 +149,7 @@ class PDF {
 		currentTable = new PdfPTable(props.cols);
 		tableOpts.push(props)
 		c()
-		this.paragraph.add(currentTable)
+		this.elementStack[-1].add(currentTable)
 	}
 	
 	void table(Closure c) {
@@ -154,7 +162,7 @@ class PDF {
 		// t.setSpacing(4);
 		// t.setBorderWidth(1);
 
-		this.paragraph.add(currentTable)
+		this.elementStack[-1].add(currentTable)
 	}
 	
 	List<PdfPCell> headerCells
@@ -181,7 +189,7 @@ class PDF {
 	     }
 		 headerCells = null
 	 }
-	 
+     
 	 void cell(Object contents) {
 		 
 		// Handle null values as blanks for convenience
@@ -192,7 +200,19 @@ class PDF {
 			headerCells << String.valueOf(contents)
 		}
 		else {
-			PdfPCell cell = new PdfPCell(new Phrase(String.valueOf(contents), fontStack[-1]));
+            
+			PdfPCell cell = null
+            if(contents instanceof Closure) {
+    			cell = new PdfPCell()
+                this.elementStack.push(cell)
+                contents.delegate = this
+                contents = contents()
+                this.elementStack.pop()
+            }
+            else {
+                cell = new PdfPCell(new Phrase(String.valueOf(contents), fontStack[-1]));
+            }
+            
 			if(tableBackground) {
 				cell.setBackgroundColor(tableBackground[-1])
 			}
@@ -261,7 +281,7 @@ class PDF {
 	 
 	 void br(int number=1) {
 		 for (int i = 0; i < number; i++) {
-		   paragraph.add(new Paragraph(" "));
+		   elementStack[-1].add(new Paragraph(" "));
 		 }
 	 }
 	 
@@ -288,7 +308,7 @@ class PDF {
 //		 println "Aspect ratio = $aspectRatio"
 		 img.scaleAbsolute(300,(float)aspectRatio * 300)
 		 img.absoluteX = 150
-		 paragraph.add(img)
+		 elementStack[-1].add(img)
 	 }
 	 
 	 Color toColor(String color) {
