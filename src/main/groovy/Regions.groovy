@@ -469,11 +469,10 @@ class Regions implements Iterable<Region> {
 				if(chr == null)
 					nextChr()
 			   
-				Range range =  chrIterator.next()
+				Region result = new Region(chr,chrIterator.next())
 				if(!chrIterator.hasNext())
 					nextChr()
-				 
-				return new Region(chr,range)
+				return result
 			}
 			
 			void nextChr() {
@@ -541,4 +540,5 @@ class Regions implements Iterable<Region> {
 			"Empty Region Set (no regions)"
 		}
 	}
+
 }
