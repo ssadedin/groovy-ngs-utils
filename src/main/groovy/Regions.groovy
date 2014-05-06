@@ -497,8 +497,8 @@ class Regions implements Iterable<Region> {
         Regions result = new Regions()
         allRanges.each { String chr, List<IntRange> ranges ->
             ranges.each { IntRange range ->
-                other.subtractFrom(chr, range.from, ((int)range.to)+1).each { IntRange r ->
-                    result.addRegion(chr, r.from, ((int)r.to)+1)
+                other.subtractFrom(chr, (int)range.from, ((int)range.to)+1).each { IntRange r ->
+                    result.addRegion(chr, (int)r.from, ((int)r.to)+1)
                 }
             }
         }
