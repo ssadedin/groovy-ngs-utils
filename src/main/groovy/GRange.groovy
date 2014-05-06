@@ -38,6 +38,13 @@ class Region extends Expando implements IRegion {
     Region() {
     }
     
+    Region(String region) {
+        int colonIndex = region.indexOf(":")
+        this.chr = region.substring(0, colonIndex)
+        int dashIndex = region.indexOf("-")
+        this.range = region.substring(colonIndex+1, dashIndex).toInteger()..region.substring(dashIndex+1).toInteger()
+    }
+    
     Region(String chr, Range range) {
         this.chr = chr
         this.range = range
@@ -57,14 +64,18 @@ class Region extends Expando implements IRegion {
         return range.to
     }
     
+    boolean isCase(IRegion other) {
+        return overlaps(other)
+    }
+    
     @CompileStatic
-    boolean overlaps(Region other) {
+    boolean overlaps(IRegion other) {
         if(other.chr != this.chr)
             return false
-        return this.range.containsWithinBounds(other.to) || 
-               this.range.containsWithinBounds(other.from) ||
+        boolean result = this.range.containsWithinBounds(other.range.to) || 
+               this.range.containsWithinBounds(other.range.from) ||
                other.range.containsWithinBounds(this.to)
-               
+        return result
     }
     
     Region copy() {
