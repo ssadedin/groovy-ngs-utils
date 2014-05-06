@@ -151,7 +151,7 @@ class SampleInfo {
      */
     Map    files = new Hashtable() // thread safe
 	
-	static List<String> columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact"]
+	static List<String> columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact","Notes"]
 	
 	/** Id of batch in which the sample was sequenced */
 	String batch
@@ -244,6 +244,9 @@ class SampleInfo {
 		// Pad with optional blank fields
 		lines = lines.collect { line ->
 			def fields = line.split("\t")
+			if(fields.size() > columns.size()) {
+				throw new RuntimeException("Unable to parse sample information: file has more columns (${fields.size()}) than expected ($columns.size())")
+			}
 			return (fields + [""] * (columns.size() - fields.size())).join("\t")
 		}
 		
