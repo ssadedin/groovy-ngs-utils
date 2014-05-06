@@ -18,6 +18,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import com.sun.xml.internal.ws.developer.MemberSubmissionAddressing;
+
 import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
 
@@ -257,7 +259,7 @@ class Variant implements IRegion {
 	
 	
 	IntRange getRange() {
-		return pos..(pos+alts.max { it.size() })
+		return pos..(pos+alts.max { it.size() }.size())
 	}
     
     // @CompileStatic
@@ -806,6 +808,13 @@ class Variant implements IRegion {
     } 
     
     /**
+     * Return true if this variant overlaps the given range
+     */
+    boolean isCase(IRegion r) {
+        return this.region.overlaps(r)
+    }
+    
+    /**
      * Update the first alternate allele to the given value
      * 
      * @param alt   Alternate sequence of bases. Note that this should conform to VCF 
@@ -822,5 +831,15 @@ class Variant implements IRegion {
         }
         type = convertType(ref,alt)
         altByte = (byte)alt.charAt(0)
+    }
+    
+    Region cachedRegion = null
+    
+    @CompileStatic
+    Region getRegion() {
+        if(!cachedRegion) {
+            cachedRegion = new Region(this.chr, this.pos..(this.pos+this.size()))
+        }
+        return cachedRegion
     }
 }
