@@ -411,13 +411,17 @@ class Matrix implements Iterable {
     @CompileStatic
     Matrix transform(Closure c) {
         
+        Matrix result
         if(c.maximumNumberOfParameters == 1) {
-            return transformWithoutIndices(c)
+            result = transformWithoutIndices(c)
         }
         else 
         if(c.maximumNumberOfParameters == 3) {
-            return transformWithIndices(c)
+            result = transformWithIndices(c)
         }
+        if(names)
+            result.names = this.names
+        return result
     }
     
     @CompileStatic
@@ -481,7 +485,10 @@ class Matrix implements Iterable {
         else
             throw new IllegalArgumentException("Closure must accept 1 or two arguments")
         
-        return new Matrix(new Array2DRowRealMatrix(newData))
+        Matrix result = new Matrix(new Array2DRowRealMatrix(newData))
+        if(names)
+            result.names = names
+        return result
     }
     
     @CompileStatic
@@ -579,20 +586,27 @@ class Matrix implements Iterable {
     }
        
     String toString() {
+        
+        String headers = this.names ? "\t" + this.names.join("\t") + "\n" : ""
+        
         if(matrix.rowDimension<DISPLAY_ROWS) {
             int rowCount = 0
-            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ matrix.data.collect { row -> 
+            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ 
+                headers + 
+                matrix.data.collect { row -> 
                 (rowCount++) + ":\t" + (row as List).join(",\t") 
             }.join("\n")
         }
         else {
             int omitted = matrix.rowDimension-DISPLAY_ROWS
             int rowCount = 0
-            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ matrix.data[0..DISPLAY_ROWS/2].collect { row -> 
-                ((rowCount++) + ":").padRight(6) + (row as List).join(",\t") 
-            }.join("\n") + "\n... ${omitted} rows omitted ...\n" + matrix.data[-(DISPLAY_ROWS/2)..-1].collect { row -> 
-                (((rowCount++)+omitted-1) + ":").padRight(6) + (row as List).join(",\t") 
-            }.join("\n")
+            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ 
+                headers + 
+                matrix.data[0..DISPLAY_ROWS/2].collect { row -> 
+                    ((rowCount++) + ":").padRight(6) + (row as List).join(",\t") 
+                }.join("\n") + "\n... ${omitted} rows omitted ...\n" + matrix.data[-(DISPLAY_ROWS/2)..-1].collect { row -> 
+                    (((rowCount++)+omitted-1) + ":").padRight(6) + (row as List).join(",\t") 
+                }.join("\n")
         }
     }
 }
