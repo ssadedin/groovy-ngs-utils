@@ -746,6 +746,21 @@ class Variant implements IRegion {
         }
         return 0
     }
+	
+	Map toAnnovar() {
+		String varType = this.getType()
+		if(varType == "DEL") {
+			// For a deletion, Annovar returns "-"
+			return [ pos: this.pos + 1, ref: this.ref.substring(ref.indexOf(this.alt)), obs: "-" ]
+		}
+		else 
+		if(varType == "INS") {
+			return [ pos: this.pos + 1, ref: "-", obs: this.alt ]
+		}
+		else {
+			return [ pos: this.pos,  ref: this.ref, obs: this.obs ]	
+		}
+	}
     
     String toJson() {
         JsonOutput.toJson([
