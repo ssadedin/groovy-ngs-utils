@@ -76,20 +76,7 @@ class MatrixColumn implements Iterable {
     }
     
     Iterator iterator() {
-        return new Iterator<Double>() {
-            int index = 0
-            int max = MatrixColumn.this.size()
-            
-            boolean hasNext() {
-                return index<max
-            }
-            
-            Double next() {
-                return sourceMatrix.dataRef[index++][columnIndex]
-            }
-            
-            void remove() { throw new UnsupportedOperationException() }
-        }
+        return new MatrixColumnIterator(this.sourceMatrix.matrix.dataRef, this.columnIndex)
     }
     
     boolean equals(Object o) {
@@ -145,8 +132,8 @@ class MatrixColumn implements Iterable {
  * </pre>
  * 
  * @author simon.sadedin@mcri.edu.au
- */
-class Matrix implements Iterable {
+ */ 
+class Matrix extends Expando implements Iterable {
     
     static { 
 		
@@ -184,7 +171,7 @@ class Matrix implements Iterable {
         for(int i=0; i<rows;++i) {
             newData[i] = (double[])columns.collect { MatrixColumn c -> c[i] } as double[]
         }
-        matrix = new Array2DRowRealMatrix(newData)
+        matrix = new Array2DRowRealMatrix(newData,false)
         this.names = columns.collect { MatrixColumn c -> c.name }
     }
     
@@ -365,6 +352,15 @@ class Matrix implements Iterable {
         return results
     }    
     
+    class IterationDelegate {
+        int row
+        Matrix host
+        def propertyMissing(String name) {
+            println "Searching for property $name"
+            host[name][row]
+        }
+    }
+    
     
     /**
      * Filter the rows of this matrix and return 
@@ -378,8 +374,13 @@ class Matrix implements Iterable {
     Matrix grep(Closure c) {
         List<Integer> keepRows = []
         int rowIndex = 0;
+//        IterationDelegate delegate = new IterationDelegate()
+//        delegate.host = this
+//        c.setDelegate(delegate)
         if(c.maximumNumberOfParameters == 1) {
             for(double [] row in matrix.dataRef) {
+//                delegate.row = rowIndex
+                println "Invoking it ..."
                 if(c(row))
                     keepRows.add(rowIndex)
                 ++rowIndex
@@ -435,7 +436,7 @@ class Matrix implements Iterable {
                 newData[i][j] = (double)c(row[j])
             }
         }                    
-        return new Matrix(new Array2DRowRealMatrix(newData))
+        return new Matrix(new Array2DRowRealMatrix(newData, false))
     }
     
     @CompileStatic
@@ -451,7 +452,7 @@ class Matrix implements Iterable {
                 newRow[j] = (double)c.call(value,i,j)
             }
         }                    
-        return new Matrix(new Array2DRowRealMatrix(newData))
+        return new Matrix(new Array2DRowRealMatrix(newData, false))
     }
     
     /**
@@ -485,7 +486,7 @@ class Matrix implements Iterable {
         else
             throw new IllegalArgumentException("Closure must accept 1 or two arguments")
         
-        Matrix result = new Matrix(new Array2DRowRealMatrix(newData))
+        Matrix result = new Matrix(new Array2DRowRealMatrix(newData,false))
         if(names)
             result.names = names
         return result
