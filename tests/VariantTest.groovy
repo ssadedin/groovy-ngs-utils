@@ -132,14 +132,15 @@ class VariantTest {
         println v.alleles
     }
     
-    @Test
+//    @Test
     void testConstructVariant() {
         Variant v = new Variant(chr:"chrX", ref:"A", alt:"T")
         assert v.type == "SNP"
         assert v.alt == "T"
     }
     
-    @Test 
+//    
+//    @Test 
     void testVCFTemp() {
         CoverageStats stats = new CoverageStats(10)
         VCF.parse("/Users/simon/work/mg/batches/na18507/selftest/variants/head.vcf") {
@@ -147,4 +148,39 @@ class VariantTest {
         }
         println stats
     }
+	
+	@Test
+	void testToAnnovar() {
+        
+        def variants = [
+            [ 
+                vcf: "chr1 12908064    .   CA  C   2444.73 PASS    AC=1;AF=0.500;AN=2;BaseQRankSum=-2.337;DP=273;FS=1.058;HaplotypeScore=340.4396;MLEAC=1;MLEAF=0.500;MQ=46.84;MQ0=0;MQRankSum=2.472;QD=8.96;RPA=2,1;RU=A;ReadPosRankSum=-0.877;STR;set=Intersection   GT:AD:DP:GQ:PL  0/1:180,77:264:99:2482,0,6848",
+                av: [pos: 12908065, ref: "A", obs: "-", index:0 ]
+            ],
+            [ 
+                vcf: "chr3 46751073    rs10578999  TAAGAAG T,TAAG  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197",
+                av: [pos: 46751077, ref: "AAG", obs: "-", index: 1]
+            ],        
+            [ 
+                vcf: "chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197",
+                av: [pos: 46751077, ref: "A", obs: "T", index:0]
+            ],
+            [ 
+                                                            //     TGGCGGCGGCGGC
+                vcf: "chr4 147560457   rs5862765   TGGCGGCGGCGGC   TGGCGGCGGCGGCGGC,TGGC,T 480.14  .   AC=29,6,2;AF=0.604,0.125,0.042;AN=48;DB;DP=470;MQ0=0;RU=GGC;STR;set=variant-variant2-variant10-variant11-variant13-variant15-variant17-variant19-variant20-variant21-variant22-variant24-variant25-variant26-variant28-variant30-variant31-variant42-variant43-variant45-variant46-variant52-variant54-variant57    GT:DP:GQ    0/1:21:10   0/2:14:61   ./. ./. ./. ./. ./. ./. ./. 1/1:9:15    1/1:13:18   ./. 0/2:24:99   ./. 1/1:12:30   ./. 1/1:36:25   ./. 0/1:17:99   1/1:19:21   0/2:18:99   0/1:27:93   ./. 1/3:27:99   0/3:20:99   1/1:17:21   ./. 1/1:18:15   ./. 1/1:17:21   1/1:22:24   ./. ./. ./. ./. ./. ./. ./. ./. ./. ./. 1/1:10:18   1/1:22:24   ./. 0/1:26:68   0/2:17:99   ./. ./. ./. ./. ./. 0/2:16:99   ./. 0/2:17:99   ./. ./. 1/1:14:24   ./.",
+                av: [pos: 147560469, ref: "-", obs: "GGC", index:0]
+            ]
+        ]
+        
+        for(Map vInfo in variants) {
+            Variant v = Variant.parse(vInfo.vcf)
+            Map av = v.toAnnovar(vInfo.av.index)
+            println "Annovar value of $v = " + av + " expected to be $vInfo.av"
+            assert av.obs == vInfo.av.obs
+            assert av.ref == vInfo.av.ref
+            assert av.pos == vInfo.av.pos
+            
+            assert v.equalsAnnovar(v.chr, av.pos, av.obs) == vInfo.av.index + 1
+        }
+	}
 }

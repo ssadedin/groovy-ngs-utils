@@ -57,6 +57,11 @@ class MatrixColumn implements Iterable {
         if(index instanceof List)
             sourceMatrix.dataRef[index].collect { it[columnIndex] }
     }
+	
+	@CompileStatic
+	double getDoubleAt(int index) {
+		return sourceMatrix.matrix.dataRef[index][columnIndex]
+	}
     
     int size() {
         sourceMatrix.matrix.rowDimension
@@ -165,11 +170,15 @@ class Matrix extends Expando implements Iterable {
     }
     
     @CompileStatic
-    public Matrix(MatrixColumn... columns) {
+    public Matrix(MatrixColumn... sourceColumns) {
         int rows = columns[0].size()
+		final int cols = columns.size()
         double[][] newData =  new double[rows][]
+		MatrixColumn [] columns = sourceColumns
         for(int i=0; i<rows;++i) {
-            newData[i] = (double[])columns.collect { MatrixColumn c -> c[i] } as double[]
+			double [] row = newData[i]
+			for(int j=0; j<++cols;++j)
+				row[j] = (double)(columns[j].getDoubleAt(i))
         }
         matrix = new Array2DRowRealMatrix(newData,false)
         this.names = columns.collect { MatrixColumn c -> c.name }
@@ -280,7 +289,6 @@ class Matrix extends Expando implements Iterable {
             throw new IllegalArgumentException("Cannot subset rows by type: " + n?.class?.name)
         }
     }
-    
     @CompileStatic
     Iterator iterator() {
        new Iterator() {
@@ -309,7 +317,7 @@ class Matrix extends Expando implements Iterable {
 	 * @return
 	 */
     @CompileStatic
-    Object subsetRows(Iterable<Number> i) {
+    double[][] subsetRows(Iterable<Number> i) {
         List<Integer> indices = new ArrayList(this.matrix.rowDimension)
         i.each { Number n -> indices.add(n.toInteger()) }
 		
@@ -351,17 +359,7 @@ class Matrix extends Expando implements Iterable {
         }
         return results
     }    
-    
-    class IterationDelegate {
-        int row
-        Matrix host
-        def propertyMissing(String name) {
-            println "Searching for property $name"
-            host[name][row]
-        }
-    }
-    
-    
+  
     /**
      * Filter the rows of this matrix and return 
      * a Matrix as a result
@@ -374,13 +372,12 @@ class Matrix extends Expando implements Iterable {
     Matrix grep(Closure c) {
         List<Integer> keepRows = []
         int rowIndex = 0;
-//        IterationDelegate delegate = new IterationDelegate()
-//        delegate.host = this
-//        c.setDelegate(delegate)
+        IterationDelegate delegate = new IterationDelegate()
+        delegate.host = this
+        c.setDelegate(delegate)
         if(c.maximumNumberOfParameters == 1) {
             for(double [] row in matrix.dataRef) {
-//                delegate.row = rowIndex
-                println "Invoking it ..."
+                delegate.row = rowIndex
                 if(c(row))
                     keepRows.add(rowIndex)
                 ++rowIndex
@@ -394,8 +391,9 @@ class Matrix extends Expando implements Iterable {
                 ++rowIndex
             }
         }
-        
-        return new Matrix(new Array2DRowRealMatrix(matrix.data[keepRows]))
+		double [][] submatrix = this.subsetRows((Iterable<Number>)keepRows)
+		
+        return new Matrix(new Array2DRowRealMatrix(submatrix))
     }    
     
     /**

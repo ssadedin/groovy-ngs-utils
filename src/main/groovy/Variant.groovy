@@ -746,6 +746,23 @@ class Variant implements IRegion {
         }
         return 0
     }
+	
+	Map toAnnovar(int alleleIndex=0) {
+        Allele allele = this.getAlleles()[alleleIndex]
+		String varType = allele.type
+		if(varType == "DEL") {
+			// For a deletion, Annovar returns "-"
+            int altIndex = ref.lastIndexOf(allele.alt)+allele.alt.size()
+			return [ pos: this.pos + altIndex, ref: this.ref.substring(altIndex), obs: "-" ]
+		}
+		else 
+		if(varType == "INS") {
+			return [ pos: this.pos + this.ref.size()-1, ref: "-", obs: allele.alt.substring(this.ref.size()) ]
+		}
+		else {
+			return [ pos: this.pos, ref: this.ref, obs: this.alt ]	
+		}
+	}
     
     String toJson() {
         JsonOutput.toJson([
