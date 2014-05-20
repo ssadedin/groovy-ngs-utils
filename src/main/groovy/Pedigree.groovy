@@ -30,6 +30,8 @@ class Subject {
     
     String id
     
+    Sex sex
+    
     Set<String> phenoTypes
 }
 
@@ -66,17 +68,38 @@ class Pedigree {
     /**
      * List of subject ids belonging to the family
      */
-    List<String> samples
+    List<String> samples = []
     
-    List<Subject> individuals
+    List<Subject> individuals = []
     
-    List<Integer> phenoTypes
+    List<Integer> phenoTypes = []
     
     String toString() {
         "$id $samples"
     }
     
+    static Map<String,Pedigree> parse(String pedFileName) {
+        
+        Map<String,Pedigree> families = [:]
+        
+        List<Subject> subjects = new TSV(pedFileName,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
+//            println "FamilyId = $line.familyId id = $line.id"
+            if(!families.containsKey(line.familyId))
+                families[line.familyId] = new Pedigree(id:line.familyId)
+            Pedigree p = families[line.familyId]
+            def sex = line.sex ?: "other"
+            Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
+            p.individuals.add(s)
+            p.samples.add(s.id)
+            p.phenoTypes.add(line.phenotype)
+        }
+        
+        return families
+    }
+    
     @Lazy
     List<String> affected = { samples.grep {phenoTypes[samples.indexOf(it)] > 0 } }()
-   
+    
+    @Lazy
+    List<String> unaffected = { samples.grep {phenoTypes[samples.indexOf(it)] == 0 } }()
 }
