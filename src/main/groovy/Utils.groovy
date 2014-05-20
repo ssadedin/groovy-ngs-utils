@@ -11,12 +11,14 @@ class Utils {
     static time(String desc, Closure c) {
         System.err.println((" Starting " + desc + " ").center(80, "="))
         Date startTime = new Date()
+        Date endTime = startTime
         try {
             c()
         }
         finally {
-            Date endTime = new Date()
+            endTime = new Date()
             System.err.println(("$desc executed in " + TimeCategory.minus(endTime,startTime)).center(80,"="))
         }
+        return endTime.time - startTime.time
     }
 }
