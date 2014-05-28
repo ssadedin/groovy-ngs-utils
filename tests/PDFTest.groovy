@@ -31,15 +31,23 @@ class PDFTest {
 					cells("barney", "charney")
 					
 					cell("aarney")
-					cell("darney")
+					background("light_gray") {
+						cell("darney")
+					}
 					
-					cells([1,2,3,4])
+					background("#eebbbb") {
+						cells([1,2,3,4])
+					}
 					
 				}
 			}
 			
 			color("green") {
 				p("This paragraph should be green!")
+			}
+			
+			table(cols:2, padding:20) {
+				cells("super","padding")
 			}
 			
 			img("tests/test.jpg")
