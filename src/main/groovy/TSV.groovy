@@ -65,6 +65,8 @@ class TSV implements Iterable {
     TSV(Map options=[:], String fileName) {
         this.reader =  { new File(fileName).newReader() }
         this.options = options
+        if(this.options.containsKey('columnNames') && !this.options.containsKey('readFirstLine'))
+            this.options.readFirstLine = true
     }
     
     TSV(Map options=[:], Reader r) {

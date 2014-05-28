@@ -80,28 +80,107 @@ class VariantTest {
         v = Variant.parse("chr4 147560457   rs5862765   TGGCGGCGGCGGC   TGGCGGCGGCGGCGGC,TGGC,T 480.14  .   AC=29,6,2;AF=0.604,0.125,0.042;AN=48;DB;DP=470;MQ0=0;RU=GGC;STR;set=variant-variant2-variant10-variant11-variant13-variant15-variant17-variant19-variant20-variant21-variant22-variant24-variant25-variant26-variant28-variant30-variant31-variant42-variant43-variant45-variant46-variant52-variant54-variant57    GT:DP:GQ    0/1:21:10   0/2:14:61   ./. ./. ./. ./. ./. ./. ./. 1/1:9:15    1/1:13:18   ./. 0/2:24:99   ./. 1/1:12:30   ./. 1/1:36:25   ./. 0/1:17:99   1/1:19:21   0/2:18:99   0/1:27:93   ./. 1/3:27:99   0/3:20:99   1/1:17:21   ./. 1/1:18:15   ./. 1/1:17:21   1/1:22:24   ./. ./. ./. ./. ./. ./. ./. ./. ./. ./. 1/1:10:18   1/1:22:24   ./. 0/1:26:68   0/2:17:99   ./. ./. ./. ./. ./. 0/2:16:99   ./. 0/2:17:99   ./. ./. 1/1:14:24   ./.")
         assert v.equalsAnnovar("chr4", 147560469, "GGC") == 1
     }
+    
+    @Test
+    void testAlleles() {
+        Variant v1 = Variant.parse("chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
+        Variant v2 = Variant.parse("chr3 46751077    rs10578999  A C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
+        
+        assert v1.getAlleles().size() == 2
+        assert v1.getAlleles()*.alt == ['T','C']
+        assert v1.findAlleleIndex(v2.alleles[0]) == 1
+    }
+    
+    @Test
+    void testIndelAlleles() {
+        v = Variant.parse("chr3 40503520    .   ACTGCTG ACTGCTGCTGCTGCTG,A  4028.19 PASS    AC=1,1;AF=0.500,0.500;AN=2;DP=70;FS=0.000;HaplotypeScore=190.6420;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.60;MQ0=0;QD=57.55;RPA=10,13,8;RU=CTG;STR;set=Intersection   GT:AD:DP:GQ:PL  1/2:0,32,12:55:99:4008,964,1808,3176,0,5166")
+//        assert v.alleles.size() == 2
+//        assert v.alleles[0].start == 40503526
+        assert v.alleles[1].start == 40503521
+        
+        v = Variant.parse("chr3 40503520    .   ACTGCTG ACTGCTGCTGCTGCTG,AC  4028.19 PASS    AC=1,1;AF=0.500,0.500;AN=2;DP=70;FS=0.000;HaplotypeScore=190.6420;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.60;MQ0=0;QD=57.55;RPA=10,13,8;RU=CTG;STR;set=Intersection   GT:AD:DP:GQ:PL  1/2:0,32,12:55:99:4008,964,1808,3176,0,5166")
+        assert v.alleles[1].start == 40503522
+        
+        v = Variant.parse("chr12    112036753   rs10560189  GGCT    G   805.73  .   AC=1;AF=0.500;AN=2;BaseQRankSum=-0.176;DB;DP=40;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=54.77;MQ0=0;MQRankSum=0.921;QD=6.71;RPA=9,8;RU=GCT;ReadPosRankSum=1.351;STR;set=Intersection    GT:AD:DP:GQ:PL  0/1:10,23:36:99:843,0,193")
+        assert v.alleles[0].start == 112036754
+        
+        v = Variant.parse("chr5 113698631   rs111266015 T   TGCC    1372.73 .   AC=1;AF=0.500;AN=2;BaseQRankSum=0.828;DB;DP=70;FS=0.887;MLEAC=1;MLEAF=0.500;MQ=60.31;MQ0=0;MQRankSum=-0.674;QD=6.54;RPA=4,5;RU=GCC;ReadPosRankSum=-0.071;STR;set=variant    GT:AD:DP:GQ:PL  0/1:39,31:70:99:1410,0,1797")
+        assert v.alleles[0].start == 113698631  
+        assert v.alleles[0].end == 113698631  
+        
+        v = Variant.parse("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   AC=1,1;AF=0.500,0.500;AN=2;BaseQRankSum=-0.393;DB;DP=251;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.90;MQ0=0;MQRankSum=0.684;QD=31.06;RPA=8,9,7;RU=CAG;ReadPosRankSum=2.373;STR;set=Intersection    GT:AD:DP:GQ:PL  1/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert v.alleles[0].start == 170871016  
+        assert v.alleles[0].end == 170871016  
+        
+    }
+    
+    @Test
+    void testDosage() {
+        v = Variant.parse("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   AC=1,1;AF=0.500,0.500;AN=2;BaseQRankSum=-0.393;DB;DP=251;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.90;MQ0=0;MQRankSum=0.684;QD=31.06;RPA=8,9,7;RU=CAG;ReadPosRankSum=2.373;STR;set=Intersection    GT:AD:DP:GQ:PL  1/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert v.dosages[0] == 1
+        assert v.getDosages(1)[0] == 1
+        
+        v = Variant.parse("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   AC=1,1;AF=0.500,0.500;AN=2;BaseQRankSum=-0.393;DB;DP=251;FS=0.000;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.90;MQ0=0;MQRankSum=0.684;QD=31.06;RPA=8,9,7;RU=CAG;ReadPosRankSum=2.373;STR;set=Intersection    GT:AD:DP:GQ:PL  2/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert v.dosages[0] == 0
+        assert v.getDosages(1)[0] == 2    
+    }
+    
+    @Test
+    void testAllelesHom() {
+        v = Variant.parse("chr1 8379448 rs11121162  G   A   9.10    .   ABHom=1.00;AC=2;AF=1.00;AN=2;DB;DP=1;Dels=0.00;FS=0.000;HaplotypeScore=0.0000;MLEAC=2;MLEAF=1.00;MQ=60.00;MQ0=0;QD=9.10;set=Intersection    GT:AD:DP:GQ:PL  1/1:0,1:1:3:35,3,0")
+        
+        println v.alleles
+    }
+    
+//    @Test
+    void testConstructVariant() {
+        Variant v = new Variant(chr:"chrX", ref:"A", alt:"T")
+        assert v.type == "SNP"
+        assert v.alt == "T"
+    }
+    
+//    
+//    @Test 
+    void testVCFTemp() {
+        CoverageStats stats = new CoverageStats(10)
+        VCF.parse("/Users/simon/work/mg/batches/na18507/selftest/variants/head.vcf") {
+            stats << it.sampleDosage("000000000")   
+        }
+        println stats
+    }
 	
 	@Test
 	void testToAnnovar() {
-		
-        v = Variant.parse("chr1 12908064    .   CA  C   2444.73 PASS    AC=1;AF=0.500;AN=2;BaseQRankSum=-2.337;DP=273;FS=1.058;HaplotypeScore=340.4396;MLEAC=1;MLEAF=0.500;MQ=46.84;MQ0=0;MQRankSum=2.472;QD=8.96;RPA=2,1;RU=A;ReadPosRankSum=-0.877;STR;set=Intersection   GT:AD:DP:GQ:PL  0/1:180,77:264:99:2482,0,6848")
-        assert v.toAnnovar().obs == "-"
-        assert v.toAnnovar().ref == "A"
         
-//        v = Variant.parse("chr3 40503520    .   ACTGCTG ACTGCTGCTGCTGCTG,A  4028.19 PASS    AC=1,1;AF=0.500,0.500;AN=2;DP=70;FS=0.000;HaplotypeScore=190.6420;MLEAC=1,1;MLEAF=0.500,0.500;MQ=49.60;MQ0=0;QD=57.55;RPA=10,13,8;RU=CTG;STR;set=Intersection   GT:AD:DP:GQ:PL  1/2:0,32,12:55:99:4008,964,1808,3176,0,5166")
-//        assert v.equalsAnnovar("chr3", 40503526, "CTGCTGCTG")
-//        assert v.equalsAnnovar("chr3", 40503521, "-")
-//        
-//        v = Variant.parse("chr3 46751073    rs10578999  TAAGAAG T,TAAG  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
-//        assert v.equalsAnnovar("chr3", 46751077, "-")
-//        
-//        v = Variant.parse("chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
-//        assert v.equalsAnnovar("chr3", 46751077, "C") == 2
-//        
-//        v = Variant.parse("chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197")
-//        assert v.equalsAnnovar("chr3", 46751077, "T") == 1
-//        
-//        v = Variant.parse("chr4 147560457   rs5862765   TGGCGGCGGCGGC   TGGCGGCGGCGGCGGC,TGGC,T 480.14  .   AC=29,6,2;AF=0.604,0.125,0.042;AN=48;DB;DP=470;MQ0=0;RU=GGC;STR;set=variant-variant2-variant10-variant11-variant13-variant15-variant17-variant19-variant20-variant21-variant22-variant24-variant25-variant26-variant28-variant30-variant31-variant42-variant43-variant45-variant46-variant52-variant54-variant57    GT:DP:GQ    0/1:21:10   0/2:14:61   ./. ./. ./. ./. ./. ./. ./. 1/1:9:15    1/1:13:18   ./. 0/2:24:99   ./. 1/1:12:30   ./. 1/1:36:25   ./. 0/1:17:99   1/1:19:21   0/2:18:99   0/1:27:93   ./. 1/3:27:99   0/3:20:99   1/1:17:21   ./. 1/1:18:15   ./. 1/1:17:21   1/1:22:24   ./. ./. ./. ./. ./. ./. ./. ./. ./. ./. 1/1:10:18   1/1:22:24   ./. 0/1:26:68   0/2:17:99   ./. ./. ./. ./. ./. 0/2:16:99   ./. 0/2:17:99   ./. ./. 1/1:14:24   ./.")
-//        assert v.equalsAnnovar("chr4", 147560469, "GGC") == 1		
+        def variants = [
+            [ 
+                vcf: "chr1 12908064    .   CA  C   2444.73 PASS    AC=1;AF=0.500;AN=2;BaseQRankSum=-2.337;DP=273;FS=1.058;HaplotypeScore=340.4396;MLEAC=1;MLEAF=0.500;MQ=46.84;MQ0=0;MQRankSum=2.472;QD=8.96;RPA=2,1;RU=A;ReadPosRankSum=-0.877;STR;set=Intersection   GT:AD:DP:GQ:PL  0/1:180,77:264:99:2482,0,6848",
+                av: [pos: 12908065, ref: "A", obs: "-", index:0 ]
+            ],
+            [ 
+                vcf: "chr3 46751073    rs10578999  TAAGAAG T,TAAG  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197",
+                av: [pos: 46751077, ref: "AAG", obs: "-", index: 1]
+            ],        
+            [ 
+                vcf: "chr3 46751077    rs10578999  A T,C  32852.19    PASS    AC=1,1;AF=0.500,0.500;AN=2;DB;DP=158;FS=0.000;HaplotypeScore=84.0101;MLEAC=1,1;MLEAF=0.500,0.500;MQ=59.01;MQ0=0;QD=207.93;RPA=9,7,8;RU=AAG;STR;set=Intersection GT:AD:DP:GQ:PL  1/2:0,12,125:155:99:6991,6090,6305,609,0,197",
+                av: [pos: 46751077, ref: "A", obs: "T", index:0]
+            ],
+            [ 
+                                                            //     TGGCGGCGGCGGC
+                vcf: "chr4 147560457   rs5862765   TGGCGGCGGCGGC   TGGCGGCGGCGGCGGC,TGGC,T 480.14  .   AC=29,6,2;AF=0.604,0.125,0.042;AN=48;DB;DP=470;MQ0=0;RU=GGC;STR;set=variant-variant2-variant10-variant11-variant13-variant15-variant17-variant19-variant20-variant21-variant22-variant24-variant25-variant26-variant28-variant30-variant31-variant42-variant43-variant45-variant46-variant52-variant54-variant57    GT:DP:GQ    0/1:21:10   0/2:14:61   ./. ./. ./. ./. ./. ./. ./. 1/1:9:15    1/1:13:18   ./. 0/2:24:99   ./. 1/1:12:30   ./. 1/1:36:25   ./. 0/1:17:99   1/1:19:21   0/2:18:99   0/1:27:93   ./. 1/3:27:99   0/3:20:99   1/1:17:21   ./. 1/1:18:15   ./. 1/1:17:21   1/1:22:24   ./. ./. ./. ./. ./. ./. ./. ./. ./. ./. 1/1:10:18   1/1:22:24   ./. 0/1:26:68   0/2:17:99   ./. ./. ./. ./. ./. 0/2:16:99   ./. 0/2:17:99   ./. ./. 1/1:14:24   ./.",
+                av: [pos: 147560469, ref: "-", obs: "GGC", index:0]
+            ]
+        ]
+        
+        for(Map vInfo in variants) {
+            Variant v = Variant.parse(vInfo.vcf)
+            Map av = v.toAnnovar(vInfo.av.index)
+            println "Annovar value of $v = " + av + " expected to be $vInfo.av"
+            assert av.obs == vInfo.av.obs
+            assert av.ref == vInfo.av.ref
+            assert av.pos == vInfo.av.pos
+            
+            assert v.equalsAnnovar(v.chr, av.pos, av.obs) == vInfo.av.index + 1
+        }
 	}
 }

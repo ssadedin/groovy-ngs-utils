@@ -27,11 +27,14 @@ enum Sex {
 	MALE, FEMALE, OTHER, UNKNOWN
 	
     private static codes = [
+            1 : MALE,
+            2 : FEMALE,
             "1" : MALE,
             "2" : FEMALE,
             "Male" : MALE,
             "Female": FEMALE,
-            "Unknown" : UNKNOWN
+            "Unknown" : UNKNOWN,
+            "other" : UNKNOWN // ped file compatibility
     ]
     
     String encode() {
@@ -40,12 +43,12 @@ enum Sex {
             case FEMALE: "Female"; break
             case OTHER: "Other"; break;
             case UNKNOWN: "Unknown"; break;
-            break
         }
     }
         
-	static Sex decode(String value) {
-        value = value?.trim()
+	static Sex decode(def  value) {
+        if(value instanceof String)
+            value = value?.trim()
 		if(!value)
 			return FEMALE
             
@@ -172,7 +175,7 @@ class SampleInfo {
     String library
 
     /** The sex of the sample */
-    Sex sex
+    Sex sex = Sex.UNKNOWN
 	
 	Ethnicity ethnicity
 	
@@ -341,6 +344,54 @@ class SampleInfo {
 
     String toString() {
         "$sample($sex)"
+    }
+    
+    /**
+     * Create a list of SampleInfo objects from provided files that
+     * contain sample information in the header data. 
+     * 
+     * @param files
+     * @return
+     */
+    static Map<String,SampleInfo> fromFiles(List<String> files) {
+        def collectBySample = { ext, extractSample -> 
+            files.grep { 
+                it.endsWith(ext) 
+            }.groupBy(extractSample).collectEntries {
+                def f = [:]
+                if(ext=="fastq.gz")
+                    f["fastq"] = it.value
+                else
+                    f[ext] = it.value
+                [it.key, [files: f, sample:it.key]] 
+            }
+        }
+        
+        def samplesByFastq = collectBySample("fastq.gz") {
+            new IlluminaFileNameParser().parse(it).sample
+        }
+            
+        def samplesByBam = collectBySample("bam") {
+                new SAM(it).samples[0]
+        }
+        
+        def samplesByVcf = collectBySample("vcf") { 
+            new VCF(it).samples[0]
+        }
+        
+        // Merge files from all of them
+        def allSamples = (samplesByBam.keySet() + samplesByVcf.keySet() + samplesByFastq.keySet()).unique()
+        Map<String,SampleInfo> result = allSamples.collect { s ->
+            def sampleFiles = [:]
+            [samplesByBam, samplesByVcf, samplesByFastq].each { samplesByType ->
+                if(samplesByType[s]) {
+                    sampleFiles += samplesByType[s].files
+                }
+            }
+            new SampleInfo(sample:s, files: sampleFiles)
+        }.collectEntries { [ it.sample, it ] }
+                    
+        return result
     }
 	
 	static Date parseDate(String dateValue) {
