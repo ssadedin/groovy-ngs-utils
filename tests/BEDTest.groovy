@@ -260,7 +260,7 @@ class BEDTest {
         ))
         b.load()
         
-        BED reduced = b.reduce()
+        RegionSource reduced = b.reduce()
         assert reduced.allRanges["chr1"].size() == 3
     }
     
@@ -279,7 +279,30 @@ class BEDTest {
         
         assert b.endingAt("chrX", 8503981).size() == 1
         
-        BED u = b.unique()
+        RegionSource u = b.unique()
         assert u.endingAt("chrX", 8503981).size() == 1
     }
+	
+	@Test
+	void testRegionIn() {
+        BED b = new BED(new ByteArrayInputStream(
+            """
+            chrX\t8503465\t8503828
+            chrX\t8503517\t8503763
+            chrX\t8503709\t8503982
+            chrX\t8503752\t8503855
+            chrX\t8503753\t8503935
+            chrX\t8503763\t8504106
+            chrX\t8503828\t8504201
+            """.stripIndent().trim().bytes)).load()
+        
+        Region r = new Region("chrX", 8503465..8503828)
+		assert r in b
+		
+        r = new Region("chrY", 8503465..8503828)
+		assert !(r in b)
+		
+        r = new Region("chrY", 8503265..8503270)
+		assert !(r in b)
+	}
 }
