@@ -34,6 +34,11 @@ class PDFTest {
 					cell("darney")
 					
 					cells([1,2,3,4])
+                    
+                    cell {
+                        p("multi")
+                        p("line")
+                    }
 					
 				}
 			}

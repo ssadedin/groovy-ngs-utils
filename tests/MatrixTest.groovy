@@ -72,6 +72,8 @@ class MatrixTest {
             m[i] = [i,i+1]
         }
         
+        m.species = (["frog"] * 20 + ["cat"] * 20 + ["dog"] * 20)
+        
         println "Matrix is $m"
         
         assert m.toString().contains("10 rows omitted")
@@ -124,4 +126,111 @@ class MatrixTest {
         assert c as List == [3d,5d]
     }
     
+    @Test
+    void testFromLists() {
+        
+        Matrix m = new Matrix([[2,5,3,3,4], [5,6,7,2,4]])
+        assert m.rowDimension == 2
+        
+        m = [[2,5,3,3,4], [5,6,7,2,4]] as Matrix
+        assert m.rowDimension == 2
+    }
+    
+    @Test
+    void testNamedColumns() {
+        Matrix m = new Matrix([[2,5,3,3,4], [5,6,7,2,4]])
+        m.names = ["foo","bar"]
+        
+        println "Second column is " + m.getColumns(["bar"]) 
+        
+        assert m.getColumns(["bar"])[0] == [5d,6d]
+    }
+    
+    @Test
+    void testLoadSave() {
+        Matrix m = new Matrix([[2,5,3,3,4], [5,6,7,2,4]])
+        m.save("test.tsv")
+        
+        Matrix m2 = Matrix.load("test.tsv")
+        assert m2.columnDimension == 5
+        assert m2.rowDimension == 2
+        assert m2[1][2] == 7.0
+        
+        m.@names = ["foo","bar","cat","dog","tree"]
+        m.save("test.tsv")
+        
+        Matrix m3 = Matrix.load("test.tsv")
+        assert m3.rowDimension == 2
+        assert m3.names == ["foo","bar","cat","dog","tree"]
+        
+    }
+    
+    @Test
+    void testWhich() {
+        Matrix m = new Matrix([[2,5,3,3,4], 
+                               [5,6,7,2,4]])
+        
+        assert m.which { row ->
+            row[0]>3 
+        } == [1]
+        
+    }
+    
+//    @Test
+    void testPerformance() {
+        double [][] values 
+        Random r = new Random()
+        
+        int size = 10000
+        Matrix m 
+        int count = 0
+        // Recorded at about 651 ms 19/5/2014
+        assert Utils.time("Initialize") {
+            m = new Matrix(size,size).transform { ++count; r.nextGaussian() }
+        } < 30000
+    
+        assert count == size*size
+        
+        // Recorded at about 263 ms 19/5/2014
+        assert Utils.time("transform") {
+            Matrix n = m.transform { x -> x * 2 }
+        } < 20000
+    
+        assert Utils.time("mean by column") {
+            int i = 0
+            def means = m.columns.collect {
+                Stats.mean(it)
+            }
+            println "First 10 means are: " + means[0..10]
+        } < 50000
+    }
+    
+    @Test
+    void testNonNumericColumns() {
+        Matrix m = new Matrix([[2,5,3,3,4], [5,6,7,2,4]])
+        m.names = ["legs","toes","feet","ears","eyes"]
+        m.animal = ["frog","dog"]
+        
+//        m.grep { animal == "frog" && legs > 2 }
+        assert m.grep { animal == "frog" }.rowDimension == 1
+        
+        Matrix n = m.transformRows {
+            if(animal == "dog")
+                [1d,1d]
+            else 
+                [2d,2d]
+        }
+        assert n[0][0] == 2
+        assert n[0][1] == 2
+        assert n[1][0] == 1
+        assert n[1][1] == 1
+        
+        
+        assert m.which { animal == "frog" } == [0]
+        
+        def animals = []
+        m.eachRow { animals.add(animal) }
+        
+        assert animals == ["frog", "dog"]
+    }
 }

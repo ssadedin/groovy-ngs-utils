@@ -23,5 +23,17 @@ class SAMTest {
         
         println sam.meanCoverage("chr12", 53819703, 53819708)
     }
+    
+    @Test
+    public void testWholeChromosomeCoverage() {
+        SAM sam = new SAM("/Users/simon/work/dsd/batch4/work/ZU1123_S11_L001_R1_001.fastq.trim.atrim.reorder.realign.recal.bam")
+        
+        Regions regions = new BED("/Users/simon/work/dsd/batch3/design/target_regions.bed").load()
+        regions = regions.grep { it.chr == "chrY" } as Regions
+        
+        def stats = sam.coverageStatistics(regions)
+        
+        println "Mean coverage = $stats.mean reads counted = $stats.n"
+    }
 
 } 
