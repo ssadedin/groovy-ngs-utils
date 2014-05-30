@@ -392,13 +392,21 @@ class VCF implements Iterable<Variant> {
     }
     
     void printHeader() {
-        System.out.println(headerLines.join('\n'))
+        printHeader(System.out)
+    }
+    
+    void printHeader(PrintStream p) {
+        p.println(headerLines.join('\n'))
     }
     
     void print() {
-        printHeader()
+        this.print(System.out)
+    }
+    
+    void print(PrintStream p) {
+        printHeader(p)
         for(Variant v in variants) {
-            println(v.line)
+            p.println(v.line)
         }
     }
 
@@ -408,6 +416,6 @@ class VCF implements Iterable<Variant> {
     }
     
     int getSize() {
-            this.variants.size()
+        this.variants.size()
     }
 }

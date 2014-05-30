@@ -14,6 +14,8 @@ class SexKaryotyper implements Runnable {
     
     CoverageStats autosomeCoverage 
     
+    List<String> autosomeChrs = ["chr1","chr22"]
+    
     Sex sex = null
     
     public SexKaryotyper(SAM bam, Regions regions) {
@@ -27,7 +29,8 @@ class SexKaryotyper implements Runnable {
         
         xCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrX" } as Regions)
         yCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrY" } as Regions)
-        autosomeCoverage = bam.coverageStatistics(regions.grep { it.chr != "chrX" && it.chr != "chrY" } as Regions)
+        autosomeCoverage = bam.coverageStatistics(regions.grep { autosomeChrs.contains(it.chr) } as Regions)
+//        autosomeCoverage = bam.coverageStatistics(regions.grep { it.chr != "chrX" && it.chr != "chrY" } as Regions)
         
         if(yCoverage.mean < 5 && xCoverage.mean > 30) {
             sex = Sex.FEMALE

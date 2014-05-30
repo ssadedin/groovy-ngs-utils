@@ -369,12 +369,16 @@ class Variant implements IRegion {
      */
     void update(String desc, Closure c) {
         this.snpEffDirty = false
+        if(line == null)
+            line = [chr,pos,id?:".",ref,alts.join(","),".","PASS","ADDED"].join("\t")
+            
         c()
-        def fields = line.split('[\t ]{1,}')
+        
+        def fields = line.split('\t')
         fields[0] = chr
         fields[1] = String.valueOf(pos)
         fields[3] = ref
-        fields[4] = alt
+        fields[4] = alt?:"."
         fields[5] = String.format("%2.2f",qual)
         
         if(snpEffDirty) {
@@ -383,7 +387,7 @@ class Variant implements IRegion {
             getInfo().EFF = this.snpEffInfo*.info.join(",")
         }
         
-        fields[7] = getInfo().collect { k,v -> "$k=$v"}.join(';')
+        fields[7] = getInfo().collect {k,v -> v != null?"$k=$v":k}.join(';')
         
         line = fields.join('\t')
         
@@ -441,13 +445,15 @@ class Variant implements IRegion {
     Map<String,String> getInfo() {
         if(infos == null) {
             infos =  [:]
-            for(String s in info.split(';')) {
-                int i = s.indexOf('=')
-                if(i<0) {
-                    infos[s]=Boolean.TRUE
-                    continue
+            if(info != null) {
+                for(String s in info.split(';')) {
+                    int i = s.indexOf('=')
+                    if(i<0) {
+                        infos[s]=Boolean.TRUE
+                        continue
+                    }
+                    infos[s.substring(0,i)] = s.substring(i+1)
                 }
-                infos[s.substring(0,i)] = s.substring(i+1)
             }
         }
         return infos
@@ -605,8 +611,10 @@ class Variant implements IRegion {
           for(int i=0; i<dsgs.size(); ++i) {
               if(dsgs[i] > 0) {
                   def ped = header.findPedigreeBySampleIndex(i)   
-                  if(!ped) 
+                  if(!ped) { 
                       System.err.println("WARNING: no pedigree information found for sample " + header.samples[i])
+//                      System.err.println(Arrays.toString(Thread.currentThread().getStackTrace()))
+                  }
                   else
                       this.@pedigrees << ped
               }
@@ -769,7 +777,8 @@ class Variant implements IRegion {
             chr : chr,
             alt : alt, 
             type: type,
-            alleles : this.getAllelesAndTypes(),
+            dosage: getDosages()[0],
+            alleles : this.getAlleles(),
             info : info
         ])
     }
@@ -846,6 +855,7 @@ class Variant implements IRegion {
         else {
             alts[0] = alt
         }
+        this.alt = alt
         type = convertType(ref,alt)
         altByte = (byte)alt.charAt(0)
     }

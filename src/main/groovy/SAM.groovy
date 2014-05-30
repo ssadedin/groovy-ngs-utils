@@ -244,6 +244,11 @@ class SAM {
                         buffer[r1.readName] = r1
                     }
                 }
+                
+                // Run down the buffer
+//                buffer.each { String readName, r1 ->  
+//                    c(r1, null)
+//                }
             }
             finally {
                 pairReader.close()

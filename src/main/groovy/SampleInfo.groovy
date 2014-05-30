@@ -354,6 +354,8 @@ class SampleInfo {
      * @return
      */
     static Map<String,SampleInfo> fromFiles(List<String> files) {
+        // Convert to absolute path
+        files = files.collect { new File(it).absolutePath }
         def collectBySample = { ext, extractSample -> 
             files.grep { 
                 it.endsWith(ext) 
@@ -372,11 +374,11 @@ class SampleInfo {
         }
             
         def samplesByBam = collectBySample("bam") {
-                new SAM(it).samples[0]
+                new SAM(it).samples[0].replaceAll('_$','') // legacy data had bad trailing _
         }
         
         def samplesByVcf = collectBySample("vcf") { 
-            new VCF(it).samples[0]
+            new VCF(it).samples[0].replaceAll('_$','') // legacy data had bad trailing _
         }
         
         // Merge files from all of them
