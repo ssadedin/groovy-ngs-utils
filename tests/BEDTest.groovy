@@ -260,7 +260,7 @@ class BEDTest {
         ))
         b.load()
         
-        RegionSource reduced = b.reduce()
+        Regions reduced = b.reduce()
         assert reduced.allRanges["chr1"].size() == 3
     }
     
@@ -279,7 +279,7 @@ class BEDTest {
         
         assert b.endingAt("chrX", 8503981).size() == 1
         
-        RegionSource u = b.unique()
+        Regions u = b.unique()
         assert u.endingAt("chrX", 8503981).size() == 1
     }
 	
