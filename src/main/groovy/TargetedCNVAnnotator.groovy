@@ -8,6 +8,8 @@ class TargetedCNVAnnotator {
     
     String omimFile
     
+    boolean verbose = false
+    
     /**
      * Columns from schema of DGV in UCSC table
      */
@@ -40,14 +42,6 @@ class TargetedCNVAnnotator {
            // They must be the same type
            dgvCnvs = filterByType(v, dgvCnvs)
            
-           // If we found one or more plausible candidates, add them in
-           v.update("CNV Known Variant Annotation") {
-               v.info.KCNV = dgvCnvs.collect { cnv ->
-                   int cnvCount = v.type == "GAIN" ? cnv.observedGains : cnv.observedLosses
-                   [cnv.name, cnvCount, (float)cnvCount / cnv.sampleSize.toFloat()]
-               }.join(",")
-           }
-           
            // Look for "crossing" variants
            List<Region> spanning = dgv.getOverlaps(v.chr, v.pos, v.pos+v.size()).grep { GRange r ->
                r.spans(v.range)  
@@ -64,13 +58,14 @@ class TargetedCNVAnnotator {
                if(dgvCnvs) {
                    v.info.KCNV = dgvCnvs.collect { cnv ->
                        int cnvCount = v.type == "GAIN" ? cnv.observedGains : cnv.observedLosses
-                       [cnv.name, cnvCount, (float)cnvCount / cnv.sampleSize.toFloat()]
+                       [cnv.name, cnvCount, cnv.sampleSize, (float)cnvCount / cnv.sampleSize.toFloat()].join(":")
                    }.join(",")
                }
                v.info.SCNV = spanning.size() + ":" + String.format("%.3f",spanningFreq)
            }
            
-           System.err.println "Found ${dgvCnvs.size()} plausible known DGV variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
+           if(verbose)
+               System.err.println "Found ${dgvCnvs.size()} plausible known DGV variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
            
            return true
        }
@@ -100,7 +95,6 @@ class TargetedCNVAnnotator {
        def compatibleRanges = dgv.getOverlaps(minRange).grep { IntRange r ->
            boolean result = (r.from > maxRange.from) && (r.from < minRange.from) &&
                (r.to > minRange.to) && (r.to < maxRange.to)
-//           println "Range $r.from-$r.to vs ($maxRange.from,$minRange.from)-($minRange.to,$maxRange.to) : $result"
            return result
        }
        
