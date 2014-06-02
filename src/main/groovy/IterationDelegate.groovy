@@ -18,10 +18,16 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 class IterationDelegate {
-	int row
+    
+    Integer row = 0
+    
 	Matrix host
+    
+    IterationDelegate(Matrix host) {
+        this.host = host
+    }
+    
 	def propertyMissing(String name) {
-		println "Searching for property $name"
 		host[name][row]
 	}
 }

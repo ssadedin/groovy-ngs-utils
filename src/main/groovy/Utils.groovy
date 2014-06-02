@@ -13,12 +13,12 @@ class Utils {
         Date startTime = new Date()
         Date endTime = startTime
         try {
-            c()
+            return c()
         }
         finally {
             endTime = new Date()
             System.err.println(("$desc executed in " + TimeCategory.minus(endTime,startTime)).center(80,"="))
         }
-        return endTime.time - startTime.time
+        // return endTime.time - startTime.time
     }
 }

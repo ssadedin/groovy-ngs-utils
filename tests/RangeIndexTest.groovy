@@ -45,6 +45,18 @@ class RangeIndexTest {
     }
     
     @Test
+    void testOverlapEndPoint() {
+        RangeIndex index = new RangeIndex()
+        
+        [0..50, 20..70, 10..90, 120..130].each {index.add(it)}
+         
+        assert index.getOverlaps(110,120) == [120..130]
+        assert index.getOverlaps(110,119) == []
+        
+        println index.getOverlaps(130,140) == [120..130]
+    }
+    
+    @Test
     void testOneBaseOverlap() {
         RangeIndex index = new RangeIndex()
         
@@ -274,6 +286,27 @@ class RangeIndexTest {
         index.ranges[1273504]= []
         
         assert index.getOverlaps(1273503,1273504).size() == 1
+    }
+    
+    @Test
+    void testIntersection() {
+        RangeIndex index = new RangeIndex()
+        [0..50, 20..70, 10..90, 120..130].each {index.add(it)}
+        
+        assert index.intersect(100,125) == [120..125]
+        assert index.intersect(130,135) == [130..130]
+        assert index.intersect(80,125) == [80..90,120..125]
+    }
+    
+    @Test
+    void testGetOverlaps() {
+        RangeIndex index = new RangeIndex()
+            [ 
+             32503143..32503704,
+             45981437..45981700
+            ].each { index.add(it) }
+            
+        assert index.getOverlaps(32503143, 32503704).size() > 0
     }
     
     // 1273475:[1273475..1273503], 1273503:[1273503..1273503], 1273504:[], 1284266:[1284266..1284268], 1284268:[1284268..1284268], 1284269:[], 1575676:[1575676..1575676], 1575677:[], 1581349:[1581349..1581360], 1581360:[1581360..1581360], 1581361:[], 182992872:[182992872..182992971], 182992971:[182992971..182992971], 182992972:[]]:

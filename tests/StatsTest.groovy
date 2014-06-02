@@ -32,8 +32,29 @@ class StatsTest {
         }
         
         println Stats.mean(values)
-        
         println Stats.mean(values.iterator())
+    }
+    
+    @Test
+    void testIterable() {
+        Iterable x = new Iterable() {
+            int count = 0
+            
+            def values = [5,4,3,2] as double[]
+            
+            Iterator iterator() {
+                return [ hasNext : { count < values.size() },
+                         next : { values[count++] }
+                       ] as Iterator
+            }
+        }
+        
+//        def s = Stats.from(x)
+//        assert s.mean == 3.5
+        
+        // Filter the values
+        assert Stats.from(x) { it > 3 }.mean == 4.5
+        
     }
     
     @Test

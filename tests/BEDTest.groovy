@@ -305,4 +305,34 @@ class BEDTest {
         r = new Region("chrY", 8503265..8503270)
 		assert !(r in b)
 	}
+    
+    @Test
+    void testIntersectOtherBED() {
+      BED b1 = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120
+          chr1\t140\t210
+          chr1\t190\t250
+          chr1\t300\t350
+          """.stripIndent().trim().bytes
+        )).load()
+        
+      BED b2 = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120
+          chr1\t140\t210
+          chr1\t190\t250
+          chr1\t300\t350
+          """.stripIndent().trim().bytes
+        )).load()
+        
+      def b3 = b1.intersect(b2).reduce()
+      
+      b3.eachRange { println(it.toString()) }
+      
+      assert b3.iterator().size()>0
+        
+      // Identical regions intersected should just return the same result
+      assert b1.intersect(b2).reduce().size() == b1.reduce().size()
+    }
 }

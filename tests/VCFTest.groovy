@@ -46,9 +46,6 @@ class VCFTest {
         for(Variant v2 in vcf) {
             assert v2 == v
         }
-        
-        
-        
     }
 
 }

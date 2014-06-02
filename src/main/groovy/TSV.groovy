@@ -1,4 +1,6 @@
 // vim: ts=4:sw=4:expandtab:cindent:
+import groovy.transform.CompileStatic;
+
 import java.io.Reader;
 
 import com.xlson.groovycsv.CsvIterator;
@@ -74,7 +76,6 @@ class TSV implements Iterable {
         this.options = options
     }
      
-    
     CsvIterator newIterator() {
         if(!options.containsKey("separator"))
             options.separator = "\t"
@@ -142,19 +143,7 @@ class TSV implements Iterable {
                     }
                 }
                 
-                // Do our type conversions
-                List newValues = line.values as List
-                columnTypes.eachWithIndex { type, index ->
-                    if(line.values.size()<=index)
-                        return
-                    try {
-                        newValues[index] = line.values[index].asType(type)
-                    }
-                    catch(NumberFormatException e) {
-                        // Ignore
-                    }
-                }
-                line.values = newValues
+                line.values = TSV.this.convertColumns(line.values, columnTypes)
                 
                 return line
             }
@@ -163,6 +152,26 @@ class TSV implements Iterable {
                 throw new UnsupportedOperationException()
             }
         }
+    }
+    
+    @CompileStatic
+    List<Object> convertColumns(String [] values, List<Class> columnTypes) {
+        List<Object> newValues = values as List
+        final int numColumns = columnTypes.size()
+        for(int index = 0; index<numColumns; ++index) {
+            Class type = columnTypes[index]
+            if(values.size()<=index)
+                return
+            try {
+                newValues[index] = values[index].asType(type)
+            }
+            catch(NumberFormatException e) {
+                // Ignore
+                // This just leaves the unconverted (string) value in 
+                // place
+            }
+        }
+        return newValues
     }
 	
 	static Iterable parse(Closure c = null) {
@@ -189,11 +198,11 @@ class TSV implements Iterable {
 
 class CSV extends TSV {
     
-    CSV(Map options, String fileName) {
+    CSV(Map options=[:], String fileName) {
         super(options + [separator:','],fileName)
     }
     
-    CSV(Map options, Reader r) {
+    CSV(Map options=[:], Reader r) {
         super(options + [separator:','],r)
     }
  }

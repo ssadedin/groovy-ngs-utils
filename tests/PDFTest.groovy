@@ -38,6 +38,11 @@ class PDFTest {
 					background("#eebbbb") {
 						cells([1,2,3,4])
 					}
+                    
+                    cell {
+                        p("multi")
+                        p("line")
+                    }
 					
 				}
 			}

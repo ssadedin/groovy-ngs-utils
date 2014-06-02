@@ -105,7 +105,10 @@ class Regions implements Iterable<Region> {
 	 */
 	Regions(Map attributes=[:], Iterable<Region> regions) {
 		for(Region r in regions) {
-			addRegion(r.chr, r.from, r.to)
+            if(r.range instanceof GRange)
+    			addRegion(r.chr, r.from, r.to, r.range.extra)
+            else
+    			addRegion(r.chr, r.from, r.to)
 		}
 	}
 	
@@ -170,8 +173,9 @@ class Regions implements Iterable<Region> {
 		}
 	}
 	
-	List<Range> intersect(Region region) {
-        intersect(region.chr, region.from, region.to)
+    @CompileStatic
+	List<Range> intersect(IRegion region) {
+        intersect(region.chr, (int)region.range.from, (int)region.range.to)
     }
     
 	List<Range> intersect(String chr, int start, int end) {
@@ -394,7 +398,24 @@ class Regions implements Iterable<Region> {
 		allRanges[chr] << newRange
 		return this
 	}
-	
+    
+	@CompileStatic
+	Regions addRegion(Region r) {
+		// Add to full range index
+        String chr = r.chr
+		RangeIndex chrIndex = index[chr]
+		if(!chrIndex) {
+			chrIndex = new RangeIndex()
+			index[chr] = chrIndex
+		}
+		chrIndex.add(r.range)
+        
+		if(!allRanges.containsKey(chr))
+			allRanges[chr] = new ArrayList(1000)
+	    allRanges[chr] << r.range
+        return this
+    }
+		
 	/**
 	 * Simplify all overlapping regions down to a single region
 	 *
@@ -469,10 +490,18 @@ class Regions implements Iterable<Region> {
 				if(chr == null)
 					nextChr()
 			   
-				Region result = new Region(chr,chrIterator.next())
+                Range nextRange = chrIterator.next()
 				if(!chrIterator.hasNext())
 					nextChr()
-				return result
+                    
+				Region result
+                if(nextRange instanceof GRange) {
+                    GRange grange = nextRange
+                    if(nextRange.extra instanceof Region) {
+                        return (Region)nextRange.extra
+                    }
+                }
+                return new Region(chr,nextRange)
 			}
 			
 			void nextChr() {

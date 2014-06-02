@@ -62,6 +62,23 @@ class BED extends Regions {
     File bedFile
     
     /**
+     * Columns for reading the position data - these can be overridden to allow
+     * loading of any "bed-like" file
+     */
+    int chrColumn = 0
+    int startColumn = 1
+    int endColumn = 2
+    
+    boolean readColumnNames=false
+    
+    /**
+     * If true, column names will be set as properties on the regions
+     */
+    boolean withProperties=false
+    
+    List<String> columnNames = null
+    
+    /**
      * Empty bed file
      */
     BED(Map attributes=[:]) {
@@ -138,6 +155,7 @@ class BED extends Regions {
         c.delegate = progress
         try {
           bedFileStream.eachLine { String line ->
+              
               ++count
               if(line.startsWith('#'))
                   return
@@ -145,10 +163,16 @@ class BED extends Regions {
                   return
               if(line.startsWith("browser"))    
                   return
+                  
               String [] fields = line.split('\t')
               
+              if(count == 1 && readColumnNames) {
+                  columnNames = fields as List
+                  return
+              }
+              
               if(unique) {
-                  String key = fields[0]+':'+fields[1]+':'+fields[2]   
+                  String key = fields[chrColumn]+':'+fields[startColumn]+':'+fields[endColumn]   
                   if(processed.contains(key)) {
                       progress.count()
                       return
@@ -156,23 +180,24 @@ class BED extends Regions {
                   processed.add(key)
               }
               
-              String chr = fields[0]
+              String chr = fields[chrColumn]
               int start = -1, end = -1
               try {
-                start = Integer.parseInt(fields[1])
-                end = Integer.parseInt(fields[2])
+                start = Integer.parseInt(fields[startColumn])
+                end = Integer.parseInt(fields[endColumn])
               }
               catch(Exception e) {
                   System.err.println "Unable to parse line $count : \n$line\n\nException reported: $e"   
                   throw e
               }
-              try {
+              
+             try {
                 if(includeInfo==true)
                     c.call(chr,start,end,fields.size()>2?fields[3]:null)
                 else {
                     c.call(chr,start,end)
                 }
-                    
+                
                 progress.count()
               }
               catch(Exception e) {

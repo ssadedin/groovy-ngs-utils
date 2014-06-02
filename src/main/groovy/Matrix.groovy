@@ -17,10 +17,18 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+import java.text.DecimalFormat;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
+import groovy.lang.Closure;
 import groovy.transform.CompileStatic;
 
 import org.apache.commons.math3.linear.Array2DRowRealMatrix
 import org.apache.commons.math3.linear.RealMatrix;
+import org.codehaus.groovy.runtime.InvokerHelper;
+import org.codehaus.groovy.runtime.callsite.BooleanClosureWrapper;
 
 /**
  * A proxy object representing a column in a matrix. 
@@ -139,7 +147,7 @@ class MatrixColumn implements Iterable {
  * @author simon.sadedin@mcri.edu.au
  */ 
 class Matrix extends Expando implements Iterable {
-    
+     
     static { 
 		
 //		println "Setting Matrix meta class properties ...."
@@ -344,22 +352,64 @@ class Matrix extends Expando implements Iterable {
     @CompileStatic
     def collect(Closure c) {
         List<Object> results = new ArrayList(matrix.dataRef.size())
+        IterationDelegate delegate = new IterationDelegate(this)
+        boolean withDelegate = !this.properties.isEmpty()
+        if(withDelegate) {
+            c = (Closure)c.clone()
+            c.setDelegate(delegate)
+        }
         int rowIndex = 0;
         if(c.maximumNumberOfParameters == 1) {
             for(double [] row in matrix.dataRef) {
+                if(withDelegate)
+                    delegate.row = rowIndex
                 results.add(c(row))
             }
         }
         else 
         if(c.maximumNumberOfParameters == 2) {
             for(double [] row in matrix.dataRef) {
+                if(withDelegate)
+                    delegate.row = rowIndex
                 results.add(c(row, rowIndex))
                 ++rowIndex
             }
         }
         return results
     }    
-  
+    
+    @CompileStatic
+    public List<Number> findIndexValues(Closure c) {
+        List<Integer> keepRows = []
+        int rowIndex = 0;
+        IterationDelegate delegate = new IterationDelegate(this)
+        boolean withDelegate = !this.properties.isEmpty()
+        if(withDelegate) {
+            c = (Closure)c.clone()
+            c.setDelegate(delegate)
+        }
+        if(c.maximumNumberOfParameters == 1) {
+            for(double [] row in matrix.dataRef) {
+                if(withDelegate)
+                    delegate.row = rowIndex
+                if(c(row))
+                    keepRows.add(rowIndex)
+                ++rowIndex
+            }
+        }
+        else 
+        if(c.maximumNumberOfParameters == 2) {
+            for(double [] row in matrix.dataRef) {
+                if(withDelegate)
+                    delegate.row = rowIndex 
+                if(c(row, rowIndex))
+                    keepRows.add(rowIndex)
+                ++rowIndex
+            }
+        }
+        return keepRows
+    }
+        
     /**
      * Filter the rows of this matrix and return 
      * a Matrix as a result
@@ -370,27 +420,9 @@ class Matrix extends Expando implements Iterable {
      */
     @CompileStatic
     Matrix grep(Closure c) {
-        List<Integer> keepRows = []
-        int rowIndex = 0;
-        IterationDelegate delegate = new IterationDelegate()
-        delegate.host = this
-        c.setDelegate(delegate)
-        if(c.maximumNumberOfParameters == 1) {
-            for(double [] row in matrix.dataRef) {
-                delegate.row = rowIndex
-                if(c(row))
-                    keepRows.add(rowIndex)
-                ++rowIndex
-            }
-        }
-        else 
-        if(c.maximumNumberOfParameters == 2) {
-            for(double [] row in matrix.dataRef) {
-                if(c(row, rowIndex))
-                    keepRows.add(rowIndex)
-                ++rowIndex
-            }
-        }
+        
+        List<Number> keepRows = this.findIndexValues(c)
+
 		double [][] submatrix = this.subsetRows((Iterable<Number>)keepRows)
 		
         return new Matrix(new Array2DRowRealMatrix(submatrix))
@@ -428,8 +460,16 @@ class Matrix extends Expando implements Iterable {
         final int rows = matrix.rowDimension
         final int cols = matrix.columnDimension
         double[][] newData = new double[rows][cols]
+        IterationDelegate delegate = new IterationDelegate(this)
+        boolean withDelegate = !this.properties.isEmpty()
+        if(withDelegate) {
+            c = (Closure)c.clone()
+            c.delegate = delegate
+        }
         for(int i=0; i<rows;++i) {
             double [] row = matrix.dataRef[i]
+            if(withDelegate)
+                delegate.row = i
             for(int j=0; j<cols;++j) {
                 newData[i][j] = (double)c(row[j])
             }
@@ -442,9 +482,17 @@ class Matrix extends Expando implements Iterable {
         final int rows = matrix.rowDimension
         final int cols = matrix.columnDimension
         double[][] newData = new double[rows][cols]
+        IterationDelegate delegate = new IterationDelegate(this)
+        boolean withDelegate = !this.properties.isEmpty()
+        if(withDelegate) {
+            c = (Closure)c.clone()
+            c.delegate = delegate
+        }
         for(int i=0; i<rows;++i) {
             double [] row = matrix.dataRef[i]
             double [] newRow = newData[i]
+            if(withDelegate)
+                delegate.row = i
             for(int j=0; j<cols;++j) {
                 double value = row[j] // NOTE: embedding this direclty in call below causes VerifyError with CompileStatic
                 newRow[j] = (double)c.call(value,i,j)
@@ -470,14 +518,24 @@ class Matrix extends Expando implements Iterable {
         
         double[][] newData = new double[rows][cols]
         
+        IterationDelegate delegate = new IterationDelegate(this)
+        boolean withDelegate = !this.properties.isEmpty()
+        if(withDelegate) {
+            c = (Closure)c.clone()
+            c.delegate = delegate
+        }
         if(c.maximumNumberOfParameters == 1) {
             for(int i=0; i<rows;++i) {
+                if(withDelegate)
+                    delegate.row = i
                 newData[i] = c(matrix.dataRef[i])
             }
         }
         else 
         if(c.maximumNumberOfParameters == 2) {
             for(int i=0; i<rows;++i) {
+                if(withDelegate)
+                    delegate.row = i
                 newData[i] = c(matrix.dataRef[i], i)
             }
         }
@@ -492,8 +550,17 @@ class Matrix extends Expando implements Iterable {
     
     @CompileStatic
     void eachRow(Closure c) {
+        IterationDelegate delegate = new IterationDelegate(this)
+        boolean withDelegate = !this.properties.isEmpty()
+        if(withDelegate) {
+            c = (Closure)c.clone()
+            c.delegate = delegate
+        }
         if(c.maximumNumberOfParameters == 1) {
+            int rowIndex = 0;
             for(double [] row in matrix.dataRef) {
+                if(withDelegate)
+                    delegate.row = rowIndex++
                 c(row)    
             }
         }
@@ -501,6 +568,8 @@ class Matrix extends Expando implements Iterable {
         if(c.maximumNumberOfParameters == 2) {
             int rowIndex = 0;
             for(double [] row in matrix.dataRef) {
+                if(withDelegate)
+                    delegate.row = rowIndex
                 c(row, rowIndex)
                 ++rowIndex
             }
@@ -511,7 +580,7 @@ class Matrix extends Expando implements Iterable {
      * Shorthand to give a familiar function to R users
      */
     List<Long> which(Closure c) {
-        this.matrix.dataRef.findIndexValues(c)
+        this.findIndexValues(c)
     }
     
     Matrix multiply(double d) {
@@ -553,11 +622,13 @@ class Matrix extends Expando implements Iterable {
     }
     
     void save(Writer w) {
-        if(this.names) {
-            w.println "# " + names.join("\t")   
+        // NOTE: the this.properties.names seems to be required because of a 
+        // weird bug where groovy will prefer to set an expando property rather than
+        // set the real property on this object
+        if(this.names/* || this.properties.names */) {
+            w.println "# " + (this.names?:this.properties.names).join("\t")   
         }
         eachRow { row ->
-            
             w.println((row as List).join("\t"))
         }
     }
@@ -586,7 +657,16 @@ class Matrix extends Expando implements Iterable {
        
     String toString() {
         
-        String headers = this.names ? "\t" + this.names.join("\t") + "\n" : ""
+        def headerCells = this.names
+        if(this.properties) {
+            headerCells = this.properties.collect { it.key } + headerCells
+        }
+        
+        String headers = headerCells ? (" " * 6) + headerCells.join("\t") + "\n" : ""
+        
+        DecimalFormat format = new DecimalFormat()
+        format.minimumFractionDigits = 0
+        format.maximumFractionDigits = 6
         
         if(matrix.rowDimension<DISPLAY_ROWS) {
             int rowCount = 0
@@ -599,13 +679,36 @@ class Matrix extends Expando implements Iterable {
         else {
             int omitted = matrix.rowDimension-DISPLAY_ROWS
             int rowCount = 0
-            return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ 
+            
+            def printRow = { row ->
+               List cells = (row as List)
+               if(this.properties) {
+                   cells = this.properties.collect { it.value[rowCount] } + cells
+               }
+               ((rowCount++) + ":").padRight(6) + cells.collect { value ->
+                   if(value instanceof String)
+                       return value
+                   (value < 0.0001d && value !=0) ? String.format("%1.6e",value) : format.format(value)
+               }.join(",\t")  
+            }
+            
+            String value = "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ 
                 headers + 
-                matrix.data[0..DISPLAY_ROWS/2].collect { row -> 
-                    ((rowCount++) + ":").padRight(6) + (row as List).join(",\t") 
-                }.join("\n") + "\n... ${omitted} rows omitted ...\n" + matrix.data[-(DISPLAY_ROWS/2)..-1].collect { row -> 
-                    (((rowCount++)+omitted-1) + ":").padRight(6) + (row as List).join(",\t") 
-                }.join("\n")
+                matrix.data[0..DISPLAY_ROWS/2].collect(printRow).join("\n")  
+            rowCount += omitted -1    
+            value +=
+                "\n... ${omitted} rows omitted ...\n" + 
+                matrix.data[-(DISPLAY_ROWS/2)..-1].collect(printRow).join("\n")
+                
+            return value
         }
+    }
+    
+    void setColumnNames(List<String> names) {
+        this.names = names
+    }
+    
+    void setNames(List<String> names) {
+        this.names = names
     }
 }
