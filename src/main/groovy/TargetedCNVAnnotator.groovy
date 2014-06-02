@@ -66,7 +66,7 @@ class TargetedCNVAnnotator {
            r.spans(v.range)  
        }*.extra
            
-       spanning = filterByType(v, spanning)
+       spanning = filterByType(type, spanning)
            
        float spanningFreq = spanning.grep { it.sampleSize>5}.collect { cnv ->
            int cnvCount = type == "GAIN" ? cnv.observedGains : cnv.observedLosses
