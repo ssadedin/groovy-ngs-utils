@@ -27,58 +27,66 @@ class TargetedCNVAnnotator {
     }
     
    void annotate(String vcfFile, Writer output) {
+	   
        VCF.filter(vcfFile) { Variant v ->
            
            // Output non-CNV variants unchanged
            if(!["GAIN","LOSS"].contains(v.type)) {
                return true   
            }
-           
-           List<GRange> compatibleRanges = findCompatibleRanges(v)
-           
-           // These GRanges have Regions as extra's:
-           List<Region> dgvCnvs = compatibleRanges*.extra
-           
-           // They must be the same type
-           dgvCnvs = filterByType(v, dgvCnvs)
-           
-           // Look for "crossing" variants
-           List<Region> spanning = dgv.getOverlaps(v.chr, v.pos, v.pos+v.size()).grep { GRange r ->
-               r.spans(v.range)  
-           }*.extra
-           
-           spanning = filterByType(v, spanning)
-           
-           float spanningFreq = spanning.grep { it.sampleSize>5}.collect { cnv ->
-               int cnvCount = v.type == "GAIN" ? cnv.observedGains : cnv.observedLosses
-               (float)cnvCount / cnv.sampleSize.toFloat()
-           }.max()?:0.0f
-           
+		   
+		   def ann = annotate(v, v.type)
+          
            v.update("CNV Known Variant Annotation") {
-               if(dgvCnvs) {
-                   v.info.KCNV = dgvCnvs.collect { cnv ->
-                       int cnvCount = v.type == "GAIN" ? cnv.observedGains : cnv.observedLosses
+               if(ann.dgvCnvs) {
+                   v.info.KCNV = ann.dgvCnvs.collect { cnv ->
+                       int cnvCount = type == "GAIN" ? cnv.observedGains : cnv.observedLosses
                        [cnv.name, cnvCount, cnv.sampleSize, (float)cnvCount / cnv.sampleSize.toFloat()].join(":")
                    }.join(",")
                }
-               v.info.SCNV = spanning.size() + ":" + String.format("%.3f",spanningFreq)
+               v.info.SCNV = ann.spanning.size() + ":" + String.format("%.3f",ann.spanningFreq)
            }
-           
-           if(verbose)
-               System.err.println "Found ${dgvCnvs.size()} plausible known DGV variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
-           
+          
            return true
        }
    }
    
-   List<Region> filterByType(Variant v, List<Region> regions) {
-       if(v.type == "LOSS")
+   Map annotate(IRegion v, String type) {
+	   
+       List<GRange> compatibleRanges = findCompatibleRanges(v)
+           
+       // These GRanges have Regions as extra's:
+       List<Region> dgvCnvs = compatibleRanges*.extra
+           
+       // They must be the same type
+       dgvCnvs = filterByType(type, dgvCnvs)
+           
+       // Look for "crossing" variants
+       List<Region> spanning = dgv.getOverlaps(v.chr, v.range.from, v.range.to).grep { GRange r ->
+           r.spans(v.range)  
+       }*.extra
+           
+       spanning = filterByType(v, spanning)
+           
+       float spanningFreq = spanning.grep { it.sampleSize>5}.collect { cnv ->
+           int cnvCount = type == "GAIN" ? cnv.observedGains : cnv.observedLosses
+           (float)cnvCount / cnv.sampleSize.toFloat()
+       }.max()?:0.0f
+   
+       if(verbose)
+           System.err.println "Found ${dgvCnvs.size()} plausible known DGV variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
+		   
+	   return [ spanning: spanning, spanningFreq: spanningFreq, ]
+   }
+   
+   List<Region> filterByType(String type, List<Region> regions) {
+       if(type == "LOSS")
           return regions.grep { it.varType in ["Loss","Gain+Loss"] }
        else
           return regions.grep { it.varType in ["Gain","Gain+Loss"] }
    }
    
-   List<GRange> findCompatibleRanges(Variant v) {
+   List<GRange> findCompatibleRanges(IRegion v) {
        
        // First determine the true possible range of the CNV
        // That means, from the first upstream unaffected target region 
@@ -89,7 +97,7 @@ class TargetedCNVAnnotator {
        // the minimum range ... however we could take into account
        // one day the "soft" boundaries for an imprecise CNV call and put
        // some margins here
-       Region minRange = new Region(v.chr, v.pos..(v.pos+v.size()))
+       Region minRange = new Region(v.chr, v.range)
            
        // Find in DGV any CNVs that *start* inside the required region
        def compatibleRanges = dgv.getOverlaps(minRange).grep { IntRange r ->
@@ -101,10 +109,10 @@ class TargetedCNVAnnotator {
        return compatibleRanges
    }
    
-   Region computeMaxRange(v) {
+   Region computeMaxRange(IRegion v) {
        // Need the first upstream target region
-       IntRange prevRange = target.previousRange(v.chr, v.pos-1)
-       IntRange nextRange = target.nextRange(v.chr, v.pos + v.size())
+       IntRange prevRange = target.previousRange(v.chr, v.range.from)
+       IntRange nextRange = target.nextRange(v.chr, v.range.to)
        
        if(prevRange == null)
            prevRange = 1..1
