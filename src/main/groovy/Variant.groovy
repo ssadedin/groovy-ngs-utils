@@ -205,8 +205,8 @@ class Variant implements IRegion {
     String id
     
     /**
-     * One of SNP, INS or DEL indicating the type of change represented by the first alternate 
-     * allele. 
+     * One of SNP, INS, DEL or SV indicating the type of change represented by the first 
+     * alternate allele. 
      */
     String type
     
@@ -259,7 +259,11 @@ class Variant implements IRegion {
 	
 	
 	IntRange getRange() {
-		return pos..(pos+alts.max { it.size() }.size())
+        if(isSV()) {
+            return pos..pos+this.size()
+        }
+        else
+    		return pos..(pos+alts.max { it.size() }.size())
 	}
     
     // @CompileStatic
@@ -314,14 +318,22 @@ class Variant implements IRegion {
     
     /**
      * Convert reference and alternate allele strings into a 
-     * mutation type, being one of "SNP","INS","DEL"
+     * mutation type, being one of "SNP","INS","DEL","GAIN"
+     * or "LOSS", with the latter two representing CNVs.
      * 
      * @param refSeq
      * @param altSeq
      * @return
      */
+    @CompileStatic
     String convertType(String refSeq, String altSeq) {
         String result = "SNP"
+        if(altSeq == "DUP" || altSeq == "<DUP>")
+            result = "GAIN"
+        else
+        if(altSeq == "DEL" || altSeq == "<DEL>")
+            result = "LOSS"
+        else
         if(refSeq.size() < altSeq.size())
             result = 'INS'
         else
@@ -702,8 +714,29 @@ class Variant implements IRegion {
       return updatedSequence
     }
     
+    @CompileStatic
+    boolean isSV() {
+        return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>") 
+    }
+    
+    @CompileStatic
     int size() {
-        Math.abs(ref.size() - alt.size())
+        if(alt == "DEL" || alt == "<DEL>") {
+           Object svLen = this.getInfo().SVLEN
+           if(!svLen)
+               throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
+           
+            return Math.abs(svLen.toInteger())
+        }
+        else
+        if(alt == "DUP" || alt == "<DUP>") {
+           Object svLen = this.getInfo().SVLEN
+           if(!svLen)
+               throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
+            return svLen.toInteger()            
+        }
+        else
+        return Math.abs(ref.size() - alt.size())
     }
 
     static Variant parse(String line) {
@@ -713,7 +746,7 @@ class Variant implements IRegion {
     }
     
     String toString() {
-        "$chr:$pos $ref/$alt"
+        type in ["GAIN","LOSS"] ? "$chr:$pos-${pos+size()}/$type" : "$chr:$pos $ref/$alt"
     }
     
     /**

@@ -78,6 +78,10 @@ class Region extends Expando implements IRegion {
         return result
     }
     
+    boolean spans(IRegion r) {
+        (r.chr == this.chr) && (r.range.to <= this.to) && (r.range.from >= this.from)
+    }
+    
     Region copy() {
         new Region(chr, range.from..range.to)
     }
@@ -102,6 +106,10 @@ class GRange extends IntRange {
     GRange(int from, int to, Object extra) {
         super(from,to)
         this.extra = extra
+    }
+    
+    boolean spans(IntRange r) {
+        return (r.to <= this.to) && (r.from >= this.from)
     }
     
     Object extra    

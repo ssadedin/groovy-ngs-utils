@@ -10,6 +10,9 @@ class RangedData extends Regions {
     int endColumn
     int separator='\t'
 
+    public RangedData() {
+    }
+    
     public RangedData(String sourceFile, int chrColumn, int startColumn, int endColumn) {
         this(new File(sourceFile).newReader(), chrColumn, startColumn, endColumn)
     }
