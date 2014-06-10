@@ -154,7 +154,19 @@ class SampleInfo {
      */
     Map    files = new Hashtable() // thread safe
 	
-	static List<String> columns = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact","Notes"]
+	static List<String> SIMPLE_COLUMNS = ["Sample_ID","Batch","Cohort","Fastq_Files","Prioritised_Genes","Sex","Sample_Type","Consanguinity","Variants_File","Pedigree_File","Ethnicity","VariantCall_Group","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID","Hospital_Centre","Sequencing_Contact","Pipeline_Contact","Notes"]
+    
+    /**
+     * MGHA redefined column order and contents to have a lot of things not of interest to others,
+     * so have a separate mapping for them.
+     */
+    static List<String> MG_COLUMNS = ["Batch","Sample_ID","DNA_ID","Sex","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Cohort","Sample_Type",
+        "Fastq_Files","Prioritised_Genes","Consanguinity","Variants_File",
+        "Pedigree_File","Ethnicity","VariantCall_Group","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID",
+        "DNA_Extraction_Lab","Sequencing_Lab","Library_Preparation","Barcode_Pool_Size","Read_Type","Machine_Type","Sequencing_Chemistry",
+        "Sequencing_Software","Demultiplex_Software","Hospital_Centre",
+        "Hospital_Centre","Sequencing_Contact","Pipeline_Contact","Notes"
+    ]
 	
 	/** Id of batch in which the sample was sequenced */
 	String batch
@@ -227,6 +239,17 @@ class SampleInfo {
     }
 
     /**
+     * Parse the given file to extract sample info, where the file is in the
+     * extended Melbourne Genomics Health Alliance format.
+     * 
+     * @param fileName
+     * @return
+     */
+    static parse_mg_sample_info(fileName) {
+        parse_sample_info(fileName, MG_COLUMNS)
+    }
+    
+    /**
      * Parse the given file to extract sample information
      *
      * @return  List of (Map) objects defining properties of each
@@ -236,11 +259,11 @@ class SampleInfo {
      *              <li>Name of flagship (target)
      *              <li>Genes to be classed as high priority (genes)
      */
-    static parse_sample_info(fileName) {
+    static parse_sample_info(fileName, columns=SIMPLE_COLUMNS) {
 		
         def lines = new File(fileName).readLines().grep { 
 			!it.trim().startsWith('#') && // ignore comment lines
-			!it.trim().toLowerCase().startsWith("sample_id") && // ignore header line, if it is present
+			!it.trim().toLowerCase().startsWith(columns[0]) && // ignore header line, if it is present
 			it.trim() // ignore completely blank lines
 		}
 		
@@ -355,7 +378,7 @@ class SampleInfo {
      */
     static Map<String,SampleInfo> fromFiles(List<String> files) {
         // Convert to absolute path
-        files = files.collect { new File(it).absolutePath }
+        files = files.collect { new File(it).canonicalFile.absolutePath }
         def collectBySample = { ext, extractSample -> 
             files.grep { 
                 it.endsWith(ext) 
