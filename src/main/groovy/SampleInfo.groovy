@@ -260,12 +260,15 @@ class SampleInfo {
      *              <li>Genes to be classed as high priority (genes)
      */
     static parse_sample_info(fileName, columns=SIMPLE_COLUMNS) {
+        
+        String col0 = columns[0].toLowerCase()
 		
         def lines = new File(fileName).readLines().grep { 
 			!it.trim().startsWith('#') && // ignore comment lines
-			!it.trim().toLowerCase().startsWith(columns[0]) && // ignore header line, if it is present
+			!it.trim().toLowerCase().startsWith(col0) && // ignore header line, if it is present
 			it.trim() // ignore completely blank lines
 		}
+        
 		
 		// Pad with optional blank fields
 		lines = lines.collect { line ->
