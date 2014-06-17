@@ -18,6 +18,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import groovy.transform.CompileStatic;
+
 import java.util.List;
 
 
@@ -32,7 +34,22 @@ class Subject {
     
     Sex sex
     
-    Set<String> phenoTypes
+    List<Integer> phenoTypes
+    
+    List<Relationship> relationships = []
+    
+    boolean isAffected() {
+        phenoTypes.any { it > 0 }
+    }
+    
+    @CompileStatic
+    boolean isChild() {
+        relationships.any { Relationship r -> r.type.isChild() }
+    }
+    
+    String toString() {
+        id + '(' + sex?.name() + ')'
+    }
 }
 
 /**
@@ -40,17 +57,63 @@ class Subject {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+enum RelationshipType {
+    
+    FATHER {
+        double transmits(String chr) {
+            if(chr == "chrX")
+                0
+            else
+            if(chr == "chrY")
+                1.0
+            else
+                0.5
+        }        
+    },
+    MOTHER {
+        double transmits(String chr) {
+            if(chr == "chrY")
+                0.0
+            else
+                0.5
+        }                
+    },
+    SON {
+        double transmits(String chr) { 0.0 }        
+    },
+    DAUGHTER {
+        double transmits(String chr) { 0.0 }        
+    },
+    BROTHER {
+        double transmits(String chr) { 0.0 }        
+    },
+    SISTER {
+        double transmits(String chr) { 0.0 }        
+    },
+    SIBLING {
+        double transmits(String chr) { 0.0 }        
+    }
+     
+    double transmits(String chr) {
+        return 0.5
+    }
+    
+    boolean isChild() {
+        this in [SON,DAUGHTER,BROTHER,SISTER,SIBLING]
+    }
+}
+
 class Relationship {
     
-    boolean transmits
-    
-    double transmissionFactor
-    
-    String type
+    RelationshipType type
     
     String from
     
     String to
+    
+    String toString() {
+        type.name() + " to " + to
+    }
 }
 
 /**
@@ -68,16 +131,26 @@ class Pedigree {
     /**
      * List of subject ids belonging to the family
      */
-    List<String> samples = []
+//    List<String> samples = []
     
     List<Subject> individuals = []
     
     List<Integer> phenoTypes = []
     
+//    Map<String,Relationship> relationships = [:]
+    
     String toString() {
         "$id $samples"
     }
     
+    Subject motherOf(String id) {
+        individuals.find { it.relationships.any { it.type == RelationshipType.MOTHER && it.to == id }}
+    }
+    
+    Subject fatherOf(String id) {
+        individuals.find { it.relationships.any { it.type == RelationshipType.FATHER && it.to == id }}
+    }
+     
     static Map<String,Pedigree> parse(String pedFileName) {
         
         Map<String,Pedigree> families = [:]
@@ -102,4 +175,27 @@ class Pedigree {
     
     @Lazy
     List<String> unaffected = { samples.grep {phenoTypes[samples.indexOf(it)] == 0 } }()
+    
+    
+    List<String> getSamples() {
+        individuals*.id
+    }
+    
+    void setSamples(List<String> samples) {
+        this.individuals = samples.collect { new Subject(id:it) }
+    }
+    
+    void toPed(Writer w) {
+        /* PED Format definition:
+         Family ID
+         Individual ID
+         Paternal ID
+         Maternal ID
+         Sex (1=male; 2=female; other=unknown)
+         Phenotype
+         */
+        individuals.each { subject ->
+            w.println([id, subject.id, motherOf(subject.id)?.id?:"", fatherOf(subject.id)?.id?:"", subject.id in affected ? 1 : 0  ].join("\t"))
+        }
+    }
 }

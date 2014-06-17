@@ -4,6 +4,9 @@
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+
+import static RelationshipType.*
+
 class SamplesToPed {
 
     public SamplesToPed() {
@@ -30,38 +33,147 @@ class SamplesToPed {
         
         Map<String, Subject> subjects = [:]
         
+        Map<String,Relationship> rels = [:]
+        
         group.members.each { sample ->
             println "Pedigree for $sample [$group.group]: "
             String pedigree = r.readLine()
             if(pedigree.isEmpty())
                 pedigree = group.group
                 
-            println "Sex for sample $sample [${infos[sample].sex.name()}]:"
-            String sex = r.readLine()
-            if(sex.isEmpty())
-                sex = infos[sample].sex.name()
                 
-            println "Relationship for $sample [m/f/c/b/s]: "
-            String rel = r.readLine()
-            
-            String phenotypeValue
-            int phenotype = -1
-            while(!["a","u"].contains(phenotypeValue)) {
-                println "Phenotype for $sample [a/u]: "
-                phenotypeValue = r.readLine()
-                phenotype = ["a":1, "u":-1][phenotypeValue]
+            String sex = infos[sample].sex.name()
+            if(infos[sample].sex == Sex.UNKNOWN) {
+                println "Sex for sample $sample [${infos[sample].sex.name()}]:"
+                sex = r.readLine()
+                if(sex.isEmpty())
+                    sex = infos[sample].sex.name()
+            }
+                    
+            String rel 
+            String relDefault = defaultRelationship(sample)
+            while(!["m","f","c","s"].contains(rel)) {
+                println "Relationship for $sample [m/f/c/s] ($relDefault): "
+                String relValue = r.readLine()
+                if(relValue)
+                    rel = relValue
+                else
+                    rel = relDefault
             }
             
-            Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
+            String phenotypeValue
+            int phenotype = rel == "c" ? 1 : 0
+            while(!["a","u"].contains(phenotypeValue)) {
+                println "Phenotype for $sample [a/u] ($phenotype): "
+                phenotypeValue = r.readLine()
+                if(phenotypeValue)
+                    phenotype = ["a":1, "u":0][phenotypeValue]
+                else
+                    break
+            }
+            
+            Subject s = new Subject(id: sample, sex: Sex.decode(sex), phenoTypes:[phenotype])
+            subjects[s.id] = s
+            
+            Pedigree p = pedigrees[pedigree]
+            if(!p) {
+                p = new Pedigree(id:pedigree)
+                pedigrees[pedigree] = p
+            }
+            
+            RelationshipType relationship = decodeRelationship(rel,s)
+          
+            s.relationships.add(new Relationship(type:relationship, from:s.id))
+            
+            p.individuals.add(s)
         }
         
-        /*
-        Pedigree p = pedigrees[pedigree]
-        if(!p) {
-            p = new Pedigree(id:pedigree)
-            pedigrees[pedigree] = p
+        // Now go through each sample and try to identify the relationships based
+        // on the information we do know
+        System.out.withWriter { w ->
+            pedigrees.each { String id, Pedigree p ->
+                fillRelationships(p)
+                p.toPed(w)
+            }
         }
-        */
+    }
+    
+    /**
+     * Fill in all the relationship ids on the assumption that they are 
+     * relative to a single affected child.
+     * 
+     * @param p
+     */
+    static void fillRelationships(Pedigree p) {
+        for(Subject s in p.individuals) {
+            if(s.isChild() || s.relationships.find {it.type in [BROTHER,SISTER]}) {
+                linkParentRelationship(p, s, MOTHER)
+                linkParentRelationship(p, s, FATHER)                    
+            }
+        }
+    }
+    
+    /**
+     * Find the other individual 
+     * 
+     * @param p
+     * @param s
+     * @param r
+     */
+    static void linkParentRelationship(Pedigree p, Subject s, RelationshipType parentType) {
+        
+        println "looking for child relationships for $s.id"
+        Relationship r = s.relationships.find { println "check $it.type"; it.type.isChild() }
+        if(r.to != null) {
+            r = new Relationship(from: s.id, type: r.type)
+            s.relationships.add(r)
+        }
+        
+        Subject parent = p.individuals.find { it.relationships.any { it.type == parentType }} 
+        if(parent) {
+            r.to = parent.id
+            def parentRel = parent.relationships.find { it.type == parentType && it.to == null }
+            if(!parentRel) {
+                parentRel = new Relationship(type:parentType, from: parent.id)
+                parent.relationships.add(parentRel)
+            }
+            parentRel.to = s.id
+        }
+    }
+    
+    static RelationshipType decodeRelationship(String rel, Subject s) {
+        
+        String sex = s.sex.name()
+        
+        RelationshipType relationship
+        if(rel=="m") {
+            relationship = MOTHER
+        }
+        else
+        if(rel=="f") {
+            relationship = FATHER
+        }
+        else
+        if(rel=="c") {
+            if(sex == "MALE")
+                relationship = SON
+            else
+            if(sex == "FEMALE")
+                relationship = DAUGHTER
+            else
+                relationship = SON // ?
+        }
+        else
+        if(rel=="s") {
+            if(sex == "MALE")
+                relationship = BROTHER
+            else
+            if(sex == "FEMALE")
+                relationship = SISTER
+            else
+                relationship = SIBLING
+        }
+        return relationship
     }
     
     static Map lcs(List<String> samples) {
@@ -79,4 +191,14 @@ class SamplesToPed {
         }
         return [ group: largestGroup.key, members: largestGroup.value ]
     }
+    
+   static String defaultRelationship(String sample) {
+       if(sample.endsWith("M"))
+           return "m"
+       if(sample.endsWith("D"))
+           return "f"
+       if(sample ==~ '.*[0-9]$')
+           return "c"
+       return "s"
+   }
 }

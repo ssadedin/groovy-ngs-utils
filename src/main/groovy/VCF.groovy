@@ -276,7 +276,7 @@ class VCF implements Iterable<Variant> {
          if(samplePedigrees == null) {
              samplePedigrees = []
              samples.eachWithIndex { String s, int index ->
-                 samplePedigrees[index] =  peds.find { p -> p.samples.contains(s) }
+                 samplePedigrees[index] =  peds.find { p -> p.individuals.any { it.id == s } }
              }
          }
          return samplePedigrees[i]
