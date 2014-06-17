@@ -22,6 +22,7 @@ import groovy.transform.CompileStatic;
 
 import java.util.List;
 
+import static RelationshipType.*
 
 /**
  * An individual in a family pedigree
@@ -156,17 +157,22 @@ class Pedigree {
         Map<String,Pedigree> families = [:]
         
         List<Subject> subjects = new TSV(pedFileName,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
-//            println "FamilyId = $line.familyId id = $line.id"
             if(!families.containsKey(line.familyId))
                 families[line.familyId] = new Pedigree(id:line.familyId)
             Pedigree p = families[line.familyId]
             def sex = line.sex ?: "other"
             Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
+			
+			if(line.paternalId) 
+				s.relationships.add(new Relationship(type:FATHER,from:s.id, to: line.paternalId))
+				
+			if(line.maternalId) 
+				s.relationships.add(new Relationship(type:MOTHER,from:s.id, to: line.paternalId)) 
+			
             p.individuals.add(s)
-            p.samples.add(s.id)
             p.phenoTypes.add(line.phenotype)
         }
-        
+		
         return families
     }
     
@@ -195,7 +201,7 @@ class Pedigree {
          Phenotype
          */
         individuals.each { subject ->
-            w.println([id, subject.id, motherOf(subject.id)?.id?:"", fatherOf(subject.id)?.id?:"", subject.id in affected ? 1 : 0  ].join("\t"))
+            w.println([id, subject.id, motherOf(subject.id)?.id?:"", fatherOf(subject.id)?.id?:"", subject.sex == Sex.MALE ? 1 : 2, subject.id in affected ? 1 : 0  ].join("\t"))
         }
     }
 }

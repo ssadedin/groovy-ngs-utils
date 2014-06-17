@@ -13,6 +13,7 @@ class SamplesToPed {
     }
     
     static void main(String [] args) {
+		
         if(!args)
             System.err.println "Please provide sample info file to process"
             
@@ -20,82 +21,88 @@ class SamplesToPed {
         
         List<String> samples = infos.keySet() as List
         
-        infos.each { String sample, SampleInfo info ->
-            println sample.padRight(20) + " : " + info.sex
-        }
-        
         Map<String,Pedigree> pedigrees = [:]
-        
-        // Find the longest common substring
-        Reader r = System.in.newReader()
-        def group = lcs(samples)
-        
-        
-        Map<String, Subject> subjects = [:]
-        
-        Map<String,Relationship> rels = [:]
-        
-        group.members.each { sample ->
-            println "Pedigree for $sample [$group.group]: "
-            String pedigree = r.readLine()
-            if(pedigree.isEmpty())
-                pedigree = group.group
-                
-                
-            String sex = infos[sample].sex.name()
-            if(infos[sample].sex == Sex.UNKNOWN) {
-                println "Sex for sample $sample [${infos[sample].sex.name()}]:"
-                sex = r.readLine()
-                if(sex.isEmpty())
-                    sex = infos[sample].sex.name()
-            }
-                    
-            String rel 
-            String relDefault = defaultRelationship(sample)
-            while(!["m","f","c","s"].contains(rel)) {
-                println "Relationship for $sample [m/f/c/s] ($relDefault): "
-                String relValue = r.readLine()
-                if(relValue)
-                    rel = relValue
-                else
-                    rel = relDefault
-            }
-            
-            String phenotypeValue
-            int phenotype = rel == "c" ? 1 : 0
-            while(!["a","u"].contains(phenotypeValue)) {
-                println "Phenotype for $sample [a/u] ($phenotype): "
-                phenotypeValue = r.readLine()
-                if(phenotypeValue)
-                    phenotype = ["a":1, "u":0][phenotypeValue]
-                else
-                    break
-            }
-            
-            Subject s = new Subject(id: sample, sex: Sex.decode(sex), phenoTypes:[phenotype])
-            subjects[s.id] = s
-            
-            Pedigree p = pedigrees[pedigree]
-            if(!p) {
-                p = new Pedigree(id:pedigree)
-                pedigrees[pedigree] = p
-            }
-            
-            RelationshipType relationship = decodeRelationship(rel,s)
-          
-            s.relationships.add(new Relationship(type:relationship, from:s.id))
-            
-            p.individuals.add(s)
-        }
-        
+	        
+		while(samples) {
+	        infos.each { String sample, SampleInfo info ->
+	            println sample.padRight(20) + " : " + info.sex
+	        }
+	        
+	        // Find the longest common substring
+	        Reader r = System.in.newReader()
+	        def group = lcs(samples)
+	        
+	        
+	        Map<String, Subject> subjects = [:]
+	        
+	        Map<String,Relationship> rels = [:]
+	        
+	        group.members.each { sample ->
+	            println "Pedigree for $sample [$group.group]: "
+	            String pedigree = r.readLine()
+	            if(pedigree.isEmpty())
+	                pedigree = group.group
+	                
+	                
+	            String sex = infos[sample].sex.name()
+	            if(infos[sample].sex == Sex.UNKNOWN) {
+	                println "Sex for sample $sample [${infos[sample].sex.name()}]:"
+	                sex = r.readLine()
+	                if(sex.isEmpty())
+	                    sex = infos[sample].sex.name()
+	            }
+	                    
+	            String rel 
+	            String relDefault = defaultRelationship(sample)
+	            while(!["m","f","c","s"].contains(rel)) {
+	                println "Relationship for $sample [m/f/c/s] ($relDefault): "
+	                String relValue = r.readLine()
+	                if(relValue)
+	                    rel = relValue
+	                else
+	                    rel = relDefault
+	            }
+	            
+	            String phenotypeValue
+	            int phenotype = rel == "c" ? 1 : 0
+	            while(!["a","u"].contains(phenotypeValue)) {
+	                println "Phenotype for $sample [a/u] ($phenotype): "
+	                phenotypeValue = r.readLine()
+	                if(phenotypeValue)
+	                    phenotype = ["a":1, "u":0][phenotypeValue]
+	                else
+	                    break
+	            }
+	            
+	            Subject s = new Subject(id: sample, sex: Sex.decode(sex), phenoTypes:[phenotype])
+	            subjects[s.id] = s
+	            
+	            Pedigree p = pedigrees[pedigree]
+	            if(!p) {
+	                p = new Pedigree(id:pedigree)
+	                pedigrees[pedigree] = p
+	            }
+	            
+	            RelationshipType relationship = decodeRelationship(rel,s)
+	          
+	            s.relationships.add(new Relationship(type:relationship, from:s.id))
+	            
+	            p.individuals.add(s)
+				
+				samples.remove(sample)
+	        }
+		}
+	        
         // Now go through each sample and try to identify the relationships based
         // on the information we do know
-        System.out.withWriter { w ->
+        new File(args[0]+".ped").withWriter { w ->
             pedigrees.each { String id, Pedigree p ->
                 fillRelationships(p)
                 p.toPed(w)
             }
         }
+		
+		println "Wrote " + args[0]+".ped"
     }
     
     /**
@@ -122,8 +129,7 @@ class SamplesToPed {
      */
     static void linkParentRelationship(Pedigree p, Subject s, RelationshipType parentType) {
         
-        println "looking for child relationships for $s.id"
-        Relationship r = s.relationships.find { println "check $it.type"; it.type.isChild() }
+        Relationship r = s.relationships.find { it.type.isChild() }
         if(r.to != null) {
             r = new Relationship(from: s.id, type: r.type)
             s.relationships.add(r)
