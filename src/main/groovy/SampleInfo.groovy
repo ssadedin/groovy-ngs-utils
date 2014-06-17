@@ -31,6 +31,8 @@ enum Sex {
             2 : FEMALE,
             "1" : MALE,
             "2" : FEMALE,
+            "MALE" : MALE,
+            "FEMALE": FEMALE,
             "Male" : MALE,
             "Female": FEMALE,
             "Unknown" : UNKNOWN,
@@ -410,10 +412,13 @@ class SampleInfo {
         // Merge files from all of them
         def allSamples = (samplesByBam.keySet() + samplesByVcf.keySet() + samplesByFastq.keySet()).unique()
         Map<String,SampleInfo> result = allSamples.collect { s ->
-            def sampleFiles = [:]
+            def sampleFiles = [all:[]]
             [samplesByBam, samplesByVcf, samplesByFastq].each { samplesByType ->
                 if(samplesByType[s]) {
                     sampleFiles += samplesByType[s].files
+                    samplesByType[s].files.each { fileType, fileList -> 
+                        sampleFiles.all += fileList
+                    }
                 }
             }
             new SampleInfo(sample:s, files: sampleFiles)
