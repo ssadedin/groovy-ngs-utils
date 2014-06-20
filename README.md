@@ -6,8 +6,11 @@ A collection of utilities for working with next generation (MPS) sequencing data
 This is a collection of Groovy wrappers and interfaces that make it easy to perform 
 scripting operations with Groovy to process NGS data.
 
-The quality of this code is very alpha - it's simply what I've created as part of my PhD as I
-do various data handling tasks. The kind of operations currently supported are:
+The quality of this code is beta level - it's simply what I've created as part of my PhD as I
+do various data handling tasks. There are a decent number of unit tests, but they probably do not
+achieve more than 50% code coverage. 
+
+The kind of operations currently supported are:
 
   * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP, Annovar and SnpEFF
   * Reading, processing and filtering BED files or any source of genomic ranges
