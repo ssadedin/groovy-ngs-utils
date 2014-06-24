@@ -18,6 +18,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic;
 
 import java.util.List;
@@ -48,8 +49,24 @@ class Subject {
         relationships.any { Relationship r -> r.type.isChild() }
     }
     
+    @CompileStatic 
+    List<String> getParentIds() {
+        relationships.grep { Relationship r -> r.type in [SON,DAUGHTER] }.collect { Relationship r -> r.to }
+    }
+    
     String toString() {
         id + '(' + sex?.name() + ')'
+    }
+    
+    String toJson() {
+        JsonOutput.toJson(
+            [
+                id : id,
+                sex : sex.name(),
+                pheno: phenoTypes[0],
+                rel: relationships
+            ]
+        )
     }
 }
 
@@ -152,29 +169,6 @@ class Pedigree {
         individuals.find { it.relationships.any { it.type == RelationshipType.FATHER && it.to == id }}
     }
      
-    static Map<String,Pedigree> parse(String pedFileName) {
-        
-        Map<String,Pedigree> families = [:]
-        
-        List<Subject> subjects = new TSV(pedFileName,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
-            if(!families.containsKey(line.familyId))
-                families[line.familyId] = new Pedigree(id:line.familyId)
-            Pedigree p = families[line.familyId]
-            def sex = line.sex ?: "other"
-            Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
-			
-			if(line.paternalId) 
-				s.relationships.add(new Relationship(type:FATHER,from:s.id, to: line.paternalId))
-				
-			if(line.maternalId) 
-				s.relationships.add(new Relationship(type:MOTHER,from:s.id, to: line.paternalId)) 
-			
-            p.individuals.add(s)
-            p.phenoTypes.add(line.phenotype)
-        }
-		
-        return families
-    }
     
     @Lazy
     List<String> affected = { samples.grep {phenoTypes[samples.indexOf(it)] > 0 } }()
@@ -185,6 +179,48 @@ class Pedigree {
     
     List<String> getSamples() {
         individuals*.id
+    }
+    
+    List<Subject> findMaximalUnrelatedSet() {
+        // We assume that the pedigrees themselves are relatively small. In that case
+        // we can just brute force every combination of samples that is unrelated.
+        // The number of combinations is 2^n where n is the number of samples in the
+        // family.
+        final int individualCount = individuals.size()
+        final int numCombinations = 1 << individualCount
+            
+        List best = []
+        for(int mask=0; mask<numCombinations; ++mask) {
+            // Pull out the samples that are in / out
+//            println "Test mask " + String.format("%"+individualCount+"s", Integer.toBinaryString(mask))
+            List<Subject> included = []
+            
+            for(int i=0; i<individualCount; ++i) {
+                if(mask & (1<<i)) 
+                    included.add(individuals[i])
+            }
+            
+            // No point going further if we would not be better than what we
+            // already achieved anyway
+            if(included.size() < best.size())
+                continue
+            
+            List<String> includedIds = included*.id
+            
+            // Are any relatives in there?
+//            println "Checking included ids: $includedIds"
+            def related = included.grep { s1 -> 
+                s1.relationships.any { r -> r.to in includedIds } 
+            }
+            
+            // If they are related, ignore this entire configuration
+            if(related) 
+                continue
+            
+            if(included.size()>best.size())
+                best = included
+        }
+        return best
     }
     
     void setSamples(List<String> samples) {
@@ -201,7 +237,15 @@ class Pedigree {
          Phenotype
          */
         individuals.each { subject ->
-            w.println([id, subject.id, motherOf(subject.id)?.id?:"", fatherOf(subject.id)?.id?:"", subject.sex == Sex.MALE ? 1 : 2, subject.id in affected ? 1 : 0  ].join("\t"))
+            w.println(getPedData(subject).join("\t"))
         }
+    }
+    
+    String toJson() {
+        "[" + individuals.collect { it.toJson() }.join(",\n") + "]"
+    }
+    
+    List<Object> getPedData(Subject subject) {
+       [id, subject.id, fatherOf(subject.id)?.id?:"0",motherOf(subject.id)?.id?:"0",  subject.sex == Sex.MALE ? 1 : 2, subject.id in affected ? 1 : 0  ] 
     }
 }
