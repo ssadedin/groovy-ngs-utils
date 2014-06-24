@@ -624,7 +624,7 @@ class Variant implements IRegion {
               if(dsgs[i] > 0) {
                   def ped = header.findPedigreeBySampleIndex(i)   
                   if(!ped) { 
-                      System.err.println("WARNING: no pedigree information found for sample " + header.samples[i])
+//                      System.err.println("WARNING: no pedigree information found for sample " + header.samples[i])
 //                      System.err.println(Arrays.toString(Thread.currentThread().getStackTrace()))
                   }
                   else

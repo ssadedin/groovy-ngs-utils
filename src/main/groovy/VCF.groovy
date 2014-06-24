@@ -141,6 +141,10 @@ class VCF implements Iterable<Variant> {
     }
     
     
+    static VCF parse(String fileName, Pedigrees peds, Closure c = null) {
+        parse(fileName,peds.families.values() as List, c)
+    }
+    
     /**
      * Convenience method to accept string for parsing file
      */
@@ -391,15 +395,32 @@ class VCF implements Iterable<Variant> {
         return genes
     }
     
-    void printHeader() {
-        printHeader(System.out)
+    /**
+     * Print out a version of this VCF with only the given samples included
+     */
+    void filterSamples(PrintStream p, List<String> includeSamples) {
+        
+        p.println(headerLines[0..-2].join('\n'))
+        
+        // Remove the unwanted samples from the last header line
+        List<String> lastHeaderFields = lastHeaderLine[0..8] + includeSamples
+        p.println lastHeaderFields.join("\t")
+        def indices = includeSamples.collect { s -> samples.indexOf(s) }*.plus(9)
+        System.err.println "Indices of selected samples are $indices"
+        for(Variant v in this) {
+            // Only write the variant if it has non-zero dosage for at least one sample
+            if(includeSamples.any { v.sampleDosage(it)}) {
+                String [] variantFields = v.line.split("\t")
+                p.println((variantFields[0..8] + variantFields[indices]).join("\t"))
+            }
+        }
     }
     
     void printHeader(PrintStream p) {
-        p.println(headerLines.join('\n'))
+        printHeader(System.out)
     }
     
-    void print() {
+   void print() {
         this.print(System.out)
     }
     
