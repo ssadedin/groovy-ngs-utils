@@ -5,11 +5,31 @@ int count = 1
 Cli cli = new Cli()
 cli.with {
     i 'vcf File', args:1, required:true
+    p 'PED file describing relationships between the samples in the data', args:1
     o 'Output HTML file', args:1, required:true
+    f 'Comma separated list of families to export', args:1
     maxMaf 'Filter out variants above this MAF', args:1
 }
 
 opts = cli.parse(args)
+
+Pedigrees pedigrees = null
+
+if(opts.p) {
+    pedigrees = Pedigrees.parse(opts.p)
+}
+else {
+    pedigrees = Pedigrees.fromSingletons(new VCF(opts.i).samples) 
+}
+
+def exportSamples = pedigrees.families.values().collect { it.individuals*.id }.flatten().grep { it in new VCF(opts.i).samples };
+def exportFamilies = pedigrees.families.keySet()
+if(opts.f) {
+    exportFamilies = opts.f.split(",").collect { it.trim() }
+    exportSamples = exportSamples.grep { s -> exportFamilies.any { f-> pedigrees.families[f].samples.contains(s)  }}
+    pedigrees.families.keySet().grep { !exportFamilies.contains(it) }.each { pedigrees.removeFamily(it) }
+}
+println "Samples to export: $exportSamples" 
 
 float MAF_THRESHOLD=0.05
 if(opts.maxMaf) 
@@ -83,7 +103,16 @@ baseColumns += [
     'ref': {it.ref },
     'alt': {it.alt },
     'qual': {it.qual },
-    'depth': {it.info.DP }
+    'depth': {it.info.DP },
+    'families' : { v -> 
+        def fcount = v.pedigrees.count {  ped ->
+            def result = ped.samples.any { 
+                v.sampleDosage(it) 
+            } 
+            return result
+        } 
+        return fcount;
+     }
 ]
 
 def vepColumns = [ 
@@ -106,12 +135,15 @@ new File(opts.o).withWriter { w ->
     int i=0;
     int lastLines = 0
     Variant last = null;
-    VCF.parse(opts.i) { v->
+    VCF.parse(opts.i, pedigrees) { v->
+        List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
+        List dosages = exportSamples.collect { v.sampleDosage(it) }
+        if(dosages.every { it==0})
+            return
+        
         if(i++>0 && lastLines > 0)
             w.println ","
-            
-        List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
-        List dosages = v.header.samples.collect { v.sampleDosage(it) }
+        
         List<Map> veps = v.vepInfo
         lastLines = 0
         veps.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
@@ -133,16 +165,22 @@ new File(opts.o).withWriter { w ->
     }
     w.println """];"""
     
-    w.println "var columnNames = ${json(baseColumns*.key + vepColumns*.key + last.header.samples)};"
+    w.println "var columnNames = ${json(baseColumns*.key + vepColumns*.key + exportSamples)};"
     
     w.println """
-    var samples = ${json(last.header.samples)};
+    var samples = ${json(exportSamples)};
+
+    var pedigrees = ${pedigrees.toJson()};
 
     var variantTable = null;
     \$(document).ready(function() {
         variantTable = \$.VariantTable('variantTable', samples, variants);
     });
-    </script>""";
+    </script>
+    <style type='text/css'>
+    td.vcfcol { text-align: center; }
+    </style>
+    """;
     
    
     w.println """
@@ -164,70 +202,3 @@ new File(opts.o).withWriter { w ->
     </html>
     """
 }
-
-
-
-//new File(opts.o).withWriter { w ->
-//    w << new StreamingMarkupBuilder(/*, escapeAttributes:false*/).bind {
-/*
-        html {
-          head {
-              ${js.collect{"<script type='text/javascript' src='$it'></script>"}.join("\n").stripIndent()}
-              ${css.collect{"<link rel='stylesheet' href='$it'/>"}.join("\n").stripIndent()}
-              script(type:'text/javascript') {
-                  mkp.yieldUnescaped """
-                  function highlight(tr) {
-                      var t = document.getElementById('variantsTable');
-                      var trs = t.getElementsByTagName('tr');
-                      for(var i=0; i<trs.length; ++i) {
-                          trs[i].style.color = 'black';
-                      }
-                      tr.style.color = 'red';
-                  }
-            
-                var variants = [ """; 
-                def mkpTmp = mkp;
-                VCF.parse(opts.i) { v ->
-                      mkpTmp.yieldUnescaped(v.toJson() + ",")
-                      return false
-                } 
-                mkp.yieldUnescaped("];")
-              }
-          }
-              
-          body { 
-            table('id': 'variantsTable') {
-              thead {
-                  tr {
-                      th('#')
-                      th('Location')
-                      th('Ref')
-                      th('Alt')
-                      th('Qual')
-                      th('IGV')
-                  }
-              }
-                  
-              tbody {
-                  VCF.parse(opts.i) { Variant v ->
-                      tr {
-                          td("$count")
-                          td("$v.chr:$v.pos")
-                          td("$v.ref")
-                          td("$v.alt")
-                          td("$v.qual")
-                          td {
-                              a(href:"http://localhost:60151/goto?locus=$v.chr:${v.pos}", onclick:'highlight(this.parentNode.parentNode)', target:'igv', 'igv')
-                          }
-                      }
-                      ++count
-                      false
-                  }
-              }
-            }
-            iframe(id:'igv', name:'igv', src:'about:blank', style:'display:none')
-          }
-        }
-    }
-}
-*/
