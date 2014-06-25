@@ -417,7 +417,7 @@ class VCF implements Iterable<Variant> {
     }
     
     void printHeader(PrintStream p) {
-        printHeader(System.out)
+        p.println(headerLines.join('\n'))
     }
     
     void printHeader() {
