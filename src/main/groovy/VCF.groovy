@@ -420,6 +420,10 @@ class VCF implements Iterable<Variant> {
         printHeader(System.out)
     }
     
+    void printHeader() {
+        printHeader(System.out)
+    }
+    
    void print() {
         this.print(System.out)
     }
