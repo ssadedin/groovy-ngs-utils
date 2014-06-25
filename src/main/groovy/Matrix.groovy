@@ -650,14 +650,14 @@ class Matrix extends Expando implements Iterable {
         }
         Matrix m = new Matrix(new TSV(readFirstLine:true, r)*.values)
         if(names)
-            m.names = names
+            m.@names = names
             
         return m
     }
        
     String toString() {
         
-        def headerCells = this.names
+        def headerCells = this.@names
         if(this.properties) {
             headerCells = this.properties.collect { it.key } + headerCells
         }
@@ -686,8 +686,9 @@ class Matrix extends Expando implements Iterable {
                    cells = this.properties.collect { it.value[rowCount] } + cells
                }
                ((rowCount++) + ":").padRight(6) + cells.collect { value ->
-                   if(value instanceof String)
-                       return value
+                   if(!(value instanceof double))
+                       return String.valueOf(value)
+                       
                    (value < 0.0001d && value !=0) ? String.format("%1.6e",value) : format.format(value)
                }.join(",\t")  
             }
