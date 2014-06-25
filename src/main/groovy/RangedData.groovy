@@ -13,6 +13,16 @@ class RangedData extends Regions {
     public RangedData() {
     }
     
+    /**
+     * Default to first 3 columns of file being the genomic range information
+     * in form of chr,start,end
+     * 
+     * @param sourceFile
+     */
+    public RangedData(String sourceFile) {
+        this(sourceFile,0,1,2)
+    }
+    
     public RangedData(String sourceFile, int chrColumn, int startColumn, int endColumn) {
         this(new File(sourceFile).newReader(), chrColumn, startColumn, endColumn)
     }
