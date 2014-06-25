@@ -73,10 +73,10 @@ class Pedigrees {
             Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
 			
             RelationshipType childType = s.sex == Sex.FEMALE ? DAUGHTER : SON
-			if(line.paternalId) 
+			if(line.paternalId && line.paternalId != "0") 
 				s.relationships.add(new Relationship(type:childType,from:s.id, to: line.paternalId))
 				
-			if(line.maternalId) 
+			if(line.maternalId && line.maternalId != "0") 
 				s.relationships.add(new Relationship(type:childType,from:s.id, to: line.maternalId)) 
 			
             p.individuals.add(s)
@@ -96,7 +96,8 @@ class Pedigrees {
             List<String> parentIds = s.relationships.grep { it.type.isChild() }*.to
             for(String parentId in parentIds) {
                 if(!subjectsToFamilies[parentId]) {
-                    System.err.println "WARNING: Sample $s.id has a parent not specified in PED file: $parentId" 
+                    if(parentId != "0")
+                        System.err.println "WARNING: Sample $s.id has a parent not specified in PED file: $parentId" 
                     continue
                 }
                 Subject parent = subjectsToFamilies[parentId].individuals.find { it.id == parentId }
@@ -121,6 +122,16 @@ class Pedigrees {
         families.remove(id);
     }
     
+    List<String> getAffected() {
+        families.collect { id, p -> p.affected }.sum()
+    }
+    
+    List<String> getUnaffected() {
+        families.collect { id, p -> 
+            p.unaffected 
+        }.sum()
+    }
+     
     /**
      * A convenience method that creates a set of pedigrees from set of 
      * unrelated singletons. Such a pedigree is not very useful, but it allows

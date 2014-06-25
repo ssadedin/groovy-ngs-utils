@@ -18,8 +18,6 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-import com.sun.xml.internal.ws.developer.MemberSubmissionAddressing;
-
 import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
 
@@ -37,18 +35,36 @@ class SnpEffInfo {
         'START_LOST',
         'STOP_GAINED',
         'STOP_LOST',
-        'NON_SYNONYMOUS_CODING',
-        'EXON',
         'START_GAINED',
-        'SYNONYMOUS_CODING',
         'SPLICE_SITE_ACCEPTOR',
         'SPLICE_SITE_DONOR',
+        'NON_SYNONYMOUS_CODING',
+        'SYNONYMOUS_CODING',
+        'EXON',
         'INTRON',
         '3_PRIME',
         '5_PRIME',
         'DOWNSTREAM',
         'UPSTREAM',
         'INTRAGENIC'
+    ]
+    
+    static EFFECT_TO_VEP = [
+        'START_LOST' : "transcript_ablation",
+        'STOP_GAINED': "stop_gained",
+        'STOP_LOST' : "stop_lost",
+        'START_GAINED' : "initiator_codon_variant",// ?
+        'SPLICE_SITE_ACCEPTOR' : "splice_acceptor_variant",
+        'SPLICE_SITE_DONOR' : "splice_donor_variant", 
+        'NON_SYNONYMOUS_CODING' : "missense_variant",
+        'SYNONYMOUS_CODING' : "synonymous_variant",
+        'EXON': "non_coding_exon_variant",
+        'INTRON' : "intron_variant",
+        '3_PRIME' : "3_prime_UTR_variant",
+        '5_PRIME' : "5_prime_UTR_variant", 
+        'DOWNSTREAM': "downstream_gene_variant",
+        'UPSTREAM' : "upstream_gene_variant",
+        'INTERGENIC' : "intergenic_variant"
     ]
 
     /**
@@ -79,6 +95,45 @@ class SnpEffInfo {
     String toString() {
         "type=$type,gene=$gene,rank=$impact"
     }
+}
+
+class VEPConsequences {
+    static RANKED_CONSEQUENCES = [
+        "transcript_ablation",
+        "splice_donor_variant",
+        "splice_acceptor_variant",
+        "stop_gained",
+        "frameshift_variant",
+        "stop_lost",
+        "initiator_codon_variant",
+        "inframe_insertion",
+        "inframe_deletion",
+        "missense_variant",
+        "transcript_amplification",
+        "splice_region_variant",
+        "incomplete_terminal_codon_variant",
+        "stop_retained_variant",
+        "coding_sequence_variant",
+        "synonymous_variant",
+        "mature_miRNA_variant",
+        "5_prime_UTR_variant",
+        "3_prime_UTR_variant",
+        "non_coding_exon_variant",
+        "nc_transcript_variant",
+        "intron_variant",
+        "NMD_transcript_variant",
+        "upstream_gene_variant",
+        "downstream_gene_variant",
+        "TFBS_ablation",
+        "TFBS_amplification",
+        "TF_binding_site_variant",
+        "regulatory_region_variant",
+        "regulatory_region_ablation",
+        "regulatory_region_amplification",
+        "feature_elongation",
+        "feature_truncation",
+        "intergenic_variant"
+    ]
 }
 
 /**
@@ -162,6 +217,14 @@ class Allele {
  * if(v in bed) 
  *  println "Variant v falls in the ranges included in the BED file"
  * </pre>
+ * 
+ * The Variant class supports working with the full genotype data of each sample, and
+ * the genotype fields are parsed for you. For example, to check if every sample is below
+ * a particular genotype quality:
+ * <pre>
+ * if(v.genoTypes.every { it.GQ < 5.0f })
+ *     println "Quality is low for every sample!"
+ * </pre>    
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -384,7 +447,7 @@ class Variant implements IRegion {
         if(line == null)
             line = [chr,pos,id?:".",ref,alts.join(","),".","PASS","ADDED"].join("\t")
             
-        c()
+        c(this)
         
         def fields = line.split('\t')
         fields[0] = chr
@@ -901,5 +964,38 @@ class Variant implements IRegion {
             cachedRegion = new Region(this.chr, this.pos..(this.pos+this.size()))
         }
         return cachedRegion
+    }
+    
+    /**
+     * Return the list of genes impacted by this variant, in a manner that is
+     * neutral to the annotator used (VEP and SnpEFF supported)
+     * 
+     * @param minVEPCons  the VEP impact level above which genes should
+     *                      be returned
+     */
+    List<String> getGenes(String minVEPCons) {
+        int thresholdConsequenceIndex = VEPConsequences.RANKED_CONSEQUENCES.indexOf(minVEPCons)
+        if(this.header.getInfoMetaData("CSQ"))
+            return getVepInfo().grep { vep ->
+                if(pos == 50962078)
+                    System.err.println "Consequence indexes for $pos = " + vep.Consequence.split("&").collect {it + " : " + VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) }
+                vep.Consequence.split("&").every { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) <= thresholdConsequenceIndex }
+            }*.SYMBOL
+        else {
+            return getSnpEffInfo().grep { snpeff ->
+                String vepCons = SnpEffInfo.EFFECT_TO_VEP[snpeff.EFFECT_TO_VEP]
+                if(!vepCons)
+                    return false
+                return (VEPConsequences.RANKED_CONSEQUENCES.indexOf(vepCons)) <= thresholdConsequenceIndex
+            }*.gene
+        }
+    }
+    
+    @CompileStatic
+    float getMaxVepMaf() {
+       return (float)getVepInfo().collect { Map<String,Object> vep -> 
+           [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF].collect { String maf ->
+               maf?maf.split('&'):[]
+           }.flatten().collect { String maf -> maf.toFloat() }.max() ?: 0.0f }.max()
     }
 }
