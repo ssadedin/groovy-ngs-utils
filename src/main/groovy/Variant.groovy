@@ -996,6 +996,6 @@ class Variant implements IRegion {
        return (float)getVepInfo().collect { Map<String,Object> vep -> 
            [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF].collect { String maf ->
                maf?maf.split('&'):[]
-           }.flatten().collect { String maf -> maf.toFloat() }.max() ?: 0.0f }.max()
+           }.flatten().collect { String maf -> maf.isFloat() ? maf.toFloat() : 0.0f }.max() ?: 0.0f }.max()
     }
 }
