@@ -113,7 +113,7 @@ var rowProperties = [];
         
         console.log('creating table ...');
         variantTable = $('#'+tableId).DataTable({ 
-            "iDisplayLength": 50,
+            "iDisplayLength": 40,
             columns: columns,
             data: variants
         });
@@ -122,8 +122,9 @@ var rowProperties = [];
     
         tableData = variantTable.rows().data();
     
-        layout = $('body').layout({ applyDefaultStyles: true });
-    
+        layout = $('body').layout({ 
+          applyDefaultStyles: true
+        });
         $('#'+tableId).on('order.dt',  add_display_events);
     
         add_display_events();
@@ -167,7 +168,6 @@ var rowProperties = [];
             with($('#filterHelp')) {
                 $span("Filter attributes: " + attrs.join(","));
             }
-            layout.sizePane("north",150);
             $('#filterHelp').slideDown();
         });
     
@@ -303,10 +303,9 @@ var rowProperties = [];
             }
         }
         
-        
         $('input').bind('keydown keyup', editing_key_press);
-        
         $('input').each(editing_key_press);
+        layout.resizeAll();
     }
     
     function editing_key_press(e){
@@ -454,7 +453,7 @@ var rowProperties = [];
                             }
                             
                             if(!familyResult) {
-                                // console.log("Family failed: index=" + index + " otherIndex = " + otherIndex + " family=" + family.id + " proband = " + proband);
+                                console.log("Family failed: index=" + index + " otherIndex = " + otherIndex + " family=" + family.id ); // + " proband = " + proband);
                                 if(familyCountReferenced) {
                                     // Don't bother evaluating this at all - we'll look at it once all the families are evaluated on other conditions
                                     familyCountExprs.push(filtersToRun[i].expr);
@@ -466,14 +465,15 @@ var rowProperties = [];
                                 }
                                 else {
                                     // False result not in context of family (variant level filter) means fail whole filter straight away
-                                    // console.log("Fail without family contex: abort early");
+                                    // PROBLEM: Here we are failing and it aborts the iteration of otherIndexes too
+                                    console.log("Fail without family contex: abort early");
                                     result = false;
-                                	break;
+                                	break; 
                                 }
                             }
                             else // Pass
                             if(familyReferenced) {
-                                // console.log("Family passed: index=" + index + " otherIndex = " + otherIndex + " family=" + family.id);
+                                console.log("Family passed: index=" + index + " otherIndex = " + otherIndex + " family=" + family.id);
                                 allOtherIndexesFailed=false;
                                 ++familyCount;
                                 familyPassed = true;
@@ -483,12 +483,12 @@ var rowProperties = [];
                             if(otherIndex == index)
                                 ++otherIndex;
                             
-                            //console.log("Other index = " + otherIndex + " / index = " + index + " / " + variantData.length);
+                            console.log("Other index = " + otherIndex + " / index = " + index + " / " + variantData.length);
                             otherRowSource = variantData[otherIndex];
                         } while(isPhase2 && otherReferenced && otherIndex<variantData.length);
 
                         if(allOtherIndexesFailed) {
-                            // console.log("Gray out family " + family.id + " index = " + index);
+                            console.log("Gray out family " + family.id + " index = " + index);
                             for(var j=0; j<family.members.length; ++j) {
                                 thisRowProperties[family.members[j]] = { color : 'gray'}; // NOTE: this color is not actually applied, it's hard coded.
                             }
