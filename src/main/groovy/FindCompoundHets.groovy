@@ -107,41 +107,41 @@ VCF vcf = VCF.parse(opts.vcf, pedigrees) { Variant v ->
 int hetId = 1
 List<Variant> toOutput = []
 Set<Variant> pendingOutput = new HashSet()
-new File(opts.o).withOutputStream { o ->
-    PrintStream p = new PrintStream(o)
-    vcf.printHeader(p)
-    familyAutoRecs.each { String family, Map genes ->
-        genes.each { String gene, List<AutoRecTrio> variants ->
-            // For each variant in this gene, check if it matches up to any other variant
-            for(AutoRecTrio v in variants) {
-                for(AutoRecTrio v2 in variants) {
-                    if(v.variant.sampleDosage(v.trio.mother.id) == v2.variant.sampleDosage(v.trio.father.id)) {
-                        println "Variant $v.variant ${v.variant.vepInfo.grep { it.SYMBOL==gene }*.Consequence.join(',')} and $v2.variant ${v2.variant.vepInfo.grep { it.SYMBOL==gene }*.Consequence.join(',')} are compound het pairs for family $v.trio.family in gene $gene"
+familyAutoRecs.each { String family, Map genes ->
+    genes.each { String gene, List<AutoRecTrio> variants ->
+        // For each variant in this gene, check if it matches up to any other variant
+        for(AutoRecTrio v in variants) {
+            for(AutoRecTrio v2 in variants) {
+                if(v.variant.sampleDosage(v.trio.mother.id) == v2.variant.sampleDosage(v.trio.father.id)) {
+                    println "Variant $v.variant ${v.variant.vepInfo.grep { it.SYMBOL==gene }*.Consequence.join(',')} and $v2.variant ${v2.variant.vepInfo.grep { it.SYMBOL==gene }*.Consequence.join(',')} are compound het pairs for family $v.trio.family in gene $gene"
                         
-                        def updateHet = { Variant vt ->
-                            if(vt.info.CHET)
-                                (vt.info.CHET.split(",") + [hetId]).join(",")
-                            else
-                                vt.info.CHET=hetId.toString()
-                        }
-                        ++hetId
-                        
-                        v.variant.update(updateHet)
-                        v2.variant.update(updateHet)
-                        
-                        if(!pendingOutput.contains(v.variant))
-                            toOutput.add(v.variant)
-                        if(!pendingOutput.contains(v2.variant))
-                            toOutput.add(v2.variant)
-                            
-                        pendingOutput.add(v.variant)
-                        pendingOutput.add(v2.variant)
+                    def updateHet = { Variant vt ->
+                        if(vt.info.CHET)
+                            (vt.info.CHET.split(",") + ["$v.trio.family=$hetId"]).join(",")
+                        else
+                            vt.info.CHET=hetId.toString()
                     }
+                    ++hetId
+                        
+                    v.variant.update("Compund Heterozygous ID", updateHet)
+                    v2.variant.update("Compund Heterozygous ID", updateHet)
+                        
+                    if(!pendingOutput.contains(v.variant))
+                        toOutput.add(v.variant)
+                    if(!pendingOutput.contains(v2.variant))
+                        toOutput.add(v2.variant)
+                            
+                    pendingOutput.add(v.variant)
+                    pendingOutput.add(v2.variant)
                 }
             }
         }
     }
+}
     
+new File(opts.o).withOutputStream { o ->
+    PrintStream p = new PrintStream(o)
     System.err.println "Writing output to " + opts.o
+    vcf.printHeader(p)
     toOutput.each {  p.println it.line }
 }    
