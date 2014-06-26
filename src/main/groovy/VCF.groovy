@@ -303,12 +303,65 @@ class VCF implements Iterable<Variant> {
     }
     
     
+    @CompileStatic
     Map<String,Object> getInfoMetaData(String id) {
         if(this.infoMetaDatas == null) {
           this.infoMetaDatas = 
-              this.headerLines.grep { it.startsWith("##INFO") }.collect { parseInfoMetaData(it) }.collectEntries { [ it.ID, it ] }
+              this.headerLines.grep { String hline -> hline.startsWith("##INFO") }.collect { String hline -> parseInfoMetaData(hline) }.collectEntries { 
+                  Map hEntry -> [ hEntry.ID, hEntry ] 
+              }
         }
         return this.infoMetaDatas[id]
+    }
+    
+    /**
+     * Add a header for describing an info value to be added to a 
+     * VCF. 
+     * 
+     * @param id
+     * @param desc
+     * @param value A prototype value to infer the type of value for the INFO field from.
+     */
+    void addInfoHeader(String id, String desc, Object value) {
+        int lastInfo = this.headerLines.findLastIndexOf { it.startsWith("##INFO=") }
+        if(lastInfo < 0)
+            lastInfo = 1
+                    
+        String valueType = "String"
+        if(value instanceof Integer) {
+            valueType = "Integer"
+        }
+        else
+        if(value instanceof Float) {
+            valueType = "Float"
+        }
+        else
+        if(value instanceof Double) {
+            valueType = "Double"
+        }
+                     
+        this.headerLines = this.headerLines[0..lastInfo] + 
+            ["##INFO=<ID=$id,Number=1,Type=${valueType},Description=\"$desc\">"] +
+            this.headerLines[(lastInfo+1)..-1]
+                        
+        // Clear any cached meta data so it will get reparsed
+        this.infoMetaDatas = null;
+    }
+    
+    /**
+     * Return true if this VCF file contains the specified INFO tags
+     * <p>
+     * Note: it only checks if the tag is described in the header,
+     * not whether any variant in the VCF actually has the INFO tag.
+     * You still need to account that any given record may be missing the
+     * tag.
+     * 
+     * @param id    id of INFO tag to check for
+     * @return  true iff an INFO meta data line of the VCF file describes this tag
+     */
+    @CompileStatic
+    boolean hasInfo(String id) {
+        return getInfoMetaData(id) != null
     }
     
     /**
