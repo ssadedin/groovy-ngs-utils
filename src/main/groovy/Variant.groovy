@@ -98,7 +98,7 @@ class SnpEffInfo {
 }
 
 class VEPConsequences {
-    static RANKED_CONSEQUENCES = [
+    static List<String> RANKED_CONSEQUENCES = [
         "transcript_ablation",
         "splice_donor_variant",
         "splice_acceptor_variant",
@@ -134,6 +134,10 @@ class VEPConsequences {
         "feature_truncation",
         "intergenic_variant"
     ]
+    
+    static int severityOf(String cons) {
+        RANKED_CONSEQUENCES.size() - RANKED_CONSEQUENCES.indexOf(cons)
+    }
 }
 
 /**
@@ -470,28 +474,9 @@ class Variant implements IRegion {
         if(this.header != null) {
             getInfo().collect { k,v ->
                 
-                if(!header.headerLines.find { it.startsWith("##INFO=<ID=$k") }) {
+                if(!header.hasInfo(k)) {
                     
-                    int lastInfo = header.headerLines.findLastIndexOf { it.startsWith("##INFO=") }
-                    if(lastInfo < 0)
-                        lastInfo = 1
-                    
-                    String valueType = "String"
-                    if(v instanceof Integer) {
-                        valueType = "Integer"
-                    }
-                    else
-                    if(v instanceof Float) {
-                        valueType = "Float"
-                    }
-                    else
-                    if(v instanceof Double) {
-                        valueType = "Double"
-                    }
-                     
-                    header.headerLines = header.headerLines[0..lastInfo] + 
-                        ["##INFO=<ID=$k,Number=1,Type=${valueType},Description=\"$desc\">"] +
-                        header.headerLines[(lastInfo+1)..-1]
+                    header.addInfoHeader(k,desc,v)
                 }
            }
         }
@@ -977,8 +962,6 @@ class Variant implements IRegion {
         int thresholdConsequenceIndex = VEPConsequences.RANKED_CONSEQUENCES.indexOf(minVEPCons)
         if(this.header.getInfoMetaData("CSQ"))
             return getVepInfo().grep { vep ->
-                if(pos == 50962078)
-                    System.err.println "Consequence indexes for $pos = " + vep.Consequence.split("&").collect {it + " : " + VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) }
                 vep.Consequence.split("&").every { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) <= thresholdConsequenceIndex }
             }*.SYMBOL
         else {
@@ -997,5 +980,19 @@ class Variant implements IRegion {
            [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF].collect { String maf ->
                maf?maf.split('&'):[]
            }.flatten().collect { String maf -> maf.isFloat() ? maf.toFloat() : 0.0f }.max() ?: 0.0f }.max()
+    }
+    
+    /**
+     * Return the details of the most severe VEP consequence, as ranked by
+     * {@link VEPConsequences#RANKED_CONSEQUENCES}.
+     * 
+     * @return  A map with key value pairs of VEP annotation fields.
+     */
+    Map<String,Object> getMaxVep() {
+        def allVeps = getVepInfo().inject([]) { veps, vep ->
+            veps.addAll(vep.Consequence.split("&").collect { [vep,it]})
+            return veps;
+        }
+        return allVeps.max { VEPConsequences.severityOf(it[1]) }[0]
     }
 }
