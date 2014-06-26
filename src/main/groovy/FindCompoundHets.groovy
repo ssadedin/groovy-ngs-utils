@@ -116,10 +116,11 @@ familyAutoRecs.each { String family, Map genes ->
                     println "Variant $v.variant ${v.variant.vepInfo.grep { it.SYMBOL==gene }*.Consequence.join(',')} and $v2.variant ${v2.variant.vepInfo.grep { it.SYMBOL==gene }*.Consequence.join(',')} are compound het pairs for family $v.trio.family in gene $gene"
                         
                     def updateHet = { Variant vt ->
+                        String newChet = "$v.trio.family=$hetId"
                         if(vt.info.CHET)
-                            (vt.info.CHET.split(",") + ["$v.trio.family=$hetId"]).join(",")
+                            (vt.info.CHET.split(",") + [newChet]).join(",")
                         else
-                            vt.info.CHET=hetId.toString()
+                            vt.info.CHET=newChet
                     }
                     ++hetId
                         
