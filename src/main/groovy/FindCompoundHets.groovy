@@ -53,6 +53,16 @@ List<Trio> trios = affected.collect { s ->
     )
 }.grep { it.mother != null && it.father != null }
 
+if(trios.isEmpty()) {
+    System.err.println """
+        No trios consisting of an affected child and mother and father were found in the VCF file.
+
+        Please ensure the VCF file and PED file contain correct sample information and are consistent with
+        each other.
+    """.stripIndent()
+    System.exit(0)
+}
+
 File variantFile = new File(opts.vcf)
 
 //Map<Variant,List<Trio>> autoRecTrios = [:]
