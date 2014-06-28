@@ -22,8 +22,6 @@ MAX_MAF = opts.maxMaf ? opts.maxMaf.toFloat() : 0.05f
 
 MAX_FAM_COUNT = opts.famCount ? opts.famCount.toInteger() : 3
 
-def excludeTypes = ['INTERGENIC','INTRON','DOWNSTREAM','SYNONYMOUS_CODING']
-
 Pedigrees pedigrees = Pedigrees.parse(opts.ped)
 
 List<String> unaffected = pedigrees.unaffected
@@ -53,7 +51,7 @@ List<Trio> trios = affected.collect { s ->
         mother : pedigrees.subjects[s].motherOf(s),
         father : pedigrees.subjects[s].fatherOf(s)
     )
-}
+}.grep { it.mother != null && it.father != null }
 
 File variantFile = new File(opts.vcf)
 
