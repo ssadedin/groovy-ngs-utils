@@ -41,7 +41,7 @@ class Subject {
     List<Relationship> relationships = []
     
     boolean isAffected() {
-        phenoTypes.any { it > 0 }
+        phenoTypes.any { it > 1 }
     }
     
     @CompileStatic
@@ -171,10 +171,10 @@ class Pedigree {
      
     
     @Lazy
-    List<String> affected = { samples.grep {phenoTypes[samples.indexOf(it)] > 0 } }()
+    List<String> affected = { samples.grep {phenoTypes[samples.indexOf(it)] > 1 } }()
     
     @Lazy
-    List<String> unaffected = { samples.grep {phenoTypes[samples.indexOf(it)] == 0 } }()
+    List<String> unaffected = { samples.grep {phenoTypes[samples.indexOf(it)] <= 1 } }()
     
     
     List<String> getSamples() {
@@ -246,6 +246,6 @@ class Pedigree {
     }
     
     List<Object> getPedData(Subject subject) {
-       [id, subject.id, fatherOf(subject.id)?.id?:"0",motherOf(subject.id)?.id?:"0",  subject.sex == Sex.MALE ? 1 : 2, subject.id in affected ? 1 : 0  ] 
+       [id, subject.id, fatherOf(subject.id)?.id?:"0",motherOf(subject.id)?.id?:"0",  subject.sex == Sex.MALE ? 1 : 2, subject.id in affected ? 2 : 1  ] 
     }
 }
