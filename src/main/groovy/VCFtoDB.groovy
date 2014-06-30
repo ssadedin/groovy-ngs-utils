@@ -14,11 +14,16 @@ Pedigrees peds = Pedigrees.parse(opts.ped)
 
 VariantDB db = new VariantDB(opts.db)
 def progress = new ProgressCounter(withRate:true)
-db.tx {
-    VCF.parse(opts.vcf) { Variant v ->
-        // println "Adding variant $v to database"
-        db.add(opts.batch, peds, v)    
-        progress.count()
+try {
+    db.tx {
+        VCF.parse(opts.vcf) { Variant v ->
+            // println "Adding variant $v to database"
+            db.add(opts.batch, peds, v)    
+            progress.count()
+        }
     }
+    progress.end()
 }
-progress.end()
+finally {
+    db.db.close()
+}
