@@ -72,7 +72,7 @@ class SamplesToPed {
 	                println "Phenotype for $sample [a/u] ($phenotype): "
 	                phenotypeValue = r.readLine()
 	                if(phenotypeValue)
-	                    phenotype = ["a":1, "u":0][phenotypeValue]
+	                    phenotype = ["a":2, "u":1][phenotypeValue]
 	                else
 	                    break
 	            }
