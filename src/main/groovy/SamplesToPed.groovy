@@ -40,10 +40,13 @@ class SamplesToPed {
 	        Map<String,Relationship> rels = [:]
 	        
 	        group.members.each { sample ->
-	            println "Pedigree for $sample [$group.group]: "
-	            String pedigree = r.readLine()
-	            if(pedigree.isEmpty())
-	                pedigree = group.group
+                
+                String pedigree = group.group.replaceAll('_$','')
+                
+	            println "Pedigree for $sample [$pedigree]: "
+	            String pedigreeValue = r.readLine()
+	            if(!pedigree.isEmpty())
+	                pedigree = pedigreeValue
 	                
 	                
 	            String sex = infos[sample].sex.name()
