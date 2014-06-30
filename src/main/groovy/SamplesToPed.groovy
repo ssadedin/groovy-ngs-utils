@@ -14,8 +14,10 @@ class SamplesToPed {
     
     static void main(String [] args) {
 		
-        if(!args)
-            System.err.println "Please provide sample info file to process"
+        if(!args) {
+            System.err.println "Please provide sample info file to process\n"
+            System.exit(1)
+        }
             
         Map<String,SampleInfo> infos = SampleInfo.parse_sample_info(args[0])
         
@@ -48,8 +50,9 @@ class SamplesToPed {
 	            if(infos[sample].sex == Sex.UNKNOWN) {
 	                println "Sex for sample $sample [${infos[sample].sex.name()}]:"
 	                sex = r.readLine()
-	                if(sex.isEmpty())
+	                if(sex.isEmpty()) {
 	                    sex = infos[sample].sex.name()
+	                }
 	            }
 	                    
 	            String rel 
