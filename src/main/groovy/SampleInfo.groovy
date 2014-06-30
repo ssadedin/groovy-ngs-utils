@@ -162,7 +162,8 @@ class SampleInfo {
      * MGHA redefined column order and contents to have a lot of things not of interest to others,
      * so have a separate mapping for them.
      */
-    static List<String> MG_COLUMNS = ["Batch","Sample_ID","DNA_ID","Sex","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Cohort","Sample_Type",
+    static List<String> MG_COLUMNS = [
+		"Batch","Sample_ID","DNA_ID","Sex","DNA_Concentration","DNA_Volume","DNA_Quantity","DNA_Quality","DNA_Date","Cohort","Sample_Type",
         "Fastq_Files","Prioritised_Genes","Consanguinity","Variants_File",
         "Pedigree_File","Ethnicity","VariantCall_Group","Capture_Date","Sequencing_Date","Mean_Coverage","Duplicate_Percentage","Machine_ID",
         "DNA_Extraction_Lab","Sequencing_Lab","Library_Preparation","Barcode_Pool_Size","Read_Type","Machine_Type","Sequencing_Chemistry",
@@ -290,6 +291,7 @@ class SampleInfo {
 	                def si = new SampleInfo(
 	                    sample: fields.Sample_ID,
 	                    target: fields.Cohort,
+						sampleType: SampleType.decode(fields.Sample_Type),
 	                    geneCategories:  [:],
 						batch: fields.Batch,
 	                    pedigree: fields.Pedigree_File               
@@ -317,6 +319,8 @@ class SampleInfo {
 						si.variantsFile = fields.Variants_File
 					if(fields.Machine_ID)
 						si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
+						
+					
 					si.sequencingContact = fields.Sequencing_Contact
 					si.analysisContact = fields.Pipeline_Contact
 					si.institution = fields.Hospital_Centre
