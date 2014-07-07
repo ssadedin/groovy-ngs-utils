@@ -462,10 +462,24 @@ class RangeIndex implements Iterable<IntRange> {
 //        println("|"+sizes.collect { "-" * it }.join("|")+"|")
     }
 
-    @Override
     public Iterator<IntRange> iterator() {
+        iteratorAt(-1)
+    }
+    
+    /**
+     * Return an iterator that will return each range in the index
+     * in genomic order by starting position, starting from the given 
+     * position.
+     */
+    @Override
+    public Iterator<IntRange> iteratorAt(int startingPos) {
+        
+        if(startingPos >= 0) {
+            startingPos = ranges.containsKey(startingPos) ? startingPos : ranges.higherKey(startingPos)
+        }
+        
         return new Iterator<IntRange>() {
-            Integer pos = -1
+            Integer pos = startingPos
             int index = 0
             List<IntRange> activeRanges = []
             IntRange nextRange = null
@@ -479,11 +493,8 @@ class RangeIndex implements Iterable<IntRange> {
                 while(pos != null && (nextRange==null || nextRange.from < pos)) {
                   nextRange = findNext()
                 }
-//                activeRanges.add(nextRange)
-                
                 return nextRange != null
             }
-            
             
             IntRange next() {
                 
@@ -511,8 +522,6 @@ class RangeIndex implements Iterable<IntRange> {
                 
                 if(pos == null) 
                     return null
-                    
-//                activeRanges.removeAll { !ranges[pos].contains(it) }
                 
                 return ranges[pos][index++]
             }
@@ -523,4 +532,98 @@ class RangeIndex implements Iterable<IntRange> {
         }
     }
     
+    public Iterator<IntRange> reverseIterator() {
+        reverseIteratorAt(-1)
+    }
+    
+    /**
+     * Return an iterator that will return each range that starts
+     * at or before the given position, proceeding backwards
+     * through the genome, ordered by start position.
+     * 
+     * @author simon.sadedin@mcri.edu.au
+     */
+    public Iterator<IntRange> reverseIteratorAt(int startingPos) {
+        
+        if(startingPos >= 0) {
+            // We have to ensure to start at least 1 higher than
+            // the first entry we want to return, because the findNext()
+            // will call index.lowerKey()
+            if(ranges.containsKey(startingPos)) {
+                startingPos = startingPos+1
+            }
+        }
+        
+        return new Iterator<IntRange>() {
+            
+            // Genomic position in range index
+            Integer pos = startingPos
+            
+            // position in values at current range index
+            int index = -1
+            
+            List<IntRange> activeRanges = []
+            IntRange prevRange = null
+            
+            boolean hasNext() {
+                if(prevRange)
+                    return true
+                    
+                // Note: pos becomes null when iteration through index exhausted
+                // prevRange is set null at each call of next()
+                while(pos != null && (prevRange==null || prevRange.from < pos)) {
+                  
+                  if(prevRange!=null && prevRange.from < pos) {
+                      println "Skip $prevRange.from - $prevRange.to because ${prevRange.from} < $pos"
+                  }
+                  prevRange = findNext()
+                  
+                }
+                return prevRange != null
+            }
+            
+            
+            IntRange next() {
+                
+                if(!hasNext()) // Note: populates prevRange
+                    throw new IndexOutOfBoundsException("No more ranges in this index")
+                
+                IntRange result = prevRange
+                prevRange = null
+                return result
+            }
+            
+            IntRange findNext() {
+                if(pos == -1) {
+                    pos = ranges.lastKey()
+                    if(pos != null) {
+                        index = ranges[pos].size()-1
+                        if(index<0)   // This actually forces the return below to return null (in groovy, [0] == null)
+                            index = 0 // which forces the iteration to occur again, to find the right key
+                    }
+                }
+                else
+                if(index < 0) {
+                    pos = ranges.lowerKey(pos)
+                    while(pos != null && ranges[pos].isEmpty()) {
+                      pos = ranges.lowerKey(pos)
+                    }
+                    
+                    if(pos != null) {
+                        println "Seeking last index at pos $pos on " + ranges[pos]
+                        index = ranges[pos].size()-1
+                    }
+                }
+                
+                if(pos == null)
+                    return null
+                
+                return ranges[pos][index--]
+            }
+            
+            void remove() {
+                throw new UnsupportedOperationException()
+            }
+        }
+    }
 }
