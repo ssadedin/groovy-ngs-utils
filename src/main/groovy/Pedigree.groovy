@@ -147,15 +147,11 @@ class Pedigree {
     String id
     
     /**
-     * List of subject ids belonging to the family
+     * List of subjects belonging to the family
      */
-//    List<String> samples = []
-    
     List<Subject> individuals = []
     
     List<Integer> phenoTypes = []
-    
-//    Map<String,Relationship> relationships = [:]
     
     String toString() {
         "$id $samples"
@@ -239,6 +235,33 @@ class Pedigree {
         individuals.each { subject ->
             w.println(getPedData(subject).join("\t"))
         }
+    }
+    
+    /**
+     * Verify that the samples in the pedigree are internally consistent
+     * ie: mother must be female, father male, sample cannot be mother of itself, etc.
+     */
+    void validate() {
+       for(Subject s in individuals) {
+           if(s.isChild()) {
+               Subject mother = motherOf(s.id)
+               if(mother.sex == Sex.MALE) 
+                   throw new IllegalStateException("Sample $s.id has mother with sex specified as MALE")
+                   
+               Subject father = fatherOf(s.id)
+               if(father.sex == Sex.FEMALE) 
+                   throw new IllegalStateException("Sample $s.id has father with sex specified as FEMALE")
+                   
+               if(s.id == father.id)
+                   throw new IllegalStateException("Sample $s.id has self as father")
+                   
+               if(s.id == mother.id)
+                   throw new IllegalStateException("Sample $s.id has self as mother")
+                   
+               // More checks - grandparents != self?
+               // what else?
+           }
+       } 
     }
     
     String toJson() {

@@ -112,7 +112,9 @@ class Pedigrees {
             }
         }
         
-        return new Pedigrees(families:families, subjects: subjectsToFamilies)
+        Pedigrees result = new Pedigrees(families:families, subjects: subjectsToFamilies)
+        result.families.each { id, ped -> ped.validate() }
+        return result
     }
     
     void removeFamily(String id) {
