@@ -86,6 +86,10 @@ class Region extends Expando implements IRegion {
         new Region(chr, range.from..range.to)
     }
     
+    Object getExtra() {
+        range instanceof GRange ? range.extra : null
+    }
+    
     int size() {
         range.size()
     }
