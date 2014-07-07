@@ -282,7 +282,12 @@ class Matrix extends Expando implements Iterable {
             if(l.size() == 0) // Seems to happen with m[][2] type syntax
                 return getColumns()
             else {
-                return subsetRows(l)
+                double [][] submatrix = subsetRows(l)
+                Matrix result = new Matrix(new Array2DRowRealMatrix(submatrix))
+                result.@names = this.@names
+                if(!this.properties.isEmpty()) 
+                    this.transferPropertiesToRows(result, l)
+                return result
             }
         }
         else
@@ -425,8 +430,18 @@ class Matrix extends Expando implements Iterable {
 
 		double [][] submatrix = this.subsetRows((Iterable<Number>)keepRows)
 		
-        return new Matrix(new Array2DRowRealMatrix(submatrix))
+        def result = new Matrix(new Array2DRowRealMatrix(submatrix))
+        result.@names = this.@names
+        if(!this.properties.isEmpty()) 
+            this.transferPropertiesToRows(result, keepRows)
+        return result
     }    
+    
+    private void transferPropertiesToRows(Matrix result, List<Number> indices) {
+        this.properties.each {  String key, Iterable value ->
+            result[key] = value[indices]
+        }
+    }
     
     /**
      * Transforms a matrix by processing each element through the given
@@ -662,37 +677,41 @@ class Matrix extends Expando implements Iterable {
             headerCells = this.properties.collect { it.key } + headerCells
         }
         
-        String headers = headerCells ? (" " * 6) + headerCells.join("\t") + "\n" : ""
+        int columnWidth = Math.max(10, headerCells ? headerCells*.size().max() : 0)
+        int rowNumWidth = 6
+        
+        String headers = headerCells ? (" " * rowNumWidth) + headerCells*.padRight(columnWidth).join(" ") + "\n" : ""
         
         DecimalFormat format = new DecimalFormat()
         format.minimumFractionDigits = 0
         format.maximumFractionDigits = 6
         
+       
+        int rowCount = 0
+        def printRow = { row ->
+           List cells = (row as List)
+           if(this.properties) {
+               cells = this.properties.collect { it.value[rowCount] } + cells
+           }
+           def values = cells.collect { value ->
+               if(!(value instanceof Double))
+                   return String.valueOf(value).padRight(columnWidth)
+                       
+               ((value < 0.0001d && value !=0 && value > -0.0001d) ? String.format("%1.6e",value) : format.format(value)).padRight(columnWidth)
+           }
+           
+           return ((rowCount++) + ":").padRight(rowNumWidth) + values.join(" ")  
+        }
+        
         if(matrix.rowDimension<DISPLAY_ROWS) {
-            int rowCount = 0
             return "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ 
                 headers + 
                 matrix.data.collect { row -> 
-                (rowCount++) + ":\t" + (row as List).join(",\t") 
+                    printRow(row)
             }.join("\n")
         }
         else {
             int omitted = matrix.rowDimension-DISPLAY_ROWS
-            int rowCount = 0
-            
-            def printRow = { row ->
-               List cells = (row as List)
-               if(this.properties) {
-                   cells = this.properties.collect { it.value[rowCount] } + cells
-               }
-               ((rowCount++) + ":").padRight(6) + cells.collect { value ->
-                   if(!(value instanceof double))
-                       return String.valueOf(value)
-                       
-                   (value < 0.0001d && value !=0) ? String.format("%1.6e",value) : format.format(value)
-               }.join(",\t")  
-            }
-            
             String value = "${matrix.rowDimension}x${matrix.columnDimension} Matrix:\n"+ 
                 headers + 
                 matrix.data[0..DISPLAY_ROWS/2].collect(printRow).join("\n")  
