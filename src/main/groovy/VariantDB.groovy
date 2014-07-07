@@ -90,6 +90,9 @@ class VariantDB {
     def addSample(String sampleId, Pedigrees peds) {
         Pedigree family = peds.subjects[sampleId]
         Subject subject = family?.individuals.find { it.id == sampleId }
+        if(!subject) 
+            throw new IllegalStateException("Sample $sampleId could not be located in the pedigree file. Known samples are ${peds.subjects*.key}")
+            
         db.execute("""
             insert into sample (id, sample_id, father_id, mother_id, family_id, phenotype, created) 
                         values (NULL, 
@@ -97,7 +100,7 @@ class VariantDB {
                                 ${family?.motherOf(sampleId)}, 
                                 ${family?.fatherOf(sampleId)}, 
                                 ${family?.id}, 
-                                ${subject?.phenoTypes[0]}, 
+                                ${subject?.phenoTypes?.getAt(0)}, 
                                 datetime('now'));
         """)
         return findSample(sampleId)
