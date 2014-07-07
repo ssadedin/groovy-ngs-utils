@@ -135,6 +135,10 @@ class VEPConsequences {
         "intergenic_variant"
     ]
     
+    /**
+     * Returns an integer representing the severity of the consequence of a mutation. 
+     * Larger integers represent MORE severe consequences.
+     */
     static int severityOf(String cons) {
         RANKED_CONSEQUENCES.size() - RANKED_CONSEQUENCES.indexOf(cons)
     }
@@ -149,6 +153,8 @@ class VEPConsequences {
  * @author simon.sadedin@mcri.edu.au
  */
 class Allele {
+    
+    int index
     
     /**
      * Actual start position of genomic change for this Allele,
@@ -894,6 +900,7 @@ class Variant implements IRegion {
      *       use with caution in computationaly intensive situations
      */
     List<Allele> getAlleles() {
+        int index=0
         return alts.collect { obs ->
             String t = convertType(ref,obs)
             
@@ -910,7 +917,7 @@ class Variant implements IRegion {
                     break
             }
             
-            new Allele(start: start, end: end, alt: obs, type: t)
+            new Allele(index:index++, start: start, end: end, alt: obs, type: t)
         }
     } 
     
@@ -994,5 +1001,16 @@ class Variant implements IRegion {
             return veps;
         }
         return allVeps.max { VEPConsequences.severityOf(it[1]) }[0]
+    }
+    
+    /**
+     * Return the consequence of the specified allele, at the moment,
+     * from VEP annotations (later, from others). If multiple consequences
+     * are present for the same allele, then the most severe consequence is 
+     * returned.
+     */
+    String getConsequence(int alleleIndex) {
+        def vep = getVepInfo()[alleleIndex]
+        return vep?.Consequence?.split("&")?.max { VEPConsequences.severityOf(it)}
     }
 }
