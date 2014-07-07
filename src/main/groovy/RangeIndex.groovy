@@ -610,7 +610,6 @@ class RangeIndex implements Iterable<IntRange> {
                     }
                     
                     if(pos != null) {
-                        println "Seeking last index at pos $pos on " + ranges[pos]
                         index = ranges[pos].size()-1
                     }
                 }
