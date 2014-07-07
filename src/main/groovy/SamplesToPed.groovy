@@ -70,7 +70,7 @@ class SamplesToPed {
 	            }
 	            
 	            String phenotypeValue
-	            int phenotype = rel == "c" ? 1 : 0
+	            int phenotype = rel == "c" ? 2 : 1
 	            while(!["a","u"].contains(phenotypeValue)) {
 	                println "Phenotype for $sample [a/u] ($phenotype): "
 	                phenotypeValue = r.readLine()
