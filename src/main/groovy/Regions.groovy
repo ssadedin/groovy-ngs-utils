@@ -42,9 +42,9 @@ import groovy.transform.CompileStatic;
  * which extends Regions, but provides extensive support for parsing, loading and 
  * filtering BED files. To create a purely in-memory set of regions, use the constructor:
  * <pre>
- * Regions r = new Regions()
- * r.addRegion("chr1",100,200)
- * r.addRegion("chr1",150,300)
+ * Regions regions = new Regions()
+ * regions.addRegion("chr1",100,200)
+ * regions.addRegion("chr1",150,300)
  * </pre>
  * When added this way, Regions follows the BED file convention that the start of the range
  * is considered <i>inclusive</i>, but the end value is considered <i>exclusive</i> of 
@@ -52,8 +52,20 @@ import groovy.transform.CompileStatic;
  * the Iterable interface is implemented, you can use any of the Groovy special operations
  * that work on iterables:
  * <pre>
- * int bases = r.grep { it.chr == "chrX" || it.chr == "chrY" }*.size().sum()
+ * int bases = regions.grep { it.chr == "chrX" || it.chr == "chrY" }*.size().sum()
  * println "There were $bases bases from sex chromosomes"
+ * </pre>
+ * The Regions class offers many operations for convenient querying of and logical 
+ * operations on intervals:
+ * <b>Finding overlaps:</b>
+ * <pre>
+ * Region r = new Region("chr1",120,130)
+ * regions.getOverlaps(r).size()==1
+ * </pre>
+ * <p>Many operations are possible using built in Groovy iterator methods. for example, to find 
+ * the indexes of overlapping regions:</p>
+ * <pre>
+ * assert regions.findIndexValues { r.overlaps(it) } == [ 0 ]
  * </pre>
  * 
  * @author simon.sadedin@mcri.edu.au
@@ -69,21 +81,6 @@ class Regions implements Iterable<Region> {
 	 * A list of ranges in the order they were loaded
 	 */
 	Map<String,List> allRanges = [:]
-	
-	/**
-	 * Map containing all the ranges loaded from the bed file,
-	 * index by start position, and partially reduced to make
-	 * lookups efficient.
-	 * Note: only loaded if load() is called!
-	 */
-	TreeMap<Long,Range> startRanges = new TreeMap()
-	
-	/**
-	 * Map containing all the ranges loaded from the bed file,
-	 * indexed by end position, and partially reduced to make
-	 * lookups efficient.
-	 */
-	TreeMap<Long,Range> endRanges = new TreeMap()
 	
 	/**
 	 * Create new empty set of regions 
@@ -534,23 +531,31 @@ class Regions implements Iterable<Region> {
         return result
     }
     
-    /*
-    List<Region> getAt(Object obj) {
+    Object getAt(Object obj) {
         if(obj instanceof Integer) {
             int index = obj
             int total = 0
-            allRanges.find {
+            def entry = allRanges.find {
                 total += it.value.size()
-                ++index
                 total >= index
             }
+            entry[index-total]
         }
         else
         if(obj instanceof List) {
-            
+            List<Region> result = []
+            List<Integer> indices = obj
+            int total = 0
+            List offsets = [0] + allRanges.collect { rangeEntry -> total += rangeEntry.value.size();  }
+            List keys = allRanges.collect { it.key }
+            for(int index in indices) {
+                def offsetIndex = offsets.findLastIndexOf { offset -> offset <= index }
+                def key = keys[offsetIndex]
+                result.add(allRanges[key][index-offsets[offsetIndex]])
+            }
+            return result
         }
     }
-    */
 	
 	int getNumberOfRanges() {
 	   def result = allRanges.collect { it }.sum { it.value.size() }
