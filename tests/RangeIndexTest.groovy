@@ -211,6 +211,113 @@ class RangeIndexTest {
     }
     
     @Test 
+    void testIterateOverlapping() {
+       RangeIndex index = new RangeIndex()
+       [  
+         0..100, 
+         50..60, 
+         70..80 
+       ].each {index.add(it)}
+       
+       println "Ranges at 0 == ${index.ranges[0]}"
+       println "Ranges at 50 == ${index.ranges[50]}"
+            
+       def ranges = []
+       for(Range r in index) {
+           ranges.add(r)
+       }
+       assert ranges.size() == 3
+    }
+    
+    @Test 
+    void testReverseIterate() {
+       RangeIndex index = new RangeIndex()
+       [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it)}
+            
+       for(Range r in index.reverseIterator()) {
+           println "${r.from} - ${r.to}"
+       }
+    }
+    
+    @Test 
+    void testReverseIterateOverlapping() {
+       RangeIndex index = new RangeIndex()
+       [  
+         0..100, 
+         50..60, 
+         70..80 
+       ].each {index.add(it)}
+       
+       println "Ranges at 0 == ${index.ranges[0]}"
+       println "Ranges at 50 == ${index.ranges[50]}"
+            
+       def ranges = []
+       for(Range r in index.reverseIterator()) {
+           println "${r.from} - ${r.to}"
+           ranges << r
+       }
+       
+       assert ranges.size() == 3
+       assert ranges[0] == 70..80
+       assert ranges[1] == 50..60
+       assert ranges[2] == 0..100
+       
+       ranges = index.reverseIteratorAt(50).collect { it }
+       assert ranges.size() == 2
+       assert ranges[0] == 50..60
+       assert ranges[1] == 0..100
+       
+       ranges = index.reverseIteratorAt(70).collect { it }
+       assert ranges.size() == 3
+       assert ranges[0] == 70..80
+       assert ranges[1] == 50..60
+       assert ranges[2] == 0..100
+    }
+    
+    @Test
+    void testIteratorAt() {
+       RangeIndex index = new RangeIndex()
+       [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it)}
+            
+       def ranges = index.iteratorAt(70).collect { it }
+       assert ranges.size == 2
+       assert ranges[0] == 70..90
+       
+       ranges = index.iteratorAt(0).collect { it }
+       assert ranges.size == 4
+       assert ranges[3] == 80..85
+    }
+    
+    @Test
+    void testReverseIteraterAt() {
+       RangeIndex index = new RangeIndex()
+       [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it)}
+            
+       def ranges = index.reverseIteratorAt(70).collect { println "$it.from - $it.to"; it }
+       assert ranges.size == 3
+       assert ranges[0] == 70..90
+       assert ranges[1] == 60..65
+       assert ranges[2] == 0..50
+       
+       ranges = index.reverseIteratorAt(0).collect { it }
+       assert ranges.size == 1
+       assert ranges[0] == 0..50
+       
+       ranges = index.reverseIteratorAt(60).collect { it }
+       assert ranges.size == 2
+       assert ranges[0] == 60..65
+    }
+     
+    @Test 
     void testBigIterate() {
 //        BED bed = new BED("/Users/simon/work/dsd/batch3/design/tmp.bed")
 //        bed.load()
