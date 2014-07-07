@@ -1,3 +1,5 @@
+import org.codehaus.groovy.runtime.StackTraceUtils;
+
 Cli cli = new Cli()
 cli.with {
     vcf "VCF file to import to database", args:1, required:true
@@ -14,6 +16,7 @@ Pedigrees peds = Pedigrees.parse(opts.ped)
 
 VariantDB db = new VariantDB(opts.db)
 def progress = new ProgressCounter(withRate:true)
+int exitCode = 0
 try {
     db.tx {
         VCF.parse(opts.vcf) { Variant v ->
@@ -24,6 +27,11 @@ try {
     }
     progress.end()
 }
+catch(Exception e) {
+    StackTraceUtils.sanitize(e).printStackTrace()
+    exitCode = 1
+}
 finally {
     db.db.close()
 }
+System.exit(exitCode)
