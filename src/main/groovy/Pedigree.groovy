@@ -245,17 +245,17 @@ class Pedigree {
        for(Subject s in individuals) {
            if(s.isChild()) {
                Subject mother = motherOf(s.id)
-               if(mother.sex == Sex.MALE) 
+               if(mother && mother.sex == Sex.MALE) 
                    throw new IllegalStateException("Sample $s.id has mother with sex specified as MALE")
                    
                Subject father = fatherOf(s.id)
-               if(father.sex == Sex.FEMALE) 
+               if(father && father.sex == Sex.FEMALE) 
                    throw new IllegalStateException("Sample $s.id has father with sex specified as FEMALE")
                    
-               if(s.id == father.id)
+               if(father && s.id == father.id)
                    throw new IllegalStateException("Sample $s.id has self as father")
                    
-               if(s.id == mother.id)
+               if(mother && s.id == mother.id)
                    throw new IllegalStateException("Sample $s.id has self as mother")
                    
                // More checks - grandparents != self?
