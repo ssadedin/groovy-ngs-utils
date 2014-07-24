@@ -45,14 +45,19 @@ class SamplesToPed {
                 
 	            println "Pedigree for $sample [$pedigree]: "
 	            String pedigreeValue = r.readLine()
-	            if(!pedigree.isEmpty())
+	            if(!pedigreeValue.isEmpty())
 	                pedigree = pedigreeValue
-	                
 	                
 	            String sex = infos[sample].sex.name()
 	            if(infos[sample].sex == Sex.UNKNOWN) {
-	                println "Sex for sample $sample [${infos[sample].sex.name()}]:"
+	                println "Sex for sample $sample [${infos[sample].sex.name()} (m/f)]:"
 	                sex = r.readLine()
+                    if(sex == "m") 
+                        sex = "Male"
+                    else
+                    if(sex == "f")
+                        sex = "Female"
+                        
 	                if(sex.isEmpty()) {
 	                    sex = infos[sample].sex.name()
 	                }
