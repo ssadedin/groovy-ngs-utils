@@ -37,16 +37,18 @@ dependencies {
      groovy group: 'org.codehaus.groovy', name: 'groovy-xml', version: '2.1.0'
      groovy group: 'org.codehaus.groovy', name: 'groovy-ant', version: '2.1.0'
      groovy group: 'org.codehaus.groovy', name: 'groovy-json', version: '2.1.0'
+     groovy group: 'org.codehaus.groovy', name: 'groovy-sql', version: '2.1.0'
      groovy group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
      groovy group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
      groovy group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
      groovy 'com.lowagie:itext:2.1.7'
      groovy 'org.apache.commons:commons-math3:3.0'
      groovy 'commons-cli:commons-cli:1.1'
-     groovy 'org.utgenome.thirdparty:picard:1.86.0'
+     groovy 'org.utgenome.thirdparty:picard:1.102.0'
      groovy 'com.xlson.groovycsv:groovycsv:1.0'
      groovy group: 'de.erichseifert.gral', name: 'gral-core', version: '0.10'
      groovy 'log4j:log4j:1.2.17'
+     groovy 'org.xerial:sqlite-jdbc:3.7.2'
      compile files(fileTree(dir:'lib', includes:['*.jar']))
 }
 
