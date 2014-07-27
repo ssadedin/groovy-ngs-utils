@@ -77,7 +77,12 @@ class VariantDB {
      * exist.
      */
     def findSample(String sampleId) {
+        sampleId = trimSampleId(sampleId)
         db.firstRow("select * from sample where sample_id = $sampleId")
+    }
+    
+    String trimSampleId(String sampleId) {
+        sampleId.replaceAll('_S[0-9]*$','')
     }
     
     /**
@@ -93,12 +98,14 @@ class VariantDB {
         if(!subject) 
             throw new IllegalStateException("Sample $sampleId could not be located in the pedigree file. Known samples are ${peds.subjects*.key}")
             
+        sampleId = trimSampleId(sampleId)
+                
         db.execute("""
             insert into sample (id, sample_id, father_id, mother_id, family_id, phenotype, created) 
                         values (NULL, 
                                 $sampleId, 
-                                ${family?.motherOf(sampleId)}, 
-                                ${family?.fatherOf(sampleId)}, 
+                                ${family?.motherOf(sampleId)?.id}, 
+                                ${family?.fatherOf(sampleId)?.id}, 
                                 ${family?.id}, 
                                 ${subject?.phenoTypes?.getAt(0)}, 
                                 datetime('now'));
@@ -172,7 +179,7 @@ class VariantDB {
                     sample_row = addSample(sampleId, peds)
                 }
                 
-                def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id};")
+                def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
                 if(!variant_obs) {
                     db.execute("""
                         insert into variant_observation (id,variant_id,sample_id, batch_id, qual,dosage, created) 

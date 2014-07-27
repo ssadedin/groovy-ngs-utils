@@ -51,7 +51,7 @@ class Schema {
                        qual float,
                        dosage integer,  -- how many copies of the variant (1=het, 2=hom)
                        created datetime NOT NULL,
-                       UNIQUE (variant_id, sample_id) ON CONFLICT ROLLBACK
+                       UNIQUE (variant_id,sample_id,batch_id) ON CONFLICT ROLLBACK
                 );
            """,
            """
