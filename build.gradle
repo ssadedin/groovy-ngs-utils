@@ -3,6 +3,7 @@ apply plugin: 'groovy'
 project.ext {
     VERSION="0.0.1"
     STAGE="build/stage/groovy-ngs-utils-$VERSION"
+    GROOVY_VERSION="2.2.2"
 }
 
 /*
@@ -35,11 +36,11 @@ configurations {
 }
 
 dependencies {
-     compile group: 'org.codehaus.groovy', name: 'groovy', version: '2.1.0'
-     compile group: 'org.codehaus.groovy', name: 'groovy-xml', version: '2.1.0'
-     compile group: 'org.codehaus.groovy', name: 'groovy-ant', version: '2.1.0'
-     compile group: 'org.codehaus.groovy', name: 'groovy-json', version: '2.1.0'
-     compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: '2.1.0'
+     compile group: 'org.codehaus.groovy', name: 'groovy', version: "$GROOVY_VERSION"
+     compile group: 'org.codehaus.groovy', name: 'groovy-xml', version: "$GROOVY_VERSION"
+     compile group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
+     compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
+     compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
      compile group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
      compile group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
      compile group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
@@ -80,3 +81,4 @@ task doc << {
 task wrapper(type: Wrapper) {
     gradleVersion = '1.0'
 }
+
