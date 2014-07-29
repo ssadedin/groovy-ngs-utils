@@ -313,7 +313,7 @@ class Variant implements IRegion {
      */
     VCF header
 
-    Map<String,String> infos
+    Map<String,Object> infos
     
     List<SnpEffInfo> snpEffInfo
     
@@ -508,7 +508,7 @@ class Variant implements IRegion {
     }
     
     @CompileStatic
-    Map<String,String> getInfo() {
+    Map<String,Object> getInfo() {
         if(infos == null) {
             infos =  [:]
             if(info != null) {
@@ -780,14 +780,14 @@ class Variant implements IRegion {
            if(!svLen)
                throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
            
-            return Math.abs(svLen.toInteger())
+            return Math.abs(Integer.parseInt(String.valueOf(svLen)))
         }
         else
         if(alt == "DUP" || alt == "<DUP>") {
            Object svLen = this.getInfo().SVLEN
            if(!svLen)
                throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
-            return svLen.toInteger()            
+            return Integer.parseInt(String.valueOf(svLen))           
         }
         else
         return Math.abs(ref.size() - alt.size())

@@ -235,7 +235,7 @@ class Stats extends DescriptiveStatistics {
     @CompileStatic
     static SummaryStatistics summary(double [] values) {
         int i=0;
-        summary { values[i++] }
+        summary { values[(int)(i++)] }
     }
     
     /**

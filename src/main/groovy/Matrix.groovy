@@ -177,39 +177,47 @@ class Matrix extends Expando implements Iterable {
         matrix = new Array2DRowRealMatrix(rows, columns)
     }
     
-    @CompileStatic
     public Matrix(MatrixColumn... sourceColumns) {
-        int rows = columns[0].size()
+		this.initFromColumns(sourceColumns)
+    }
+	
+    @CompileStatic
+	private void initFromColumns(MatrixColumn[] sourceColumns) {
+		int rows = columns[0].size()
 		final int cols = columns.size()
         double[][] newData =  new double[rows][]
 		MatrixColumn [] columns = sourceColumns
-        for(int i=0; i<rows;++i) {
+		for(int i=0; i<rows;++i) {
 			double [] row = newData[i]
 			for(int j=0; j<++cols;++j)
 				row[j] = (double)(columns[j].getDoubleAt(i))
-        }
-        matrix = new Array2DRowRealMatrix(newData,false)
-        this.names = columns.collect { MatrixColumn c -> c.name }
-    }
+		}
+		matrix = new Array2DRowRealMatrix(newData,false)
+		this.names = columns.collect { MatrixColumn c -> c.name }
+	}
+	
+	
     
     public Matrix(Iterable<Iterable> rows) {
-        double [][] data = null
+        List data = new ArrayList(4096)
         int rowCount = 0
         for(r in rows) {
             double[] rowData = r.collect{ (double)it }
-            if(data == null)
-                data = new double[rows.size()][rowData.size()]
-            data[rowCount++] = rowData
+			data.add(rowData)
         }
-        matrix = new Array2DRowRealMatrix(data, false)
+        matrix = new Array2DRowRealMatrix((double[][])data.toArray(), false)
     }
     
     public Matrix(double [][] values) {
         matrix = new Array2DRowRealMatrix(values, false)
     }
      
-    @CompileStatic
     public Matrix(int rows, int columns, List<Double> data) {
+		this.initFromList(rows,columns,data)
+    }
+	
+    @CompileStatic
+	void initFromList(int rows, int columns, List<Double> data) {
         matrix = new Array2DRowRealMatrix(rows, columns)
         int i=0
         for(int r=0; r<rows; ++r) {
@@ -217,10 +225,15 @@ class Matrix extends Expando implements Iterable {
                 matrix.dataRef[r][c] = (double)data[i++]
             }
         }
-    }
+	}
+	
     
-    @CompileStatic
     public Matrix(int rows, int columns, double[] matrixData) {
+		this.initFromArray(rows, columns, matrixData)
+    }
+	
+    @CompileStatic
+	private void initFromArray(int rows, int columns, double[] matrixData) {
         matrix = new Array2DRowRealMatrix(rows, columns)
         int i=0
         for(int r=0; r<rows; ++r) {
@@ -228,11 +241,13 @@ class Matrix extends Expando implements Iterable {
                 matrix.dataRef[r][c] = matrixData[++i]
             }
         }
-    }
+		
+	}
       
     public Matrix(Array2DRowRealMatrix m) {
         matrix = m
     }
+
      
     @CompileStatic
     MatrixColumn col(int n) {
@@ -543,7 +558,7 @@ class Matrix extends Expando implements Iterable {
             for(int i=0; i<rows;++i) {
                 if(withDelegate)
                     delegate.row = i
-                newData[i] = c(matrix.dataRef[i])
+                newData[i] = (double[])c(matrix.dataRef[i])
             }
         }
         else 
@@ -551,7 +566,7 @@ class Matrix extends Expando implements Iterable {
             for(int i=0; i<rows;++i) {
                 if(withDelegate)
                     delegate.row = i
-                newData[i] = c(matrix.dataRef[i], i)
+                newData[i] = (double[])c(matrix.dataRef[i], i)
             }
         }
         else

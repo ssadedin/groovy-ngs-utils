@@ -106,7 +106,6 @@ class Region extends Expando implements IRegion {
  */
 class GRange extends IntRange {
     
-    @CompileStatic
     GRange(int from, int to, Object extra) {
         super(from,to)
         this.extra = extra
