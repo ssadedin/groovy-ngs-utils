@@ -3,7 +3,7 @@ apply plugin: 'groovy'
 project.ext {
     VERSION="0.0.1"
     STAGE="build/stage/groovy-ngs-utils-$VERSION"
-    GROOVY_VERSION="2.2.2"
+    GROOVY_VERSION="2.3.4"
 }
 
 /*
