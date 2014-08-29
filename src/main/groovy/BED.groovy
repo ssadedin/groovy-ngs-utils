@@ -229,7 +229,7 @@ class BED extends Regions {
     @CompileStatic
     void eachOverlap(String chr, int pos, Closure c) {
         if(!isLoaded) {
-          eachRange { String rangeChr, int rangeStart, int rangeEnd ->
+          eachRange([:]) { String rangeChr, int rangeStart, int rangeEnd ->
               if(rangeChr == chr && pos >= rangeStart && pos << rangeEnd) {
                   c(rangeChr, rangeStart, rangeEnd)
               }
@@ -249,7 +249,7 @@ class BED extends Regions {
      */
     @CompileStatic 
     void eachPosition(Closure c) {
-        int totalSize = size()
+        int totalSize = super.size()
         System.err.println("Scanning $totalSize positions")
         ProgressCounter counter = new ProgressCounter()
           bedFileStream.eachLine { String line ->
@@ -282,12 +282,12 @@ class BED extends Regions {
     @CompileStatic
     BED load() {
         if(!withExtra) {
-          eachRange { String chr, int start, int end ->
+          eachRange([:]) { String chr, int start, int end ->
               add(chr,start,end)
           }
         }
         else {
-          eachRange { String chr, int start, int end, String extra ->
+          eachRange([:]) { String chr, int start, int end, String extra ->
               add(chr,start,end,extra)
           }
         }

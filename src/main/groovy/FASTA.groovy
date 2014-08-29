@@ -200,11 +200,11 @@ class FASTA {
      * as a byte array to the given closure for each range.
      */
     @CompileStatic
-    void eachSequence(BED bed, Closure c) {
+    void eachSequence(Regions regions, Closure c) {
         boolean includeRegion = false
 //        if(c.maximumNumberOfParameters > 2) 
 //            includeRegion = true
-        bed.eachRange(unique:true) {  String chr, int start, int end ->
+        regions.eachRange(unique:true) {  String chr, int start, int end ->
             c(chr+":"+start+"-"+end, this.baseBytesAt(chr,start,end))
         }
     }

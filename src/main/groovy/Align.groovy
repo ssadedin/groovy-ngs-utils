@@ -27,7 +27,7 @@ import org.biojava3.alignment.template.Profile;
 import org.biojava3.alignment.template.SubstitutionMatrix;
 import org.biojava3.core.sequence.DNASequence;
 import org.biojava3.core.sequence.compound.NucleotideCompound;
-
+ 
 /**
  * Utility for helping to perform alignments with BioJava
  * 

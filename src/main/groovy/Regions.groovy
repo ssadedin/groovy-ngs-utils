@@ -80,7 +80,7 @@ class Regions implements Iterable<Region> {
 	/**
 	 * A list of ranges in the order they were loaded
 	 */
-	Map<String,List> allRanges = [:]
+	Map<String,List<IntRange>> allRanges = [:]
 	
 	/**
 	 * Create new empty set of regions 
@@ -249,7 +249,7 @@ class Regions implements Iterable<Region> {
      * @param end   end of interval to subtract from (exclusive)
      * @return
      */
-	List<Range> subtractFrom(String chr, int start, int end) {
+	List<IntRange> subtractFrom(String chr, int start, int end) {
 		RangeIndex chrIndex = this.index[chr]
 		if(chrIndex == null)
 			return [start..end-1]
@@ -465,9 +465,13 @@ class Regions implements Iterable<Region> {
 	@Override
 	@CompileStatic
 	public Iterator<Region> iterator() {
+		
+		
+		Map<String,List<IntRange>> allRangesRef = this.allRanges
+		
 		return new Iterator<Region>() {
 			
-			Iterator allIterator = Regions.this.allRanges.iterator()
+			Iterator allIterator = allRangesRef.iterator()
 			
 			// Iterator chrIterator = allIterator.hasNext() ? allIterator.next().value.iterator() : null
 			Iterator chrIterator =  null

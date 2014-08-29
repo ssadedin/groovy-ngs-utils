@@ -462,6 +462,7 @@ class RangeIndex implements Iterable<IntRange> {
 //        println("|"+sizes.collect { "-" * it }.join("|")+"|")
     }
 
+    @Override
     public Iterator<IntRange> iterator() {
         iteratorAt(-1)
     }
@@ -471,15 +472,14 @@ class RangeIndex implements Iterable<IntRange> {
      * in genomic order by starting position, starting from the given 
      * position.
      */
-    @Override
     public Iterator<IntRange> iteratorAt(int startingPos) {
         
         if(startingPos >= 0) {
             startingPos = ranges.containsKey(startingPos) ? startingPos : ranges.higherKey(startingPos)
         }
-        
+		int startingPosTmp = startingPos
         return new Iterator<IntRange>() {
-            Integer pos = startingPos
+            Integer pos = startingPosTmp
             int index = 0
             List<IntRange> activeRanges = []
             IntRange nextRange = null
@@ -545,19 +545,20 @@ class RangeIndex implements Iterable<IntRange> {
      */
     public Iterator<IntRange> reverseIteratorAt(int startingPos) {
         
+		int startingPosTmp = startingPos
         if(startingPos >= 0) {
             // We have to ensure to start at least 1 higher than
             // the first entry we want to return, because the findNext()
             // will call index.lowerKey()
             if(ranges.containsKey(startingPos)) {
-                startingPos = startingPos+1
+                startingPosTmp = startingPos+1
             }
         }
         
         return new Iterator<IntRange>() {
             
             // Genomic position in range index
-            Integer pos = startingPos
+            Integer pos = startingPosTmp
             
             // position in values at current range index
             int index = -1

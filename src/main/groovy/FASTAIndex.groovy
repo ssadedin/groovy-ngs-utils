@@ -81,8 +81,8 @@ class FASTAIndex {
      * 
      * @param fasta
      */
-    public FASTAIndex(FASTA fasta, BED bed=null) {    
-        this.index(fasta,bed)
+    public FASTAIndex(FASTA fasta, Regions regions=null) {    
+        this.index(fasta,regions)
     }
 	
 	/**
@@ -96,7 +96,7 @@ class FASTAIndex {
      * @param fasta
      * @param bed
      */
-    void index(FASTA fasta, BED bed) {
+    void index(FASTA fasta, Regions regions) {
         ProgressCounter counter = new ProgressCounter()
         
         int countTooShort = 0
@@ -135,8 +135,8 @@ class FASTAIndex {
                 throw new Abort()
         }
         
-        if(bed) {
-           fasta.eachSequence(bed, handler)
+        if(regions) {
+           fasta.eachSequence(regions, handler)
         }
         else {
            fasta.eachSequence(handler)
