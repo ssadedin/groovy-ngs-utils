@@ -1,0 +1,4 @@
+J00013D	seth	EXOME	../data/J00013D_I246_ACTTGA_L1_R1.sanger.fastq.gz,../data/J00013D_I246_ACTTGA_L1_R2.sanger.fastq.gz		Male
+J00013	seth	EXOME	../data/J00013_I246_ACTTGA_L1_R1.sanger.fastq.gz,../data/J00013_I246_ACTTGA_L1_R2.sanger.fastq.gz		Male
+J00013J	seth	EXOME	../data/J00013J_I246_ACTTGA_L1_R1.sanger.fastq.gz,../data/J00013J_I246_ACTTGA_L1_R2.sanger.fastq.gz		Male
+J00013M	seth	EXOME	../data/J00013M_I260_ACTTGA_L4_R1.sanger.fastq.gz,../data/J00013M_I260_ACTTGA_L4_R2.sanger.fastq.gz		Female
