@@ -33,19 +33,28 @@ class Pedigrees {
     
     /**
      * Find the largest possible set of samples that are unrelated to 
-     * the given sample
+     * the given sample. If null is passed, the maximal set of unrelated
+     * samples from the entire set will be computed.
      * 
      * @return
      */
-    List<Subject> findMaximalUnrelatedSet(String sampleId) {
+    List<Subject> findMaximalUnrelatedSet(String sampleId=null) {
         
-        // Get all the families that are not those of the sample in question
-        Pedigree samplePedigree = families[sampleId]
-        if(samplePedigree == null) 
-            throw new IllegalArgumentException("Sample " + sampleId + " is not a known sample")
+        
+        List<Pedigree> unrelatedFamilies = null
+        
+        if(sampleId != null) {
+            // Get all the families that are not those of the sample in question
+            Pedigree samplePedigree = families[sampleId]
+            if(samplePedigree == null) 
+                throw new IllegalArgumentException("Sample " + sampleId + " is not a known sample")
+                
+            unrelatedFamilies = families*.value.grep { it.id != samplePedigree.id}
+        }
+        else {
+            unrelatedFamilies = families*.value
+        }
             
-        List<Pedigree> unrelatedFamilies = families*.value.grep { it.id != samplePedigree.id}
-        
         // Each family is independent: choosing the maximal subset of 
         // members from each family will result in the overall maximal number of samples
         List results = []
@@ -71,14 +80,14 @@ class Pedigrees {
             Pedigree p = families[line.familyId]
             def sex = line.sex ?: "other"
             Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
-			
+            
             RelationshipType childType = s.sex == Sex.FEMALE ? DAUGHTER : SON
-			if(line.paternalId && line.paternalId != "0") 
-				s.relationships.add(new Relationship(type:childType,from:s.id, to: line.paternalId))
-				
-			if(line.maternalId && line.maternalId != "0") 
-				s.relationships.add(new Relationship(type:childType,from:s.id, to: line.maternalId)) 
-			
+            if(line.paternalId && line.paternalId != "0") 
+                s.relationships.add(new Relationship(type:childType,from:s.id, to: line.paternalId))
+                
+            if(line.maternalId && line.maternalId != "0") 
+                s.relationships.add(new Relationship(type:childType,from:s.id, to: line.maternalId)) 
+            
             p.individuals.add(s)
             p.phenoTypes.add(line.phenotype)
             
