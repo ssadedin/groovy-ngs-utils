@@ -183,7 +183,7 @@ class SAM {
      */
     void eachRecord(Closure c) {
         use(SAMRecordCategory) {
-          Iterator i = samFileReader.iterator()
+          SAMRecordIterator i = samFileReader.iterator()
           try {
               while(i.hasNext()) {
                   c(i.next())
@@ -195,71 +195,94 @@ class SAM {
         }
     }
     
-	/**
-	 * Call the given closure for every pair of reads in a BAM file containing paired end reads.
-	 * <p>
-	 * Note: the algorithm works by keeping a running buffer of reads, and iterating through
-	 * the reads in order until each single read finds its mate. This means that 
-	 * reads having no mate accumulate in the buffer without ever being removed. Thus 
-	 * a large BAM file containing millions of unpaired reads could cause this method to use
-	 * substantial ammounts of memory.
-	 * 
-	 * @param c		Closure to call
-	 */
+    /**
+     * Call the given closure for every pair of reads in a BAM file containing paired end reads.
+     * <p>
+     * Note: the algorithm works by keeping a running buffer of reads, and iterating through
+     * the reads in order until each single read finds its mate. This means that 
+     * reads having no mate accumulate in the buffer without ever being removed. Thus 
+     * a large BAM file containing millions of unpaired reads could cause this method to use
+     * substantial ammounts of memory.
+     * 
+     * @param c        Closure to call
+     */
     @CompileStatic
     void eachPair(Closure c) {
-        Iterator<SAMRecord> iter = samFileReader.iterator()
+        SAMRecordIterator iter = samFileReader.iterator()
         eachPair(iter,c)
     }
     
-	/**
-	 * Call the given closure for every pair of reads in a BAM file containing paired end reads.
-	 * <p>
-	 * Note: the algorithm works by keeping a running buffer of reads, and iterating through
-	 * the reads in order until each single read finds its mate. This means that 
-	 * reads having no mate accumulate in the buffer without ever being removed. Thus 
-	 * a large BAM file containing millions of unpaired reads could cause this method to use
-	 * substantial ammounts of memory.
-	 * 
-	 * @param iter	iterator to consumer reads from
-	 * @param c		Closure to call
-	 */
+    /**
+     * Call the given closure for every pair of reads in a BAM file containing paired end reads.
+     * <p>
+     * Note: the algorithm works by keeping a running buffer of reads, and iterating through
+     * the reads in order until each single read finds its mate. This means that 
+     * reads having no mate accumulate in the buffer without ever being removed. Thus 
+     * a large BAM file containing millions of unpaired reads could cause this method to use
+     * substantial ammounts of memory.
+     * 
+     * @param iter    iterator to consumer reads from
+     * @param c        Closure to call
+     */
     @CompileStatic
-    void eachPair(Iterator<SAMRecord> iter, Closure c) {
+    void eachPair(SAMRecordIterator iter, Closure c) {
         SAMFileReader pairReader = newReader()
         Map<String,SAMRecord> buffer = new HashMap()
-        ProgressCounter.withProgress { ProgressCounter progress ->
-            try {
-                while(iter.hasNext()) {
-                    SAMRecord r1 = (SAMRecord)iter.next();
-                    progress.count()
-                    if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
-                        continue
-                        
-                    if(buffer.containsKey(r1.readName)) {
-                        c(r1,buffer[r1.readName])
-                        buffer.remove(r1.readName)
+        try {
+            ProgressCounter.withProgress { ProgressCounter progress ->
+                try {
+                    while(iter.hasNext()) {
+                        SAMRecord r1 = (SAMRecord)iter.next();
+                        progress.count()
+                        if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
+                            continue
+                            
+                        if(buffer.containsKey(r1.readName)) {
+                            c(r1,buffer[r1.readName])
+                            buffer.remove(r1.readName)
+                        }
+                        else {
+                            buffer[r1.readName] = r1
+                        }
                     }
-                    else {
-                        buffer[r1.readName] = r1
-                    }
+                    
+                    // Run down the buffer
+    //                buffer.each { String readName, r1 ->  
+    //                    c(r1, null)
+    //                }
                 }
-                
-                // Run down the buffer
-//                buffer.each { String readName, r1 ->  
-//                    c(r1, null)
-//                }
+                finally {
+                    pairReader.close()
+                }
             }
-            finally {
-                pairReader.close()
-            }
+        }
+        finally { 
+            iter.close()
         }
     }
     
+    void eachPair(Region r, Closure c) {
+        this.eachPair(r.chr, r.from, r.to)
+    }
+    
+    void eachPair(String chr, Closure c) {
+        this.eachPair(chr, 0, 0) // Note Picard convention: 0 represents start and end of reference sequence
+    }    
+    
     @CompileStatic
     void eachPair(String chr, int start, int end, Closure c) {
-        Iterator<SAMRecord> iter = samFileReader.query(chr, start,end,false)
-        eachPair(iter,c)
+        SAMRecordIterator<SAMRecord> iter
+        if(chr) 
+            iter = samFileReader.query(chr, start,end,false)
+        else
+            iter = samFileReader.iterator()
+            
+        try {
+            eachPair(iter,c)
+        }
+        finally {
+            iter.close()
+        }
     }
     
     void eachRecord(int threads, Closure c) {
@@ -396,6 +419,108 @@ class SAM {
         stats
     }
     
+    Regions asType(Class clazz) {
+        if(clazz == Regions) {
+            return toRegions()
+        }
+    }
+    
+    Regions toRegions(Region overlapping) {
+        toRegions(overlapping.chr, overlapping.from, overlapping.to)
+    }
+    
+    /**
+     * Return reads from this SAM file that overlap the specified region
+     * as a Regions object - that is, as a set of genomic intervals.
+     * <p>
+     * Reads that are missing a start or end alignment position are 
+     * omitted.
+     * <p>
+     * If called without passing start or end, the start / end
+     * are interpreted as the beginning / end of the chromosome
+     * / reference sequence respectively.
+     * 
+     * @return Regions object containing intervals representing all
+     *            the reads in this SAM object
+     */
+    @CompileStatic
+    Regions toRegions(String chr=null, int start=0, int end=0) {
+      Regions regions = new Regions()
+      
+      SAMRecordIterator i = null
+      if(chr == null)
+          i = samFileReader.iterator()
+      else {
+            i = samFileReader.query(chr, start, end, false)
+      }
+            
+      ProgressCounter progress = new ProgressCounter()
+      try {
+          while(i.hasNext()) {
+              SAMRecord r = i.next()
+              
+              // Ignore records with no start or no end position
+              if(r.alignmentStart <= 0 || r.alignmentEnd <= 0)
+                  continue
+              
+              Region region = new Region(r.getReferenceName(), 
+                      Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
+              
+              region.range = new GRange(region.range.from,region.range.to,region)
+              region.setProperty('read',r)
+              regions.addRegion(region)
+              progress.count()
+          }
+      }
+      finally {
+          i.close()
+      }            
+      return regions
+    }
+    
+    /**
+     * Return read pairs from this SAM file that overlap the specified region
+     * as a Regions object - that is, as a set of genomic intervals. Each 
+     * region returned by this method spans from the start of the 5' read
+     * to the end of the 3' read.
+     * <p>
+     * Reads that are missing a start or end alignment position are 
+     * omitted. Unpaired reads are also omitted.
+     * <p>
+     * If called without passing start or end, the start / end
+     * are interpreted as the beginning / end of the chromosome
+     * / reference sequence respectively.
+     * 
+     * @return Regions object containing intervals representing all
+     *            the reads in this SAM object
+     */
+    @CompileStatic
+    Regions toPairRegions(String chr=null, int start=0, int end=0, int maxSize=0) {
+      Regions regions = new Regions()
+      
+      ProgressCounter progress = new ProgressCounter()
+      this.eachPair(chr,start,end) { SAMRecord r1, SAMRecord r2 ->
+          int [] boundaries = Utils.array(r1.alignmentStart, r1.alignmentEnd, r2.alignmentStart, r2.alignmentEnd)
+          if(boundaries.any { it == 0})
+                return
+                
+          if(r1.referenceName != r2.referenceName)
+                return
+          
+          Region region = new Region(r1.referenceName, Utils.min(boundaries)..Utils.max(boundaries))
+          if(maxSize>0 && region.size()>maxSize)
+                  return
+          
+          region.range = new GRange(region.range.from,region.range.to,region)
+          region.setProperty('r1',r1)
+          region.setProperty('r2',r2)
+          regions.addRegion(region)
+          progress.count()      
+     }
+      
+      return regions
+    }
+    
       
     /**
      * Return the number of mapped reads overlapping the given position
@@ -456,19 +581,19 @@ class SAM {
         return p
     }
     
-	/**
-	 * Close the underlying SAMFileReader
-	 */
+    /**
+     * Close the underlying SAMFileReader
+     */
     void close() {
         if(this.samFileReader != null)
             this.samFileReader.close()
     }
     
-	/**
-	 * Read a BAM or SAM file from standard input and call the given closure for
-	 * each read contained therein.
-	 * @param c
-	 */
+    /**
+     * Read a BAM or SAM file from standard input and call the given closure for
+     * each read contained therein.
+     * @param c
+     */
     @CompileStatic
     static void eachRead(Closure c) {
         SAMFileReader reader = new SAMFileReader(System.in)
