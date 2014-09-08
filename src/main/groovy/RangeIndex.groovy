@@ -626,4 +626,37 @@ class RangeIndex implements Iterable<IntRange> {
             }
         }
     }
+    
+    /**
+     * Merge all overlapping ranges together to make simplified regions
+     * representing all the ranges covered by any range in this RangeInde.
+     * 
+     * @return
+     */
+    RangeIndex reduce() {
+        RangeIndex reduced = new RangeIndex()
+        
+        // We take advantage of the fact that we iterate the ranges in order of genomic start position
+        IntRange currentRange = null
+        for(IntRange r in this) {
+            if(currentRange == null) {
+                currentRange = r
+                continue
+            }
+            
+            assert r.from >= currentRange.from
+            
+            if(GRange.overlaps(r,currentRange)) { 
+                currentRange = Math.min(r.from, currentRange.from)..Math.max(r.to, currentRange.to)
+            }
+            else {
+                reduced.add(currentRange)
+                currentRange = r
+            }
+        }
+        if(currentRange != null)
+            reduced.add(currentRange)
+            
+        return reduced
+    }
 }

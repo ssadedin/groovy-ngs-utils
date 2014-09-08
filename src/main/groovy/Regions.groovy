@@ -416,24 +416,21 @@ class Regions implements Iterable<Region> {
 	/**
 	 * Simplify all overlapping regions down to a single region
 	 *
-	 * @return a new BED that consists of all the overlapping regions of
-	 *          this BED merged together.
+	 * @return a new Regions that consists of all the overlapping regions of
+	 *          this Regions merged together.
 	 */
-	Regions reduce() {
-		Regions result = new Regions()
-		eachRange { String chr, IntRange r ->
-			
-			// Already processed this region
-			if(result.getOverlaps(chr, r.from, r.to))
-				return
-				
-			// Find the overlaps
-			List<Range> overlaps = getOverlaps(chr, r.from, r.to)
-			IntRange mergedRange = new IntRange(overlaps.min { it.from }.from, overlaps.max { it.to }.to)
-			result.addRegion(chr, mergedRange.from, mergedRange.to+1)
-		}
-		return result
-	}
+    @CompileStatic
+    Regions reduce() {
+        Regions result = new Regions()
+        this.index.each { String chr, RangeIndex ranges ->
+            result.allRanges[chr] = []
+            result.index[chr] = ranges.reduce()
+            result.index[chr].each { IntRange r ->
+                result.allRanges[chr].add(r)
+            }
+        }
+        return result
+    }
 
 	/**
 	 * Return true iff the given chromosome and position fall into
@@ -492,6 +489,7 @@ class Regions implements Iterable<Region> {
 					nextChr()
 			   
                 Range nextRange = chrIterator.next()
+                String currentChr = chr
 				if(!chrIterator.hasNext())
 					nextChr()
                     
@@ -502,7 +500,7 @@ class Regions implements Iterable<Region> {
                         return (Region)nextRange.extra
                     }
                 }
-                return new Region(chr,nextRange)
+                return new Region(currentChr,nextRange)
 			}
 			
 			void nextChr() {
@@ -578,5 +576,8 @@ class Regions implements Iterable<Region> {
 			"Empty Region Set (no regions)"
 		}
 	}
-
+    
+    void save(String fileName) {
+        new File(fileName).withWriter {  w -> this.each { w.println([it.chr, it.from, it.to].join('\t')) }}
+    }
 }
