@@ -228,12 +228,16 @@ class Stats extends DescriptiveStatistics {
         summary { i.next() }
     }
     
-    static Double mean(Closure c) {
+    static Double mean(double... values) {
+        summary(values).mean
+    }
+	
+     static Double mean(Closure c) {
         summary(c).mean
     }
     
     @CompileStatic
-    static SummaryStatistics summary(double [] values) {
+    static SummaryStatistics summary(double... values) {
         int i=0;
         summary { values[(int)(i++)] }
     }
