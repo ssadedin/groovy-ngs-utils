@@ -69,13 +69,20 @@ class Region extends Expando implements IRegion {
     }
     
     @CompileStatic
+    boolean overlaps(String chr, int from, int to) {
+        if(chr != this.chr)
+            return false
+        boolean result = this.range.containsWithinBounds(to) || 
+               this.range.containsWithinBounds(from) ||
+               (this.range.to >= from && this.range.to <= to)
+        return result
+    }
+    
+    @CompileStatic
     boolean overlaps(IRegion other) {
         if(other.chr != this.chr)
             return false
-        boolean result = this.range.containsWithinBounds(other.range.to) || 
-               this.range.containsWithinBounds(other.range.from) ||
-               other.range.containsWithinBounds(this.to)
-        return result
+        GRange.overlaps(this.range,other.range)
     }
     
     boolean spans(IRegion r) {
@@ -115,5 +122,20 @@ class GRange extends IntRange {
         return (r.to <= this.to) && (r.from >= this.from)
     }
     
+    
+    static boolean overlaps(IntRange a, IntRange b) {
+        boolean result = a.containsWithinBounds(b.to) || 
+                         a.containsWithinBounds(b.from) ||
+                         b.containsWithinBounds(a.to)
+        return result
+    }
+    
     Object extra    
+}
+
+class GRegion extends Region {
+   GRegion(String chr, Range range) {
+        this.chr = chr
+        this.range = new GRange(range.from,range.to,this)
+   }
 }
