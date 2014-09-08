@@ -5,6 +5,13 @@ import java.awt.image.BufferedImage;
 import javax.imageio.*
 
 
+/**
+ * Drawing is a very simple graphics class that enables simple line and text drawings on a 
+ * virtualised canvas that automatically maps mathematical coordinates to pixel based
+ * coordinates.
+ * 
+ * @author simon
+ */
 class Drawing {
     
     BufferedImage  image = null;
@@ -34,7 +41,7 @@ class Drawing {
         this.g = image.createGraphics()
         this.fileName = fileName
         this.xScale = width / (maxX - minX)
-        this.yScale = width / (maxY - minY) // invert Y so it is like math plotting coordinates
+        this.yScale = height / (maxY - minY) // invert Y so it is like math plotting coordinates
         this.xOffset = -minX 
         this.yOffset = -minY 
         this.height = height
@@ -65,15 +72,17 @@ class Drawing {
     }
     
     Drawing bars(IntRange range, def y) {
-        lines(range.from, range.to,y,bars:true)
+        lines([range.from], [range.to],[y],bars:true)
     }
       
     Drawing lines(Map options=[:], def x1, def y1, def x2, def y2) {
-        if(x1.size() != y1.size())
-            throw new IllegalArgumentException("Size of x1 (${x1.size()} different to size of y1 ${y1.size()}")
-            
-        if(x2.size() != y2.size())
-            throw new IllegalArgumentException("Size of x2 (${x2.size()} different to size of y2 ${y2.size()}")
+		if(x1 instanceof List ||x1 instanceof double[]) {
+	        if(x1.size() != y1.size())
+	            throw new IllegalArgumentException("Size of x1 (${x1.size()} different to size of y1 ${y1.size()}")
+	            
+	        if(x2.size() != y2.size())
+	            throw new IllegalArgumentException("Size of x2 (${x2.size()} different to size of y2 ${y2.size()}")
+		}
                 
         x1.eachWithIndex { x, index -> 
             if(options.color)
