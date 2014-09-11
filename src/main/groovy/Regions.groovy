@@ -225,7 +225,12 @@ class Regions implements Iterable<Region> {
     /**
      * Return a list of ranges that overlap the specified range. 
      * <em>Note</em>: both ends of the range are *inclusive*.
-     *
+     * The Range objects returned all belong to the reference sequence <em>chr</em>.
+     * Note, if the internal ranges are GRanges objects (as they will be often)
+     * then you can get full Region objects out from the 'extra' property:
+     * <pre>
+     * List<Region> overlaps = regions.getOverlaps('chrX',10000,20000)*.extra
+     *</pre>
      * @param start first position to look for overlaps
      * @param end   last position to look for overlaps (inclusive)
      * @return  List of ranges overlapping the specified start -> end range

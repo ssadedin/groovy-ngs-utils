@@ -4,25 +4,20 @@ class TargetedCNVAnnotator {
     
     Regions target
     
-    RangedData dgv 
+    DGV dgv 
     
     String omimFile
     
     boolean verbose = false
     
-    /**
-     * Columns from schema of DGV in UCSC table
-     */
-    List DGV_COLUMNS = ["bin", "chrom", "chromStart", "chromEnd", "name", "score", "strand", "thickStart", "thickEnd", "itemRgb", "varType", "reference", "pubMedId", "method", "platform", "mergedVariants", "supportingVariants", "sampleSize", "observedGains", "observedLosses", "cohortDescription", "genes", "samples"]
-    
     public TargetedCNVAnnotator(Regions targetRegions, RangedData dgv/*, String omimFile*/) {
         this.target = targetRegions
-        this.dgv = dgv
+        this.dgv = new DGV(dgv)
     }
     
     public TargetedCNVAnnotator(Regions targetRegions, String dgvFile/*, String omimFile*/) {
         this.target = targetRegions
-        this.dgv = Utils.time("Loading DGV data ...") { new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) }
+        this.dgv = new DGV(dgvFile).load()
 //        this.omimFile = omimFile
     }
     
@@ -138,7 +133,6 @@ class TargetedCNVAnnotator {
         if(!opts)
             System.exit(1)
             
-         
         BED targetRegions = Utils.time("Reading target regions ...") { new BED(opts.bed).load() }
         new TargetedCNVAnnotator(targetRegions, opts.dgv).annotate(opts.vcf, null)
     }
