@@ -57,15 +57,67 @@ class RegionsTest {
         """.trim().stripIndent()
                 
         Regions regions = new Regions()
-        testRegions.eachLine {
-            String [] parts = it.split(":")
-            regions.addRegion(parts[0].trim(), parts[1].split("-")[0].toInteger(), parts[1].split("-")[1].toInteger()+1)
+        testRegions.trim().eachLine {
+            regions.addRegion(new Region(it.trim()))
         }
         
+//        println "All regions are: " + regions*.toString()
+        
         Regions reduced = regions.reduce()
+        
+//        println "Reduced regions are " + reduced*.toString()
         for(Region r in reduced) {
+            println "Overlaps of $r are " + regions.getOverlaps(r)
             assert regions.getOverlaps(r).size() > 0
         }
     }
-
+    
+    @Test
+    void testOverlapBug() {
+        
+        def testRegions = [
+            "chrX:1426-2499",  // first region
+            "chrX:2225-3883",  // overlaps region 1
+            "chrX:3550-4587",  // overlaps region 2
+            ]
+        
+        Regions regions = new Regions()
+        testRegions.each { regions.addRegion(new Region(it)) }
+        
+        Regions reduced = regions.reduce()
+        
+        println reduced*.toString()
+        
+        assert reduced.numberOfRanges == 1
+        assert reduced[0].to == 4587
+        
+        Region target = new Region("chrX:3272-4352")
+        println reduced.getOverlaps(target)
+    }
+    
+    @Test
+    void testAddRegionProperties() {
+        Regions regions = new Regions();
+        Region r = new Region("chr1",1..100)
+        r.foo = "bar"
+        regions.addRegion(r)
+        
+        // We want the property we set on the region to be available when we query by region
+        assert regions[0].foo == "bar"
+    }
+    
+    @Test
+    void testPreserveRegionProperties() {
+        Regions regions = new Regions();
+        Region region = new Region("chr1",1..100)
+        regions.addRegion(region)
+        
+        regions.each { Region r ->
+            r.foo = "bar"
+        }
+        
+        regions.each { Region r ->
+            assert r.foo == "bar"
+        }
+    }
 }
