@@ -10,7 +10,10 @@ class IlluminaFileNameParserTest {
     @Test
     public void test() {
         
-        def info = parser.parse("L10248_S12_L001_R2_001.fastq.gz")
+        def info
+        
+        /*
+        info = parser.parse("L10248_S12_L001_R2_001.fastq.gz")
         println info
         
         info = parser.parse("GHS025_D1EH2ACXX_ATCACG_L001_R1.fastq.bam")
@@ -31,8 +34,13 @@ class IlluminaFileNameParserTest {
         assert info.sample == "025_11"
         println info
          
-        
+        info = parser.parse("AUS-0605884_S3_RUN1_L001_R1_001.fastq.trim.atrim.merge.reorder.realign.recal.bam")
+        assert info.sample == "AUS-0605884_S3"
+        println info
+        */
          
+        info = new IlluminaFileNameParser(dialect:IlluminaFileNameParser.DIALECT.MGHA).parse("S1482604125_01_4b95896405_L001_R1.fastq.gz")
+        assert info.sample == "S1482604125"
     }
 
 }
