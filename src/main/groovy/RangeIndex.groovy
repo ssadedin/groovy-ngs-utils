@@ -575,7 +575,7 @@ class RangeIndex implements Iterable<IntRange> {
                 while(pos != null && (prevRange==null || prevRange.from < pos)) {
                   
                   if(prevRange!=null && prevRange.from < pos) {
-                      println "Skip $prevRange.from - $prevRange.to because ${prevRange.from} < $pos"
+                      // println "Skip $prevRange.from - $prevRange.to because ${prevRange.from} < $pos"
                   }
                   prevRange = findNext()
                   
