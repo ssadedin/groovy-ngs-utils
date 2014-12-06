@@ -107,7 +107,7 @@ class VariantDB {
                                 ${family?.motherOf(sampleId)?.id}, 
                                 ${family?.fatherOf(sampleId)?.id}, 
                                 ${family?.id}, 
-                                ${subject?.phenoTypes?.getAt(0)}, 
+                                ${subject?.phenoTypes?.getAt(0)?:0}, 
                                 datetime('now'));
         """)
         return findSample(sampleId)
@@ -133,6 +133,7 @@ class VariantDB {
                          and v.chr = $v.chr
                          and v.start = $allele.start
                          and v.end = $allele.end
+                         and v.alt = $allele.alt
         """)[0]
         
         int familyCount = db.firstRow(
@@ -144,6 +145,7 @@ class VariantDB {
                          and v.chr = $v.chr
                          and v.start = $allele.start
                          and v.end = $allele.end
+                         and v.alt = $allele.alt
                          and o.sample_id = s.id
         """)[0]
         
