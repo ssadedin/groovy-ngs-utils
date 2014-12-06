@@ -389,12 +389,18 @@ class SampleInfo {
         // Convert to absolute path
         files = files.collect { new File(it).canonicalFile.absolutePath }
         def collectBySample = { ext, extractSample -> 
-            files.grep { 
+            def fs = files.grep { 
                 it.endsWith(ext) 
-            }.groupBy(extractSample).collectEntries {
+                
+            }
+            
+            return fs.groupBy(extractSample).collectEntries {
                 def f = [:]
                 if(ext=="fastq.gz")
                     f["fastq"] = it.value
+                else
+                if(ext=="exoncoverage.txt" || ext=="coverage.txt")
+                    f["coverage"] = it.value
                 else
                     f[ext] = it.value
                 [it.key, [files: f, sample:it.key]] 
@@ -402,7 +408,7 @@ class SampleInfo {
         }
         
         def samplesByFastq = collectBySample("fastq.gz") {
-            new IlluminaFileNameParser().parse(it).sample
+            new IlluminaFileNameParser(dialect:IlluminaFileNameParser.DIALECT.MGHA).parse(it).sample
         }
             
         def samplesByBam = collectBySample("bam") {
@@ -413,11 +419,17 @@ class SampleInfo {
             new VCF(it).samples[0].replaceAll('_$','') // legacy data had bad trailing _
         }
         
+        def samplesByCoverage = collectBySample("exoncoverage.txt") { 
+            def sn = new File(it).name.replaceAll('\\..*$','')
+            println "Sample name $it = $sn"
+            return sn
+        }
+         
         // Merge files from all of them
         def allSamples = (samplesByBam.keySet() + samplesByVcf.keySet() + samplesByFastq.keySet()).unique()
         Map<String,SampleInfo> result = allSamples.collect { s ->
             def sampleFiles = [all:[]]
-            [samplesByBam, samplesByVcf, samplesByFastq].each { samplesByType ->
+            [samplesByBam, samplesByVcf, samplesByFastq, samplesByCoverage].each { samplesByType ->
                 if(samplesByType[s]) {
                     sampleFiles += samplesByType[s].files
                     samplesByType[s].files.each { fileType, fileList -> 
