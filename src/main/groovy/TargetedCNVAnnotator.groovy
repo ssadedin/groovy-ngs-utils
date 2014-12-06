@@ -17,7 +17,7 @@ class TargetedCNVAnnotator {
     
     public TargetedCNVAnnotator(Regions targetRegions, String dgvFile/*, String omimFile*/) {
         this.target = targetRegions
-        this.dgv = new DGV(dgvFile).load()
+        this.dgv = new DGV(dgvFile).parse()
 //        this.omimFile = omimFile
     }
     

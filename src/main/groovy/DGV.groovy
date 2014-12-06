@@ -1,4 +1,9 @@
-
+/**
+ * A thin wrapper around a RangedData object to add some utility functions
+ * for accessing DGV data.
+ * 
+ * @author simon
+ */
 class DGV {
     
     /**
@@ -19,11 +24,10 @@ class DGV {
         this.dgv = dgv
     } 
      
-    DGV load() {
+    DGV parse() {
         this.dgv = Utils.time("Loading DGV data ...") { new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) }
         return this
     }
-    
     
     /**
      * Convenience method to return CNVS overlapping the specified region
