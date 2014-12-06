@@ -177,6 +177,12 @@ class Pedigree {
         individuals*.id
     }
     
+	/**
+	 * Compute the largest set of samples within the pedigree who are unrelated. 
+	 * Typically this will be the topmost set of parents in the pedigree, however
+	 * the method actually brute forces the answer by iterating every combination
+	 * of samples and keeping only the sets that do not contain related individuals.
+	 */
     List<Subject> findMaximalUnrelatedSet() {
         // We assume that the pedigrees themselves are relatively small. In that case
         // we can just brute force every combination of samples that is unrelated.
