@@ -401,6 +401,14 @@ class Regions implements Iterable<Region> {
 		return this
 	}
     
+    /**
+     * Adds the region to this Regions object in such a way that the same Region
+     * object is returned in iteration, preserving any expando properties set on
+     * the region.
+     * 
+     * @param r
+     * @return
+     */
 	@CompileStatic
 	Regions addRegion(Region r) {
 		// Add to full range index
@@ -410,11 +418,21 @@ class Regions implements Iterable<Region> {
 			chrIndex = new RangeIndex()
 			index[chr] = chrIndex
 		}
-		chrIndex.add(r.range)
+        
+        IntRange range = null
+        if(r.range instanceof GRange && ((GRange)r.range).extra == null) {
+            ((GRange)r.range).extra = r
+            range = r.range
+        }
+        else {
+            range = new GRange(r.range.from, r.range.to, r)
+        }
+        
+		chrIndex.add(range)
         
 		if(!allRanges.containsKey(chr))
 			allRanges[chr] = new ArrayList(1000)
-	    allRanges[chr] << r.range
+	    allRanges[chr] << range
         return this
     }
 		
