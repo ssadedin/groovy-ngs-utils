@@ -17,6 +17,15 @@ class DrawingTest {
 		d.line(1005,80, 1950,80)
 		d.color("orange")
 		d.line(1005,-9, 1950,-9)
+        
+        d.color("black")
+        d.line(1000, 10, 1200, 10)
+        d.line(1100, -10, 1100, 110)
+        
+        d.text(1100,10, "hello")
+        d.text("world")
+        
+        d.bar(1400..1700, 50, "Hello World!","Hello Mars!")
 	}
 
 }
