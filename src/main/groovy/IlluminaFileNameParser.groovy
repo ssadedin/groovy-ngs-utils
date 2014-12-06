@@ -10,10 +10,15 @@ class IlluminaFileNameParser {
      */
     boolean strict = Boolean.parseBoolean(System.getProperty("gngs.strict", "true"))
     
+    static enum DIALECT { DEFAULT, MGHA }
+    
+    DIALECT dialect = DIALECT.DEFAULT
+    
     /**
      * Value assigned to fields that could not be determined
      */
     public static final String UNKNOWN = "Unknown"
+    
 
     /**
      * Examples of the various formats we try to parse:
@@ -43,6 +48,9 @@ class IlluminaFileNameParser {
             fileName = fileName.replaceAll("_"+barcodeMatch[0][1], "")
         }
         
+        // If there is a run identifier, remove it
+        fileName = fileName.replaceAll("_RUN[0-9*]_","_")
+        
         def laneMatch = (fileName =~ /_(L[0-9]*)[._]/)
         if(laneMatch) {
             result.lane = laneMatch[0][1]
@@ -58,8 +66,15 @@ class IlluminaFileNameParser {
             result.sample = fileName.substring(0,fileName.indexOf(machineName)-1)
         }
         else {
-            if(result.lane != UNKNOWN)
-              result.sample = fileName.substring(0,fileName.indexOf(result.lane))
+            if(result.lane != UNKNOWN) {
+                
+              // Dedicated parsing for MGHA anonymised samples which lose info from file names
+              if((dialect == DIALECT.MGHA) && (fileName ==~ /S[0-9]{10}_[0-9]{2}_[a-z0-9]{10}.*/)) {
+                  result.sample = fileName[0..10]
+              }
+              else 
+                  result.sample = fileName.substring(0,fileName.indexOf(result.lane))
+            }
             else {
                 if(strict)
                     throw new RuntimeException("Unable to identify machine name or lane in file name $fileName")
