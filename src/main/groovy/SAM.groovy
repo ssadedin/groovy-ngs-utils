@@ -120,6 +120,13 @@ class SAM {
     
     static boolean progress = false
     
+    static {
+        // Picard has started doing some really verbose logging - turn it off by default
+        // and let the user turn it back on with this property if they want it
+        if("true" != System.properties.picardLogging)
+            net.sf.picard.util.Log.setGlobalLogLevel(net.sf.picard.util.Log.LogLevel.WARNING)
+    }
+    
     SAM(String fileName) {
         this(new File(fileName))
     }
@@ -127,14 +134,25 @@ class SAM {
     SAM(File file) {
         this.samFile = file
         if(!this.samFile.exists())
-            throw new FileNotFoundException("BAM file could not be opened at ${samFile.absolutePath}")
-        this.indexFile = new File(samFile.absolutePath + ".bai")
-        if(!indexFile.exists()) {
-            indexFile = new File(samFile.absolutePath.replaceAll(".bam\$",".bai"))
+            throw new FileNotFoundException("BAM/CRAM file could not be opened at ${samFile.absolutePath}")
+            
+        String indexExt;
+        String fileExt;
+        if(file.name.endsWith(".bam") || file.name.endsWith(".cram")) {
+            indexExt = ".bai"
+            fileExt = ".bam"
         }
-        if(!indexFile.exists())
-            throw new FileNotFoundException("Please ensure your BAM / SAM file is indexed. File $indexFile could not be found.")
+        else
+            throw new IllegalArgumentException("This class only supports BAM or CRAM files. File type $file is not supported")
+                
+        this.indexFile = new File(samFile.absolutePath + indexExt)
         
+        if(!indexFile.exists()) 
+            indexFile = new File(samFile.absolutePath.replaceAll("$fileExt\$",'')+indexExt)
+        
+        if(!indexFile.exists())
+            throw new FileNotFoundException("Please ensure your BAM / SAM / CRAM file is indexed. File $indexFile could not be found.")
+            
         SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
         this.samFileReader = newReader()
         
@@ -266,7 +284,7 @@ class SAM {
     }
     
     void eachPair(String chr, Closure c) {
-        this.eachPair(chr, 0, 0) // Note Picard convention: 0 represents start and end of reference sequence
+        this.eachPair(chr, 0, 0, c) // Note Picard convention: 0 represents start and end of reference sequence
     }    
     
     @CompileStatic
@@ -283,6 +301,24 @@ class SAM {
         finally {
             iter.close()
         }
+    }
+    
+    /**
+     * Count the number of read pairs in the given region
+     * @param r region to count pairs over
+     * @return  number of read pairs that overlap the region
+     */
+    int countPairs(Region r) {
+        countPairs(r.chr, r.from, r.to)
+    }
+    
+    @CompileStatic
+    int countPairs(String chr, int start, int end) {
+        int c = 0;
+        eachPair(chr,start,end) { Object r1, Object r2 ->
+            ++c
+        }
+        return c
     }
     
     void eachRecord(int threads, Closure c) {
@@ -457,7 +493,7 @@ class SAM {
       ProgressCounter progress = new ProgressCounter()
       try {
           while(i.hasNext()) {
-              SAMRecord r = i.next()
+              SAMRecord r = (SAMRecord)i.next()
               
               // Ignore records with no start or no end position
               if(r.alignmentStart <= 0 || r.alignmentEnd <= 0)
@@ -466,7 +502,7 @@ class SAM {
               Region region = new Region(r.getReferenceName(), 
                       Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
               
-              region.range = new GRange(region.range.from,region.range.to,region)
+              region.range = new GRange((int)region.range.from,(int)region.range.to,region)
               region.setProperty('read',r)
               regions.addRegion(region)
               progress.count()
@@ -511,7 +547,7 @@ class SAM {
           if(maxSize>0 && region.size()>maxSize)
                   return
           
-          region.range = new GRange(region.range.from,region.range.to,region)
+          region.range = new GRange((int)region.range.from,(int)region.range.to,region)
           region.setProperty('r1',r1)
           region.setProperty('r2',r2)
           regions.addRegion(region)
