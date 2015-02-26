@@ -452,9 +452,16 @@ class Matrix extends Expando implements Iterable {
         return result
     }    
     
-    private void transferPropertiesToRows(Matrix result, List<Number> indices) {
-        this.properties.each {  String key, Iterable value ->
-            result[key] = value[indices]
+    private void transferPropertiesToRows(Matrix result, List<Number> indices = null) {
+        if(indices != null) {
+            this.properties.each {  String key, Iterable value ->
+                result[key] = value[indices]
+            }
+        }
+        else {
+            this.properties.each {  String key, Iterable value ->
+                result[key] = value as List
+            }
         }
     }
     
@@ -482,6 +489,10 @@ class Matrix extends Expando implements Iterable {
         }
         if(names)
             result.names = this.names
+            
+        if(!this.properties.isEmpty()) 
+            this.transferPropertiesToRows(result)
+            
         return result
     }
     
@@ -643,6 +654,12 @@ class Matrix extends Expando implements Iterable {
     
     Matrix transpose() {
         new Matrix(this.matrix.transpose())
+    }
+    
+    Matrix div(Matrix m) {
+        this.transform { value, i, j ->
+            value / m[i][j]
+        }
     }
     
     void save(String fileName) {
