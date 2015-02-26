@@ -4,12 +4,14 @@ project.ext {
     VERSION="0.0.1"
     STAGE="build/stage/groovy-ngs-utils-$VERSION"
     GROOVY_VERSION="2.3.4"
+    //GROOVY_VERSION="2.1.1"
 }
 
 /*
  TODO: use proguard to shrink down the output jars
  */
 /*
+
 buildscript {
     repositories {
         flatDir dirs: '/Users/simon/work/proguard/proguard4.9/lib'
@@ -19,6 +21,7 @@ buildscript {
     }
 }
 */
+
 repositories {
     mavenCentral()
     maven { 
@@ -51,14 +54,29 @@ dependencies {
      compile 'com.xlson.groovycsv:groovycsv:1.0'
      compile group: 'de.erichseifert.gral', name: 'gral-core', version: '0.10'
      compile 'log4j:log4j:1.2.17'
-     compile 'org.xerial:sqlite-jdbc:3.7.2'
+     compile 'org.xerial:sqlite-jdbc:3.8.6'
      compile files(fileTree(dir:'lib', includes:['*.jar']))
 }
 
 // Bundle all dependencies into output library
 jar {
-    from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
-    exclude "groovy/**"
+    from configurations.compile.grep { !it.name.startsWith("cramtools") }.collect { 
+        println "Including $it"; 
+        it.isDirectory() ? it : zipTree(it) 
+    }
+    from configurations.compile.grep { it.name.startsWith("cramtools") }.collect { 
+        println "Including $it"; 
+        it.isDirectory() ? it : zipTree(it) 
+    }
+
+    exclude { details ->
+        if(details.file.path.startsWith("groovy/stream"))
+            return false
+        if(details.file.path.startsWith("groovy/"))
+            return true
+        return false
+    }
+
     exclude "org/codehaus/**"
     exclude "META-INF/groovy*"
     exclude "META-INF/**/*groovy*"
