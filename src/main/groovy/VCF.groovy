@@ -160,7 +160,7 @@ class VCF implements Iterable<Variant> {
     }
     
     static VCF parse(File f, List<Pedigree> peds = null, Closure c = null) {
-        parse(new BufferedInputStream(new FileInputStream(f)),peds,c)
+        parse([:], new BufferedInputStream(new FileInputStream(f)),peds,c)
     }
     
     static VCF parse(Closure c = null) {
@@ -171,8 +171,8 @@ class VCF implements Iterable<Variant> {
         parse("-",peds,c)
     }
     
-    static VCF parse(BufferedInputStream f, List<Pedigree> peds = null, Closure c = null) {
-        parseImpl(f,false, peds,c)
+    static VCF parse(Map options=[:], InputStream f, List<Pedigree> peds = null, Closure c = null) {
+        parseImpl(options,f,false, peds,c)
     }
     
     static VCF filter(File f, Closure c = null) {
@@ -189,7 +189,7 @@ class VCF implements Iterable<Variant> {
     
     static VCF filter(String fileName, List<Pedigree> peds, Closure c = null) {
         if(fileName == "-")
-          filter(System.in,peds,c)
+          filter([:],(InputStream)System.in,peds,c)
         else
           filter(new File(fileName),peds,c)
     }
@@ -198,8 +198,12 @@ class VCF implements Iterable<Variant> {
         filter("-",null,c)
     }
     
-    static VCF filter(BufferedInputStream f, List<Pedigree> peds = null, Closure c = null) {
-        parseImpl(f,true,peds,c)
+    static VCF filter(Map options=[:], InputStream f, Closure c) {
+        parseImpl(options,f,true,null, c)
+    }
+    
+    static VCF filter(Map options=[:], InputStream f, List<Pedigree> peds = null, Closure c = null) {
+        parseImpl(options,f,true,peds,c)
     }
     
     /**
@@ -211,7 +215,7 @@ class VCF implements Iterable<Variant> {
      * @param c filter closure
      */
 //    @CompileStatic
-    private static VCF parseImpl(BufferedInputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
+    private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
         VCF vcf = new VCF(pedigrees:peds)
         String lastHeaderLine
         long lastPrintTimeMs = System.currentTimeMillis()
@@ -219,7 +223,12 @@ class VCF implements Iterable<Variant> {
         boolean flushedHeader = false
         Map chrPosIndex = vcf.chrPosIndex
         ProgressCounter progress = new ProgressCounter(withTime:true)
+        
+        List<String> samples = options.samples?: [] 
+        
+        List<Integer> keepColumns = null
         f.eachLine { String line ->
+            
             
             ++count
             
@@ -231,27 +240,41 @@ class VCF implements Iterable<Variant> {
             }
             
             if(vcf.lastHeaderLine == null) {
+                // Modify the header to include only samples selected
+                if(samples) {
+                    def sampleHeader = vcf.headerLines[-1].split('[\t ]{1,}')
+                    keepColumns = (0..8) + sampleHeader.findIndexValues{it in samples}
+                    vcf.headerLines[-1] = sampleHeader[keepColumns].join("\t")
+                }
                 vcf.parseLastHeaderLine()
             }
+            
+            if(keepColumns) {
+                line = (line.split('[\t ]{1,}')[keepColumns]).join("\t")
+            }
+            
             Variant v = Variant.parse(line)
             v.header = vcf
             try {
-              if(!c || !(c(v)==false)) {
-                  if(filterMode) {
-                      if(!flushedHeader)  {
-                          vcf.printHeader()
-                          flushedHeader = true
+                
+              if(!samples || samples.any {v.sampleDosage(it)}) {
+                  if(!c || !(c(v)==false)) {
+                      if(filterMode) {
+                          if(!flushedHeader)  {
+                              vcf.printHeader()
+                              flushedHeader = true
+                          }
+                          println v.line
                       }
-                      println v.line
-                  }
-                  else {
-                      vcf.add(v)
-                  }
+                      else {
+                          vcf.add(v)
+                      }
+                }
+              }
             }
-          }
-          catch(Exception e) {
-             throw new RuntimeException("Procesing failed at line $count :\n" + line, e)
-          }
+            catch(Exception e) {
+               throw new RuntimeException("Procesing failed at line $count :\n" + line, e)
+            }
         }
         
         if(filterMode && !flushedHeader)  {
@@ -293,6 +316,10 @@ class VCF implements Iterable<Variant> {
     
     /**
      * Extract sample names and other info from the final header line in the VCF file
+     * 
+     * If samples are specified, the samples parsed will be limited to the given
+     * samples. The VCF header line will be modified so that any output will only 
+     * include the given samples.
      */
     void parseLastHeaderLine() {
         this.lastHeaderLine = this.headerLines[-1].split('[\t ]{1,}')
