@@ -153,6 +153,7 @@ class SampleInfo {
      *  - coverage (output from coverageBed)
      *  - vcf
      *  - bam
+     *  - cram
      */
     Map    files = new Hashtable() // thread safe
 	
@@ -225,6 +226,7 @@ class SampleInfo {
     String variantsFile
 
     Map<String,String> fileMappings = [
+        cram : "cram",
         bam : "bam",
         fastq: "fastq.gz",
         coverage: "exoncoverage.txt",
@@ -253,6 +255,33 @@ class SampleInfo {
     }
     
     /**
+     * Parse sample info using auto-detection to determine if the format is
+     * MGHA extended format or simplified format.
+     * @param fileName
+     * @return
+     */
+    static parse_sample_info(String fileName) {
+        // We just read the first line and sniff the values
+        List lines = readSampleInfoLines(fileName)
+        if(lines.isEmpty())
+            throw new RuntimeException("Sample information file is empty: please ensure at least one sample is specified in the file.")
+           
+        TSV iter = new TSV(new StringReader(lines[0]), readFirstLine:true)
+        def row = iter[0]
+        int columns = row.values.size()
+        
+        if(columns == MG_COLUMNS.size())
+            return parse_sample_info(fileName, MG_COLUMNS)
+        else
+        if(columns >= 5 && columns <= SIMPLE_COLUMNS.size())
+            return parse_sample_info(fileName, SIMPLE_COLUMNS)
+        else
+            throw new RuntimeException(
+                "Sample information file does not have expected number of columns. Expected either 5 - " +
+                SIMPLE_COLUMNS.size() + " columns or exactly " + MG_COLUMNS.size() + " columns but observed $columns") 
+    }
+    
+    /**
      * Parse the given file to extract sample information
      *
      * @return  List of (Map) objects defining properties of each
@@ -262,15 +291,11 @@ class SampleInfo {
      *              <li>Name of flagship (target)
      *              <li>Genes to be classed as high priority (genes)
      */
-    static parse_sample_info(fileName, columns=SIMPLE_COLUMNS) {
+    static parse_sample_info(fileName, columns) {
         
         String col0 = columns[0].toLowerCase()
 		
-        def lines = new File(fileName).readLines().grep { 
-			!it.trim().startsWith('#') && // ignore comment lines
-			!it.trim().toLowerCase().startsWith(col0) && // ignore header line, if it is present
-			it.trim() // ignore completely blank lines
-		}
+        def lines = readSampleInfoLines(fileName)
         
 		
 		// Pad with optional blank fields
@@ -349,6 +374,17 @@ class SampleInfo {
 				}
         }.collectEntries { [it.sample, it] } // Convert to map keyed by sample name
     }
+    
+    static List<String> readSampleInfoLines(String fileName) {
+        String simpleCol0 = SIMPLE_COLUMNS[0].toLowerCase()
+        String mgCol0 = MG_COLUMNS[0].toLowerCase()
+        new File(fileName).readLines().grep { 
+			!it.trim().startsWith('#') && // ignore comment lines
+			!it.trim().toLowerCase().startsWith(simpleCol0) && // ignore header line, if it is present
+			!it.trim().toLowerCase().startsWith(mgCol0) && // ignore header line, if it is present
+			it.trim() // ignore completely blank lines
+		}   
+    }
 	
 	/**
 	 * Validates that text fields are in the correct format.
@@ -415,6 +451,10 @@ class SampleInfo {
                 new SAM(it).samples[0].replaceAll('_$','') // legacy data had bad trailing _
         }
         
+        def samplesByCram = collectBySample("cram") {
+                new SAM(it).samples[0].replaceAll('_$','') // legacy data had bad trailing _
+        }
+         
         def samplesByVcf = collectBySample("vcf") { 
             new VCF(it).samples[0].replaceAll('_$','') // legacy data had bad trailing _
         }
@@ -426,10 +466,10 @@ class SampleInfo {
         }
          
         // Merge files from all of them
-        def allSamples = (samplesByBam.keySet() + samplesByVcf.keySet() + samplesByFastq.keySet()).unique()
+        def allSamples = (samplesByBam.keySet() + samplesByCram.keySet() + samplesByVcf.keySet() + samplesByFastq.keySet()).unique()
         Map<String,SampleInfo> result = allSamples.collect { s ->
             def sampleFiles = [all:[]]
-            [samplesByBam, samplesByVcf, samplesByFastq, samplesByCoverage].each { samplesByType ->
+            [samplesByBam, samplesByCram, samplesByVcf, samplesByFastq, samplesByCoverage].each { samplesByType ->
                 if(samplesByType[s]) {
                     sampleFiles += samplesByType[s].files
                     samplesByType[s].files.each { fileType, fileList -> 
