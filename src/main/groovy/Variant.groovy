@@ -359,7 +359,6 @@ class Variant implements IRegion {
         info = fields[7]
         
         pos = Integer.parseInt(fields[1])
-        
         parseGenotypes(fields)
         
         setAlt(alt)
@@ -596,7 +595,7 @@ class Variant implements IRegion {
         //    ./. : not called
         // So to find the dosage for allele 1, we need to split the genotype on slash
         // and then count the number of times the requested allele appears.
-        def result = genoTypes*.GT*.split('/')*.count { 
+        def result = genoTypes*.GT*.split('[/|]')*.count { 
             if(!it.isInteger())
                 return 0
                 
@@ -616,8 +615,10 @@ class Variant implements IRegion {
     int sampleDosage(String sampleName) {
         if(this.header == null)
             throw new IllegalStateException("Variant must have a header to query dosage by sample name")
+            
         int sampleIndex = header.samples.indexOf(sampleName)
         List<Integer> allDosages = getDosages()
+        
         return (int)allDosages[sampleIndex]
     }
     
@@ -773,6 +774,13 @@ class Variant implements IRegion {
         return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>") 
     }
     
+    /**
+     * Returns the change in size of the genome caused by this variant's default allele.
+     * <p>
+     * Note: since point mutations / SNVs don't change the size, they have size zero
+     * 
+     * @return difference in genome size caused by this variant's default allele
+     */
     @CompileStatic
     int size() {
         if(alt == "DEL" || alt == "<DEL>") {
@@ -790,7 +798,7 @@ class Variant implements IRegion {
             return Integer.parseInt(String.valueOf(svLen))           
         }
         else
-        return Math.abs(ref.size() - alt.size())
+            return Math.abs(ref.size() - alt.size())
     }
 
     static Variant parse(String line) {
