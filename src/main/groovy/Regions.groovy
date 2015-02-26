@@ -425,7 +425,7 @@ class Regions implements Iterable<Region> {
             range = r.range
         }
         else {
-            range = new GRange(r.range.from, r.range.to, r)
+            range = new GRange((int)r.range.from, (int)r.range.to, (Object)r)
         }
         
 		chrIndex.add(range)
