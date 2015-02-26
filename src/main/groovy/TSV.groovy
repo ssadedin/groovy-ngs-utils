@@ -1,9 +1,5 @@
 // vim: ts=4:sw=4:expandtab:cindent:
-import groovy.transform.CompileStatic;
 
-import java.io.Reader;
-
-import com.xlson.groovycsv.CsvIterator;
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -24,6 +20,14 @@ import com.xlson.groovycsv.CsvIterator;
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 import com.xlson.groovycsv.CsvParser;
+
+import groovy.transform.CompileStatic;
+
+import java.io.Reader;
+import java.util.zip.GZIPInputStream;
+
+import com.xlson.groovycsv.CsvIterator;
+
 
 /**
  * A convenience wrapper around Groovy-CSV (which is
@@ -65,7 +69,9 @@ class TSV implements Iterable {
     Map options
     
     TSV(Map options=[:], String fileName) {
-        this.reader =  { new File(fileName).newReader() }
+        this.reader =  { 
+            fileName.endsWith(".gz") ? new GZIPInputStream(new FileInputStream(fileName)).newReader() : new File(fileName).newReader() 
+        }
         this.options = options
         if(this.options.containsKey('columnNames') && !this.options.containsKey('readFirstLine'))
             this.options.readFirstLine = true
@@ -173,9 +179,13 @@ class TSV implements Iterable {
         }
         return newValues
     }
-	
-	static Iterable parse(Closure c = null) {
+    
+	static Iterator parse(Closure c = null) {
 		Reader r = new InputStreamReader(System.in)
+        parse(r,c)
+	}
+    
+	static Iterator parse(Reader r, Closure c = null) {
 		if(c != null) {
 			for(line in CsvParser.parseCsv(r)) {
 				c(line)
@@ -184,7 +194,7 @@ class TSV implements Iterable {
 		else {
 			return CsvParser.parseCsv(r)
 		}
-	}
+	}    
     
     /**
      * Read the given file and then write it out to standard output
