@@ -24,5 +24,12 @@ class TSVTest {
             assert line.weight instanceof Double
         }
     }
+    
+    @Test
+    public void testGZipInput() {
+        new TSV("tests/test.gz").each {
+            println "Line: " + it
+        }
+    }
 
 }
