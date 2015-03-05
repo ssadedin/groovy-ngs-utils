@@ -9,6 +9,8 @@ class RangedData extends Regions {
     int startColumn
     int endColumn
     int separator='\t'
+    
+    int genomeZeroOffset=0
 
     public RangedData() {
     }
@@ -35,14 +37,19 @@ class RangedData extends Regions {
     }
     
     RangedData load(Map options=[:], Closure c=null) {
+        
+        // Some data files (looking at you UCSC) are zero-based instead of 1-based
+        if(options.zeroBased)
+            genomeZeroOffset=1
+        
         // Assume columns on first line
         TSV tsv = new TSV(options, source)
         for(PropertyMapper line in tsv) {
-            Region r = new Region(line.values[chrColumn], new GRange(line.values[startColumn.toInteger()],line.values[endColumn.toInteger()],null))
+            Region r = new Region(line.values[chrColumn], 
+                new GRange(line.values[startColumn].toInteger()+genomeZeroOffset,line.values[endColumn].toInteger()+genomeZeroOffset,null))
             r.range.extra = r
             line.columns.each { String columnName, int index ->
                 if(index != startColumn && index != endColumn && index != chrColumn) {
-//                    println "Setting $columnName => " + line.values[index]
                     r.setProperty(columnName, line.values[index])
                 }
             }
