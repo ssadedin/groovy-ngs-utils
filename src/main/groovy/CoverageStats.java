@@ -45,6 +45,13 @@ public class CoverageStats extends SummaryStatistics {
         }
     }
      
+    public CoverageStats(int maxPercentileValue, Iterable covValues) {
+        values = new int[maxPercentileValue];
+        for(Object obj : covValues) {
+            this.leftShift(obj);
+        }
+    }
+    
     void leftShift(Object obj) {
         if(obj instanceof Integer) {
             addValue((Integer)obj);
@@ -83,7 +90,7 @@ public class CoverageStats extends SummaryStatistics {
     int getPercentile(int percentile) {
         int observationsPassed = 0;
         int lowerValue = -1;
-        final int medianIndex = total / (100/percentile);
+        final int medianIndex = (int)((float)total / (100f/(float)percentile));
         for(int i=0; i<values.length; ++i) {
             observationsPassed += values[i];
             if(observationsPassed >= medianIndex) {
