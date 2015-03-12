@@ -17,6 +17,19 @@ class Schema {
     def schemaInfo = null
     
     
+    static String CREATE_SAMPLE_SQL = 
+           """
+                create table sample (
+                       id integer primary key asc, 
+                       sample_id text NOT NULL,
+                       father_id text,
+                       mother_id text,
+                       family_id text,
+                       phenotype integer NOT NULL,
+                       created datetime NOT NULL,
+                       UNIQUE (sample_id) ON CONFLICT ROLLBACK
+                );
+           """
     
 
     static Map<Integer, Map<String,List<String>>>  schema = [
@@ -29,7 +42,7 @@ class Schema {
                         end integer,            -- end end of actual DNA change
                         ref text NOT NULL,      -- reference sequence
                         alt text NOT NULL,      -- observed sequence
-                        consequence text,       -- protein change (where applicable)
+                        consequence text,       -- type of protein change (where applicable)
                         sift text,              -- sift impact
                         polyphen text,          -- polyphen impact
                         condel float,           -- condel sore 
@@ -39,7 +52,11 @@ class Schema {
             """,
             """
                 CREATE INDEX variant_idx ON variant (chr,start,alt);
+            """,
+            """
                 CREATE INDEX variant_cons_idx ON variant (consequence);
+            """,
+            """
                 CREATE INDEX variant_condel_idx ON variant (condel);
             """,
             """
@@ -57,18 +74,7 @@ class Schema {
            """
                 CREATE INDEX variant_observation_idx ON variant_observation (variant_id);
            """,
-           """
-                create table sample (
-                       id integer primary key asc, 
-                       sample_id text NOT NULL,
-                       father_id text,
-                       mother_id text,
-                       family_id text,
-                       phenotype integer NOT NULL,
-                       created datetime NOT NULL,
-                       UNIQUE (sample_id) ON CONFLICT ROLLBACK
-                );
-           """,
+           CREATE_SAMPLE_SQL,
            """
                 CREATE INDEX sample_index ON sample (sample_id);
            """,
@@ -81,19 +87,60 @@ class Schema {
            """
               insert into schema_meta_data values(1,1);
            """
-          ]
+          ],
+      3: [  
+            """
+              alter table sample add column cohort text 
+              ;
+            """,
+            """
+                CREATE INDEX sample_cohort_idx ON sample (cohort);
+            """,
+            """
+              alter table sample add column batch text 
+              ;
+            """,
+            """
+                CREATE INDEX sample_batch_idx ON sample (batch);
+            """,
+            """
+              alter table variant add column pos integer 
+            """  
+         ],
+      4: [
+          """
+              alter table variant add column protein_change text;
+          """
+         ]
     ]
     
     /**
      * Iterate over the schema versions and check if they exist
      */
     void checkSchema(Sql db) {
+        
+        
         // Get the current schema information
         try {
             schemaInfo = db.firstRow("select * from schema_meta_data")
         }
         catch(Exception e) {
             schemaInfo = [id:0, schema_version:0] // 0 meaning, "does not exist"
+            
+            boolean legacySchema = false
+            try {
+                db.firstRow("select count(*) from variant")
+                
+                // Variant table exists but not schema table
+                legacySchema=true
+            }
+            catch(Exception e2) {
+            }
+            
+            if(legacySchema) {
+                upgradeLegacy(db)
+                schemaInfo = db.firstRow("select * from schema_meta_data")
+            }
         }
         
         List schemaVersions = (schema.keySet() as List).sort()
@@ -106,6 +153,68 @@ class Schema {
     }
     
     /**
+     * This function upgrades a "legacy" database that was created as part of the
+     * MGHA project to the schema used by this class. It's a one-way conversion, so 
+     * use caution!
+     * 
+     * @param db
+     */
+    void upgradeLegacy(Sql db) {
+        
+        def statements = [
+            """
+                        alter table variant add column consequence text;
+            """,
+            """
+                        alter table variant add column sift text;
+            """,
+            """
+                        alter table variant add column polyphen text;
+            """,
+            """
+                        alter table variant add column condel float;
+            """,
+            """
+                        alter table variant add column max_freq float;
+            """,
+            """
+                        update variant set max_freq = max(freq_1000g, freq_esp);
+            """,
+            """
+                CREATE INDEX variant_max_freq_idx ON variant (max_freq);
+            """,
+            """
+                ALTER TABLE sample RENAME TO tmp_sample;
+            """,
+            CREATE_SAMPLE_SQL
+          ] + schema[2] + [
+            """
+            INSERT INTO sample SELECT id, study_id, 0, 0, study_id, 0, created, cohort, batch   FROM tmp_sample;
+            """,
+            """
+            DROP TABLE tmp_sample;
+            """,
+            """
+                CREATE INDEX sample_index ON sample (sample_id);
+            """, 
+            """
+                create table schema_meta_data (
+                       id integer primary key asc, 
+                       schema_version integer NOT NULL
+                );    
+            """,
+            """
+              insert into schema_meta_data values(1,3);
+            """
+        ]
+        
+        for(s in statements) {
+            log.info "Executing legacy upgrade statement: $s"
+            db.execute(s)
+        }
+    }
+    
+    /**
      * Execute the given statements to upgrade the schema
      * 
      * @param statements
@@ -115,8 +224,11 @@ class Schema {
         db.execute("BEGIN TRANSACTION;")
         List<String> statements = schema[toVersion] 
         for(String s in statements) {
+            log.info "Executing upgrade statement: $s"
             db.execute(s)
         }
+        db.execute("update schema_meta_data set schema_version=$toVersion")
+        log.info "Committing changes"
         db.execute("COMMIT;")
     }
 }

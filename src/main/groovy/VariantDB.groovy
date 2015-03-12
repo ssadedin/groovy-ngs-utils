@@ -92,22 +92,24 @@ class VariantDB {
      * @param peds
      * @return
      */
-    def addSample(String sampleId, Pedigrees peds) {
-        Pedigree family = peds.subjects[sampleId]
-        Subject subject = family?.individuals.find { it.id == sampleId }
-        if(!subject) 
+    def addSample(String sampleId, Pedigrees peds=null, String cohort=null, String batch=null) {
+        Pedigree family = peds ? peds.subjects[sampleId] : null
+        Subject subject = family?.individuals?.find { it.id == sampleId }
+        if(family && !subject) 
             throw new IllegalStateException("Sample $sampleId could not be located in the pedigree file. Known samples are ${peds.subjects*.key}")
             
         sampleId = trimSampleId(sampleId)
                 
         db.execute("""
-            insert into sample (id, sample_id, father_id, mother_id, family_id, phenotype, created) 
+            insert into sample (id, sample_id, father_id, mother_id, family_id, phenotype, cohort, batch, created) 
                         values (NULL, 
                                 $sampleId, 
                                 ${family?.motherOf(sampleId)?.id}, 
                                 ${family?.fatherOf(sampleId)?.id}, 
                                 ${family?.id}, 
                                 ${subject?.phenoTypes?.getAt(0)?:0}, 
+                                ${cohort},
+                                ${batch},
                                 datetime('now'));
         """)
         return findSample(sampleId)
@@ -118,6 +120,11 @@ class VariantDB {
      */
     def findVariant(Variant variant, Allele allele) {
         db.firstRow("select * from variant where chr=$variant.chr and start=$allele.start and alt=$allele.alt")
+    }
+    
+    Map countObservations(String chr, int start, int end, String alt) {
+        Variant v = new Variant(chr: chr, ref:"N", alt:alt, pos: start)
+        countObservations(v,v.alleles[0])
     }
     
     /**
@@ -153,32 +160,68 @@ class VariantDB {
     }
     
     /**
-     * Add the given variant to the database
+     * Add the given variant to the database. If sampleToAdd is specified,
+     * add it for only the given sample. Otherwise add it for all the samples that 
+     * are genotyped to have the variant
+     * 
+     * @param annotations   optional annotations to draw from. These can be used when 
+     *                      the annotations are not embedded in the VCF file. The only external
+     *                      annotations supported at the moment are Annovar annotations.
+     *                      The annotations can be any object having properties which 
+     *                      will be queried. In practise, a CSV parser PropertyMapper is
+     *                      what is being used here to pass in Annovar annotations.
+     * 
+     * @return count of variants added
      */
-    void add(String batch, Pedigrees peds, Variant v) {
+    int add(String batch, Pedigrees peds, Variant v, Allele alleleToAdd=null, String cohort=null, String sampleToAdd=null, def annotations=null) {
         
+        int countAdded = 0
+        def alleles = alleleToAdd ? [alleleToAdd] : v.alleles
         for(Allele allele in v.alleles) {
             def variant_row = findVariant(v, allele)
             if(!variant_row) {
                 
-                def vep = v.getVepInfo()[allele.index]
-                def cons = v.getConsequence(allele.index)
-                if(cons != null && cons.indexOf("(")>=0) 
-                    cons = cons.substring(0, rawCons.indexOf("("))
-                db.execute("""
-                    insert into variant (id,chr,start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id) 
-                                values (NULL, $v.chr, $allele.start, $allele.end, ${v.ref}, $allele.alt, ${vep?.SIFT}, ${vep?.PolyPhen}, ${vep?.Condel}, 
-                                       ${cons}, $v.maxVepMaf, $v.id);
-                """)
+                if(annotations == null) {
+                    def vep = v.getVepInfo()[allele.index]
+                    def cons = v.getConsequence(allele.index)
+                    if(cons != null && cons.indexOf("(")>=0) 
+                        cons = cons.substring(0, cons.indexOf("("))
+                    db.execute("""
+                        insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id) 
+                                    values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, ${vep?.SIFT}, ${vep?.PolyPhen}, ${vep?.Condel}, 
+                                           ${cons}, $v.maxVepMaf, $v.id);
+                    """)
+                }
+                else {
+                    
+                    float onekgFreq = annotations["1000g2010nov_ALL"]?.isFloat() ? annotations["1000g2010nov_ALL"].toFloat() : 0.0f
+                    float espFreq = annotations["ESP5400_ALL"]?.isFloat() ? annotations["ESP5400_ALL"].toFloat() : 0.0f
+                     
+                    float maxFreq = Math.max(onekgFreq, espFreq)
+                    
+                    db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id) 
+                                   values (NULL, $v.chr, 
+                                                 $v.pos, 
+                                                 $allele.start, $allele.end, 
+                                                 $v.ref, $allele.alt,
+                                                 $annotations.ExonicFunc,
+                                                 ${annotations.AAChange_RefSeq},
+                                                 $maxFreq, 
+                                                 ${annotations.dbSNP138})
+                               """)
+                }
             }
             variant_row = findVariant(v,allele)
             
             // For every sample carrying the allele, add an observation
             for(String sampleId in v.header.samples.grep { v.sampleDosage(it) }) {
                 
+                if(sampleToAdd && (sampleId != sampleToAdd))
+                    continue
+                
                 def sample_row = findSample(sampleId)
                 if(!sample_row) {
-                    sample_row = addSample(sampleId, peds)
+                    sample_row = addSample(sampleId, peds, batch, cohort)
                 }
                 
                 def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
@@ -192,9 +235,11 @@ class VariantDB {
                                                   ${v.sampleDosage(sampleId)}, 
                                                   datetime('now'));
                     """)
+                    ++countAdded
                 }
             }
         }
+        return countAdded
     }
     
     /**
@@ -214,6 +259,64 @@ class VariantDB {
             e.printStackTrace()
             db.execute("ROLLBACK;")
         }
+    }
+    
+    void close() {
+        if(this.db)
+            this.db.close();
+    }
+    
+    /**
+     * Return a set of counts of times the given variant has been 
+     * observed with in
+     * 
+     * a) all cohorts
+     * b) all except the specified cohort
+     * c) within the specified cohort
+     */
+    Map queryVariantCounts(Map options=[], Variant variant, Allele allele, String sampleId, String cohort) {
+        
+        // The total observations of the variant
+        def variant_count = db.firstRow(
+                """
+        select count(*) 
+            from variant_observation o, variant v 
+            where o.variant_id = v.id and v.chr = $variant.chr and v.pos = $allele.start and v.alt = $allele.alt
+        """)[0]
+        
+        def excludeCohorts = ""
+        if(options.excludeCohorts) 
+            excludeCohorts = /and s.cohort not in ("${options.excludeCohorts.join('","')}")/
+        
+        def variant_count_outside_target = 0
+        if(variant_count>1) { // Will always be at least 1 because it will be recorded for the sample we are processing now
+            variant_count_outside_target = db.firstRow("""
+            select count(*) 
+            from variant_observation o, variant v, sample s
+            where o.variant_id = v.id 
+                  and v.chr = $variant.chr 
+                  and v.pos = $allele.start
+                  and v.alt = $allele.alt
+                  and o.sample_id = s.id
+                  and s.cohort <> $cohort
+                  """ + excludeCohorts
+            )[0] 
+        
+            log.info "Variant $variant found $variant_count times globally, $variant_count_outside_target outside target $cohort / $options.excludeCohorts"
+        }
+        
+        int variant_count_within_target = db.firstRow("""
+            select count(*) 
+            from variant_observation o, variant v, sample s
+            where o.variant_id = v.id 
+                  and v.chr = $variant.chr 
+                  and v.pos = $allele.start
+                  and v.alt = $allele.alt
+                  and o.sample_id = s.id
+                  and s.cohort = $target
+            """)[0] 
+         
+        return [ total: variant_count, other_target: variant_count_outside_target, in_target: variant_count_within_target ]
     }
     
     /**
