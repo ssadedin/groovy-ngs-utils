@@ -421,21 +421,28 @@ class SampleInfo {
      * @param files
      * @return
      */
-    static Map<String,SampleInfo> fromFiles(List<String> files) {
+    static Map<String,SampleInfo> fromFiles(List<String> files, String mask=null) {
         // Convert to absolute path
         files = files.collect { new File(it).canonicalFile.absolutePath }
         def collectBySample = { ext, extractSample -> 
+            
+            def sampleExtracter = extractSample
+            if(mask) 
+                sampleExtracter =  { f -> extractSample(f).replaceAll(mask,'') }
+                
+            println "Checking files " + files + ' for ext ' + ext
             def fs = files.grep { 
                 it.endsWith(ext) 
-                
             }
             
-            return fs.groupBy(extractSample).collectEntries {
+            println "Found $fs"
+            
+            return fs.groupBy(sampleExtracter).collectEntries {
                 def f = [:]
                 if(ext=="fastq.gz")
                     f["fastq"] = it.value
                 else
-                if(ext=="exoncoverage.txt" || ext=="coverage.txt")
+                if(ext=="exoncoverage.txt" || ext=="coverage.txt" || ext=="cov.gz")
                     f["coverage"] = it.value
                 else
                     f[ext] = it.value
@@ -464,12 +471,19 @@ class SampleInfo {
             println "Sample name $it = $sn"
             return sn
         }
-         
+        
+        def samplesByGzCoverage = collectBySample("cov.gz") { 
+            def sn = new File(it).name.replaceAll('\\..*$','')
+            return sn
+        }
+        
+        def allFiles = [samplesByBam, samplesByCram, samplesByVcf, samplesByFastq, samplesByCoverage, samplesByGzCoverage] 
+          
         // Merge files from all of them
-        def allSamples = (samplesByBam.keySet() + samplesByCram.keySet() + samplesByVcf.keySet() + samplesByFastq.keySet()).unique()
+        def allSamples = allFiles*.keySet().sum().unique()
         Map<String,SampleInfo> result = allSamples.collect { s ->
             def sampleFiles = [all:[]]
-            [samplesByBam, samplesByCram, samplesByVcf, samplesByFastq, samplesByCoverage].each { samplesByType ->
+            allFiles.each { samplesByType ->
                 if(samplesByType[s]) {
                     sampleFiles += samplesByType[s].files
                     samplesByType[s].files.each { fileType, fileList -> 
