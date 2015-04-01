@@ -30,7 +30,19 @@ class Schema {
                        UNIQUE (sample_id) ON CONFLICT ROLLBACK
                 );
            """
-    
+           
+           
+    static String VARIANT_OBSERVATION_TABLE = """ (
+                       id integer primary key asc, 
+                       variant_id integer references variant(id),
+                       sample_id integer references sample(id),
+                       batch_id text,
+                       qual float,
+                       dosage integer,  -- how many copies of the variant (1=het, 2=hom)
+                       created datetime NOT NULL,
+                       UNIQUE (variant_id,sample_id,batch_id) ON CONFLICT ROLLBACK
+                )
+    """
 
     static Map<Integer, Map<String,List<String>>>  schema = [
             1 : [ // Schema version 1
@@ -59,18 +71,7 @@ class Schema {
             """
                 CREATE INDEX variant_condel_idx ON variant (condel);
             """,
-            """
-                create table variant_observation (
-                       id integer primary key asc, 
-                       variant_id integer references variant(id),
-                       sample_id integer references sample(id),
-                       batch_id text,
-                       qual float,
-                       dosage integer,  -- how many copies of the variant (1=het, 2=hom)
-                       created datetime NOT NULL,
-                       UNIQUE (variant_id,sample_id,batch_id) ON CONFLICT ROLLBACK
-                );
-           """,
+            ' create table variant_observation ' + VARIANT_OBSERVATION_TABLE + ';',
            """
                 CREATE INDEX variant_observation_idx ON variant_observation (variant_id);
            """,
@@ -88,7 +89,7 @@ class Schema {
               insert into schema_meta_data values(1,1);
            """
           ],
-      3: [  
+      2: [
             """
               alter table sample add column cohort text 
               ;
@@ -102,10 +103,12 @@ class Schema {
             """,
             """
                 CREATE INDEX sample_batch_idx ON sample (batch);
-            """,
+            """
+         ],
+      3: [  
             """
               alter table variant add column pos integer 
-            """  
+            """
          ],
       4: [
           """
@@ -186,8 +189,33 @@ class Schema {
             """
                 ALTER TABLE sample RENAME TO tmp_sample;
             """,
-            CREATE_SAMPLE_SQL
-          ] + schema[2] + [
+            """
+            create table sample (
+                id integer primary key asc,
+                sample_id text NOT NULL,
+                father_id text,
+                mother_id text,
+                family_id text,
+                phenotype integer NOT NULL,
+                created datetime NOT NULL,
+                UNIQUE (sample_id) ON CONFLICT ROLLBACK
+            );
+            """,
+            """
+              alter table sample add column cohort text 
+              ;
+            """,
+            """
+                CREATE INDEX sample_cohort_idx ON sample (cohort);
+            """,
+            """
+              alter table sample add column batch text 
+              ;
+            """,
+            """
+                CREATE INDEX sample_batch_idx ON sample (batch);
+            """,
+          
             """
             INSERT INTO sample SELECT id, study_id, 0, 0, study_id, 0, created, cohort, batch   FROM tmp_sample;
             """,
@@ -203,13 +231,32 @@ class Schema {
                        schema_version integer NOT NULL
                 );    
             """,
+            'create table variant_observation_tmp ' + VARIANT_OBSERVATION_TABLE + ';',
             """
-              insert into schema_meta_data values(1,3);
+              insert into variant_observation_tmp select id, variant_id, sample_id, NULL, qual,dosage,created from variant_observation;
+            """,
+            """
+              drop table variant_observation;
+            """,
+            """
+                alter table variant_observation_tmp rename to variant_observation;
+            """,
+            """
+              insert into schema_meta_data values(1,4);
             """
         ]
+                
+        /*
+        System.err.println("Legacy database upgrade required. The following statements will be executed:")
         
         for(s in statements) {
-            log.info "Executing legacy upgrade statement: $s"
+            System.err.println("="*80)
+            System.err.println(s)
+        }
+        */
+                
+        for(s in statements) {
+            System.err.println "Executing legacy upgrade statement: $s"
             db.execute(s)
         }
     }

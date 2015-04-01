@@ -17,6 +17,8 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+import com.xlson.groovycsv.PropertyMapper;
+
 import db.Schema;
 import groovy.sql.Sql
 import groovy.util.logging.Log;
@@ -133,7 +135,7 @@ class VariantDB {
      */
     Map countObservations(Variant v, Allele allele) {
         int sampleCount = db.firstRow(
-           """select count(*) 
+           """select count(distinct(o.sample_id))
                        from variant_observation o,
                             variant v 
                        where o.variant_id = v.id
@@ -199,13 +201,21 @@ class VariantDB {
                      
                     float maxFreq = Math.max(onekgFreq, espFreq)
                     
+                    String aaChange
+                    try {
+                        aaChange = annotations.AAChange
+                    }
+                    catch(Exception e) {
+                        aaChange = annotations.AAChange_RefSeq
+                    }
+                    
                     db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id) 
                                    values (NULL, $v.chr, 
                                                  $v.pos, 
                                                  $allele.start, $allele.end, 
                                                  $v.ref, $allele.alt,
                                                  $annotations.ExonicFunc,
-                                                 ${annotations.AAChange_RefSeq},
+                                                 $aaChange,
                                                  $maxFreq, 
                                                  ${annotations.dbSNP138})
                                """)
@@ -221,7 +231,7 @@ class VariantDB {
                 
                 def sample_row = findSample(sampleId)
                 if(!sample_row) {
-                    sample_row = addSample(sampleId, peds, batch, cohort)
+                    sample_row = addSample(sampleId, peds, cohort, batch)
                 }
                 
                 def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
@@ -286,7 +296,7 @@ class VariantDB {
         
         def excludeCohorts = ""
         if(options.excludeCohorts) 
-            excludeCohorts = /and s.cohort not in ("${options.excludeCohorts.join('","')}")/
+            excludeCohorts = 'and s.cohort not in ("' + options.excludeCohorts.join('","') + '")'
         
         def variant_count_outside_target = 0
         if(variant_count>1) { // Will always be at least 1 because it will be recorded for the sample we are processing now
@@ -313,7 +323,7 @@ class VariantDB {
                   and v.pos = $allele.start
                   and v.alt = $allele.alt
                   and o.sample_id = s.id
-                  and s.cohort = $target
+                  and s.cohort = $cohort
             """)[0] 
          
         return [ total: variant_count, other_target: variant_count_outside_target, in_target: variant_count_within_target ]
