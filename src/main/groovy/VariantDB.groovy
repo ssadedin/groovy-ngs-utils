@@ -23,6 +23,31 @@ import db.Schema;
 import groovy.sql.Sql
 import groovy.util.logging.Log;
 
+/**
+ * VariantDB implements a simple, embedded, variant tracking database that
+ * can be used to track variants identified in multiple samples and 
+ * sequencing runs. It allows quick computation of variant counts
+ * across samples, families, batches of samples, etc.
+ * <p>
+ * For the full power of the database, you shoudl use a PED file, parsed
+ * with the Pedigrees class when adding variants and samples. However this
+ * parameter can be passed as null, in which case all samples are treated
+ * as singletons. You should be aware that variant counts will not be family
+ * aware in such cases and thus will be distorted if your sequencing has
+ * large pedigrees and compared to the overall sample count.
+ * <p>
+ * To add variants, parse them using the VCF class and then simple use the 
+ * #add method:
+ * <pre>
+ * VariantDB db = new VariantDB("test.db")
+ * VCF.parse("test.vcf") { v ->
+ *     db.add("batch1", null, v)
+ * }
+ * </pre>
+ * 
+ * 
+ * @author simon
+ */
 @Log
 class VariantDB {
     
@@ -124,6 +149,18 @@ class VariantDB {
         db.firstRow("select * from variant where chr=$variant.chr and start=$allele.start and alt=$allele.alt")
     }
     
+    /**
+     * Returns a map containing the following keys:
+     *   <li>sampleCount - the number of unique samples in which the variant was observed
+     *   <li>familyCount - the number of unique families in which the variant was observed
+     *   
+     * @param chr   Chromosome of variant
+     * @param start starting position of DNA change caused by variant (note this may be different 
+     *        to VCF position depending on the representation of your indel in the VCF!)
+     * @param end   end position of DNA change caused by variant
+     * @param alt   alternate sequence
+     * @return  Map with keys indicating counts of observations of this variant
+     */
     Map countObservations(String chr, int start, int end, String alt) {
         Variant v = new Variant(chr: chr, ref:"N", alt:alt, pos: start)
         countObservations(v,v.alleles[0])
