@@ -20,6 +20,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 import com.xlson.groovycsv.CsvParser;
+import com.xlson.groovycsv.PropertyMapper;
 
 import groovy.transform.CompileStatic;
 
@@ -196,13 +197,36 @@ class TSV implements Iterable {
 		}
 	}    
     
+    void filter(Closure c) {
+        filter(null, c)
+    }
+    
     /**
-     * Read the given file and then write it out to standard output
-     * after passing to the given closure, allowing modification
+     * Invokes the given closure for each line in this file and then prints
+     * only those lines for which it returns true to output.
+     * If the 'quote' option is set, values are double quoted.
      * @return
      */
-    static filter(Closure c) {
-        
+    void filter(Writer writer, Closure c) {
+        if(writer==null)
+            writer = new PrintWriter(System.out)
+        def columns = null
+        for(PropertyMapper line in this) {
+            if(!columns) {
+                columns = line.columns*.key
+                def out = options.quote ? 
+                        columns.collect { '"' + it + '"'}.join(options.separator) 
+                    : 
+                        columns.join(options.separator)
+                writer.println(out)
+            }
+            if(c(line)==true) {
+                if(options.quote)
+                    writer.println columns.collect { (options.quoteall || (line[it] instanceof String)) ? ('"' + line[it] + '"') : line[it] }.join(options.separator)
+                else
+                    writer.println columns.collect { line[it] }.join(options.separator)
+            }
+        }
     }
 }
 
