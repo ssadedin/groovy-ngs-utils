@@ -321,7 +321,7 @@ class VariantDB {
      * b) all except the specified cohort
      * c) within the specified cohort
      */
-    Map queryVariantCounts(Map options=[], Variant variant, Allele allele, String sampleId, String cohort) {
+    Map queryVariantCounts(Map options=[:], Variant variant, Allele allele, String sampleId, String cohort) {
         
         // The total observations of the variant
         def variant_count = db.firstRow(
