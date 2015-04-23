@@ -8,8 +8,8 @@ class BEDToolsCoverage {
         Region r = null
         List regionCovs = []
         for(cov in covFile) {
-           if(r == null || r.chr != cov.chr || r.from != cov.start || r.to != cov.end) {
-               if(r != null)
+           if(r == null || r.chr != cov.chr || r.from != cov.start || r.to != cov.end) { // new region
+               if(r != null) // add previous region
                    covs.addRegion(r)
                r = new Region(cov.chr, cov.start..cov.end)
                r.covs = []
@@ -17,11 +17,12 @@ class BEDToolsCoverage {
            }
            r.covs.add(cov.cov)
         }
+        if(r != null) // add previous region
+            covs.addRegion(r)
     }
     
     List<Integer> coverage(Region query) {
         List<IntRange> overlaps = covs.getOverlaps(query)
-        
         List<Integer> values = overlaps.sum { IntRange range ->
           int startOffset = query.from > range.from ? query.from - range.from : 0
           int endOffset = query.to < range.to ? range.to - query.to : 0
