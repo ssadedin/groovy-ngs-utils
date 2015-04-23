@@ -71,6 +71,16 @@ class VariantDB {
      */
     Schema schema 
     
+    final static ANNOVAR_ANNOTATION_PROFILE = [
+        ONEKG_FREQ : ["1000g2010nov_all", "1000g2010nov_ALL"],
+        ESP_FREQ : ["ESP5400_all", "ESP5400_ALL"],
+        EXAC_FREQ : ["exac03"],
+        AACHANGE : ["AAChange", "AAChange_RefSeq", "AAChange.RefSeq"],
+        DBSNP : ["dbSNP138", "dbsnp138"]
+    ]
+    
+    Map<String, List<String>> annotationProfile = ANNOVAR_ANNOTATION_PROFILE
+    
     /**
      * Open or create a VariantDB using default settings and the given
      * file name. These connect to a SQLite database with the given name.
@@ -199,14 +209,51 @@ class VariantDB {
     }
     
     /**
+     * Search for the given value in the annotations as a frequency
+     * value.
+     * 
+     * @param type          The type of value to search for, must be one of the 
+     *                      predefined annotation profile keys
+     * @param annotations   The annotations to search
+     * @return  the value of the annotation or null if it is not available
+     */
+     Object getAnnotation(String type, annotations) {
+       def key = annotationProfile[type].find { key -> try {annotations[key]} catch(Exception e) { null } }
+       if(key)
+           return annotations[key]
+       else
+           return null
+     }
+    
+    /**
+     * Search for the given value in the annotations as a frequency
+     * value.
+     * 
+     * @param type          The type of frequency to search for, must be a key in the annotation profile
+     * @param annotations   The annotations to search
+     * @return
+     */
+    Float getFreq(String type, annotations) {
+        def value = getAnnotation(type,annotations)
+        if(!value)
+            return 0.0f
+        if(value instanceof Float)
+            return value
+        if(value == ".") 
+            return 0.0f
+        return value.isFloat() ? value.toFloat() : 0.0f
+    }
+    
+    /**
      * Add the given variant to the database. If sampleToAdd is specified,
      * add it for only the given sample. Otherwise add it for all the samples that 
      * are genotyped to have the variant
      * 
      * @param annotations   optional annotations to draw from. These can be used when 
-     *                      the annotations are not embedded in the VCF file. The only external
-     *                      annotations supported at the moment are Annovar annotations.
-     *                      The annotations can be any object having properties which 
+     *                      the annotations are not embedded in the VCF file. The annotations
+     *                      are queried for keys defined in the annotationProfile field.
+     *                      The default mappings are set up to look for Annovar annotations.
+     *                      The annotations themselves can be any object having properties which 
      *                      will be queried. In practise, a CSV parser PropertyMapper is
      *                      what is being used here to pass in Annovar annotations.
      * 
@@ -233,19 +280,8 @@ class VariantDB {
                 }
                 else {
                     
-                    float onekgFreq = annotations["1000g2010nov_ALL"]?.isFloat() ? annotations["1000g2010nov_ALL"].toFloat() : 0.0f
-                    float espFreq = annotations["ESP5400_ALL"]?.isFloat() ? annotations["ESP5400_ALL"].toFloat() : 0.0f
-                     
-                    float maxFreq = Math.max(onekgFreq, espFreq)
-                    
-                    String aaChange
-                    try {
-                        aaChange = annotations.AAChange
-                    }
-                    catch(Exception e) {
-                        aaChange = annotations.AAChange_RefSeq
-                    }
-                    
+                    float maxFreq = ["ONEKG_FREQ", "ESP_FREQ", "EXAC_FREQ"].collect { getFreq(it,annotations) }.max()
+                    String aaChange = getAnnotation("AACHANGE", annotations)
                     db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id) 
                                    values (NULL, $v.chr, 
                                                  $v.pos, 
@@ -254,7 +290,7 @@ class VariantDB {
                                                  $annotations.ExonicFunc,
                                                  $aaChange,
                                                  $maxFreq, 
-                                                 ${annotations.dbSNP138})
+                                                 ${getAnnotation("DBSNP", annotations)})
                                """)
                 }
             }
@@ -303,8 +339,8 @@ class VariantDB {
         }
         catch(Exception e) {
             System.err.println "Database operation failed: $e"
-            e.printStackTrace()
             db.execute("ROLLBACK;")
+            throw e
         }
     }
     
