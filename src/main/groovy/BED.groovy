@@ -323,7 +323,7 @@ class BED extends Regions {
         new BED(fileName).eachPosition(c)
     }
     
-    static BED each(Closure c) {
+    static BED eachInputRange(Closure c) {
         def b = new BED(System.in)
         b.eachRange(c)
         return b
