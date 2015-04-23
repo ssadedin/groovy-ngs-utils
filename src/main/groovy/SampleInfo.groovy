@@ -430,12 +430,9 @@ class SampleInfo {
             if(mask) 
                 sampleExtracter =  { f -> extractSample(f).replaceAll(mask,'') }
                 
-            println "Checking files " + files + ' for ext ' + ext
             def fs = files.grep { 
                 it.endsWith(ext) 
             }
-            
-            println "Found $fs"
             
             return fs.groupBy(sampleExtracter).collectEntries {
                 def f = [:]
