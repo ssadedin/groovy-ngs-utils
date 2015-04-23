@@ -205,7 +205,7 @@ class Regions implements Iterable<Region> {
         return result
     }
 	
-	List<Range> getOverlaps(Region r) {
+	List<Range> getOverlaps(IRegion r) {
         getOverlaps(r.chr, r.from, r.to)
     }
     
@@ -215,7 +215,7 @@ class Regions implements Iterable<Region> {
      * @param r Region to test for overlaps
      * @return  true iff the region overlaps at least one region in this Regions
      */
-    boolean overlaps(Region r) {
+    boolean overlaps(IRegion r) {
 		RangeIndex chrIndex = this.index[r.chr]
 		if(chrIndex == null)
 			return false
