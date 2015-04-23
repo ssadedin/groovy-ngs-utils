@@ -74,13 +74,28 @@ class RefGenes {
      * @param gene
      * @return
      */
-    Regions getExons(String gene) {
+    Regions getExons(String gene, codingOnly=true) {
         Regions exons = new Regions()
         geneToTranscripts[gene].collect { refData[it] }.collect { tx ->
-            [ tx.starts.split(","), tx.ends.split(",") ].transpose().collect { 
-                new Region(tx.chr, (it[0].toInteger()+1)..(it[1].toInteger()+1)) 
+            
+            // Transcripts starting with NR are non-coding
+            if(!codingOnly && tx.tx.startsWith("NR_"))
+                return null
+                
+            [ tx.starts.split(","), tx.ends.split(",") ].transpose().collect { exonStartEnd ->
+                int start = exonStartEnd[0].toInteger()
+                int end = exonStartEnd[1].toInteger()
+                if(!codingOnly) {
+                    start = Math.max(tx.cds_start.toInteger(), start)
+                    end = Math.min(tx.cds_end.toInteger(), end)
+                }
+                if(start>end)
+                    null
+                else
+                    new Region(tx.chr, (start+1)..(end+1)) 
             }.each {
-                exons.addRegion(it)
+                if(it != null)
+                    exons.addRegion(it)
             }
         }
         exons.reduce()
