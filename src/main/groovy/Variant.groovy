@@ -839,9 +839,23 @@ class Variant implements IRegion {
             if(this.pos == pos && alleleAlt == obs)  
                 return count
               
+            // Simple insertion
             if(this.pos == (pos-this.ref.size()+1) && alleleType=="INS" && alleleAlt.endsWith(obs))
                 return count
                 
+            // More complex case - we actually have to splice the insertion in and see if the
+            // result matches the reference sequence
+            // See VariantTest.testComplexIndelAnnovar
+            if(alleleType == "INS") {
+                // Modify the reference sequence by adding the insertion
+                int offset = pos-this.pos+1
+                if(offset <= this.ref.size()) {
+                    String newSeq = this.ref.substring(0,offset) + obs + ((offset<this.ref.size()) ? this.ref.substring(offset) : "")
+                    if(newSeq==alleleAlt)
+                        return count
+                }
+            }
+
             if(this.pos == (pos-alleleAlt.size()) && alleleType=="DEL" && obs=="-")
                 return count
                 
