@@ -165,6 +165,10 @@ class VCFIndex {
         return found
     }
     
+    void query(IRegion r, Closure c) {
+        query(r.chr, r.from, r.to, c)
+    }
+    
     /**
      * Query the current VCF file for all variants in the specified
      * region
@@ -185,7 +189,7 @@ class VCFIndex {
             this.indexedFile = new RandomAccessFile(new File(this.fileName), "r")
             
             // Map the whole damn thing into memory, with overlapping buffers
-            this.vcfBuffers = (List<MappedByteBuffer>)[0L, 1L, 2L, 3L, 4L].collect { long i ->
+            this.vcfBuffers = (List<MappedByteBuffer>)[0L, 1L, 2L, 3L, 4L, 5L, 6L, 7L, 8L].collect { long i ->
                 i*ONE_GIG < indexedFile.length() ? indexedFile.channel.map(MapMode.READ_ONLY, i*ONE_GIG, Math.min(indexedFile.length() - i*ONE_GIG,(int)(1.5*ONE_GIG))) : null
             }
           }
@@ -264,6 +268,7 @@ class VCFIndex {
           }
         }
     }
+    
     
     /**
      * Attempts to locate the given Annovar variant in this VCF file.
