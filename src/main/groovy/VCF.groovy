@@ -65,11 +65,12 @@ import org.codehaus.groovy.runtime.StackTraceUtils
  * }
  * </code>
  * <p>
- * Note that you can avoid excessive memory usage by streaming a VCF into the
- * {@link #parse(Closure)} or {@link #filter(Closure)} methods. However if your
- * desire is to lookup a specific region in a very large VCF file, you should
+ * If your desire is to lookup a specific region in a very large VCF file, you should
  * index the VCF file and use the {@link VCFIndex} class to query the region
  * specifically.
+ * <p>
+ * To stream a VCF without storing in memory, use the {@link #filter(Closure)} methods
+ * which will print output, including header, directly to the output.
  *
  * @author simon.sadedin@mcri.edu.au
  */
@@ -175,34 +176,34 @@ class VCF implements Iterable<Variant> {
         parseImpl(options,f,false, peds,c)
     }
     
-    static VCF filter(File f, Closure c = null) {
+    static void filter(File f, Closure c = null) {
         filter(f,null,c)
     }
     
-    static VCF filter(File f, List<Pedigree> peds, Closure c = null) {
+    static void filter(File f, List<Pedigree> peds, Closure c = null) {
         filter(new BufferedInputStream(new FileInputStream(f)),peds,c)
     }
     
-    static VCF filter(String fileName, Closure c = null) {
+    static void filter(String fileName, Closure c = null) {
         filter(fileName,null,c)
     }
     
-    static VCF filter(String fileName, List<Pedigree> peds, Closure c = null) {
+    static void filter(String fileName, List<Pedigree> peds, Closure c = null) {
         if(fileName == "-")
           filter([:],(InputStream)System.in,peds,c)
         else
           filter(new File(fileName),peds,c)
     }
     
-    static VCF filter(Closure c = null) {
+    static void filter(Closure c = null) {
         filter("-",null,c)
     }
     
-    static VCF filter(Map options=[:], InputStream f, Closure c) {
+    static void filter(Map options=[:], InputStream f, Closure c) {
         parseImpl(options,f,true,null, c)
     }
     
-    static VCF filter(Map options=[:], InputStream f, List<Pedigree> peds = null, Closure c = null) {
+    static void filter(Map options=[:], InputStream f, List<Pedigree> peds = null, Closure c = null) {
         parseImpl(options,f,true,peds,c)
     }
     
@@ -256,7 +257,6 @@ class VCF implements Iterable<Variant> {
             Variant v = Variant.parse(line)
             v.header = vcf
             try {
-                
               if(!samples || samples.any {v.sampleDosage(it)}) {
                   if(!c || !(c(v)==false)) {
                       if(filterMode) {
