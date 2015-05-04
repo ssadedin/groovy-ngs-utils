@@ -149,7 +149,7 @@ class VariantTest {
         println stats
     }
 	
-	@Test
+	//@Test
 	void testToAnnovar() {
         
         def variants = [
@@ -204,4 +204,17 @@ class VariantTest {
         assert v.range.to == 46963776  + v.size()
     }
     
+    @Test
+    void testComplexIndelAnnovar() {
+
+        // chr1 24780521    .   CTT C,CT,CTTT   
+        Variant v = VCF.parse("tests/data/complex_del.vcf")[0]
+
+        CSV annovar = new CSV("tests/data/complex_del.csv")
+
+        // chr1,24780521,24780521,-,T
+        def a = annovar[0]
+
+        assert v.equalsAnnovar(a.Chr, a.Start, a.Alt) > 0
+    }
 }
