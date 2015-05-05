@@ -452,6 +452,19 @@ class VCF implements Iterable<Variant> {
     }
     
     /**
+     * Calculate the number of variants for each different VEP consequence, returning
+     * a map of consequence => count.
+     */
+    Map<String, Integer> getConsequenceStatistics() {
+        this.collect { v -> 
+            int i=0; 
+            v.alleles.collect { a -> v.getConsequence(++i) } } // get consequences for all alleles as a list
+                     .flatten() // flatten the list to get a flat list of all consequences
+                     .grep { it } // Some nulls appear, not sure why
+                     .countBy { it } // count by consequence
+    }
+    
+    /**
      * Index of variants by affected gene
      * Note that a variant can affect more than one gene, so
      * will appear multiple times in the value side of the map
