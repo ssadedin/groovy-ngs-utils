@@ -142,6 +142,35 @@ class VEPConsequences {
     static int severityOf(String cons) {
         RANKED_CONSEQUENCES.size() - RANKED_CONSEQUENCES.indexOf(cons)
     }
+    
+    /**
+     * A mapping of each VEP consequence to a higher level consequence type
+     */
+    static Map CONSEQUENCE_TYPES = [
+        "upstream_gene_variant":                                        "silent",
+        "non_coding_exon_variant":                                      "silent",
+        "missense_variant":                                             "missense",
+        "downstream_gene_variant":                                      "silent",
+        "intron_variant":                                               "silent",
+        "splice_region_variant":                                        "splice",
+        "synonymous_variant":                                           "silent",
+        "nc_transcript_variant":                                        "silent",
+        "3_prime_UTR_variant":                                          "silent",
+        "5_prime_UTR_variant":                                          "silent",
+        "splice_donor_variant":                                         "splice",
+        "frameshift_variant":                                           "frameshift",
+        "inframe_insertion":                                            "missense",
+        "stop_gained":                                                  "nonsense",
+        "splice_acceptor_variant":                                      "splice",
+        "inframe_deletion":                                             "missense",
+        "initiator_codon_variant":                                      "silent",
+        "mature_miRNA_variant":                                         "silent",
+        "stop_lost":                                                    "nonsense",
+        "incomplete_terminal_codon_variant":                            "silent",
+        "coding_sequence_variant":                                      "missense",
+        "stop_retained_variant":                                        "silent",
+        "intergenic_variant":                                            "silent"
+       ]
 }
 
 /**
@@ -555,7 +584,11 @@ class Variant implements IRegion {
             throw new IllegalStateException("Variant must have a header to query VEP information")
             
         def vepFields = this.header.vepColumns
-        this.getInfo().CSQ.split(",").collect { csq -> [vepFields,csq.split("\\|")].transpose().collectEntries() }
+        def csqs = getInfo().CSQ
+        if(!csqs)
+            throw new IllegalStateException("This function requires VEP annotations. Please annotate with VEP in order to proceed")
+            
+        csqs.split(",").collect { csq -> [vepFields,csq.split("\\|")].transpose().collectEntries() }
     }
     
     /**
@@ -616,7 +649,7 @@ class Variant implements IRegion {
         if(this.header == null)
             throw new IllegalStateException("Variant must have a header to query dosage by sample name")
             
-        int sampleIndex = header.samples.indexOf(sampleName)
+        int sampleIndex = this.header.samples.indexOf(sampleName)
         List<Integer> allDosages = getDosages()
         
         return (int)allDosages[sampleIndex]
