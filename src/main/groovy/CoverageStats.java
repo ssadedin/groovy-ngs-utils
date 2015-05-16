@@ -19,106 +19,20 @@ import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-public class CoverageStats extends SummaryStatistics {
+public class CoverageStats extends graxxia.IntegerStats {
     
     private static final long serialVersionUID = 1L;
 
-    int [] values = null;
-    
-    int total = 0;
-    
-    /**
-     * 
-     * @param maxPercentileValue
-     */
-    public CoverageStats(int maxPercentileValue) {
-        values = new int[maxPercentileValue];
-        Arrays.fill(values, 0);
+    public CoverageStats(int maxPercentileValue, InputStream inStream)
+            throws IOException {
+        super(maxPercentileValue, inStream);
     }
-    
-    public CoverageStats(int maxPercentileValue, InputStream inStream) throws IOException {
-        values = new int[maxPercentileValue];
-        BufferedReader r = new BufferedReader(new InputStreamReader(inStream));
-        String line = null;
-        while((line = r.readLine()) != null) {
-            leftShift(line);
-        }
-    }
-     
+
     public CoverageStats(int maxPercentileValue, Iterable covValues) {
-        values = new int[maxPercentileValue];
-        for(Object obj : covValues) {
-            this.leftShift(obj);
-        }
+        super(maxPercentileValue, covValues);
     }
-    
-    void leftShift(Object obj) {
-        if(obj instanceof Integer) {
-            addValue((Integer)obj);
-        }
-        else 
-        if(obj instanceof String) {
-            addValue(Integer.parseInt(String.valueOf(obj).trim()));
-        }
-        else 
-        if(obj instanceof Number) {
-            addValue(((Number)obj).intValue());
-        }    
-     }
-    
-    /**
-     * Count the given coverage value in calculating the median
-     * @param coverage
-     */
-    void addValue(int coverage) {
-        if(coverage>=values.length)
-            ++values[values.length-1];
-        else
-            ++values[coverage];
-        
-        super.addValue(coverage);
-        ++total;
-    }
-    
-    /**
-     * Return the specified percentile from the observed coverage counts
-     * eg: for median, getPercentile(50).
-     * 
-     * @return the specified percentile, if it is smaller than the max value passed in the
-     *         constructor.
-     */
-    int getPercentile(int percentile) {
-        int observationsPassed = 0;
-        int lowerValue = -1;
-        final int medianIndex = (int)((float)total / (100f/(float)percentile));
-        for(int i=0; i<values.length; ++i) {
-            observationsPassed += values[i];
-            if(observationsPassed >= medianIndex) {
-                if(total%2 == 0) {
-                    // Find the next value and return average of this one and that
-                    lowerValue = i;
-                    for(int k=i+1; k<values.length; ++k) {
-                        if(values[k]>0) {
-                            return (lowerValue + k) / 2;
-                        }
-                    }
-                }
-                else
-                    return i;
-            }
-        }
-        return -1;
-    }
-    
-    public int getMedian() {
-        return getPercentile(50);
-    }
-    
-    public int getAt(int percentile) {
-        return getPercentile(percentile);
-    }
-    
-    public String toString() {
-        return super.toString() + "Median: " + getMedian() + "\n";
+
+    public CoverageStats(int maxPercentileValue) {
+        super(maxPercentileValue);
     }
 }
