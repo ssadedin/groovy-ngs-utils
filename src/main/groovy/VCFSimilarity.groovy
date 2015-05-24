@@ -1,5 +1,7 @@
 import groovy.stream.Stream;
 
+import graxxia.Matrix
+
 /**
  * A simple measurement of similarity of different samples by counting the number of 
  * shared vs different SNVs. This measurement can be used as a simplistic way to 
