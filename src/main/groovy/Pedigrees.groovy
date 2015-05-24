@@ -31,6 +31,10 @@ class Pedigrees {
      */
     Map<String, Pedigree> subjects = [:]
     
+    Pedigrees add(Pedigrees other) {
+        new Pedigrees(families: families + other.families, subjects: subjects + other.subjects)
+    }
+    
     /**
      * Find the largest possible set of samples that are unrelated to 
      * the given sample. If null is passed, the maximal set of unrelated
@@ -151,8 +155,8 @@ class Pedigrees {
     static Pedigrees fromSingletons(List<String> sampleIds) {
         Pedigrees pedigrees = new Pedigrees()
         pedigrees.families = sampleIds.collectEntries { sampleId ->
-            Subject s = new Subject(id: sampleId)
-            Pedigree p = new Pedigree(id: sampleId, individuals: s)
+            Subject s = new Subject(id: sampleId, sex:Sex.UNKNOWN, phenoTypes:[0])
+            Pedigree p = new Pedigree(id: sampleId, individuals: [s])
             pedigrees.subjects[sampleId] = p
             [sampleId, p] 
         }
