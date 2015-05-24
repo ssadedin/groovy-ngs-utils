@@ -336,8 +336,8 @@ class Variant implements IRegion {
     byte altByte
     
     /**
-     * The VCF to which this Variant is linked. This enables the variant to intelligently
-     * parse INFO fields and be aware of sample names. If the header is not provided,
+     * The VCF from which header information will be extracted when required. This enables the variant to 
+     * intelligently parse INFO fields and be aware of sample names. If the header is not provided,
      * many functions still work, but some functions will be disabled.
      */
     VCF header
@@ -405,7 +405,7 @@ class Variant implements IRegion {
           genoTypes = fields[9..-1].collect { String gt -> 
               [genoTypeFields, gt.split(':')].transpose().collectEntries { 
                   if(it[0] in numericGTFields) 
-                      [it[0],it[1].toFloat()] 
+                      [it[0],it[1] == "." ? null : it[1].toFloat()] 
                   else
                   if(it[0] in numericListFields) {
                       return [it[0],it[1].split(",")*.replaceAll("\\.","0")*.toFloat()] 
@@ -650,6 +650,9 @@ class Variant implements IRegion {
             throw new IllegalStateException("Variant must have a header to query dosage by sample name")
             
         int sampleIndex = this.header.samples.indexOf(sampleName)
+        if(sampleIndex < 0)
+            throw new IllegalArgumentException("Sample $sampleName not found in VCF. Known samples are $header.samples")
+            
         List<Integer> allDosages = getDosages()
         
         return (int)allDosages[sampleIndex]
