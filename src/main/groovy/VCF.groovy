@@ -129,6 +129,16 @@ class VCF implements Iterable<Variant> {
          parseLastHeaderLine()
     }
     
+    VCF(Iterable<Variant> variants) {
+        if(!variants.empty) {
+            this.header = variants[0].header
+        }
+            
+        for(Variant v in variants) {
+            this.add(v)
+        }
+    }
+    
     /**
      * Return a list of variants starting at the given location
      *
@@ -288,6 +298,7 @@ class VCF implements Iterable<Variant> {
      * Add the given variant to this VCF
      */
     VCF add(Variant v) {
+        v.header = this
         variants << v
         String key = v.chr+":"+v.pos
         List chrPosVars = chrPosIndex[key]
@@ -296,6 +307,72 @@ class VCF implements Iterable<Variant> {
         else
             chrPosVars.add(v)
         return this
+    }
+    
+    /**
+     * Perform a simplistic (emphasis on simplistic) merge between VCFs.
+     * <p>
+     * <li>Only works if the genotype fields are identical
+     * <li>Only works if the variants are normalised (primitised) to 1 per line - unnormalised variants
+     *     will produce unpredictable results
+     * @param other
+     * @return  A VCF containing all the variants from both VCFs with genotype information merged where
+     *          the same variant is in both VCFs, and null genotype information when it is missing in one
+     *          or both VCFs.
+     */
+    VCF merge(VCF other) {
+        
+        // Start by copying this VCF
+        BED allVariants = this.toBED()
+        for(Region otherRegion in other.toBED()) {
+            allVariants.addRegion(otherRegion)
+        }
+        
+        VCF result = new VCF()
+        
+        // Add the samples from the other VCF to the last line
+        String newLastLine = this.headerLines[-1] + "\t" + other.samples.join("\t")
+        result.headerLines = this.headerLines[1..-2] + [ newLastLine ]
+        result.parseLastHeaderLine()
+        
+        List<String> samples = this.samples + other.samples
+        
+        int numGtFields = other[0].line.split("\t")[8].split(":").size()
+        
+        for(Region r in allVariants) {
+            
+            Variant v = r.extra
+            
+            List fields = (v.line.split("\t") as List)
+            List newLine = fields[0..8]
+                
+            // If the variant is already in this VCF, then just add the sample genotype / dosage
+            Variant myVariant = this.find(v)
+            if(myVariant) {
+                // The variant is in my VCF - use the genotypes from there
+                newLine.addAll(myVariant.line.split("\t")[9..-1])
+            }
+            else {
+                // Add null genotypes from our sample
+                newLine.addAll(this.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(':') })
+            }
+            
+            Variant otherVariant = other.find(v)
+            if(otherVariant) {
+                // The variant is in the other VCF - use the genotypes from there
+                // TODO: if different number of alleles in other sample, this
+                // will not work!
+                def otherGts = otherVariant.line.split("\t")[9..-1]
+                newLine.addAll(otherGts)
+            }
+            else {
+                // Add null genotypes from the other samples
+                newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join("\t") })
+            }
+            Variant resultVariant = Variant.parse(newLine.join("\t"))
+            result.add(resultVariant)
+        }
+        return result
     }
     
     Pedigree findPedigreeBySampleIndex(int i) {
@@ -435,9 +512,18 @@ class VCF implements Iterable<Variant> {
     BED toBED() {
         BED bed = new BED()
         for(Variant v in this) {
-          bed.add(v.chr, v.pos, v.pos + v.size())
+          bed.add(v.chr, v.pos, v.pos + v.size(), v)
         }
         return bed
+    }
+    
+    Object asType(Class clazz) {
+        if(clazz == Region || clazz == BED ) {
+            return toBED()
+        }
+        else {
+            return super.asType(clazz)
+        }
     }
     
     boolean isCase(Object obj) {
@@ -451,16 +537,46 @@ class VCF implements Iterable<Variant> {
         }
     }
     
+    
+    /**
+     * Attempt to locate a variant having the same change as the given variant
+     * inside this VCF.
+     * <p>
+     * This function does <b>not</b> guarantee to find the change, if it exists.
+     * Currently, it will only locate the change if it is represented by an entry 
+     * in the VCF starting at the same reference position. A variant will be returned
+     * if <b>any</b> allele in the identified variant matches <b>any</b> allele in the
+     * given variant. These operations become much more reliable (but still not
+     * 100% reliable) when both VCFs from which the variants are drawn are decomposed
+     * into primitives.
+     * 
+     * @param v
+     * @return a Variant matching v, if one is found, otherwise null
+     */
+    Variant find(Variant v) {
+        List<Variant> candidates = chrPosIndex[v.chr+':'+v.pos]
+        if(!candidates)
+            return null
+            
+        candidates.grep { it.ref == v.ref }.find { 
+            it.alleles.any { 
+                myAllele -> v.alleles.any { 
+                    otherAllele -> myAllele.alt == otherAllele.alt && myAllele.start == otherAllele.start  
+                } 
+            }
+        }
+    }
+    
     /**
      * Calculate the number of variants for each different VEP consequence, returning
      * a map of consequence => count.
      */
-    Map<String, Integer> getConsequenceStatistics() {
+    Map<String, Integer> getConsequenceCounts() {
         this.collect { v -> 
             int i=0; 
-            v.alleles.collect { a -> v.getConsequence(++i) } } // get consequences for all alleles as a list
+            v.alleles.collect { a -> v.getConsequence(i++) } } // get consequences for all alleles as a list
                      .flatten() // flatten the list to get a flat list of all consequences
-                     .grep { it } // Some nulls appear, not sure why
+                     .collect { it?:"unknown" } // Some nulls appear, not sure why
                      .countBy { it } // count by consequence
     }
     
