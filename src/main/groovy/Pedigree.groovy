@@ -62,7 +62,7 @@ class Subject {
         JsonOutput.toJson(
             [
                 id : id,
-                sex : sex.name(),
+                sex : sex?.name(),
                 pheno: phenoTypes[0],
                 rel: relationships
             ]
