@@ -1,6 +1,37 @@
 import com.xlson.groovycsv.PropertyMapper;
 
-
+/**
+ * RangedData represents a set of genomic regions with data attached. The data is
+ * parsed from a tab separated file, 3 columns of which are expected to be the genomic
+ * coordinates. The other columns are parsed and accessible as properties directly on
+ * the contained Region objects that are loaded.
+ * <p>
+ * To use RangedData, first create a RangedData object, and then call the load() method:
+ * <pre>
+ * // my_file.tsv has columns in first line - chr, start, end, depth
+ * r = new RangeData("my_file.tsv").load()
+ * </pre>
+ * This form assumes that the first 3 columns of the file specify a genomic position in BED
+ * style representation (chromosome, start, end). These first three columns are extracted and the 
+ * remaining columns are sniffed to infer their types, and then added as expandos to the created 
+ * Region objects. The result is that you can access them directly as properties.
+ * <pre>
+ * // Find the 'depth' property of all ranges overlapping chr1:100000-200000
+ * println r.grep { it.overlaps("chr1",100000,200000) }.depth
+ * </pre>
+ * If the file doesn't have column names as the first line then you should specify them yourself:
+ * <pre>
+ * r = new RangeData("my_file.tsv").load(columnNames:['chr','start','end','depth'])
+ * </pre>
+ * Note: the 'chr','start' and 'end' columns here arbitrary - they don't affect what is 
+ * parsed into the ranges.
+ * <p>
+ * RangedData extends the Regions class, so it supports all the usual methods for working with
+ * genomic ranges. The only difference is that the ranges involved acquire properties 
+ * corresponding to the other columns in the input file.
+ * 
+ * @author ssadedin@gmail.com
+ */
 class RangedData extends Regions {
     
     Reader source = null
