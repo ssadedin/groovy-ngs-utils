@@ -130,8 +130,10 @@ class VCF implements Iterable<Variant> {
     }
     
     VCF(Iterable<Variant> variants) {
-        if(!variants.empty) {
-            this.header = variants[0].header
+        if(variants.iterator().hasNext()) {
+            Variant v = variants[0]
+            if(v.header != null)
+                this.headerLines.addAll(v.header.headerLines)
         }
             
         for(Variant v in variants) {
@@ -331,28 +333,45 @@ class VCF implements Iterable<Variant> {
         VCF result = new VCF()
         
         // Add the samples from the other VCF to the last line
-        String newLastLine = this.headerLines[-1] + "\t" + other.samples.join("\t")
+        String newLastLine = this.headerLines[-1] + "\t" + other.samples.collect { 
+            (it in this.samples) ? it + "_2" : it
+        }.join("\t")
         result.headerLines = this.headerLines[1..-2] + [ newLastLine ]
         result.parseLastHeaderLine()
         
+        println "New samples are $result.samples"
+        
         List<String> samples = this.samples + other.samples
         
-        int numGtFields = other[0].line.split("\t")[8].split(":").size()
+        // Find the common set of genotype fields from each FORMAT column
+        List<String> myGtFields = this[0].line.split("\t")[8].split(":")
+        List<String> otherGtFields = other[0].line.split("\t")[8].split(":")
+        List<String> commonGtFields = myGtFields.intersect(otherGtFields)
+        
+        println "Common genotype format fields are: " + commonGtFields
+        
+        int numGtFields = commonGtFields.size()
         
         for(Region r in allVariants) {
             
             Variant v = r.extra
             
             List fields = (v.line.split("\t") as List)
-            List newLine = fields[0..8]
+            List newLine = fields[0..7] + [commonGtFields.join(":")]
                 
             // If the variant is already in this VCF, then just add the sample genotype / dosage
             Variant myVariant = this.find(v)
             if(myVariant) {
                 // The variant is in my VCF - use the genotypes from there
-                newLine.addAll(myVariant.line.split("\t")[9..-1])
+                def gts = myVariant.line.split("\t")[9..-1]
+                newLine.addAll(gts.collect { gt ->
+                    def gtFields = [myGtFields,gt.split(":")].transpose().collectEntries()
+                    commonGtFields.collect { gtField ->
+                        gtFields[gtField]
+                    }.join(":")
+                })
             }
-            else {
+            else { 
                 // Add null genotypes from our sample
                 newLine.addAll(this.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(':') })
             }
@@ -362,12 +381,21 @@ class VCF implements Iterable<Variant> {
                 // The variant is in the other VCF - use the genotypes from there
                 // TODO: if different number of alleles in other sample, this
                 // will not work!
-                def otherGts = otherVariant.line.split("\t")[9..-1]
-                newLine.addAll(otherGts)
+                
+                def gts = otherVariant.line.split("\t")[9..-1]
+                newLine.addAll(gts.collect { gt ->
+                    def gtFields = [otherGtFields,gt.split(":")].transpose().collectEntries()
+                    commonGtFields.collect { gtField ->
+                        gtFields[gtField]
+                    }.join(":")
+                }) 
+                
+//                def otherGts = otherVariant.line.split("\t")[9..-1]
+//                newLine.addAll(otherGts)
             }
             else {
                 // Add null genotypes from the other samples
-                newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join("\t") })
+                newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(":") })
             }
             Variant resultVariant = Variant.parse(newLine.join("\t"))
             result.add(resultVariant)
