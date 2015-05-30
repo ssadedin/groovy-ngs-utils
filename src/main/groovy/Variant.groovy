@@ -400,21 +400,25 @@ class Variant implements IRegion {
               genoTypeFields = fields[8].split(':')
           
           // Split the genoTypes field into separate values and parse them out
-          def numericGTFields = ["DP","GQ"] as Set
-          def numericListFields = ["AD"] as Set
           genoTypes = fields[9..-1].collect { String gt -> 
-              [genoTypeFields, gt.split(':')].transpose().collectEntries { 
-                  if(it[0] in numericGTFields) 
-                      [it[0],it[1] == "." ? null : it[1].toFloat()] 
-                  else
-                  if(it[0] in numericListFields) {
-                      return [it[0],it[1].split(",")*.replaceAll("\\.","0")*.toFloat()] 
-                  }
-                  else
-                      it
-              }
+              parseGenoTypeFields(gt)
           } 
         }
+    }
+    
+    Map<String,Object> parseGenoTypeFields(String gt) {
+        Set numericGTFields = ["DP","GQ"] as Set
+        Set numericListFields = ["AD"] as Set
+        [genoTypeFields, gt.split(':')].transpose().collectEntries { 
+              if(it[0] in numericGTFields) 
+                  [it[0],it[1] == "." ? null : it[1].toFloat()] 
+              else
+              if(it[0] in numericListFields) {
+                  return [it[0],it[1].split(",")*.replaceAll("\\.","0")*.toFloat()] 
+              }
+              else
+                  it
+        } 
     }
     
     /**
@@ -916,6 +920,21 @@ class Variant implements IRegion {
 			return [ pos: this.pos, ref: this.ref, obs: this.alt ]	
 		}
 	}
+    
+    /**
+     * Return the number of reads supporting the given allele as a list
+     * with one entry for each sample in the VCF
+     * 
+     * @param alleleIndex   index of allele, reference = 0
+     */
+    List<Integer> getAlleleDepths(int alleleIndex) {
+       this.genoTypes.collect { gt ->
+            if(!gt.AD || gt.AD[alleleIndex]==null || (gt.AD[alleleIndex] == "."))
+               return 0
+                
+           (int)gt.AD[alleleIndex]
+        }
+    }
     
     String toJson() {
         JsonOutput.toJson([
