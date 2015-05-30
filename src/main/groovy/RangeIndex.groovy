@@ -62,6 +62,21 @@ import groovy.transform.CompileStatic;
  * index.each { println "A range from $it.from-$it.to" }
  * assert index.grep { it.from > 15 } == 2
  * </code>
+ * <p>
+ * Design notes: RangeIndex stores intervals in TreeMap (a balanced tree), indexed
+ * by both start position and end position. Thus there is an entry in the index for
+ * every "breakpoint" (start and end) of every range in the index. The value at each 
+ * breakpoint is a list of the ranges that overlap the breakpoint. For example, if a range 
+ * a..b is added (inclusive of both a and b), an entry at <code>a</code> is created and
+ * the list at index <code>a</code> will contain the range <code>a..b</code>. Another
+ * entry at <code>b+1</code> will be created, which does not contain <code>a</code>. 
+ * (If there are no other overlapping ranges, the entry at <code>b+1</code> will be
+ * empty).
+ * <p>
+ * To minimise memory use, RangeIndex accepts plain IntRange objects into the index. However
+ * frequently it is desirable to associate a range to some more data. For this purpose,
+ * the GRange class extends IntRange but contains an <code>extra</code> field that 
+ * can be used to store arbitrary data in a range object.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -80,12 +95,11 @@ class RangeIndex implements Iterable<IntRange> {
         
 //    @CompileStatic
     void add(IntRange newRange) {
-        
+       
         // Any existing range over start position?
         int startPosition = (int)newRange.from
         int endPosition = (int)newRange.to
         Map.Entry<Integer,List<IntRange>> lowerEntry = ranges.lowerEntry(startPosition+1)
-//        println "Adding range starting at $startPosition"
         
         // Inserting a range at the lowest end is relatively straightforward, so 
         // handle it separately
@@ -136,9 +150,11 @@ class RangeIndex implements Iterable<IntRange> {
                     
                 // If there's no higher entry at all, then we can just add a new boundary
                 // and a region with only our range and break
-                if(higherEntry == null && boundaryPoint>=0) {
-                    ranges[boundaryPoint] = [newRange]
-                    checkRanges(boundaryPoint)
+                if(higherEntry == null) { 
+                    if(boundaryPoint>=0) {
+                        ranges[boundaryPoint] = [newRange]
+                        checkRanges(boundaryPoint)
+                    }
                 }
             }
             else { // The start is contained, but the end is not : split the upper range
@@ -159,6 +175,9 @@ class RangeIndex implements Iterable<IntRange> {
             ranges[startPos] << newRange 
             checkRanges(startPos)
         }
+        
+        if(!ranges.containsKey(endPosition+1))
+            ranges[endPosition+1] = []
     }
     
 //    @CompileStatic
@@ -193,8 +212,10 @@ class RangeIndex implements Iterable<IntRange> {
         else {
             // Need to mark the ending of the range so that future adds will
             // look up the right point for adding new overlapping ranges
-            if(!ranges.containsKey(endPosition+1))
-              ranges[endPosition+1] = []
+            if(!ranges.containsKey(endPosition+1)) {
+                // println "Adding ${endPosition+1} to index ..."
+                ranges[endPosition + 1] = []
+            }
         }
     }
     
@@ -635,7 +656,7 @@ class RangeIndex implements Iterable<IntRange> {
      */
     RangeIndex reduce() {
         RangeIndex reduced = new RangeIndex()
-        
+
         // We take advantage of the fact that we iterate the ranges in order of genomic start position
         IntRange currentRange = null
         for(IntRange r in this) {
@@ -658,5 +679,104 @@ class RangeIndex implements Iterable<IntRange> {
             reduced.add(currentRange)
             
         return reduced
+    }
+    
+    /**
+     * Returns a range for each boundary within the index.
+     * 
+     * @param c
+     * @return
+     */
+    @CompileStatic
+    Iterator<GRange> getBoundaries() {
+
+        Iterator<Map.Entry<Integer,List<IntRange>>> i = ranges.iterator()
+
+        return new Iterator<IntRange>() {
+            
+            Map.Entry<Integer,IntRange> prev = null
+            
+            IntRange prevRange = null
+            
+            boolean hasNext() {
+//                println "hasNext = " + i.hasNext() + " prev = " + prev
+                i.hasNext() || (prev != null && !prev.value.empty)
+            }
+            
+            IntRange next() {
+                
+                Map.Entry<Integer,IntRange> curr = null
+                if(prev == null) {
+                    prev = i.next()
+                }
+                
+                curr = i.hasNext() ? i.next() : prev
+                
+                
+                // When we reach a gap we skip to the next range
+                // as we do not output ranges covering gaps
+                // A gap is indicated by a previous breakpoint where
+                // the list of overlapping ranges is empty
+                if(prev.value.empty && i.hasNext()) {
+                    prev = curr
+                    prevRange = null
+                    return next()
+                }
+                
+                GRange range 
+                if(curr != prev) {
+                    
+                    int endPos = curr.key
+                    int startPos =  prev.key                    
+                    int beforeEndPos = endPos - 1
+                    
+
+                    // We want to output contiguous ranges, ie: the end of
+                    // of the previous range is the start of the next,
+                    // EXCEPT if there is a gap. For these gaps, we only know
+                    // for real that it is a gap from information available in the 
+                    // previous iteration. So in the previous one, we set prevRange
+                    // non-null, only if its 'to' should be used as a starting point
+                    if(prevRange != null) {
+                        startPos = prevRange.to
+                    }
+                    
+//                    println "=" * 80
+//                    println "PrevRange=${prevRange?.from}-${prevRange?.to}"
+//                    println "Curr = $curr"
+//                    println "Prev = $prev"
+//                    
+                    // Is this an ending position? If so, return the pevious value
+                    if(prev.value.any { it.to == beforeEndPos }) {
+                        endPos -= 1
+                    }
+                    
+                    range = new GRange(startPos, endPos, curr.value)
+                    
+                    // Only store the current output as prevRange if the current range is not 
+                    // the beginning of a gap. It's a gap if there are no overarching / overlapping
+                    // ranges, which would be stored in its value. That is true if every range
+                    // that is in the previous position ends at the position prior to our current position.
+                    if(prev.value.every {it.to == beforeEndPos}) {
+                        prevRange = null
+                    }
+                    else {
+                        prevRange = range
+                    }
+                    
+                    prev = curr
+                }
+                else {
+                    range = new GRange(prev.key, curr.value.max { it.to }.to, curr.value)
+                    prev = null
+                }
+                return range
+            }
+            
+            void remove() {
+                throw new UnsupportedOperationException()
+            }
+        }
+ 
     }
 }
