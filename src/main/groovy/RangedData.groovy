@@ -39,7 +39,7 @@ class RangedData extends Regions {
     int chrColumn 
     int startColumn
     int endColumn
-    int separator='\t'
+    String separator='\t'
     
     int genomeZeroOffset=0
 
@@ -76,8 +76,7 @@ class RangedData extends Regions {
         // Assume columns on first line
         TSV tsv = new TSV(options, source)
         for(PropertyMapper line in tsv) {
-            Region r = new Region(line.values[chrColumn], 
-                new GRange(line.values[startColumn].toInteger()+genomeZeroOffset,line.values[endColumn].toInteger()+genomeZeroOffset,null))
+            Region r = parseRegion(line)
             r.range.extra = r
             line.columns.each { String columnName, int index ->
                 if(index != startColumn && index != endColumn && index != chrColumn) {
@@ -91,5 +90,13 @@ class RangedData extends Regions {
             addRegion(r)
         }
         return this
+    }
+
+    protected Region parseRegion(PropertyMapper line) {
+        int startPosition = line.values[startColumn].toInteger()+genomeZeroOffset
+        int endPosition = line.values[endColumn].toInteger()+genomeZeroOffset
+        Region r = new Region(line.values[chrColumn],
+                        new GRange(startPosition,endPosition,null))
+        return r
     }
 }
