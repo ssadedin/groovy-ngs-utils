@@ -133,4 +133,8 @@ class RefGenes {
         
         return splices
     }
+    
+    List<String> getGenes(Region r) {
+        refData.getOverlaps(r)*.extra*.gene.unique()
+    }
 }
