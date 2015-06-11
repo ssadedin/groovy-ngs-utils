@@ -465,7 +465,6 @@ class SampleInfo {
         
         def samplesByCoverage = collectBySample("exoncoverage.txt") { 
             def sn = new File(it).name.replaceAll('\\..*$','')
-            println "Sample name $it = $sn"
             return sn
         }
         
