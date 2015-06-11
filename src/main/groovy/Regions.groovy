@@ -590,6 +590,15 @@ class Regions implements Iterable<Region> {
 		   return result
 	}
 	
+    @CompileStatic
+    Regions plus(Regions other) {
+        Regions result = new Regions(this)
+        for(Region r in other) {
+            result.addRegion(r)
+        }
+        return result
+    }
+    
 	String toString() {
 		int numRanges = getNumberOfRanges()
 		if(numRanges>0) {
@@ -601,6 +610,6 @@ class Regions implements Iterable<Region> {
 	}
     
     void save(String fileName) {
-        new File(fileName).withWriter {  w -> this.each { w.println([it.chr, it.from, it.to].join('\t')) }}
+        new File(fileName).withWriter {  w -> this.each { w.println([it.chr, it.from, it.to+1].join('\t')) }}
     }
 }
