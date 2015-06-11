@@ -35,6 +35,8 @@ interface IRegion {
  */
 class Region extends Expando implements IRegion {
     
+    final static Region EMPTY_REGION = new Region("empty", 0..0)
+    
     Region() {
     }
     
@@ -42,7 +44,8 @@ class Region extends Expando implements IRegion {
         int colonIndex = region.indexOf(":")
         this.chr = region.substring(0, colonIndex)
         int dashIndex = region.indexOf("-")
-        this.range = region.substring(colonIndex+1, dashIndex).toInteger()..region.substring(dashIndex+1).toInteger()
+        this.range = new GRange(region.substring(colonIndex+1, dashIndex).toInteger(),region.substring(dashIndex+1).toInteger(), null)
+        this.range.extra = this
     }
     
     Region(String chr, Range range) {
@@ -89,6 +92,16 @@ class Region extends Expando implements IRegion {
         (r.chr == this.chr) && (r.range.to <= this.to) && (r.range.from >= this.from)
     }
     
+    Region intersect(IRegion other) {
+        if(this.chr != other.chr)
+            return EMPTY_REGION
+            
+        Region r = new Region(this.chr, Math.max(this.from, other.from)..Math.min(this.to, other.to))
+        if(r.to < r.from)
+            return Region.EMPTY_REGION
+        return r
+    }
+ 
     Region copy() {
         new Region(chr, range.from..range.to)
     }
@@ -122,6 +135,16 @@ class GRange extends IntRange {
         return (r.to <= this.to) && (r.from >= this.from)
     }
     
+    boolean overlaps(IntRange other) {
+        GRange.overlaps(this, other)
+    }
+    
+    GRange intersect(IntRange other) {
+        GRange r = new GRange(Math.max(this.from, other.from), Math.min(this.to, other.to), extra)
+        if(r.to < r.from)
+            return null
+        return r
+    }
     
     static boolean overlaps(IntRange a, IntRange b) {
         boolean result = a.containsWithinBounds(b.to) || 
