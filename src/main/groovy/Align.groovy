@@ -27,6 +27,7 @@ import org.biojava3.alignment.template.Profile;
 import org.biojava3.alignment.template.SubstitutionMatrix;
 import org.biojava3.core.sequence.DNASequence;
 import org.biojava3.core.sequence.compound.NucleotideCompound;
+import org.biojava3.core.sequence.location.template.Location;
  
 /**
  * Utility for helping to perform alignments with BioJava
@@ -34,6 +35,10 @@ import org.biojava3.core.sequence.compound.NucleotideCompound;
  * @author simon.sadedin@mcri.edu.au
  */
 class Align {
+    
+    // Workaround for Biojava on JDK8
+    // see https://stackoverflow.com/a/30656277/4975843
+    static Location l = Location.EMPTY
     
     static Map ALIGNMENT_DEFAULTS = [ 
         gapOpenPenalty: 5, 
