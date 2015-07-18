@@ -223,6 +223,15 @@ class VariantDB implements Closeable {
     }
 
     /**
+     * Cache of batch date / time
+     * <p>
+     * The lookup of the most recent variant for a batch is expensive, even with an 
+     * index on the created column. In the cases where it is used it should not change,
+     * so opportunistically cache it.
+     */
+    Map<String,String> batchDateTimeCache = Collections.synchronizedMap([:])
+
+    /**
      * Find the time of the most recent variant observation added for the given
      * batch, formatted correctly as a string relative to GMT for querying via SQLite. 
      * If batch is null, return the current time plus 1 second.
@@ -233,11 +242,15 @@ class VariantDB implements Closeable {
     private String queryBatchDateTime(String batch) {
         def dateString = null
         if(batch) {
+            if(batchDateTimeCache.containsKey(batch))
+                return batchDateTimeCache[batch]
+
             dateString = db.firstRow("""
-                select max(vo.created) 
-                       from variant_observation vo 
+                select max(vo.created)
+                       from variant_observation vo
                        where vo.batch_id = $batch
             """)[0]
+            batchDateTimeCache[batch] = dateString
         }
         else {
             Timestamp countBefore = new Timestamp(System.currentTimeMillis()+1000)
@@ -245,6 +258,7 @@ class VariantDB implements Closeable {
         }
         return dateString
     }
+
     
     /**
      * Search for the given value in the annotations as a frequency
