@@ -120,4 +120,17 @@ class RegionsTest {
             assert r.foo == "bar"
         }
     }
+    
+    @Test
+    void testLastSmallRegion() {
+        Regions r = new Regions();
+        [
+            "chr1:198608098-198726606",
+            "chr1:198608098-198664301"
+        ].each { r.addRegion(new Region(it)) }
+        
+        Region ptprc = new Region("chr1:198700435-198725412")
+        
+        assert !r.getOverlaps(ptprc).empty
+    }
 }

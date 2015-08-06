@@ -26,11 +26,13 @@ class RangeIndexTest {
     
     @Test
     void testSimpleOverlap() {
+
+        println "Running test ..."
         
         RangeIndex index = new RangeIndex()
         
         [0..50, 20..70, 10..90].each {index.add(it)}
-        
+
         index.dump()
         
         assert index.getOverlaps(5).size() == 1
@@ -418,5 +420,58 @@ class RangeIndexTest {
     
     // 1273475:[1273475..1273503], 1273503:[1273503..1273503], 1273504:[], 1284266:[1284266..1284268], 1284268:[1284268..1284268], 1284269:[], 1575676:[1575676..1575676], 1575677:[], 1581349:[1581349..1581360], 1581360:[1581360..1581360], 1581361:[], 182992872:[182992872..182992971], 182992971:[182992971..182992971], 182992972:[]]:
 
+    @Test
+    void testIterateBoundaries() {
+        RangeIndex index = new RangeIndex()
+        [0..50, 20..70, 10..90, 120..130].each {index.add(it)}
+        
+        println index.ranges[91]
+        
+        index.boundaries.each {
+            println "$it.from - $it.to"
+        }
+        
+        assert index.boundaries*.from == [0,10,20,50,70,120]
+        assert index.boundaries*.to == [10,20,50,70,90,130]
+    }
     
+    @Test
+    void testIterateDuplicateBoundaries() {
+        RangeIndex index = new RangeIndex()
+        [0..50, 20..70, 20..70, 120..130].each {index.add(it)}
+        
+        index.boundaries.each {
+            println "$it.from - $it.to"
+        }
+        
+        assert index.boundaries*.from == [0, 20,50,120]
+        assert index.boundaries*.to ==   [20,50,70,130]
+    }
+    
+    @Test
+    void testIterateAdjacentStartEnd() {
+        RangeIndex index = new RangeIndex()
+        [0..50, 20..70, 71..90, 120..130].each {index.add(it)}
+        
+        index.boundaries.each {
+            println "$it.from - $it.to"
+        }
+        
+        assert index.boundaries*.from == [0, 20,50,71, 120]
+        assert index.boundaries*.to ==   [20,50,70,90, 130]
+    }     
+    
+    @Test
+    void testLastSmallRange() {
+        RangeIndex index = new RangeIndex()
+       
+        [
+            0..100,
+            5..50
+        ].each { index.add(it) }
+        
+        IntRange ptprc = 70..90
+         
+        assert !index.getOverlaps(ptprc.from, ptprc.to).empty 
+    }
 }

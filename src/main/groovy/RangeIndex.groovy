@@ -135,6 +135,8 @@ class RangeIndex implements Iterable<IntRange> {
                 
         Map.Entry containedEntry = ranges.higherEntry(startPosition)
         List<Integer> rangesToAddTo = []
+        
+        boolean fullyContained = containedEntry && containedEntry.key >= endPosition
         while(containedEntry && containedEntry.key < endPosition) {
                 
             Map.Entry higherEntry = ranges.higherEntry(containedEntry.key)   
@@ -171,13 +173,20 @@ class RangeIndex implements Iterable<IntRange> {
                 
             containedEntry = higherEntry
         }
+        
         rangesToAddTo.each { int startPos -> 
             ranges[startPos] << newRange 
             checkRanges(startPos)
         }
         
-        if(!ranges.containsKey(endPosition+1))
-            ranges[endPosition+1] = []
+        if(!ranges.containsKey(endPosition+1)) {
+            if(fullyContained && lowerEntry) {
+                ranges[endPosition+1] = lowerEntry.value.grep { endPosition < it.to }
+            }
+            else {
+                ranges[endPosition+1] = []
+            }
+        }
     }
     
 //    @CompileStatic
