@@ -1,6 +1,7 @@
 import groovy.lang.Closure;
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import java.text.NumberFormat
 
 
 /**
@@ -46,5 +47,21 @@ class Utils {
 						min = value;
 		}
 		return min;
+    }
+    
+    final static NumberFormat humanNumberFormat = NumberFormat.numberInstance
+    
+    static {
+        humanNumberFormat.maximumFractionDigits=1
+        humanNumberFormat.minimumFractionDigits=0
+    }
+    
+    static String humanSize(Number number, units=['bp','kb','Mb','Gb']) {
+        double value = number.toDouble()
+        for(unit in units) {
+            if(value < 1000)
+                return humanNumberFormat.format(value) + unit
+            value = value / 1000
+        }
     }
 }
