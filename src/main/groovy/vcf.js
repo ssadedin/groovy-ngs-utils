@@ -77,9 +77,11 @@ function partial(fn) {
 }
 
 var sampleSubjects  = {};
+var sampleCount = 0;
 var affectedSampleIndexes = [];
 var familyIndexes = {};
 var rowProperties = [];
+var highlightLink = null;
     
 (function ( $, window, document, undefined ) {
 
@@ -115,7 +117,11 @@ var rowProperties = [];
         variantTable = $('#'+tableId).DataTable({ 
             "iDisplayLength": 40,
             columns: columns,
-            data: variants
+            data: variants,
+            createdRow: function( row, data, dataIndex ) {
+                var tds = row.getElementsByTagName('td');
+                tds[1].innerHTML = "<a href='http://localhost:60151/goto?locus="+tds[0].innerHTML + ":" + tds[1].innerHTML + "'>"+ tds[1].innerHTML + "</a>";
+           }
         });
         
         console.log('done...');
@@ -200,6 +206,7 @@ var rowProperties = [];
                 var sub = ped[i];
                 console.log("Indexing " + sub.id)
             	index[sub.id] = sub;
+                sampleCount++;
             }
     	}
         return index;
@@ -215,6 +222,7 @@ var rowProperties = [];
     var GENE_INDEX=7;
     var CONS_INDEX=8;
     var MAF_INDEX=9;
+    var AD_INDEX=10;
     
     var nonSampleColumnCount = MAF_INDEX+1; // TODO - make this not hard coded!
 
@@ -282,7 +290,7 @@ var rowProperties = [];
      */
     function findProband(ped) {
         var subjectsFound = $.grep(pedigrees[ped], function(subject,index) {return subject.pheno>0;});
-        subjectsFound.sort(function(a,b) { return b.rels.length - a.rels.length;});
+        subjectsFound.sort(function(a,b) { return b.rel.length - a.rel.length;});
         if(subjectsFound.length > 0)
     		return subjectsFound[0];
         else
@@ -537,6 +545,15 @@ var rowProperties = [];
         console.log("Filters applied: " + countFilters);
         return { data: newTable, pendingFilters: otherExprs};
     }
+
+    var highlightedRow = null;
+    function highlightRow(tr) {
+        console.log('addign highlight to ' + tr);
+        if(highlightedRow)
+            $(highlightedRow).removeClass('highlight');
+        $(tr).addClass('highlight');
+        highlightedRow = tr;
+    }
     
     function filterTable(tableId) {
         
@@ -559,14 +576,19 @@ var rowProperties = [];
                                        iDisplayLength: 50,
                                        destroy: true,
                                        createdRow: function( row, data, dataIndex ) {
+                                            var tds = row.getElementsByTagName('td');
+                                            tds[1].innerHTML = "<a href='http://localhost:60151/goto?locus="+tds[0].innerHTML + ":" + tds[1].innerHTML + "'>"+ tds[1].innerHTML + "</a>";
+                                            $(tds[1]).find('a').click(function() { highlightRow(row); });
+
+                                            var ads = data[MAF_INDEX+sampleCount+1].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
+                                            tds[DEPTH_INDEX].title = ads
+
                                 	        if(rowProperties[dataIndex]) {
-                                                var tds = row.getElementsByTagName('td');
                                 	        	for(var i in rowProperties[dataIndex]) {
                                 	        		tds[parseInt(i)].style.color = '#eee';
                                 	        	}
                                 	        }
                                             if(newTable[dataIndex][FAMILIES_INDEX] == 0) {
-                                                var tds = row.getElementsByTagName('td');
                                             	var fc = familyNames.reduce(function(prev,curr) {
                                             		return prev + (familyIndexes[curr].members.every(function(sampleIndex) { return newTable[dataIndex][sampleIndex]==0;}) ? 0 : 1);
                                             	},0);
