@@ -1,28 +1,37 @@
+import au.com.bytecode.opencsv.CSVWriter
 import groovy.xml.StreamingMarkupBuilder
 
 int count = 1
 
-Cli cli = new Cli()
+Cli cli = new Cli(usage:"VCFtoHTML <options>")
 cli.with {
-    i 'vcf File', args:1, required:true
+    i 'vcf File', args: Cli.UNLIMITED, required:true
     p 'PED file describing relationships between the samples in the data', args:1
     o 'Output HTML file', args:1, required:true
     f 'Comma separated list of families to export', args:1
+    diff 'Only output variants that are different between the samples'
     maxMaf 'Filter out variants above this MAF', args:1
+    tsv 'Output TSV format with the same variants', args:1
 }
 
 opts = cli.parse(args)
+if(!opts)
+    System.exit(1)
+
+def allSamples = opts.is.collect { new VCF(it).samples }.flatten()
 
 Pedigrees pedigrees = null
-
 if(opts.p) {
     pedigrees = Pedigrees.parse(opts.p)
 }
 else {
-    pedigrees = Pedigrees.fromSingletons(new VCF(opts.i).samples) 
+    // Find all the samples
+    println "Found samples: " + allSamples
+    pedigrees = Pedigrees.fromSingletons(allSamples) 
 }
 
-def exportSamples = pedigrees.families.values().collect { it.individuals*.id }.flatten().grep { it in new VCF(opts.i).samples };
+def exportSamples = pedigrees.families.values().collect { it.individuals*.id }.flatten().grep { it in allSamples };
+
 def exportFamilies = pedigrees.families.keySet()
 if(opts.f) {
     exportFamilies = opts.f.split(",").collect { it.trim() }
@@ -31,16 +40,21 @@ if(opts.f) {
 }
 println "Samples to export: $exportSamples" 
 
+if(exportSamples.empty) {
+    System.err.println "ERROR: No samples from families $exportFamilies found in VCF file $opts.i"
+    System.err.println "\nSamples found in VCF are: " + (new VCF(opts.i)).samples
+}
+    
+
 float MAF_THRESHOLD=0.05
 if(opts.maxMaf) 
     MAF_THRESHOLD=opts.maxMaf.toFloat()
-
+    
 def js = [
     "http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.1.0.min.js",
     "http://cdn.datatables.net/1.10.0/js/jquery.dataTables.min.js",
     "http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js",
-    "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/jquery.layout.min.js",
-    "vcf.js"
+    "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/jquery.layout.min.js"
 ]
 
 def css = [
@@ -121,6 +135,20 @@ def vepColumns = [
     'maf'  : findMaxMaf
 ]
 
+List<VCF> vcfs = opts.is.collect { VCF.parse(it) }
+
+def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") }
+if(noVeps) {
+    System.err.println "This program requires that VCFs have VEP annotations. It appears that the following VCF files you have supplied do not have VEP annotations:"
+    System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
+    System.exit(1)
+}
+
+
+def tsvWriter = null
+if(opts.tsv)
+    tsvWriter = new CSVWriter(new File(opts.tsv).newWriter(), '\t' as char)
+
 new File(opts.o).withWriter { w ->
     w.println """
     <html>
@@ -129,17 +157,45 @@ new File(opts.o).withWriter { w ->
     w.println css.collect{"<link rel='stylesheet' href='$it'/>"}.join("\n").stripIndent()
     w.println js.collect{"<script type='text/javascript' src='$it'></script>"}.join("\n").stripIndent()
     
+    // Embed the main vcf.js
+    def vcfjs 
+    def fileVcfJsPath = "src/main/groovy/vcf.js"
+    if(new File(fileVcfJsPath).exists())
+        vcfjs = new File(fileVcfJsPath)
+    else
+        vcfjs = this.class.classLoader.getResourceAsStream("vcf.js").text
+    
+    w.println "<script type='text/javascript'>\n$vcfjs\n</script>"
+    
     w.println "<script type='text/javascript'>"
    
     w.println "var variants = ["
     int i=0;
     int lastLines = 0
     Variant last = null;
-    VCF.parse(opts.i, pedigrees) { v->
+    
+    // Merge all the VCFs together
+    VCF merged = vcfs[0]
+    if(vcfs.size()>1)
+        vcfs[1..-1].each { merged = merged.merge(it) }
+    
+    if(opts.tsv) 
+        tsvWriter.writeNext((baseColumns*.key+exportSamples) as String[])
+            
+    merged.each { v->
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
         List dosages = exportSamples.collect { v.sampleDosage(it) }
         if(dosages.every { it==0})
             return
+            
+        if(opts.diff && dosages.unique().size()==1)    
+            return
+            
+        def refCount = v.getAlleleDepths(0)
+        def altCount = v.getAlleleDepths(1)
+        
+        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
+        
         
         if(i++>0 && lastLines > 0)
             w.println ","
@@ -158,7 +214,11 @@ new File(opts.o).withWriter { w ->
                 w.println ","
                 
             List vepInfo = vepColumns.collect { name, func -> func(vep) }
-            w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages))
+            w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+            
+            if(opts.tsv)
+                tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
+
             ++lastLines
         }
         last = v;
@@ -179,6 +239,9 @@ new File(opts.o).withWriter { w ->
     </script>
     <style type='text/css'>
     td.vcfcol { text-align: center; }
+    tr.highlight {
+        background-color: #ffeeee !important;
+    }
     </style>
     """;
     
@@ -202,3 +265,6 @@ new File(opts.o).withWriter { w ->
     </html>
     """
 }
+
+if(tsvWriter != null)
+    tsvWriter.close()
