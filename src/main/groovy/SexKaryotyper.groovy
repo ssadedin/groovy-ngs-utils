@@ -1,5 +1,10 @@
-
-
+/**
+ * An algorithm based on simple heuristics for estimating the sex of a sample from
+ * sequencing coverage.
+ * <p>
+ * 
+ * @author simon
+ */
 class SexKaryotyper implements Runnable {
     
     SAM bam = null
@@ -23,6 +28,31 @@ class SexKaryotyper implements Runnable {
         this.regions = regions.reduce()
     }
     
+    /**
+     * The primary logic is simply that lack of coverage of the Y
+     * chromosome indicates a female sample. So mean coverage < 5x indicates female.
+     * In a simple world, we would end with that and conclude that otherwise the sample
+     * is male. There are two things that could go wrong, however: we could have very low
+     * coverage overall and thus a male with < 5x, or we could have very high coverage
+     * overall and thus a female manages to get > 5x coverage even though she has no Y
+     * chromosome. 
+     * 
+     * The remaining logic protects against these scenarios - first, we only classify
+     * a female based on chrY coverage if we have at least 30x mean coverage overall.
+     * If we have less than that, or if there is coverage on the Y chromsome, we then
+     * look at the ratio of the X chromosome coverage and the autosomes. For a male,
+     * we expect it to be about half, while for a female we expect it to be about
+     * 1. The 0.7 is simply picking a mid point inbetween those.
+     * 
+     * Note: chr1 and chr22 are used to generate robust estimates of the mean
+     * coverage over the autosomes and use that as an estimate of the expected
+     * coverage on the X chromosome for females.
+     * 
+     * It's worth noting that in Nextera captures, the chrY coverage appears to be
+     * artificially boosted - it comes out about the same as autosome coverage even
+     * though there is only theoretically 1 copy. For this reason the absolute value
+     * of chrY coverage is not compared to autosome coverage in the logic above. 
+     */
     void run() {
         
         bam.progress = progress
