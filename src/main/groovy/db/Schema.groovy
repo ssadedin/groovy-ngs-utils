@@ -114,7 +114,24 @@ class Schema {
           """
               alter table variant add column protein_change text;
           """
-         ]
+         ],
+     5: [
+         """
+         create table sample_batch (
+             id integer primary key asc,
+             batch text,
+             sample_id integer references sample(id),
+             cohort text,
+             created datetime NOT NULL
+         );
+         """,
+         """
+                CREATE INDEX sample_batch_sample_id_idx ON sample_batch (sample_id);
+        """,
+        """
+                CREATE INDEX sample_batch_cohort_idx ON sample_batch (cohort);
+        """
+        ]
     ]
     
     /**
