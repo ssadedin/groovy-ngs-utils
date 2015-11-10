@@ -76,9 +76,15 @@ class Pedigrees {
      * @return
      */
     static Pedigrees parse(String pedFileName) {
+        new File(pedFileName).withReader { r ->
+            parse(r)
+        }
+    }
+    
+    static Pedigrees parse(Reader r) {
         Map<String,Pedigree> families = [:]
         Map<String,Pedigree> subjectsToFamilies = [:]
-        List<Subject> subjects = new TSV(pedFileName,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
+        List<Subject> subjects = new TSV(r,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
             if(!families.containsKey(line.familyId))
                 families[line.familyId] = new Pedigree(id:line.familyId)
             Pedigree p = families[line.familyId]

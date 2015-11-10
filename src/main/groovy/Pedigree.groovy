@@ -166,13 +166,24 @@ class Pedigree {
     }
      
     
-    @Lazy
-    List<String> affected = { samples.grep {phenoTypes[samples.indexOf(it)] > 1 } }()
+    List<String> affected 
     
-    @Lazy
-    List<String> unaffected = { samples.grep {phenoTypes[samples.indexOf(it)] <= 1 } }()
+    List<String> getAffected() {
+        if(affected == null)
+            affected = samples.grep {phenoTypes[samples.indexOf(it)] > 1 } 
+            
+        return affected
+    }
     
+    List<String> unaffected 
     
+    List<String> getUnaffected() {
+        if(unaffected == null)
+            unaffected = samples.grep {phenoTypes[samples.indexOf(it)] <= 1 } 
+            
+        return unaffected
+    }
+     
     List<String> getSamples() {
         individuals*.id
     }
@@ -229,6 +240,12 @@ class Pedigree {
         this.individuals = samples.collect { new Subject(id:it) }
     }
     
+    void reset() {
+        this.affected = null
+        this.unaffected = null
+        this.phenoTypes = this.individuals.collect { it.phenoTypes[0]?:0 }
+    }
+    
     void toPed(Writer w) {
         /* PED Format definition:
          Family ID
@@ -275,6 +292,6 @@ class Pedigree {
     }
     
     List<Object> getPedData(Subject subject) {
-       [id, subject.id, fatherOf(subject.id)?.id?:"0",motherOf(subject.id)?.id?:"0",  subject.sex == Sex.MALE ? 1 : 2, subject.id in affected ? 2 : 1  ] 
+       [id, subject.id, fatherOf(subject.id)?.id?:"0",motherOf(subject.id)?.id?:"0",  subject.sex == Sex.MALE ? 1 : 2, subject.id in getAffected() ? 2 : 1  ] 
     }
 }
