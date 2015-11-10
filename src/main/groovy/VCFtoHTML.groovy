@@ -165,9 +165,9 @@ new File(opts.o).withWriter { w ->
     
     // Embed the main vcf.js
     def vcfjs 
-    def fileVcfJsPath = "src/main/groovy/vcf.js"
+    def fileVcfJsPath = "src/main/resources/vcf.js"
     if(new File(fileVcfJsPath).exists())
-        vcfjs = new File(fileVcfJsPath)
+        vcfjs = new File(fileVcfJsPath).text
     else
         vcfjs = this.class.classLoader.getResourceAsStream("vcf.js").text
     
