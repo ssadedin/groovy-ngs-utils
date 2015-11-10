@@ -193,7 +193,7 @@ class VCF implements Iterable<Variant> {
     }
     
     static void filter(File f, List<Pedigree> peds, Closure c = null) {
-        filter(new BufferedInputStream(new FileInputStream(f)),peds,c)
+        filter([:],new BufferedInputStream(new FileInputStream(f)),peds,c)
     }
     
     static void filter(String fileName, Closure c = null) {
@@ -537,17 +537,22 @@ class VCF implements Iterable<Variant> {
         return metaFields
     }
     
-    BED toBED() {
-        BED bed = new BED()
+    // Backwards compatibility ...
+    Regions toBED() {
+        toRegions()
+    }
+    
+    Regions toRegions() {
+        Regions bed = new Regions()
         for(Variant v in this) {
-          bed.add(v.chr, v.pos, v.pos + v.size(), v)
+          bed.addRegion(v.chr, v.pos, v.pos + v.size(), v)
         }
         return bed
     }
     
     Object asType(Class clazz) {
         if(clazz == Region || clazz == BED ) {
-            return toBED()
+            return toRegions()
         }
         else {
             return super.asType(clazz)
