@@ -439,7 +439,7 @@ class SampleInfo {
                 if(ext=="fastq.gz")
                     f["fastq"] = it.value
                 else
-                if(ext=="exoncoverage.txt" || ext=="coverage.txt" || ext=="cov.gz")
+                if(ext=="exoncoverage.txt" || ext=="coverage.txt" || ext=="cov.gz" || ext=="exoncoverage.txt.gz")
                     f["coverage"] = it.value
                 else
                     f[ext] = it.value
@@ -473,7 +473,12 @@ class SampleInfo {
             return sn
         }
         
-        def allFiles = [samplesByBam, samplesByCram, samplesByVcf, samplesByFastq, samplesByCoverage, samplesByGzCoverage] 
+        def samplesByGzCoverage2 = collectBySample("exoncoverage.txt.gz") { 
+            def sn = new IlluminaFileNameParser().parse(it).sample
+            return sn
+        }        
+        
+        def allFiles = [samplesByBam, samplesByCram, samplesByVcf, samplesByFastq, samplesByCoverage, samplesByGzCoverage, samplesByGzCoverage2] 
           
         // Merge files from all of them
         def allSamples = allFiles*.keySet().sum().unique()
