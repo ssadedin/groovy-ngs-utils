@@ -9,6 +9,12 @@ class Cli extends CliBuilder {
         this.writer = new PrintWriter(System.err)
     }
     
+	void banner(String title) {
+        System.err.println "="*100
+		System.err.println " $title ".center(100)
+        System.err.println "="*100
+	}
+    
     OptionAccessor check(Object args, List required) {
         def opts = this.parse(args)
         def missing = required.grep { !opts[it] }
