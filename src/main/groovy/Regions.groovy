@@ -219,8 +219,25 @@ class Regions implements Iterable<Region> {
 		RangeIndex chrIndex = this.index[r.chr]
 		if(chrIndex == null)
 			return false
-		return chrIndex.overlaps(r.from,r.to)        
+		return chrIndex.overlaps(r.range.from,r.range.to)        
     }
+    
+    /**
+     * Returns true if at least one region in r overlaps at least one
+     * region in this Regions object
+     * 
+     * @param r
+     * @return
+     */
+    @CompileStatic
+    boolean overlaps(Regions other) {
+        for(Region r in other ) {
+            if(this.overlaps(r))
+                return true
+        }
+        return false
+    }
+    
     
     /**
      * Return a list of ranges that overlap the specified range. 
