@@ -14,13 +14,9 @@ class BEDToolsCoverage {
     
     BEDToolsCoverage(String file, Regions mask) {
         
-        // Sniff the file to see if there are 5 columns or 6 - if the original bed file had an id 
-        // column then the BedTools output also has it
-        def firstLine = new File(file).newReader().readLine().split('\t')
-        
         List<String> cols = ["chr","start","end","offset","cov"]
         boolean hasId = false
-        if(firstLine.size()>5) {
+        if(TSV.sniffColumnCount(file)>5) {
             hasId = true
             cols = ["chr","start","end","id","offset","cov"]
         }
