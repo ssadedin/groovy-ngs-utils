@@ -114,15 +114,14 @@ var highlightLink = null;
         $('#tableHolder').html('<table cellpadding="0" cellspacing="0" border="0" class="display" id="'+tableId+'"></table>' );
         
         console.log('creating table ...');
+
+        newTable = variants;
         variantTable = $('#'+tableId).DataTable({ 
             "iDisplayLength": 40,
             columns: columns,
             data: variants,
-            createdRow: function( row, data, dataIndex ) {
-                var tds = row.getElementsByTagName('td');
-                tds[1].innerHTML = "<a href='http://localhost:60151/goto?locus="+tds[0].innerHTML + ":" + tds[1].innerHTML + "'>"+ tds[1].innerHTML + "</a>";
-           }
-        });
+            createdRow: createVariantRow
+            });
         
         console.log('done...');
     
@@ -554,6 +553,31 @@ var highlightLink = null;
         $(tr).addClass('highlight');
         highlightedRow = tr;
     }
+
+    var newTable = null;
+
+    function createVariantRow(row, data, dataIndex ) {
+        var tds = row.getElementsByTagName('td');
+        tds[1].innerHTML = "<a href='http://localhost:60151/goto?locus="+tds[0].innerHTML + ":" + tds[1].innerHTML + "'>"+ tds[1].innerHTML + "</a>";
+        $(tds[1]).find('a').click(function() { highlightRow(row); });
+
+        var ads = data[MAF_INDEX+sampleCount+1].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
+        tds[DEPTH_INDEX].title = ads
+
+        if(rowProperties[dataIndex]) {
+            for(var i in rowProperties[dataIndex]) {
+                tds[parseInt(i)].style.color = '#eee';
+            }
+        }
+        if(newTable[dataIndex][FAMILIES_INDEX] == 0) {
+            var fc = familyNames.reduce(function(prev,curr) {
+                return prev + (familyIndexes[curr].members.every(function(sampleIndex) { return newTable[dataIndex][sampleIndex]==0;}) ? 0 : 1);
+            },0);
+            newTable[dataIndex][FAMILIES_INDEX]=fc;
+            tds[FAMILIES_INDEX].innerHTML = fc+"";
+        }
+    }
+
     
     function filterTable(tableId) {
         
@@ -566,7 +590,7 @@ var highlightLink = null;
         	filterResult = executeFilters(filterResult.pendingFilters, filterResult.data);
         }
         
-        var newTable = filterResult.data;
+        newTable = filterResult.data;
         
         console.log('Creating table ...');
     
@@ -575,28 +599,8 @@ var highlightLink = null;
                                        columns: columns, 
                                        iDisplayLength: 50,
                                        destroy: true,
-                                       createdRow: function( row, data, dataIndex ) {
-                                            var tds = row.getElementsByTagName('td');
-                                            tds[1].innerHTML = "<a href='http://localhost:60151/goto?locus="+tds[0].innerHTML + ":" + tds[1].innerHTML + "'>"+ tds[1].innerHTML + "</a>";
-                                            $(tds[1]).find('a').click(function() { highlightRow(row); });
-
-                                            var ads = data[MAF_INDEX+sampleCount+1].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
-                                            tds[DEPTH_INDEX].title = ads
-
-                                	        if(rowProperties[dataIndex]) {
-                                	        	for(var i in rowProperties[dataIndex]) {
-                                	        		tds[parseInt(i)].style.color = '#eee';
-                                	        	}
-                                	        }
-                                            if(newTable[dataIndex][FAMILIES_INDEX] == 0) {
-                                            	var fc = familyNames.reduce(function(prev,curr) {
-                                            		return prev + (familyIndexes[curr].members.every(function(sampleIndex) { return newTable[dataIndex][sampleIndex]==0;}) ? 0 : 1);
-                                            	},0);
-                                                newTable[dataIndex][FAMILIES_INDEX]=fc;
-                                                tds[FAMILIES_INDEX].innerHTML = fc+"";
-                                            }
-                                    	}
-                                  });
+                                       createdRow: createVariantRow
+                                   });
         add_display_events();
     };
     
