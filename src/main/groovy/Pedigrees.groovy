@@ -136,6 +136,14 @@ class Pedigrees {
         return result
     }
     
+	Subject motherOf(String id) {
+		subjects[id]?.motherOf(id)
+	}
+    
+	Subject fatherOf(String id) {
+		subjects[id]?.fatherOf(id)
+	}
+        
     void removeFamily(String id) {
         for(String subjectId in families[id].individuals) {
             subjects.remove(subjectId);
@@ -171,7 +179,21 @@ class Pedigrees {
     
     String toJson() {
         return "{" + this.families.collect { id, p ->
-            id + ' : ' + p.toJson() + "\n"
+            "'$id'" + ' : ' + p.toJson() + "\n"
         }.join(",") + "}"
     }
+    
+    void save(String fileName) {
+        new File(fileName).withWriter { w -> save(w) }
+    }
+    
+    void save(Writer w) {
+        this.families.each { id, ped ->
+            ped.toPed(w)
+        }
+    }
+    
+	Subject getAt(String id) {
+		subjects[id]?.individuals.find { it.id == id }
+	}
 }
