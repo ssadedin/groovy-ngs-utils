@@ -131,6 +131,15 @@ class Schema {
         """
                 CREATE INDEX sample_batch_cohort_idx ON sample_batch (cohort);
         """
+        ],
+     6: [
+            """
+                    alter table variant add column gene text;
+            """,
+
+            """
+                    CREATE INDEX gene_index ON variant (gene);
+            """
         ]
     ]
     

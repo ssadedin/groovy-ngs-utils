@@ -359,13 +359,18 @@ class VariantDB implements Closeable {
                 
                 if(annotations == null && v.header.hasInfo("CSQ")) {
                     def vep = v.getVepInfo()[allele.index]
+                    if(!vep)
+                    	vep = [:]
+                        
                     def cons = v.getConsequence(allele.index)
                     if(cons != null && cons.indexOf("(")>=0) 
                         cons = cons.substring(0, cons.indexOf("("))
                     db.execute("""
-                        insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id) 
-                                    values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, ${vep?.SIFT}, ${vep?.PolyPhen}, ${vep?.Condel}, 
-                                           ${cons}, $v.maxVepMaf, $v.id);
+                        insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id, gene) 
+                                    values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, $vep.SIFT, $vep.PolyPhen, $vep.Condel, 
+                                           ${cons}, $v.maxVepMaf, $v.id, 
+                                           $vep.SYMBOL
+                        );
                     """)
                 }
                 else {
@@ -375,7 +380,9 @@ class VariantDB implements Closeable {
                     
                     float maxFreq = ["ONEKG_FREQ", "ESP_FREQ", "EXAC_FREQ"].collect { getFreq(it,annotations) }.max()
                     String aaChange = getAnnotation("AACHANGE", annotations)
-                    db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id) 
+                    String gene = annotations.Gene?:""
+					gene = gene.split(";")[0]
+                    db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id, gene) 
                                    values (NULL, $v.chr, 
                                                  $v.pos, 
                                                  $allele.start, $allele.end, 
