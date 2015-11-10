@@ -29,9 +29,18 @@ class RefGenes {
                            "u1","gene", "cdsStartStat","cdsEndStat","exonFrames"]
     
     RefGenes(String sourceFile) {
-       this.refData = new RangedData(sourceFile, 2,4,5)
+       new File(sourceFile).withReader { r ->
+           load(r)
+       }
+    }
+    
+    RefGenes(Reader r) {
+        load(r)
+    }
+    
+    void load(Reader r) {
+       this.refData = new RangedData(r, 2,4,5)
        this.refData.load(columnNames:COLUMN_NAMES, zeroBased:true, readFirstLine:true)
-       
        this.index()
     }
     
