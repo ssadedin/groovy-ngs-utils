@@ -145,9 +145,9 @@ List<VCF> vcfs = opts.is.collect { VCF.parse(it) }
 
 def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") }
 if(noVeps) {
-    System.err.println "This program requires that VCFs have VEP annotations. It appears that the following VCF files you have supplied do not have VEP annotations:"
+    System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering may be ineffective."
     System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
-    System.exit(1)
+    // System.exit(1)
 }
 
 
@@ -211,7 +211,16 @@ new File(opts.o).withWriter { w ->
         if(i++>0 && lastLines > 0)
             w.println ","
         
-        List<Map> veps = v.vepInfo
+        List<Map> veps 
+        try {
+            veps = v.vepInfo
+        }
+        catch(Exception e) {
+            veps =  [
+                    [ Consequence: 'Unknown']
+                ]
+        }
+        
         lastLines = 0
         veps.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
             
