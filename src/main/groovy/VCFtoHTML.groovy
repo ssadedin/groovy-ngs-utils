@@ -9,6 +9,7 @@ cli.with {
     p 'PED file describing relationships between the samples in the data', args:1
     o 'Output HTML file', args:1, required:true
     f 'Comma separated list of families to export', args:1
+    target 'Exclude variants outside this region', args:1
     diff 'Only output variants that are different between the samples'
     maxMaf 'Filter out variants above this MAF', args:1
     tsv 'Output TSV format with the same variants', args:1
@@ -28,6 +29,11 @@ else {
     // Find all the samples
     println "Found samples: " + allSamples
     pedigrees = Pedigrees.fromSingletons(allSamples) 
+}
+
+BED target = null
+if(opts.target) {
+    target = new BED(opts.target).load()
 }
 
 def exportSamples = pedigrees.families.values().collect { it.individuals*.id }.flatten().grep { it in allSamples };
@@ -183,7 +189,12 @@ new File(opts.o).withWriter { w ->
         tsvWriter.writeNext((baseColumns*.key+exportSamples) as String[])
             
     merged.each { v->
+        
+        if(!(v in target))
+            return
+        
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
+        
         List dosages = exportSamples.collect { v.sampleDosage(it) }
         if(dosages.every { it==0})
             return
