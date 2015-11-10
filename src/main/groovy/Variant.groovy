@@ -38,6 +38,7 @@ class SnpEffInfo {
         'START_GAINED',
         'SPLICE_SITE_ACCEPTOR',
         'SPLICE_SITE_DONOR',
+        'FRAME_SHIFT',
         'NON_SYNONYMOUS_CODING',
         'SYNONYMOUS_CODING',
         'EXON',
@@ -68,12 +69,12 @@ class SnpEffInfo {
     ]
 
     /**
-     * One of INS, DEL or SNP
+     * The kind of impact. One of the values from {@link SnpEffInfo#EFFECTS_RANKED}
      */
     String type
     
     /**
-     * The kind of impact. One of the values from {@link SnpEffInfo#EFFECTS_RANKED}
+     * The severity of the impact - HIGH, MODIFIER, MODERATE, LOW
      */
     String impact
     
@@ -91,6 +92,12 @@ class SnpEffInfo {
      * The original subclause within the info line from which
      */
     String info
+    
+    boolean isTruncating() {
+        int index = EFFECTS_RANKED.indexOf(type)  
+        
+        return index >= 0 && index < EFFECTS_RANKED.indexOf('NON_SYNONYMOUS_CODING')
+    }
     
     String toString() {
         "type=$type,gene=$gene,rank=$impact"
@@ -580,7 +587,9 @@ class Variant implements IRegion {
         def ranks = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { (it[1]+" ").split(/\|/)[0] }
         def infos = eff.split(',')
         
-        snpEffInfo = [genes,effs,ranks,infos,txs].transpose().collect { new SnpEffInfo(gene:it[0], type: it[1], impact:it[2], info: it[3], transcript:it[4]) }
+        snpEffInfo = [genes,effs,ranks,infos,txs].transpose().collect { 
+            new SnpEffInfo(gene:it[0], type: it[1], impact:it[2], info: it[3], transcript:it[4]) 
+        }
     }
     
     List<Map<String,Object>> getVepInfo() {
@@ -936,15 +945,28 @@ class Variant implements IRegion {
         }
     }
     
-    String toJson() {
+    /**
+     * Return a JSON string representing the key details about this variant.
+     * <b>Note:</b>
+     * <li>If no sample is provided then the first sample is assumed
+     * <li>The default information such as allele depths refers to the 
+     *     first alternate allele. 
+     * 
+     * @return JSON string representing the variant
+     */
+    String toJson(String sample=null) {
+        int sampleIndex = sample ? header.samples.indexOf(sample) : 0
+        def effect = getMaxEffect()
         JsonOutput.toJson([
             chr : chr,
             alt : alt, 
             type: type,
-            dosage: getDosages()[0],
+            dosage: getDosages()[sampleIndex],
             alleles : this.getAlleles(),
+            depths : [getAlleleDepths(0)[sampleIndex], getAlleleDepths(1)[sampleIndex]],
             info : info
-        ])
+        ] + (effect ? [ truncating : effect.isTruncating(), effect: effect.type, impact: effect.impact ] : [:])
+      )
     }
     
     /**
