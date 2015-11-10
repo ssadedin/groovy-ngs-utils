@@ -617,6 +617,37 @@ class SAM {
         return p
     }
     
+    
+    /**
+     * Return a set of read counts indicating the counts of reads in that overlap the target region.
+     * <p>
+     * 
+     * @todo    this is pretty inefficient compared to how it could be. It makes 2 passes through the data
+     *          where it could do 1.
+     * @param targets
+     * @return Map with keys on_target: reads overlapping target region, and bp_on_target: number of base pairs
+     *         sequenced that overlap the target region, total: total count of reads.
+     */
+    Map<String,Long> countOnTarget(Regions targets) {
+        
+        long total = 0
+        def on_target = this.stream {
+          map { it as Region }.filter { ++total; targets.overlaps(it) }.count { 1 }
+        }
+        
+
+        long totalBp = 0
+        this.stream {
+          map { it as Region }.map { targets.intersect(it)[0] }.filter { it != null }.each { totalBp += it.size() }
+        }
+        
+        [
+          total: total,
+          bp_on_target: totalBp,
+          on_target: on_target
+        ]
+    }
+
     /**
      * Close the underlying SAMFileReader
      */
