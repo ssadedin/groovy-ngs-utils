@@ -10,7 +10,7 @@ class IlluminaFileNameParser {
      */
     boolean strict = Boolean.parseBoolean(System.getProperty("gngs.strict", "true"))
     
-    static enum DIALECT { DEFAULT, MGHA }
+    static enum DIALECT { DEFAULT, MGHA, DSD }
     
     DIALECT dialect = DIALECT.DEFAULT
     
@@ -64,6 +64,11 @@ class IlluminaFileNameParser {
             String machineName = machineNameMatch[0][1]
             result.unit = result.lane + "." + machineName
             result.sample = fileName.substring(0,fileName.indexOf(machineName)-1)
+            
+            if(dialect == DIALECT.DSD) {
+                result.sample = result.sample.replaceAll('(-46X[XY]S{0,1}).*$','$1')
+                result.sample = result.sample.replaceAll('_ML[0-9]{6}_ML[0-9]{6}.*$','')
+            }
         }
         else {
             if(result.lane != UNKNOWN) {
