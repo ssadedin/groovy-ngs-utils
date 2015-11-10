@@ -42,6 +42,8 @@ class RangedData extends Regions {
     String separator='\t'
     
     int genomeZeroOffset=0
+    
+    List<String> columns
 
     public RangedData() {
     }
@@ -78,6 +80,9 @@ class RangedData extends Regions {
         for(PropertyMapper line in tsv) {
             Region r = parseRegion(line)
             r.range.extra = r
+            if(!columns)
+                columns = line.columns*.key
+                
             line.columns.each { String columnName, int index ->
                 if(index != startColumn && index != endColumn && index != chrColumn) {
                     r.setProperty(columnName, line.values[index])
