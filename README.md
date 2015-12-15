@@ -1,5 +1,4 @@
-groovy-ngs-utils
-================
+# Groovy NGS Utils
 
 A collection of utilities for working with next generation (MPS) sequencing data in Groovy
 
@@ -34,3 +33,30 @@ classpath entry (or put it into your .groovy/lib).
 
 Careful attention has been paid to make, wherever possible, operations operate on streaming data so that
 memory is not a bottleneck in manipulating large data sets.
+
+## Building
+
+Clone the repository:
+
+    git clone git@github.com:ssadedin/groovy-ngs-utils.git
+
+Run gradle:
+
+    cd groovy-ngs-utils
+    ./gradlew
+
+
+## Installation
+
+The easiest way is to put the file into your ~/.groovy/lib folder:
+
+    mkdir -p ~/.groovy/lib
+    cp build/libs/groovy-ngs-utils.jar ~/.groovy/lib
+
+This way you can use commands without modifying your classpath at all.
+
+*Note:* In rare circumstances placing a large Groovy library like this into
+your default .groovy/lib path *could* cause some incompatibilities with other
+libraries or tools if they were built with a different version of Groovy. This
+sort of problem is rare, but worth keeping in mind if you find other 
+Groovy based tools give strange errors.
