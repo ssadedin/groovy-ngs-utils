@@ -43,7 +43,7 @@ Clone the repository:
 Run gradle:
 
     cd groovy-ngs-utils
-    ./gradlew
+    ./gradlew jar
 
 
 ## Installation
