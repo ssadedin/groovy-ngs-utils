@@ -1,4 +1,5 @@
 import com.xlson.groovycsv.PropertyMapper;
+import java.util.zip.GZIPInputStream
 
 /**
  * RangedData represents a set of genomic regions with data attached. The data is
@@ -59,7 +60,7 @@ class RangedData extends Regions {
     }
     
     public RangedData(String sourceFile, int chrColumn, int startColumn, int endColumn) {
-        this(new File(sourceFile).newReader(), chrColumn, startColumn, endColumn)
+        this(getReader(sourceFile), chrColumn, startColumn, endColumn)
     }
     
     public RangedData(Reader reader, int chrColumn, int startColumn, int endColumn) {
@@ -104,4 +105,8 @@ class RangedData extends Regions {
                         new GRange(startPosition,endPosition,null))
         return r
     }
+    
+    static getReader(String fileName) {
+       fileName.endsWith(".gz") ? new GZIPInputStream(new FileInputStream(fileName)).newReader() : new File(fileName).newReader()  
+    }  
 }

@@ -1,3 +1,5 @@
+import java.util.zip.GZIPInputStream
+
 /**
  * A thin wrapper around a RangedData object to add some utility functions
  * for accessing DGV data.
@@ -25,7 +27,9 @@ class DGV {
     } 
      
     DGV parse() {
-        this.dgv = Utils.time("Loading DGV data ...") { new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) }
+        this.dgv = Utils.time("Loading DGV data ...") { 
+            new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) 
+        }
         return this
     }
     
