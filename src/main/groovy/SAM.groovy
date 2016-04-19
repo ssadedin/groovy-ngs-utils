@@ -23,7 +23,7 @@ import java.lang.management.OperatingSystemMXBean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import com.sun.management.UnixOperatingSystemMXBean;
+//import com.sun.management.UnixOperatingSystemMXBean;
 
 import groovy.transform.CompileStatic;
 import net.sf.samtools.BAMRecord;
@@ -684,6 +684,7 @@ class SAM {
         return count
     }
     
+    /*
     public static long getOpenFileDescriptorCount() {
         OperatingSystemMXBean osStats = ManagementFactory.getOperatingSystemMXBean();
         if(osStats instanceof UnixOperatingSystemMXBean) {
@@ -691,4 +692,5 @@ class SAM {
         }
         return 0;
     }
+    */
 }
