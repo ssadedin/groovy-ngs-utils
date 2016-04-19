@@ -92,6 +92,8 @@ class VCF implements Iterable<Variant> {
     
     String fileName
     
+    static final int SAMPLE_COLUMN_INDEX = 9
+    
     /**
      * Cached list of VEP columns, when they exist in the VCF file.
      * Lazily populated when getVepColumns() is called.
@@ -312,6 +314,25 @@ class VCF implements Iterable<Variant> {
     }
     
     /**
+     * Change the sample ids for this VCF
+     * 
+     * @param sampleIds
+     */
+    void renameSample(String fromId, String toId) {
+        
+        if(!this.samples.contains(fromId))
+            throw new IllegalArgumentException("VCF does not contain sample $fromId")
+        
+        this.headerLines[-1] = (this.lastHeaderLine[0..<SAMPLE_COLUMN_INDEX] + this.lastHeaderLine[SAMPLE_COLUMN_INDEX..-1].collect {  s ->
+            if(s == fromId)
+                return toId
+            else
+                return s
+        }).join("\t")
+        parseLastHeaderLine()
+    }
+    
+    /**
      * Perform a simplistic (emphasis on simplistic) merge between VCFs.
      * <p>
      * <li>Only works if the genotype fields are identical
@@ -325,7 +346,7 @@ class VCF implements Iterable<Variant> {
     VCF merge(VCF other) {
         
         // Start by copying this VCF
-        BED allVariants = this.toBED()
+        Regions allVariants = this.toBED()
         for(Region otherRegion in other.toBED()) {
             allVariants.addRegion(otherRegion)
         }
@@ -338,8 +359,6 @@ class VCF implements Iterable<Variant> {
         }.join("\t")
         result.headerLines = this.headerLines[1..-2] + [ newLastLine ]
         result.parseLastHeaderLine()
-        
-        println "New samples are $result.samples"
         
         List<String> samples = this.samples + other.samples
         
@@ -363,7 +382,7 @@ class VCF implements Iterable<Variant> {
             Variant myVariant = this.find(v)
             if(myVariant) {
                 // The variant is in my VCF - use the genotypes from there
-                def gts = myVariant.line.split("\t")[9..-1]
+                def gts = myVariant.line.split("\t")[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
                     def gtFields = [myGtFields,gt.split(":")].transpose().collectEntries()
                     commonGtFields.collect { gtField ->
@@ -382,7 +401,7 @@ class VCF implements Iterable<Variant> {
                 // TODO: if different number of alleles in other sample, this
                 // will not work!
                 
-                def gts = otherVariant.line.split("\t")[9..-1]
+                def gts = otherVariant.line.split("\t")[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
                     def gtFields = [otherGtFields,gt.split(":")].transpose().collectEntries()
                     commonGtFields.collect { gtField ->
@@ -429,7 +448,7 @@ class VCF implements Iterable<Variant> {
     void parseLastHeaderLine() {
         this.lastHeaderLine = this.headerLines[-1].split('[\t ]{1,}')
         this.samples = []
-        for(int i=9; i<this.lastHeaderLine.size(); ++i) {
+        for(int i=SAMPLE_COLUMN_INDEX; i<this.lastHeaderLine.size(); ++i) {
             this.samples.add(this.lastHeaderLine[i])
         }
     }
@@ -647,7 +666,7 @@ class VCF implements Iterable<Variant> {
         // Remove the unwanted samples from the last header line
         List<String> lastHeaderFields = lastHeaderLine[0..8] + includeSamples
         p.println lastHeaderFields.join("\t")
-        def indices = includeSamples.collect { s -> samples.indexOf(s) }*.plus(9)
+        def indices = includeSamples.collect { s -> samples.indexOf(s) }*.plus(SAMPLE_COLUMN_INDEX)
         System.err.println "Indices of selected samples are $indices"
         for(Variant v in this) {
             // Only write the variant if it has non-zero dosage for at least one sample
