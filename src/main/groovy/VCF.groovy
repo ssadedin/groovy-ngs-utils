@@ -367,13 +367,16 @@ class VCF implements Iterable<Variant> {
         List<String> otherGtFields = other[0].line.split("\t")[8].split(":")
         List<String> commonGtFields = myGtFields.intersect(otherGtFields)
         
-        println "Common genotype format fields are: " + commonGtFields
+//        println "Common genotype format fields are: " + commonGtFields
         
         int numGtFields = commonGtFields.size()
         
         for(Region r in allVariants) {
             
             Variant v = r.extra
+            
+            if(result.find(v))
+                continue
             
             List fields = (v.line.split("\t") as List)
             List newLine = fields[0..7] + [commonGtFields.join(":")]
@@ -417,6 +420,7 @@ class VCF implements Iterable<Variant> {
                 newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(":") })
             }
             Variant resultVariant = Variant.parse(newLine.join("\t"))
+            
             result.add(resultVariant)
         }
         return result
