@@ -77,6 +77,7 @@ jar {
         return false
     }
 
+    exclude "groovy/**"
     exclude "org/codehaus/**"
     exclude "META-INF/groovy*"
     exclude "META-INF/**/*groovy*"
