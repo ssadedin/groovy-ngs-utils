@@ -474,4 +474,16 @@ class RangeIndexTest {
          
         assert !index.getOverlaps(ptprc.from, ptprc.to).empty 
     }
+    
+    @Test
+    void testSubtractFrom() {
+        RangeIndex index = new RangeIndex()
+        [
+            0..100
+        ].each { index.add(it) }
+         
+        List<Range> result = index.subtractFrom(0, 100)
+       
+        assert result.size() == 0
+    }
 }

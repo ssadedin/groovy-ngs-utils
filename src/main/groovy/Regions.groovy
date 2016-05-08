@@ -276,7 +276,7 @@ class Regions implements Iterable<Region> {
 		if(chrIndex == null)
 			return [start..end-1]
 		
-		return chrIndex.subtractFrom(start,end)
+		return chrIndex.subtractFrom(start,end+1)
 	}
 	
 	/**
@@ -565,7 +565,7 @@ class Regions implements Iterable<Region> {
         Regions result = new Regions()
         allRanges.each { String chr, List<IntRange> ranges ->
             ranges.each { IntRange range ->
-                other.subtractFrom(chr, (int)range.from, ((int)range.to)+1).each { IntRange r ->
+                other.subtractFrom(chr, (int)range.from, ((int)range.to)).each { IntRange r ->
                     result.addRegion(chr, (int)r.from, ((int)r.to)+1)
                 }
             }

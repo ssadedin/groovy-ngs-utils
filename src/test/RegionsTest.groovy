@@ -28,7 +28,57 @@ class RegionsTest {
         Regions result = regions.subtract(other)
         
         result.each { println(it) }
+        
+        assert result.find { it.from == 100 && it.to == 129 }
+        assert result.find { it.from == 120 && it.to == 129 }
+        assert result.find { it.from == 150 && it.to == 159 }
+        
     }
+    
+    @Test
+    void testSubtractSame() {
+        Regions regions = new Regions([
+            new Region("chr1",1..5)
+        ])
+        
+        Regions other = new Regions([
+            new Region("chr1",1..5)
+        ])
+         
+        Regions result = regions.subtract(other)
+        assert result.size() == 0
+    }
+    
+    @Test
+    void testSubtract2Same() {
+        Regions regions = new Regions([
+            new Region("chr1",100..200),
+            new Region("chr1",300..500)
+        ])
+        
+        Regions other = new Regions([
+            new Region("chr1",100..200),
+            new Region("chr1",300..500)
+        ])
+         
+        Regions result = regions.subtract(other)
+        assert result.size() == 0
+    }
+    
+    @Test
+    void testSubtract1bpDiff() {
+        Regions regions = new Regions([
+            new Region("chr1",1..6)
+        ])
+        
+        Regions other = new Regions([
+            new Region("chr1",1..5)
+        ])
+         
+        Regions result = regions.subtract(other)
+        assert result.size() == 1
+        assert result[0].size() == 1
+    }  
     
     @Test
     void testInfiniteLoop() {

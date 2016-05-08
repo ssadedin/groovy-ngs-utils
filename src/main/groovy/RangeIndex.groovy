@@ -372,6 +372,17 @@ class RangeIndex implements Iterable<IntRange> {
        return result.collect { Math.max(it.from, start)..Math.min(it.to, end)}
     }    
     
+    /**
+     * Subtract all the ranges in this range index from the given range and return
+     * the resulting list of ranges.
+     * <p>
+     * <em>Note:</em>both start and end are considered <b>inclusive</b>.
+     * 
+     * @param start
+     * @param end
+     * @return  List of ranges left after the ranges in this RangeIndex are removed from 
+     *          the specified region.
+     */
     List<Range> subtractFrom(int start, int end) {
 
         List<Range> result = []
@@ -397,8 +408,18 @@ class RangeIndex implements Iterable<IntRange> {
             }
             lastRange = r
         }
-        if(lastRange.to<end)
-          result.add((lastRange.to+1)..(end-1))
+        if(lastRange.to<end) {
+          // Important note: Groovy IntRange will reverse to and from
+          // if from > to. So, we can't construct the range until after we 
+          // do the test here about whether to > from
+          // alternatively we could have used rangeToAdd.@to / rangeToAdd.@from
+          int fromPos = (lastRange.to+1)
+          int toPos = (end-1)
+          if(toPos >= fromPos) {
+              IntRange rangeToAdd = fromPos..toPos 
+              result.add(rangeToAdd)
+          }
+        }
         return result
     }    
     
