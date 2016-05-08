@@ -946,6 +946,45 @@ class Variant implements IRegion {
     }
     
     /**
+     * Return the distance of the balance of the default allele from 0.5
+     * for the default alternate allele and first sample
+     * 
+     * @return
+     */
+    float getAlleleBalance() {
+        return getAlleleBalance(1,0,0)
+    }
+    
+    /**
+     * Return the maximum allele balance for any sample for the default
+     * alternate allele.
+     * 
+     * @return
+     */
+    float getMaxAlleleBalance() {
+        (0..<header.samples.size()).collect { getAlleleBalance(1,0,it) }.max()
+    }
+    
+    /**
+     * Return the distance of the balance of the default allele from 0.5
+     * for the specififed alternate allele (reference = 0)
+     * 
+     * @return
+     */
+    float getAlleleBalance(int allele1, int allele2, int sampleIndex=0) {
+        List<Integer> ads1 = getAlleleDepths(allele1)
+        List<Integer> ads2 = getAlleleDepths(allele2)
+        
+        if(ads1[sampleIndex] == 0)
+            return 0
+            
+        if(ads2[sampleIndex] == 0)
+            return 0
+            
+        return Math.abs(0.5 - ((float)ads1[sampleIndex] / (ads2[sampleIndex] + ads1[sampleIndex])))
+    }
+     
+    /**
      * Return a JSON string representing the key details about this variant.
      * <b>Note:</b>
      * <li>If no sample is provided then the first sample is assumed
