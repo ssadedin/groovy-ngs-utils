@@ -22,6 +22,7 @@ import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import groovy.stream.Stream;
 
 //import com.sun.management.UnixOperatingSystemMXBean;
 
@@ -39,7 +40,7 @@ import net.sf.samtools.SAMRecordIterator;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
-/**
+/*
  * An alternate alignment for a read. 
  * eg: constructed from the XA tag as output by bwa aln.
  * 
@@ -50,23 +51,38 @@ class XA {
     int pos
     String cigar
     int nm
-    
+
     public String toString() {
         "[$chr:$pos $cigar NM=$nm]"
     }
 }
 
 class SAMRecordCategory {
-   @CompileStatic
-   static List<XA> getAlternateAlignments(BAMRecord record) {
-       String xas = record.getAttribute("XA")
-       if(!xas)
-           return null
-       return xas.split(';').collect { String xa ->
-         String [] parts = xa.split(',')
-         new XA( chr: parts[0], pos: parts[1].substring(1) as Integer, cigar:parts[2],  nm : parts[-1] as Integer)
-       }
-   }
+    @CompileStatic
+    static List<XA> getAlternateAlignments(BAMRecord record) {
+        String xas = record.getAttribute("XA")
+        if(!xas)
+            return null
+        return xas.split(';').collect { String xa ->
+            String [] parts = xa.split(',')
+            new XA( chr: parts[0], pos: parts[1].substring(1) as Integer, cigar:parts[2],  nm : parts[-1] as Integer)
+        }
+    }
+    
+    @CompileStatic
+    static Object asType(SAMRecord r, Class clazz) {
+        new Region(r.referenceName, Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
+    }
+    
+    @CompileStatic
+    static Object asType(BAMRecord r, Class clazz) {
+        new Region(r.referenceName, Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
+    } 
+    
+    @CompileStatic
+    static Object toRegion(BAMRecord r) {
+        new Region(r.referenceName, Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
+    }  
 }
 
 /**
@@ -109,33 +125,33 @@ class SAMRecordCategory {
  * @author simon.sadedin@mcri.edu.au
  */
 class SAM {
-    
+
     SAMFileReader samFileReader;
-    
+
     File samFile
-    
+
     File indexFile
-    
+
     int minMappingQuality = 1
-    
+
     static boolean progress = false
-    
+
     static {
         // Picard has started doing some really verbose logging - turn it off by default
         // and let the user turn it back on with this property if they want it
         if("true" != System.properties.picardLogging)
             net.sf.picard.util.Log.setGlobalLogLevel(net.sf.picard.util.Log.LogLevel.WARNING)
     }
-    
+
     SAM(String fileName) {
         this(new File(fileName))
     }
-    
+
     SAM(File file) {
         this.samFile = file
         if(!this.samFile.exists())
             throw new FileNotFoundException("BAM/CRAM file could not be opened at ${samFile.absolutePath}")
-            
+
         String indexExt;
         String fileExt;
         if(file.name.endsWith(".bam") || file.name.endsWith(".cram")) {
@@ -144,24 +160,24 @@ class SAM {
         }
         else
             throw new IllegalArgumentException("This class only supports BAM or CRAM files. File type $file is not supported")
-                
+
         this.indexFile = new File(samFile.absolutePath + indexExt)
-        
-        if(!indexFile.exists()) 
+
+        if(!indexFile.exists())
             indexFile = new File(samFile.absolutePath.replaceAll("$fileExt\$",'')+indexExt)
-        
+
         if(!indexFile.exists())
             throw new FileNotFoundException("Please ensure your BAM / SAM / CRAM file is indexed. File $indexFile could not be found.")
-            
+
         SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
         this.samFileReader = newReader()
-        
+
     }
-    
+
     SAMFileReader newReader() {
-        new SAMFileReader(samFile, indexFile, false)         
+        new SAMFileReader(samFile, indexFile, false)
     }
-    
+
     /**
      * Return a new SAMFileWriter configured with the same settings as this 
      * SAM. It is the caller's responsibility to close the writer.
@@ -175,7 +191,7 @@ class SAM {
         SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFileName))
         return w
     }
-    
+
     /**
      * Return a new SAMFileWriter configured with the same settings as this 
      * SAM. It is the caller's responsibility to close the writer.
@@ -194,25 +210,25 @@ class SAM {
             w.close()
         }
     }
-    
+
     /**
      * Iterate over each record in the same file in the order they are in the file
      * @param c
      */
     void eachRecord(Closure c) {
         use(SAMRecordCategory) {
-          SAMRecordIterator i = samFileReader.iterator()
-          try {
-              while(i.hasNext()) {
-                  c(i.next())
-              }
-          }
-          finally {
-              i.close()
-          }
+            SAMRecordIterator i = samFileReader.iterator()
+            try {
+                while(i.hasNext()) {
+                    c(i.next())
+                }
+            }
+            finally {
+                i.close()
+            }
         }
     }
-    
+
     /**
      * Call the given closure for every pair of reads in a BAM file containing paired end reads.
      * <p>
@@ -229,7 +245,7 @@ class SAM {
         SAMRecordIterator iter = samFileReader.iterator()
         eachPair(iter,c)
     }
-    
+
     /**
      * Call the given closure for every pair of reads in a BAM file containing paired end reads.
      * <p>
@@ -254,7 +270,7 @@ class SAM {
                         progress.count()
                         if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
                             continue
-                            
+
                         if(buffer.containsKey(r1.readName)) {
                             c(r1,buffer[r1.readName])
                             buffer.remove(r1.readName)
@@ -263,38 +279,38 @@ class SAM {
                             buffer[r1.readName] = r1
                         }
                     }
-                    
+
                     // Run down the buffer
-    //                buffer.each { String readName, r1 ->  
-    //                    c(r1, null)
-    //                }
+                    //                buffer.each { String readName, r1 ->
+                    //                    c(r1, null)
+                    //                }
                 }
                 finally {
                     pairReader.close()
                 }
             }
         }
-        finally { 
+        finally {
             iter.close()
         }
     }
-    
+
     void eachPair(Region r, Closure c) {
         this.eachPair(r.chr, r.from, r.to)
     }
-    
+
     void eachPair(String chr, Closure c) {
         this.eachPair(chr, 0, 0, c) // Note Picard convention: 0 represents start and end of reference sequence
-    }    
-    
+    }
+
     @CompileStatic
     void eachPair(String chr, int start, int end, Closure c) {
         SAMRecordIterator<SAMRecord> iter
-        if(chr) 
+        if(chr)
             iter = samFileReader.query(chr, start,end,false)
         else
             iter = samFileReader.iterator()
-            
+
         try {
             eachPair(iter,c)
         }
@@ -302,7 +318,7 @@ class SAM {
             iter.close()
         }
     }
-    
+
     /**
      * Count the number of read pairs in the given region
      * @param r region to count pairs over
@@ -311,7 +327,7 @@ class SAM {
     int countPairs(Region r) {
         countPairs(r.chr, r.from, r.to)
     }
-    
+
     @CompileStatic
     int countPairs(String chr, int start, int end) {
         int c = 0;
@@ -320,46 +336,46 @@ class SAM {
         }
         return c
     }
-    
+
     void eachRecord(int threads, Closure c) {
         List<SAMSequenceRecord> sequences = samFileReader.fileHeader.sequenceDictionary.sequences
         ExecutorService executor = Executors.newFixedThreadPool(threads)
         sequences.each { seq ->
-          executor.execute {
-              def reader = new SAMFileReader(samFile, indexFile, false)
-              try {
-                use(SAMRecordCategory) {
-                  Iterator i = reader.query(seq.sequenceName, 1, seq.sequenceLength, false)
-                  while(i.hasNext()) {
-                      c(i.next())
-                  }
+            executor.execute {
+                def reader = new SAMFileReader(samFile, indexFile, false)
+                try {
+                    use(SAMRecordCategory) {
+                        Iterator i = reader.query(seq.sequenceName, 1, seq.sequenceLength, false)
+                        while(i.hasNext()) {
+                            c(i.next())
+                        }
+                    }
                 }
-              }
-              finally {
-                  reader.close()
-              }
-          }
+                finally {
+                    reader.close()
+                }
+            }
         }
         executor.shutdown()
     }
-    
+
     List<SAMReadGroupRecord> getReadGroups() {
         samFileReader.getFileHeader().getReadGroups()
     }
-    
+
     List<String> getSamples() {
         samFileReader.getFileHeader().getReadGroups()*.sample
     }
-    
+
     void filter(Closure c) {
         filter("/dev/stdout",c)
     }
-    
+
     @CompileStatic
     void filter(String outputFile, Closure c) {
-        
+
         SAMFileReader reader = new SAMFileReader(samFile, indexFile, false)
-        
+
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = reader.fileHeader
         SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFile))
@@ -367,28 +383,28 @@ class SAM {
         int count = 0
         long lastPrintMs = System.currentTimeMillis()
         try {
-          while(i.hasNext()) {
-              SAMRecord r = (SAMRecord)i.next()
-              if(c(r) == true) {
-                  w.addAlignment(r)
-              }
-              if(count % 1000 == 0) {
-                  if(System.currentTimeMillis() - lastPrintMs > 15000) {
-                      System.err.println "${new Date()} Processed $count records"
-                      lastPrintMs = System.currentTimeMillis()
-                  }
-              }
-          }
+            while(i.hasNext()) {
+                SAMRecord r = (SAMRecord)i.next()
+                if(c(r) == true) {
+                    w.addAlignment(r)
+                }
+                if(count % 1000 == 0) {
+                    if(System.currentTimeMillis() - lastPrintMs > 15000) {
+                        System.err.println "${new Date()} Processed $count records"
+                        lastPrintMs = System.currentTimeMillis()
+                    }
+                }
+            }
         }
         finally {
             if(i != null)
                 i.close()
-                
+
             if(w)
                 w.close()
         }
     }
-    
+
     /**
      * Return the number of mapped reads overlapping the given position
      * 
@@ -401,12 +417,12 @@ class SAM {
     int coverage(String chr, int pos, Closure c=null) {
         return coverage(this.samFileReader, chr, pos, -1, c, minMappingQuality)
     }
-    
+
     @CompileStatic
     int coverage(String chr, int pos, int end, Closure c=null) {
         return coverage(this.samFileReader, chr, pos, end, c, minMappingQuality)
     }
-    
+
     @CompileStatic
     float meanCoverage(String chr, int pos, int end) {
         int total = 0
@@ -415,7 +431,7 @@ class SAM {
         }
         return ((float)total)/ (end - pos + 1)
     }
-    
+
     /**
      * Create a DescriptiveStatistics object
      */
@@ -426,7 +442,7 @@ class SAM {
         ProgressCounter progress = null
         if(this.progress)
             progress = new ProgressCounter(withTime:true, withRate:true)
-            
+
         this.pileup(chr, pos, end) { PileupIterator.Pileup p ->
             stats.addValue(p.alignments.size())
             if(this.progress)
@@ -434,7 +450,7 @@ class SAM {
         }
         stats
     }
-    
+
     @CompileStatic
     CoverageStats coverageStatistics(Regions regions) {
         CoverageStats stats = new CoverageStats(10000)
@@ -454,17 +470,17 @@ class SAM {
         }
         stats
     }
-    
+
     Regions asType(Class clazz) {
         if(clazz == Regions) {
             return toRegions()
         }
     }
-    
+
     Regions toRegions(Region overlapping) {
         toRegions(overlapping.chr, overlapping.from, overlapping.to)
     }
-    
+
     /**
      * Return reads from this SAM file that overlap the specified region
      * as a Regions object - that is, as a set of genomic intervals.
@@ -481,39 +497,85 @@ class SAM {
      */
     @CompileStatic
     Regions toRegions(String chr=null, int start=0, int end=0) {
-      Regions regions = new Regions()
-      
-      SAMRecordIterator i = null
-      if(chr == null)
-          i = samFileReader.iterator()
-      else {
+        Regions regions = new Regions()
+
+        SAMRecordIterator i = null
+        if(chr == null)
+            i = samFileReader.iterator()
+        else {
             i = samFileReader.query(chr, start, end, false)
-      }
-            
-      ProgressCounter progress = new ProgressCounter()
-      try {
-          while(i.hasNext()) {
-              SAMRecord r = (SAMRecord)i.next()
-              
-              // Ignore records with no start or no end position
-              if(r.alignmentStart <= 0 || r.alignmentEnd <= 0)
-                  continue
-              
-              Region region = new Region(r.getReferenceName(), 
-                      Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
-              
-              region.range = new GRange((int)region.range.from,(int)region.range.to,region)
-              region.setProperty('read',r)
-              regions.addRegion(region)
-              progress.count()
-          }
-      }
-      finally {
-          i.close()
-      }            
-      return regions
+        }
+
+        ProgressCounter progress = new ProgressCounter()
+        try {
+            while(i.hasNext()) {
+                SAMRecord r = (SAMRecord)i.next()
+
+                // Ignore records with no start or no end position
+                if(r.alignmentStart <= 0 || r.alignmentEnd <= 0)
+                    continue
+
+                Region region = new Region(r.getReferenceName(),
+                                Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
+
+                region.range = new GRange((int)region.range.from,(int)region.range.to,region)
+                region.setProperty('read',r)
+                regions.addRegion(region)
+                progress.count()
+            }
+        }
+        finally {
+            i.close()
+        }
+        return regions
     }
     
+    def stream(Closure c) {
+        SAMRecordIterator i = null
+        SAMFileReader r = newReader()
+        i = r.iterator()
+        use(SAMRecordCategory) {
+            Stream s = Stream.from(i)
+            c.delegate = s;
+            try {
+                c(s)
+            }
+            finally {
+                r.close()
+            }
+        }
+        
+    }
+    
+    Stream getRegions() {
+        getRegions(null, 0, 0)
+    }
+    
+    Stream getRegions(String chr, int start, int end) {
+
+        ProgressCounter progress = new ProgressCounter()
+        SAMRecordIterator i = null
+        if(chr == null)
+            i = samFileReader.iterator()
+        else {
+            i = samFileReader.query(chr, start, end, false)
+        }
+        
+        Stream.from(i).filter { SAMRecord r ->
+            if(!i.hasNext())
+                i.close()
+            progress.count()
+            r.alignmentStart <= 0 || r.alignmentEnd <= 0
+        }.map { SAMRecord r ->
+            Region region = new Region(r.getReferenceName(),
+                            Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
+
+            region.range = new GRange((int)region.range.from,(int)region.range.to,region)
+            region.setProperty('read',r)
+            region
+        }
+    }
+
     /**
      * Return read pairs from this SAM file that overlap the specified region
      * as a Regions object - that is, as a set of genomic intervals. Each 
@@ -532,32 +594,32 @@ class SAM {
      */
     @CompileStatic
     Regions toPairRegions(String chr=null, int start=0, int end=0, int maxSize=0) {
-      Regions regions = new Regions()
-      
-      ProgressCounter progress = new ProgressCounter()
-      this.eachPair(chr,start,end) { SAMRecord r1, SAMRecord r2 ->
-          int [] boundaries = Utils.array(r1.alignmentStart, r1.alignmentEnd, r2.alignmentStart, r2.alignmentEnd)
-          if(boundaries.any { it == 0})
+        Regions regions = new Regions()
+
+        ProgressCounter progress = new ProgressCounter()
+        this.eachPair(chr,start,end) { SAMRecord r1, SAMRecord r2 ->
+            int [] boundaries = Utils.array(r1.alignmentStart, r1.alignmentEnd, r2.alignmentStart, r2.alignmentEnd)
+            if(boundaries.any { it == 0})
                 return
-                
-          if(r1.referenceName != r2.referenceName)
+
+            if(r1.referenceName != r2.referenceName)
                 return
-          
-          Region region = new Region(r1.referenceName, Utils.min(boundaries)..Utils.max(boundaries))
-          if(maxSize>0 && region.size()>maxSize)
-                  return
-          
-          region.range = new GRange((int)region.range.from,(int)region.range.to,region)
-          region.setProperty('r1',r1)
-          region.setProperty('r2',r2)
-          regions.addRegion(region)
-          progress.count()      
-     }
-      
-      return regions
+
+            Region region = new Region(r1.referenceName, Utils.min(boundaries)..Utils.max(boundaries))
+            if(maxSize>0 && region.size()>maxSize)
+                return
+
+            region.range = new GRange((int)region.range.from,(int)region.range.to,region)
+            region.setProperty('r1',r1)
+            region.setProperty('r2',r2)
+            regions.addRegion(region)
+            progress.count()
+        }
+
+        return regions
     }
-    
-      
+
+
     /**
      * Return the number of mapped reads overlapping the given position
      * 
@@ -571,7 +633,7 @@ class SAM {
     static int coverage(SAMFileReader r, String chr, int pos, int end=-1, Closure c=null, int minMappingQuality=1) {
         if(end == -1)
             end = pos
-            
+
         ProgressCounter counter = new ProgressCounter()
         SAMRecordIterator i = r.query(chr, pos, end, false);
         try {
@@ -584,7 +646,7 @@ class SAM {
                     continue;
                 }
                 if(c == null || c(rec))
-                  ++count;
+                    ++count;
             }
             return count;
         }
@@ -592,24 +654,24 @@ class SAM {
             i.close();
         }
     }
-    
+
     PileupIterator.Pileup pileup(String chr, int pos) {
         return pileup(chr,pos,pos).next()
     }
-    
+
     @CompileStatic
     void pileup(String chr, int start, int end, Closure c) {
         PileupIterator i = pileup(chr,start,end)
         try {
-          while(i.hasNext()) {
-              c(i.next())
-          }
+            while(i.hasNext()) {
+                c(i.next())
+            }
         }
         finally {
             i.close()
         }
     }
-    
+
     @CompileStatic
     PileupIterator pileup(String chr, int start, int end) {
         PileupIterator p = new PileupIterator(new SAMFileReader(samFile, indexFile, false), chr,start,end);
@@ -655,7 +717,7 @@ class SAM {
         if(this.samFileReader != null)
             this.samFileReader.close()
     }
-    
+
     /**
      * Read a BAM or SAM file from standard input and call the given closure for
      * each read contained therein.
@@ -669,7 +731,7 @@ class SAM {
             c(iter.next())
         }
     }
-    
+
     /**
      * Count the total number of reads in the SAM file
      * 
@@ -688,7 +750,7 @@ class SAM {
     public static long getOpenFileDescriptorCount() {
         OperatingSystemMXBean osStats = ManagementFactory.getOperatingSystemMXBean();
         if(osStats instanceof UnixOperatingSystemMXBean) {
-           return ((UnixOperatingSystemMXBean)osStats).getOpenFileDescriptorCount();
+            return ((UnixOperatingSystemMXBean)osStats).getOpenFileDescriptorCount();
         }
         return 0;
     }
