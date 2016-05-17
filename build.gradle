@@ -70,14 +70,15 @@ jar {
     }
 
     exclude { details ->
-        if(details.file.path.startsWith("groovy/stream"))
+
+        if(details.relativePath.pathString.startsWith("groovy/stream")) {
             return false
-        if(details.file.path.startsWith("groovy/"))
+        }
+        if(details.relativePath.pathString.startsWith("groovy/"))
             return true
         return false
     }
 
-    exclude "groovy/**"
     exclude "org/codehaus/**"
     exclude "META-INF/groovy*"
     exclude "META-INF/**/*groovy*"
