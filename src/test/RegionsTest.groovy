@@ -80,7 +80,7 @@ class RegionsTest {
         assert result[0].size() == 1
     }  
     
-    @Test
+//    @Test
     void testInfiniteLoop() {
         
         Regions amplicons = new BED(withExtra:true, "/Users/simon/work/dsd/batch3/simulation/design/amplicons_with_enzymes.bed").load()
@@ -183,4 +183,26 @@ class RegionsTest {
         
         assert !r.getOverlaps(ptprc).empty
     }
+    
+    @Test
+    void testWindow() {
+        
+        Regions regions = new Regions([
+            new Region("chr1",100..140),   
+            new Region("chr1",120..160),
+            new Region("chr1",180..190),
+            new Region("chr1",200..220),
+            new Region("chr1",240..260),
+            new Region("chr1",280..290)
+        ])
+        
+        def window = regions.window(regions[2], 2) as Regions
+        
+        println window.join(',')
+        
+        assert window[0].from == 100
+        assert window.numberOfRanges == 5
+        assert window[-1].from == 240
+    }
+    
 }

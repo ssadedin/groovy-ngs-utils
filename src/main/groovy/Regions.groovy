@@ -339,6 +339,39 @@ class Regions implements Iterable<Region> {
 			return null
 		return chrIndex.nextRange(pos)
 	}
+    
+    /**
+     * Return a window of n regions upstream and downstream of the 
+     * given region
+     */
+    List<Region> window(Region r, int n) {
+        
+        List<Region> result = []
+        
+        RangeIndex index = this.index[r.chr]
+        Iterator downstream = index.reverseIteratorAt(r.from)
+        int downstreamCount = 0
+        while(downstream.hasNext() && downstreamCount <= n) {
+            Region downR = new Region(r.chr, downstream.next())
+            if(downR.to != r.to || downR.from != r.from) {
+                ++downstreamCount
+                result.add(0, downR)
+            }
+        }
+        
+        result << r
+        
+        int upstreamCount = 0
+        Iterator upstream = index.iteratorAt(r.to)
+        while(upstream.hasNext() && upstreamCount < n) {
+            Region upR = new Region(r.chr, upstream.next())
+            if(upR.to != r.to || upR.from != r.from) {
+                result << upR
+                ++upstreamCount
+            }
+        }
+        return result
+    }
 	
 	@CompileStatic
 	void remove(String chr, Range r) {
