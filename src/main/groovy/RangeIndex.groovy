@@ -93,7 +93,7 @@ class RangeIndex implements Iterable<IntRange> {
         add(extra != null ? new GRange(startPosition, endPosition-1, extra) : new IntRange(startPosition, endPosition-1))
     }
         
-//    @CompileStatic
+    @CompileStatic
     void add(IntRange newRange) {
        
         // Any existing range over start position?
@@ -113,7 +113,7 @@ class RangeIndex implements Iterable<IntRange> {
             println "NULL VALUE"
         }
         else
-        if(lowerEntry.value[0] == null) {
+        if(lowerEntry.value[0].is(null)) {
             println "VALUE HAS NULL CONTENTS"
         }
             
@@ -125,7 +125,7 @@ class RangeIndex implements Iterable<IntRange> {
                 
             // Add all the overlapping regions from the adjacent lower region to
             // our new breakpoint
-            List<IntRange> lowerSplitRegion =  lowerEntry.value.grep { it.to > startPosition }
+            List<IntRange> lowerSplitRegion =  lowerEntry.value.grep { IntRange lwrRange -> lwrRange.to > startPosition }
                 
             // Add our new range as covered by the split part
             lowerSplitRegion.add(newRange)
@@ -163,7 +163,7 @@ class RangeIndex implements Iterable<IntRange> {
                 // Make a new range from the end of our range to the start of the next higher range
                 // It needs to have the previous range only, not our new range
                 // NOTE: list.clone() causes static compilation to fail with verify error
-                List<IntRange> clonedList = containedEntry.value.grep { endPosition < it.to }
+                List<IntRange> clonedList = containedEntry.value.grep { IntRange range -> endPosition < range.to }
                 ranges[endPosition+1] = clonedList
                 checkRanges(endPosition+1)
             }
@@ -181,7 +181,7 @@ class RangeIndex implements Iterable<IntRange> {
         
         if(!ranges.containsKey(endPosition+1)) {
             if(fullyContained && lowerEntry) {
-                ranges[endPosition+1] = lowerEntry.value.grep { endPosition < it.to }
+                ranges[endPosition+1] = lowerEntry.value.grep { IntRange range -> endPosition < range.to }
             }
             else {
                 ranges[endPosition+1] = []
@@ -196,7 +196,7 @@ class RangeIndex implements Iterable<IntRange> {
         int endPosition = newRange.to
         
         ranges.put(startPosition,[newRange])
-        checkRanges(startPosition)
+//        checkRanges(startPosition)
         
         // If there are any ranges that start before the end of this new range,
         // add a breakpoint, and add this range to the intervening ranges
@@ -205,7 +205,7 @@ class RangeIndex implements Iterable<IntRange> {
         Map.Entry<Integer, List<IntRange>> lastEntry = null
         while(higherEntry && higherEntry.key < endPosition) {
             higherEntry.value.add(newRange)
-            checkRanges(higherEntry.key)
+//            checkRanges(higherEntry.key)
             lastEntry = higherEntry
             higherEntry = ranges.higherEntry(higherEntry.key)
         }
@@ -215,7 +215,7 @@ class RangeIndex implements Iterable<IntRange> {
             if(!ranges.containsKey(endPosition+1)) {
               List newRanges = lastEntry.value.grep { endPosition+1 in it }
               ranges[endPosition+1] = newRanges
-              checkRanges(endPosition+1)
+//              checkRanges(endPosition+1)
             }
         }
         else {
@@ -230,10 +230,17 @@ class RangeIndex implements Iterable<IntRange> {
     
     @CompileStatic
     void checkRanges(int position) {
-        if(ranges[position] == null)
+        return;
+        
+        List<IntRange> rangesAtPosition = ranges.get(position)
+        
+        
+        if(rangesAtPosition == null)
             return 
            
-        ranges[position].each { IntRange r -> assert r.from <= position && r.to>=position : "Range $r.from - $r.to is added incorrectly to position $position" }
+        for(IntRange r in rangesAtPosition) { 
+            assert r.from <= position && r.to>=position : "Range $r.from - $r.to is added incorrectly to position $position" 
+        }
     }
     
     /**
