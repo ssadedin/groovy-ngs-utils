@@ -40,6 +40,21 @@ import net.sf.samtools.SAMRecordIterator;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
+@CompileStatic 
+class SAMRecordPair {
+    SAMRecord r1
+    
+    SAMRecord r2
+    
+    boolean hasBothReads() {
+        r2 != null && r1 != null
+    }
+    
+    boolean isChimeric() {
+        return r1 != null && r2 != null && (r1.referenceIndex != r2.referenceIndex)
+    }
+}
+
 /*
  * An alternate alignment for a read. 
  * eg: constructed from the XA tag as output by bwa aln.
@@ -195,16 +210,35 @@ class SAM {
     /**
      * Return a new SAMFileWriter configured with the same settings as this 
      * SAM. It is the caller's responsibility to close the writer.
+     * In this version of the method the files are assumed to be 
+     * <em>pre-sorted</em>*.
      * 
      * @param outputFileName    Name of file to write to
      * @return SAMFileWriter
      */
     def withWriter(String outputFileName, Closure c) {
+        withWriter(outputFileName, true, c)
+    }
+    
+    def withWriter(String outputFileName, boolean sorted, Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = this.samFileReader.fileHeader
-        SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFileName))
+        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
         try {
             return c(w)
+        }
+        finally {
+            w.close()
+        }
+    }
+    
+    def withOrderedPairWriter(String outputFileName, boolean sorted, Closure c) {
+        SAMFileWriterFactory f = new SAMFileWriterFactory()
+        SAMFileHeader header = this.samFileReader.fileHeader
+        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
+        OrderedPairWriter opw = new OrderedPairWriter(w)
+        try {
+            return c(opw)
         }
         finally {
             w.close()
@@ -245,6 +279,8 @@ class SAM {
         SAMRecordIterator iter = samFileReader.iterator()
         eachPair(iter,c)
     }
+    
+    boolean verbose = false
 
     /**
      * Call the given closure for every pair of reads in a BAM file containing paired end reads.
@@ -261,33 +297,126 @@ class SAM {
     @CompileStatic
     void eachPair(SAMRecordIterator iter, Closure c) {
         SAMFileReader pairReader = newReader()
-        Map<String,SAMRecord> buffer = new HashMap()
+        SAMFileReader randomLookupReader = newReader()
+        Map<String,Integer> buffer = new HashMap()
+        List<SAMRecordPair> writeSpool = new ArrayList(100)
+        SortedMap<Integer,List<SAMRecord>> readPairs = new TreeMap<Integer,List<SAMRecord>>()
+        Set<String> preprocessedReads = new HashSet()
+        int pairs = 0
+        int maxSpoolSize = 2000
+        int forcedQueries = 0
+        String currentChr = null
         try {
-            ProgressCounter.withProgress { ProgressCounter progress ->
-                try {
-                    while(iter.hasNext()) {
-                        SAMRecord r1 = (SAMRecord)iter.next();
-                        progress.count()
-                        if(!r1.getReadPairedFlag() || r1.getReadUnmappedFlag())
-                            continue
-
-                        if(buffer.containsKey(r1.readName)) {
-                            c(r1,buffer[r1.readName])
-                            buffer.remove(r1.readName)
+            ProgressCounter progress = new ProgressCounter(extra:{
+                "Spool Size=${writeSpool.size()} Buffer Size=${buffer.size()} ForcedQueries=$forcedQueries Pairs=${pairs}"
+            }, withRate: true)
+            
+            try {
+                while(iter.hasNext()) {
+                    SAMRecord record = (SAMRecord)iter.next();
+                    
+                    String readName = record.readName
+                    
+                    if(currentChr != null && currentChr != record.referenceName) {
+                        for(SAMRecordPair readPair in writeSpool) {
+                            if(readPair.hasBothReads()) {
+                                c(readPair.r1, readPair.r2)
+                                continue
+                            }
+                            
+                            SAMRecord mate = randomLookupReader.queryMate(readPair.r1)
+                            if(mate != null) {
+                                c(readPair.r1, mate)
+                            }
+                        }
+                        
+                        if(verbose)
+                            println "XX: ${writeSpool.size()} reads ignored because mate never encountered"
+                        writeSpool.clear()
+                        buffer.clear()
+                    }
+                        
+                    progress.count()
+                        
+                    if(!record.getReadPairedFlag() || record.getReadUnmappedFlag())
+                        continue
+                        
+                    if((record.referenceIndex != record.mateReferenceIndex) || record.isSecondaryOrSupplementary()) {
+                        if(verbose)
+                            println "Chimeric / non-primary alignment: " + record.referenceName + ":" + record.alignmentStart
+                        continue
+                    }
+                            
+                    if(readName in preprocessedReads) {
+//                        println "XX: Already processed $r1.readName"
+                        preprocessedReads.remove(readName)
+                        continue
+                    }
+                    
+                    currentChr = record.referenceName
+                    
+                    Integer pairIndex = buffer[readName]
+                    if(pairIndex == null) {
+                        buffer[readName] = writeSpool.size()
+                        if(verbose)
+                            println "XX: Buffer read $readName $record.referenceName:$record.alignmentStart (spool position ${writeSpool.size()})"
+                        writeSpool << new SAMRecordPair(r1:record)
+                        continue
+                    }
+                    
+                    if(pairIndex >= writeSpool.size())
+                        pairIndex = writeSpool.size()-1
+                        
+                    while(writeSpool.get(pairIndex).r1.readName != readName)
+                        --pairIndex
+                        
+                    if(verbose)
+                        println "XX: Pair found for $readName at $pairIndex ($record.referenceName:$record.alignmentStart)"
+                    writeSpool[pairIndex].r2 = record
+                    
+                    if(writeSpool.size()>maxSpoolSize) {
+                        SAMRecord mate = randomLookupReader.queryMate(writeSpool[0].r1)
+//                        assert writeSpool[0].r2 != null
+                        if(mate != null) {
+                            if(verbose)
+                                println "XX: Pair found for ${writeSpool[0].r1.readName} (${writeSpool[0].r1.alignmentStart}, ${mate.alignmentStart}) by random lookup "
+                            writeSpool[0].r2 = mate
+                            preprocessedReads.add(mate.readName)
                         }
                         else {
-                            buffer[r1.readName] = r1
+                            SAMRecord mateless = writeSpool.remove(0).r1
+                            if(verbose)
+                                println "XX: Read $mateless.readName has no mates :-("
                         }
+                        ++forcedQueries
                     }
+                    else
+                    if(pairIndex > 0) {
+                        continue
+                    }
+   
+                    while(writeSpool[0]?.hasBothReads()) {
+                        SAMRecordPair pair = writeSpool.remove(0)
+                        String writeReadName = pair.r1.readName
+                        if(verbose)
+                            println "XX: write pair $writeReadName ($pair.r1.referenceName:$pair.r1.alignmentStart, $pair.r2.referenceName:$pair.r2.alignmentStart)"
+                        c(pair.r1, pair.r2)
+                        ++pairs
+                        buffer.remove(writeReadName)
+                    }
+                }
 
-                    // Run down the buffer
-                    //                buffer.each { String readName, r1 ->
-                    //                    c(r1, null)
-                    //                }
-                }
-                finally {
-                    pairReader.close()
-                }
+                // Run down the buffer
+                //                buffer.each { String readName, r1 ->
+                //                    c(r1, null)
+                //                }
+                
+                println "Remining items in buffer: " + buffer
+            }
+            finally {
+                pairReader.close()
+                randomLookupReader.close()
+                progress.end()
             }
         }
         finally {
@@ -599,15 +728,17 @@ class SAM {
         ProgressCounter progress = new ProgressCounter()
         this.eachPair(chr,start,end) { SAMRecord r1, SAMRecord r2 ->
             int [] boundaries = Utils.array(r1.alignmentStart, r1.alignmentEnd, r2.alignmentStart, r2.alignmentEnd)
-            if(boundaries.any { it == 0})
+            if(boundaries.any { it == 0}) {
                 return
+            }
 
             if(r1.referenceName != r2.referenceName)
                 return
 
             Region region = new Region(r1.referenceName, Utils.min(boundaries)..Utils.max(boundaries))
-            if(maxSize>0 && region.size()>maxSize)
+            if(maxSize>0 && region.size()>maxSize) {
                 return
+            }
 
             region.range = new GRange((int)region.range.from,(int)region.range.to,region)
             region.setProperty('r1',r1)
