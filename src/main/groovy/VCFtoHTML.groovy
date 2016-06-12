@@ -3,16 +3,40 @@ import groovy.xml.StreamingMarkupBuilder
 
 int count = 1
 
+class VCFSummaryStats {
+    
+    int total = 0
+    
+    int excludeByDiff = 0
+    
+    int excludeByCons = 0
+    
+    int excludeByMaf = 0
+    
+    int excludeByTarget = 0
+    
+    int excludeNotPresent = 0
+    
+    int excludeByFilter = 0
+    
+    int totalIncluded
+    
+}
+
 Cli cli = new Cli(usage:"VCFtoHTML <options>")
 cli.with {
     i 'vcf File', args: Cli.UNLIMITED, required:true
     p 'PED file describing relationships between the samples in the data', args:1
     o 'Output HTML file', args:1, required:true
     f 'Comma separated list of families to export', args:1
+    a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
     target 'Exclude variants outside this region', args:1
+    chr 'Confine analysis to chromosomel', args:Cli.UNLIMITED
     diff 'Only output variants that are different between the samples'
     maxMaf 'Filter out variants above this MAF', args:1
+    maxVep 'Only write a single line for each variant, containing the most severe consequence'
     tsv 'Output TSV format with the same variants', args:1
+    filter 'A groovy expression to be used as a filter', args: Cli.UNLIMITED
 }
 
 opts = cli.parse(args)
@@ -52,21 +76,108 @@ if(exportSamples.empty) {
 }
     
 
+
 float MAF_THRESHOLD=0.05
 if(opts.maxMaf) 
     MAF_THRESHOLD=opts.maxMaf.toFloat()
+
+List<String> filters = []
+if(opts.filters) {
+    filters = opts.filters 
+}        
+
+List<VCF> vcfs 
+if(opts.chrs) {
+   vcfs = opts.is.collect { VCF.parse(it) { it.chr in opts.chrs } }
+}
+else {
+   vcfs = opts.is.collect { VCF.parse(it) }
+}
+
+// -------- Handle duplicate sample ids ----------------
+// If VCFs have samples with the same id, we now need to rename them to get a sensible result
+// We also have to rename any instance of those in the "exportSamples" since they must match
+// for export to work
+List accumulatedSamples = vcfs[0].samples.clone()
+int n = 0
+if(vcfs.size() > 1) {
+    for(VCF vcf in vcfs[1..-1]) {
+        vcf.samples.collect { s ->
+            String newSample = s
+            int i = 1
+            while(newSample in accumulatedSamples) {
+                newSample = s + "_$i"    
+                ++i
+            }
+            if((newSample != s) && (s in exportSamples)) {
+                println "Rename sample $s to $newSample in vcf $n"
+                exportSamples << newSample
+                if(pedigrees.subjects[s]) {
+                    pedigrees.subjects[s].copySubject(s, newSample)
+                    pedigrees.subjects[newSample] = pedigrees.subjects[s]
+                }
+                    
+                vcf.renameSample(s, newSample)
+            }
+            accumulatedSamples << newSample
+            return newSample
+        }
+        ++n
+    }
+}
+
+println "Pedigree subjects are " + pedigrees.subjects.keySet()
+
+// -------- Handle Aliasing of Samples ----------------
+aliases = null
+if(opts.a) {
+    aliases = opts['as'].collect { it.split "," }
+    
+    Map<String,String> sampleMap = [ vcfs*.samples.flatten(), aliases.flatten() ].transpose().collectEntries()
+    
+    println "Sample map = " + sampleMap
+    
+    vcfs.each { VCF vcf ->
+        for(String s in vcf.samples) {
+            if(s in pedigrees.subjects.keySet()) { // may have been removed by filter on export samples
+                println "Pedigree rename $s => " + sampleMap[s]
+                pedigrees.renameSubject(s, sampleMap[s])
+            }            
+            vcf.renameSample(s, sampleMap[s])
+        }
+    }
+    
+    exportSamples = exportSamples.collect { id -> sampleMap[id] }
+}
+
+println "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.join(" ")
+println "Export samples are: " + exportSamples
+
+def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") }
+if(noVeps) {
+    System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering may be ineffective."
+    System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
+    // System.exit(1)
+}
+
+    
     
 def js = [
     "http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.1.0.min.js",
     "http://cdn.datatables.net/1.10.0/js/jquery.dataTables.min.js",
     "http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js",
-    "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/jquery.layout.min.js"
+    "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/jquery.layout.min.js",
+    "http://igv.org/web/beta/igv-beta.js"
 ]
 
 def css = [
     "http://cdn.datatables.net/1.10.0/css/jquery.dataTables.css",
-    "//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css",
-    "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/layout-default.css"
+    "http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css",
+    "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/layout-default.css",
+    "http://fonts.googleapis.com/css?family=PT+Sans:400,700",
+    "http://fonts.googleapis.com/css?family=Open+Sans'",
+    "http://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css",
+    "http://igv.org/web/beta/igv-beta.css"
 ]
 
 def EXCLUDE_VEP = ["synonymous_variant","intron_variant","intergenic_variant","upstream_gene_variant","downstream_gene_variant","5_prime_UTR_variant"]
@@ -118,6 +229,7 @@ findMaxMaf = { vep ->
 
 def baseColumns = new LinkedHashMap()
 baseColumns += [
+    'tags' : {''}, // reserved for tags
     'chr' : {it.chr },
     'pos' : {it.pos },
     'ref': {it.ref },
@@ -141,21 +253,32 @@ def vepColumns = [
     'maf'  : findMaxMaf
 ]
 
-List<VCF> vcfs = opts.is.collect { VCF.parse(it) }
-
-def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") }
-if(noVeps) {
-    System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering may be ineffective."
-    System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
-    // System.exit(1)
-}
-
 
 def tsvWriter = null
 if(opts.tsv)
     tsvWriter = new CSVWriter(new File(opts.tsv).newWriter(), '\t' as char)
 
+    
+VCFSummaryStats stats = new VCFSummaryStats()
+    
 new File(opts.o).withWriter { w ->
+   
+    // Merge all the VCFs together
+    VCF merged = vcfs[0]
+    
+    if(vcfs.size()>1) {
+        vcfs[1..-1].eachWithIndex { vcf, vcfIndex ->
+            Utils.time("Merge VCF $vcfIndex") {
+                 merged = merged.merge(vcf) 
+            }
+        }
+    }
+        
+    println "Merged samples are " + merged.samples
+    
+    if(opts.tsv) 
+        tsvWriter.writeNext((baseColumns*.key+ vepColumns*.key +exportSamples) as String[])
+            
     w.println """
     <html>
         <head>
@@ -179,33 +302,34 @@ new File(opts.o).withWriter { w ->
     int i=0;
     int lastLines = 0
     Variant last = null;
-    
-    // Merge all the VCFs together
-    VCF merged = vcfs[0]
-    if(vcfs.size()>1)
-        vcfs[1..-1].each { merged = merged.merge(it) }
-    
-    if(opts.tsv) 
-        tsvWriter.writeNext((baseColumns*.key+exportSamples) as String[])
-            
     merged.each { v->
         
-        if(!(v in target))
+        ++stats.total
+        
+        if((target != null) && !(v in target)) {
+            ++stats.excludeByTarget
             return
+        }
         
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
-        
         List dosages = exportSamples.collect { v.sampleDosage(it) }
-        if(dosages.every { it==0})
+        if(dosages.every { it==0}) {
+            ++stats.excludeNotPresent
+            if(!opts.f) {
+                println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
+            }
             return
+        }
             
-        if(opts.diff && dosages.unique().size()==1)    
+        if(opts.diff && dosages.clone().unique().size()==1)  {
+            ++stats.excludeByDiff
             return
+        }
             
         def refCount = v.getAlleleDepths(0)
         def altCount = v.getAlleleDepths(1)
         
-        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
+//        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
         
         
         if(i++>0 && lastLines > 0)
@@ -213,7 +337,12 @@ new File(opts.o).withWriter { w ->
         
         List<Map> veps 
         try {
-            veps = v.vepInfo
+            if(opts.maxVep) { 
+                veps = [v.maxVep]
+            }
+            else {
+                veps = v.vepInfo
+            }
         }
         catch(Exception e) {
             veps =  [
@@ -222,26 +351,49 @@ new File(opts.o).withWriter { w ->
         }
         
         lastLines = 0
+        boolean excludedByCons = true
+        boolean printed = false
         veps.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
             
-            if(EXCLUDE_VEP.contains(vepColumns['cons'](vep)))
+            if(EXCLUDE_VEP.contains(vepColumns['cons'](vep))) {
                 return
-                
-            if(findMaxMaf(vep)>MAF_THRESHOLD) 
+            }
+            excludedByCons = false
+            
+            if(findMaxMaf(vep)>MAF_THRESHOLD)  {
+                ++stats.excludeByMaf
                 return
+            }
+            
+            if(!filters.every { Eval.x(v, it) }) {
+                ++stats.excludeByFilter
+                return
+            }
             
             if(lastLines>0)
                 w.println ","
                 
             List vepInfo = vepColumns.collect { name, func -> func(vep) }
             w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+//            println(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+            
+            printed = true
             
             if(opts.tsv)
                 tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
 
             ++lastLines
         }
+        
+        if(printed) {
+            ++stats.totalIncluded
+        }
+        
         last = v;
+        if(excludedByCons)
+            ++stats.excludeByCons
+        
+        
     }
     w.println """];"""
     
@@ -259,9 +411,28 @@ new File(opts.o).withWriter { w ->
     </script>
     <style type='text/css'>
     td.vcfcol { text-align: center; }
-    tr.highlight {
+    tr.highlight, tr.highlighted {
         background-color: #ffeeee !important;
     }
+
+    #tags { float: right; }
+            
+    .assignedTag, .rowTagDiv {
+        background-color: red;
+        border-radius: 5px;
+        color: white;
+        display: inline;
+        padding: 3px 5px;
+        font-size: 75%;
+        margin: 3px;
+    }
+    .rowTagDiv { font-size: 55%; }
+    .tag0 { background-color: #33aa33; }
+    .tag1 { background-color: #3333ff; }
+    .tag2 { background-color: #aa33aa; }
+    .tag3 { background-color: #ff6600; }
+    .unassignedTag { display: none; }
+
     </style>
     """;
     
@@ -288,3 +459,9 @@ new File(opts.o).withWriter { w ->
 
 if(tsvWriter != null)
     tsvWriter.close()
+
+println " Summary ".center(80,"=")
+    
+["total", "excludeByDiff", "excludeByCons", "excludeByMaf", "excludeByFilter", "excludeByTarget", "excludeNotPresent","totalIncluded"].each {
+    println it.padLeft(20) + " :" + stats[it]
+}

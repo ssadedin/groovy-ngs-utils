@@ -82,8 +82,15 @@ var affectedSampleIndexes = [];
 var familyIndexes = {};
 var rowProperties = [];
 var highlightLink = null;
+var highlightTr = null;
+
+/* Tag Support */
+var allTags = [];
+var userAnnotations = { 
+    tags : {} 
+};
     
-(function ( $, window, document, undefined ) {
+(function ($, window, document, undefined ) {
 
     var variantTable = null;
     var tableData = []
@@ -98,6 +105,8 @@ var highlightLink = null;
     $.VariantTable = function(tableId, samples, variants) {
         
         sampleSubjects = indexSubjects(pedigrees);
+        AD_INDEX = nonSampleColumnCount + sampleCount;
+
         familyIndexes = indexFamilies(pedigrees);
         for(f in familyIndexes) {
         	familyNames.push(f);
@@ -193,8 +202,122 @@ var highlightLink = null;
                 filterTable(tableId);
             });
         });
+        
+        initSettings(tableId);
+        
         return tableObj;
     };
+    
+    function saveSettings(prefix) {
+        
+        if(typeof(prefix) == 'undefined')
+                prefix = ''
+        
+        for(var i=0; i<filters.length; ++i) {
+            if(filters[i].id != null)
+                filters[i].expr = document.getElementById(filters[i].id).value;
+        }
+        
+        var settingsKey = prefix+":"+location.href;
+    
+        var variantSettings = {};
+        if(typeof(localStorage.variantSettings) != 'undefined')
+            variantSettings = JSON.parse(localStorage.variantSettings);
+        
+        if(!variantSettings[settingsKey])
+            variantSettings[settingsKey] = {};
+        
+        variantSettings[settingsKey].filters = filters;
+        variantSettings[settingsKey].userAnnotations = userAnnotations;
+        localStorage.variantSettings = JSON.stringify(variantSettings);
+    }
+    
+    function initSettings(tableId, prefix) {
+        
+        if(typeof(prefix) == 'undefined')
+            prefix = ''
+        var settingsKey = prefix+":"+location.href;
+        
+        if(!localStorage.variantSettings) {
+             var defaultSettings = { }
+             defaultSettings[settingsKey] = { filters: [] }
+             localStorage.variantSettings = JSON.stringify(defaultSettings);
+        }
+        
+       var oldSettings = JSON.parse(localStorage.variantSettings)[settingsKey]; 
+       loadSettings(tableId, oldSettings);
+    }
+    
+    function loadSettings(tableId, settingsObject) {
+        
+        console.log("Restoring settings ...");
+        
+        filters = settingsObject.filters;
+        
+        if(settingsObject.userAnnotations) {
+            userAnnotations = settingsObject.userAnnotations;
+            for(var dataIndex in userAnnotations) {
+                for(var tag in userAnnotations[dataIndex].tags) {
+                    if(allTags.indexOf(tag)<0)
+                        allTags.push(tag);
+                }
+            }
+        }
+        console.log("User annotations are: " + userAnnotations);
+        renderFilters(tableId);
+        // updateGeneList();
+        filterTable("variantTable");
+    }
+    
+    function initAnnotations(cnvIndex) {
+        if(!userAnnotations[cnvIndex])
+            userAnnotations[cnvIndex] = { tags: { } };
+    }
+    
+    function addTagToRow(dataIndex, showFn) {
+        var newTag = prompt('Enter the new tag: ','');
+        if(!newTag)
+            return;
+        if(allTags.indexOf(newTag)<0)
+            allTags.push(newTag);
+                    
+        initAnnotations(dataIndex);
+        userAnnotations[dataIndex].tags[newTag] = true;
+        addRowTags(highlightTr, userAnnotations[dataIndex].tags);
+        saveSettings();
+        showFn(dataIndex);
+    }
+    
+    function addRowTags(row, rowTags) {
+        var td0 = row.getElementsByTagName('td')[0];
+        
+        if(typeof(td0.oldHTML) == 'undefined')
+            td0.oldHTML = td0.innerHTML;
+        
+        var tagDivs = [];
+        for(tag in rowTags) {
+            tagDivs.push('<span class="rowTagDiv tag'+allTags.indexOf(tag)+'">' + tag + '</span>')
+        }
+        td0.innerHTML = tagDivs.join(' ') + td0.oldHTML;
+    }
+    
+    function removeRowTags(dataIndex, td,  e) {
+        
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var tagToRemove = e.target.className.match(/tag[0-9]/)[0];
+        
+        window.tagToRemove = tagToRemove;
+        
+        var tagIndex = tagToRemove.replace(/[^0-9]*/,"");
+        
+        console.log("Remove tag " + tagToRemove + " (index="+tagIndex+") from " + e.target.className + ' from row ' + dataIndex);
+        
+        delete userAnnotations[dataIndex].tags[allTags[tagIndex]];
+        addRowTags(td.parentNode, userAnnotations[dataIndex].tags);
+        saveSettings(); 
+    }
     
     function indexSubjects(peds) {
         var index = {};
@@ -211,19 +334,19 @@ var highlightLink = null;
         return index;
     }
     
-    var CHR_INDEX=0;
-    var POS_INDEX=1;
-    var REF_INDEX=2;
-    var ALT_INDEX=3;
-    var QUAL_INDEX=4;
-    var DEPTH_INDEX=5;
-    var FAMILIES_INDEX=6;
-    var GENE_INDEX=7;
-    var CONS_INDEX=8;
-    var MAF_INDEX=9;
-    var AD_INDEX=10;
-    
+    var TAG_INDEX=0;
+    var CHR_INDEX=1;
+    var POS_INDEX=2;
+    var REF_INDEX=3;
+    var ALT_INDEX=4;
+    var QUAL_INDEX=5;
+    var DEPTH_INDEX=6;
+    var FAMILIES_INDEX=7;
+    var GENE_INDEX=8;
+    var CONS_INDEX=9;
+    var MAF_INDEX=10;
     var nonSampleColumnCount = MAF_INDEX+1; // TODO - make this not hard coded!
+    var AD_INDEX = -1; // set later because sampleCount is not known until initialised
 
     function findAffectedSamples(samps) {
         var affected = [];
@@ -299,6 +422,7 @@ var highlightLink = null;
     function renderFilters(tableId) {
         $('#filters').html('');
         with($('#filters').$span()) {
+            console.log("filters = " + filters);
             for(var i=0; i<filters.length; ++i) {
                 var f = filters[i];
                 if(typeof(f.id) == 'undefined')
@@ -390,6 +514,10 @@ var highlightLink = null;
           get gene() { return rowSource[GENE_INDEX]; },
           get cons() { return rowSource[CONS_INDEX]; },
           get maf() { return rowSource[MAF_INDEX]; },
+          get ad() {return rowSource[AD_INDEX]  },
+          
+          // Returns the distance from 0.5 (absolute value) for the balance between alleles
+          get bal() { return  rowSource[AD_INDEX].map(function(aad) { return ((aad == null) || aad[0] == 0) ? 0 : Math.abs(0.5 - aad[1] /(aad[0] + aad[1])) }) },
           get affected() { affectedReferenced=true; return rowSource[affectedSampleIndexes[affectedSampleIndex]]; },
           get proband() { familyReferenced=true; if(family.proband==null) missingFamilyMember="PROBAND"; return rowSource[family.proband]; },
           get mother() { familyReferenced=true; if(family.mother==null) missingFamilyMember="MOTHER"; return rowSource[family.mother]; },
@@ -557,9 +685,15 @@ var highlightLink = null;
     var newTable = null;
 
     function createVariantRow(row, data, dataIndex ) {
+        console.log("create row");
         var tds = row.getElementsByTagName('td');
-        tds[1].innerHTML = "<a href='http://localhost:60151/goto?locus="+tds[0].innerHTML + ":" + tds[1].innerHTML + "'>"+ tds[1].innerHTML + "</a>";
-        $(tds[1]).find('a').click(function() { highlightRow(row); });
+        tds[2].innerHTML = "<a id='variant_"+dataIndex+"_detail' href='http://localhost:60151/goto?locus="+tds[1].innerHTML + ":" + tds[2].innerHTML + "'>"+ tds[2].innerHTML + "</a>";
+        $(tds[2]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
+        
+        var tags = userAnnotations[dataIndex] && userAnnotations[dataIndex].tags;
+        addRowTags(row, tags);
+        
+        $(tds[0]).find('.rowTagDiv').click(partial(removeRowTags,dataIndex, tds[0]));
 
         var ads = data[MAF_INDEX+sampleCount+1].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
         tds[DEPTH_INDEX].title = ads
@@ -577,7 +711,30 @@ var highlightLink = null;
             tds[FAMILIES_INDEX].innerHTML = fc+"";
         }
     }
-
+    
+    function add_display_events() {
+        // $(".cnvRow").unbind('click').click(function() {
+    
+        console.log("Add display events");
+    
+        $("#variantTable tbody tr").unbind('click').click(function() {
+            var variantIndex = parseInt($(this).find('a')[0].id.match(/variant_([0-9]*)_detail/)[1],10);
+            console.log("Displaying variant " + variantIndex);
+    
+            if(highlightTr)
+               $(highlightTr).removeClass('highlighted');
+    
+            highlightTr = this;
+            $(highlightTr).addClass('highlighted');
+            
+            show_variant_details(variantIndex);
+        })
+    }
+    
+    function show_variant_details(variantIndex) {
+        console.log("I would show variant " + variantIndex)
+        addTagToRow(variantIndex, function(variantIndex) { console.log("tag added for variant " + variantIndex) });
+    }
     
     function filterTable(tableId) {
         
@@ -604,8 +761,6 @@ var highlightLink = null;
         add_display_events();
     };
     
-    function add_display_events() {
-        
-    }
+
     	 
 })( jQuery, window, document );
