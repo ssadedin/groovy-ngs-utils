@@ -729,7 +729,7 @@ class RangeIndex implements Iterable<IntRange> {
 
         Iterator<Map.Entry<Integer,List<IntRange>>> i = ranges.iterator()
 
-        return new Iterator<IntRange>() {
+        return new Iterator<GRange>() {
             
             Map.Entry<Integer,IntRange> prev = null
             
@@ -740,7 +740,7 @@ class RangeIndex implements Iterable<IntRange> {
                 i.hasNext() || (prev != null && !prev.value.empty)
             }
             
-            IntRange next() {
+            GRange next() {
                 
                 Map.Entry<Integer,IntRange> curr = null
                 if(prev == null) {
