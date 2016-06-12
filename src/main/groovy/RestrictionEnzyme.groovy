@@ -20,7 +20,7 @@
 
 import java.util.regex.Pattern;
 
-import net.sf.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.SequenceUtil;
 import static FASTA.*
 
 /**

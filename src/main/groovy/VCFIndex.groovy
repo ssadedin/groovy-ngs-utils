@@ -22,9 +22,9 @@ import groovy.transform.CompileStatic;
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
 
-import org.broad.tribble.index.Block
-import org.broad.tribble.index.Index
-import org.broad.tribble.index.IndexFactory
+import htsjdk.tribble.index.Block
+import htsjdk.tribble.index.Index
+import htsjdk.tribble.index.IndexFactory
 import org.codehaus.groovy.runtime.StackTraceUtils
 
 

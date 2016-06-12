@@ -19,8 +19,8 @@
  */
 
 import groovy.transform.CompileStatic;
-import net.sf.picard.reference.IndexedFastaSequenceFile;
-import net.sf.picard.reference.ReferenceSequence;
+import htsjdk.samtools.reference.IndexedFastaSequenceFile;
+import htsjdk.samtools.reference.ReferenceSequence;
 
 /**
  * Simple utilities for manipulating FASTA files.

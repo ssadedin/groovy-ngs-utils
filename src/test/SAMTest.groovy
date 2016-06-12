@@ -1,11 +1,14 @@
 import static org.junit.Assert.*;
 
-import org.junit.Test;
+import org.junit.Test
+
+import groovy.transform.CompileStatic
+import htsjdk.samtools.SAMRecord;;;
 
 
 class SAMTest {
 
-    @Test
+//    @Test
     public void testHardClipped() {
         
         SAM sam = new SAM("tests/data/hard_clipped.bam")

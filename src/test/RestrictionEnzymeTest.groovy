@@ -20,7 +20,7 @@
 
 import static org.junit.Assert.*;
 
-import net.sf.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.SequenceUtil;
 
 import org.junit.Test;
 

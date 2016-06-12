@@ -19,7 +19,7 @@
  */
 
 import groovy.transform.CompileStatic;
-import net.sf.samtools.util.SequenceUtil;
+import htsjdk.samtools.util.SequenceUtil;
 
 /**
  * A very simplistic FASTA index that allows lookup of sequence names by their

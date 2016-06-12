@@ -1,8 +1,8 @@
 import java.util.Iterator;
 
-import net.sf.samtools.CigarElement;
-import net.sf.samtools.CigarOperator;
-import net.sf.samtools.SAMRecord;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
+import htsjdk.samtools.SAMRecord;
 
 /**
  * Additional state about a read that is part of a pileup

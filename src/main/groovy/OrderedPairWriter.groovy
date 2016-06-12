@@ -19,7 +19,7 @@
  */
 
 import groovy.transform.CompileStatic;
-import net.sf.samtools.SAMFileWriter
+import htsjdk.samtools.SAMFileWriter
 
 /**
  * When processing reads as pairs it can be tricky to write them out again while maintaining the

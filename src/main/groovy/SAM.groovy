@@ -27,16 +27,16 @@ import groovy.stream.Stream;
 //import com.sun.management.UnixOperatingSystemMXBean;
 
 import groovy.transform.CompileStatic;
-import net.sf.samtools.BAMRecord;
-import net.sf.samtools.SAMFileHeader;
-import net.sf.samtools.SAMFileReader;
-import net.sf.samtools.SAMFileWriter;
-import net.sf.samtools.SAMFileWriterFactory;
-import net.sf.samtools.SAMReadGroupRecord;
-import net.sf.samtools.SAMSequenceRecord;
-import net.sf.samtools.SAMFileReader.ValidationStringency;
-import net.sf.samtools.SAMRecord;
-import net.sf.samtools.SAMRecordIterator;
+import htsjdk.samtools.BAMRecord;
+import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.SAMFileReader;
+import htsjdk.samtools.SAMFileWriter;
+import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMReadGroupRecord;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.ValidationStringency;
+import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMRecordIterator;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
@@ -155,7 +155,7 @@ class SAM {
         // Picard has started doing some really verbose logging - turn it off by default
         // and let the user turn it back on with this property if they want it
         if("true" != System.properties.picardLogging)
-            net.sf.picard.util.Log.setGlobalLogLevel(net.sf.picard.util.Log.LogLevel.WARNING)
+            htsjdk.samtools.util.Log.setGlobalLogLevel(htsjdk.samtools.util.Log.LogLevel.WARNING)
     }
 
     SAM(String fileName) {
