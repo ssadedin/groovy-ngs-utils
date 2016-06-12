@@ -56,8 +56,9 @@ class ProgressCounter {
     
     PrintStream out = System.err
     
+    Closure extra = null
+    
     ProgressCounter() {
-        
     }
     
     @CompileStatic
@@ -74,11 +75,16 @@ class ProgressCounter {
                     String rateInfo = ""
                     if(withRate)
                         rateInfo = " @ ${1000*(count-lastPrintCount)/(deltaMs+1)} per second"
+                        
+                   String extraInfo
+                   if(extra != null) {
+                       extraInfo = extra()
+                   }   
                     
                     if(withTime)
-                        out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo)
+                        out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + (extraInfo? " " + extraInfo : ""))
                     else
-                        out.println((prefix?"\t$prefix :\t":"") + "Processed $count" + rateInfo)
+                        out.println((prefix?"\t$prefix :\t":"") + "Processed ${String.valueOf(count).padRight(12)}" + rateInfo + (extraInfo? " " + extraInfo : ""))
                 }
                 lastPrintTimeMs = System.currentTimeMillis()
                 lastPrintCount = count
@@ -92,10 +98,15 @@ class ProgressCounter {
             out.println "0 records processed"
             return
         }
-            
+        
+        String extraInfo = ""
+        if(extra != null) {
+            extraInfo = extra()
+        }
+        
         long endTime = System.currentTimeMillis()
         def timeDelta = TimeCategory.minus(new Date(endTime),new Date(startTimeMs))
-        out.println "Processed $count in ${timeDelta} @ ${1000*count/((endTime-startTimeMs)+1)} per second"
+        out.println "Processed ${String.valueOf(count).padRight(11)} in ${timeDelta} @ ${1000*count/((endTime-startTimeMs)+1)} per second " + (extra != null ? " ($extraInfo)" : "")
     }
     
     void getAbort() { 
