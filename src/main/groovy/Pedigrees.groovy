@@ -196,4 +196,16 @@ class Pedigrees {
 	Subject getAt(String id) {
 		subjects[id]?.individuals.find { it.id == id }
 	}
+    
+    void renameSubject(String fromId, String toId) {
+        Pedigree family = this.subjects[fromId]
+        if(!family) 
+            throw new IllegalArgumentException("Sample $fromId is not found in this family")
+            
+        Subject subject = family.individuals.find { it.id == fromId }
+        family.renameSubject(fromId, toId)
+        this.subjects.remove(fromId)
+        this.subjects[toId] = subject
+
+    }
 }

@@ -40,6 +40,16 @@ class Subject {
     
     List<Relationship> relationships = []
     
+    Subject() {
+    }
+    
+    Subject(Subject other) {
+        this.id = other.id
+        this.sex = other.sex
+        this.phenoTypes = other.phenoTypes.clone()
+        this.relationships = other.relationships.clone()
+    }
+    
     boolean isAffected() {
         phenoTypes.any { it > 1 }
     }
@@ -164,7 +174,6 @@ class Pedigree {
     Subject fatherOf(String id) {
         individuals.find { it.relationships.any { it.type == RelationshipType.FATHER && it.to == id }}
     }
-     
     
     List<String> affected 
     
@@ -287,11 +296,29 @@ class Pedigree {
        } 
     }
     
+    Subject copySubject(String fromId, String toId) {
+        Subject fromSub = this.individuals.find { it.id == fromId }
+        if(fromSub == null)
+            throw new IllegalArgumentException("Specified subject $fromId is not found in family $id")
+        Subject newSub = new Subject(fromSub)
+        newSub.id = toId
+        this.individuals << newSub
+        return newSub
+    }
+    
     String toJson() {
         "[" + individuals.collect { it.toJson() }.join(",\n") + "]"
     }
     
     List<Object> getPedData(Subject subject) {
        [id, subject.id, fatherOf(subject.id)?.id?:"0",motherOf(subject.id)?.id?:"0",  subject.sex == Sex.MALE ? 1 : 2, subject.id in getAffected() ? 2 : 1  ] 
+    }
+    
+    void renameSubject(String fromId, String toId) {
+        Subject sub = this.individuals.find { it.id == fromId }
+        if(!sub)
+            throw new IllegalArgumentException("Subject $fromId not found in this family")
+        
+        sub.id = toId
     }
 }
