@@ -108,27 +108,55 @@ class FASTQ {
         eachRead("/dev/stdin",c)
     }
     
+    /**
+     * Filter paired reads from fileName1 and fileName2 and write them to 
+     * uncompressed output files with extensions .filter.fastq based on the 
+     * input file names, only where true is returned from the given closure
+     * 
+     * @param fileName1
+     * @param fileName2
+     * @param c
+     */
+    @CompileStatic
+    static void filter(String fileName1, String fileName2, Closure c) {
+        new File(fileName1.replaceAll(/\.fastq.gz/, ".filter.fastq")).withWriter { Writer w1 ->
+            new File(fileName2.replaceAll(/\.fastq.gz/, ".filter.fastq")).withWriter { Writer w2 ->
+                int passed = 0
+                int processed = 0
+                FASTQ.eachPair(fileName1,fileName2) { FASTQRead r1, FASTQRead r2 ->
+                    ++processed
+                    def result = c(r1,r2)
+                    if(result == true) {
+                        r1.write(w1)
+                        r2.write(w2)
+                        ++passed
+                    }
+                }
+                println "Wrote $passed / $processed reads"
+            }
+        }
+        
+    }
+    
     @CompileStatic
     static void eachPair(String fileName1, String fileName2, Closure c) {
         
         openStream(fileName1).withReader { Reader reader1 ->
           openStream(fileName2).withReader { Reader reader2 ->
-            ProgressCounter.withProgress { ProgressCounter progress ->
-                c.delegate = progress
-                while(true) {
-                  FASTQRead read1 = consumeRead(reader1)
-                  FASTQRead read2 = consumeRead(reader2)
-                  if(read1 == null) // end of file
-                    break
-                  if(read2 == null) 
-                      throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
+            ProgressCounter counter = new ProgressCounter(withRate:true, withTime:true)
+            while(true) {
+              FASTQRead read1 = consumeRead(reader1)
+              FASTQRead read2 = consumeRead(reader2)
+              if(read1 == null) // end of file
+                break
+              if(read2 == null) 
+                  throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
                   
-                  if(read1.name != read2.name)
-                      throw new IllegalStateException("Read $read1.name from $fileName1 is not matched by read at same line in $fileName2 ($read2.name). Reads need to be in same order in both files.")
-                  c(read1,read2)
-                  progress.count()
-                }
-            }        
+              if(read1.name != read2.name)
+                  throw new IllegalStateException("Read $read1.name from $fileName1 is not matched by read at same line in $fileName2 ($read2.name). Reads need to be in same order in both files.")
+              c(read1,read2)
+              counter.count()
+            }
           }
         }
     }
