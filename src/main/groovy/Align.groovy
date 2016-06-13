@@ -18,17 +18,19 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-import org.biojava3.alignment.NeedlemanWunsch;
-import org.biojava3.alignment.SimpleGapPenalty;
-import org.biojava3.alignment.SubstitutionMatrixHelper;
-import org.biojava3.alignment.template.Aligner;
-import org.biojava3.alignment.template.GapPenalty;
-import org.biojava3.alignment.template.Profile;
-import org.biojava3.alignment.template.SubstitutionMatrix;
-import org.biojava3.core.sequence.DNASequence;
-import org.biojava3.core.sequence.compound.NucleotideCompound;
-import org.biojava3.core.sequence.location.template.Location;
+import org.biojava.nbio.alignment.NeedlemanWunsch;
+import org.biojava.nbio.alignment.SimpleGapPenalty;
+import org.biojava.nbio.core.alignment.matrices.SubstitutionMatrixHelper;
+import org.biojava.nbio.alignment.template.Aligner;
+import org.biojava.nbio.alignment.template.GapPenalty;
+import org.biojava.nbio.core.alignment.template.Profile;
+import org.biojava.nbio.core.alignment.template.SubstitutionMatrix;
+import org.biojava.nbio.core.sequence.DNASequence;
+import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
+import org.biojava.nbio.core.sequence.location.template.Location;
  
+
+
 /**
  * Utility for helping to perform alignments with BioJava
  * 

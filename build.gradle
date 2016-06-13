@@ -46,8 +46,9 @@ dependencies {
      compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
      compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
      compile group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
-     compile group: 'org.biojava', name:'biojava3-core', version:'3.0.6' 
-     compile group: 'org.biojava', name:'biojava3-alignment', version:'3.0.6' 
+     compile group: 'org.biojava', name: 'biojava-core', version: '4.2.1'
+     compile group: 'org.biojava', name:'biojava-alignment', version:'4.2.1' 
+         
      compile 'com.lowagie:itext:2.1.7'
      compile 'org.apache.commons:commons-math3:3.0'
      compile 'commons-cli:commons-cli:1.3'
