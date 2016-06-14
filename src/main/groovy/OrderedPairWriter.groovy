@@ -49,9 +49,6 @@ class OrderedPairWriter implements Closeable {
     @CompileStatic
     void addAlignmentPair(SAMRecordPair pair) {
         
-       if(verbose)
-            println "WW: write R1 ($pair.r1.referenceName:$pair.r1.alignmentStart,$pair.r2.alignmentStart)"
-        
        if(pair.isChimeric())
            return
         
@@ -59,11 +56,14 @@ class OrderedPairWriter implements Closeable {
        while(bufferedPair != null && bufferedPair.r2.alignmentStart < pair.r1.alignmentStart) {
            bufferedPair = buffer.pollFirst()
            if(verbose)
-               println "WW: write R2 ($pair.r1.referenceName:$pair.r1.alignmentStart,$pair.r2.referenceName:$pair.r2.alignmentStart)"
+               println "WW: write R2 $bufferedPair.r1.readName ($bufferedPair.r1.referenceName:$bufferedPair.r1.alignmentStart,$bufferedPair.r2.referenceName:$bufferedPair.r2.alignmentStart)"
            samWriter.addAlignment(bufferedPair.r2) 
            bufferedPair = buffer.isEmpty() ? null : buffer.first() 
        }
        
+       if(verbose)
+            println "WW: write R1 $pair.r1.readName ($pair.r1.referenceName:$pair.r1.alignmentStart,$pair.r2.alignmentStart)"
+        
        samWriter.addAlignment(pair.r1)
        buffer << pair
     }

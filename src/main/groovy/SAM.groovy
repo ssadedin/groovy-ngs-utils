@@ -299,16 +299,23 @@ class SAM {
         SAMFileReader pairReader = newReader()
         SAMFileReader randomLookupReader = newReader()
         Map<String,Integer> buffer = new HashMap()
-        List<SAMRecordPair> writeSpool = new ArrayList(100)
+        List<SAMRecordPair> writeSpool = new LinkedList()
         SortedMap<Integer,List<SAMRecord>> readPairs = new TreeMap<Integer,List<SAMRecord>>()
         Set<String> preprocessedReads = new HashSet()
         int pairs = 0
-        int maxSpoolSize = 2000
+        
+        // The spool holds a buffer that tries to pair up reads before outputting them
+        // The right size for it depends on the coverage depth and the separation between
+        // paired reads. It should be able to hold enough reads that most of the time
+        // a read's pair is encountered before the buffer overflows. When it overflows
+        // the loop below starts doing random queries (slow) to resolve the mates for reads
+        // so that the pair can be output together. 
+        int maxSpoolSize = 4000
         int forcedQueries = 0
         String currentChr = null
         try {
             ProgressCounter progress = new ProgressCounter(extra:{
-                "Spool Size=${writeSpool.size()} Buffer Size=${buffer.size()} ForcedQueries=$forcedQueries Pairs=${pairs}"
+                "Chromosome $currentChr, Spool Size=${writeSpool.size()}, Buffer Size=${buffer.size()}, ForcedQueries=$forcedQueries, Pairs=${pairs}"
             }, withRate: true)
             
             try {
@@ -338,12 +345,12 @@ class SAM {
                         
                     progress.count()
                         
-                    if(!record.getReadPairedFlag() || record.getReadUnmappedFlag())
+                    if(!record.getReadPairedFlag() || record.getReadUnmappedFlag() || !record.getProperPairFlag())
                         continue
                         
                     if((record.referenceIndex != record.mateReferenceIndex) || record.isSecondaryOrSupplementary()) {
                         if(verbose)
-                            println "Chimeric / non-primary alignment: " + record.referenceName + ":" + record.alignmentStart
+                            println "Chimeric / non-primary alignment $record.readName :" + record.referenceName + ":" + record.alignmentStart
                         continue
                     }
                             
@@ -385,6 +392,7 @@ class SAM {
                         }
                         else {
                             SAMRecord mateless = writeSpool.remove(0).r1
+                            buffer.remove(mateless.readName)
                             if(verbose)
                                 println "XX: Read $mateless.readName has no mates :-("
                         }
@@ -411,7 +419,6 @@ class SAM {
                 //                    c(r1, null)
                 //                }
                 
-                println "Remining items in buffer: " + buffer
             }
             finally {
                 pairReader.close()
