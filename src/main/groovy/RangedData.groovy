@@ -72,30 +72,45 @@ class RangedData extends Regions {
     
     RangedData load(Map options=[:], Closure c=null) {
         
+        int lineNumber = 0
+        
         // Some data files (looking at you UCSC) are zero-based instead of 1-based
         if(options.zeroBased)
             genomeZeroOffset=1
         
         // Assume columns on first line
         TSV tsv = new TSV(options, source)
-        for(PropertyMapper line in tsv) {
-            Region r = parseRegion(line)
-            r.range.extra = r
-            if(!columns)
-                columns = line.columns*.key
-                
-            line.columns.each { String columnName, int index ->
-                if(index != startColumn && index != endColumn && index != chrColumn) {
-                    r.setProperty(columnName, line.values[index])
-                }
-            }
-            if(c != null) {
-                if(c(r)==false)
+        PropertyMapper currentLine
+        try {
+            for(PropertyMapper line in tsv) {
+                currentLine = line
+                if(line.values == null) {
+                    // I don't know why sometimes at EOF we get a null values?
                     continue
+                }
+                    
+                Region r = parseRegion(line)
+                r.range.extra = r
+                if(!columns)
+                    columns = line.columns*.key
+                    
+                line.columns.each { String columnName, int index ->
+                    if(index != startColumn && index != endColumn && index != chrColumn) {
+                        r.setProperty(columnName, line.values[index])
+                    }
+                }
+                if(c != null) {
+                    if(c(r)==false)
+                        continue
+                }
+                addRegion(r)
+                ++lineNumber
             }
-            addRegion(r)
+            return this
         }
-        return this
+        catch(Exception e) {
+            throw new RuntimeException("Failed to parse line $lineNumber: \n\n" + currentLine.values)
+        }
     }
 
     protected Region parseRegion(PropertyMapper line) {
