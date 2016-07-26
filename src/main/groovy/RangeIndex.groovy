@@ -852,4 +852,37 @@ class RangeIndex implements Iterable<IntRange> {
         }
  
     }
+    
+    /**
+     * Return a list of ranges representing "coverage" blocks within this
+     * index. That is, for each position where the number of overlapping
+     * ranges changes, a separate range is returned with a count of the overlaps
+     * as the 'extra' field.
+     *  
+     * @return  list of ranges representing coverage blocks with number of overlaps
+     *          as the 'extra' field.
+     */
+    List<GRange> coverage() {
+        
+        List<GRange> result = []
+        
+        Iterator<Map.Entry<Integer,List<IntRange>>> iter = ranges.iterator()
+        GRange prevRange = null
+        List<IntRange> prevRanges
+        for(Map.Entry<Integer,List> rangesEntry in iter) {
+            
+            List<IntRange> ranges = rangesEntry.value
+            GRange covRange = null
+            if(prevRange != null) {
+                covRange = new GRange(prevRange.to,  rangesEntry.key, prevRanges.size())
+                result << covRange
+            }
+            else
+                covRange = new GRange(0, rangesEntry.key, null)
+                
+            prevRanges = ranges
+            prevRange = covRange    
+        }
+        return result
+    }
 }
