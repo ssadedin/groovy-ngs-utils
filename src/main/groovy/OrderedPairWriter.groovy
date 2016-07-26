@@ -40,6 +40,8 @@ class OrderedPairWriter implements Closeable {
         p1.r2.alignmentStart.compareTo(p2.r2.alignmentStart)
     })
     
+    int currentReferenceIndex = -1
+    
     OrderedPairWriter(SAMFileWriter w) {
         this.samWriter = w
     }
@@ -51,6 +53,16 @@ class OrderedPairWriter implements Closeable {
         
        if(pair.isChimeric())
            return
+       
+       int r1ReferenceIndex = pair.r1.referenceIndex
+       if(currentReferenceIndex < 0)     
+           currentReferenceIndex = r1ReferenceIndex
+       else
+       if(r1ReferenceIndex != currentReferenceIndex) { // Switch between chromosomes, run down buffer
+           flushBuffer()
+       }
+       
+       currentReferenceIndex = r1ReferenceIndex
         
        SAMRecordPair bufferedPair = buffer.isEmpty() ? null : buffer.first() 
        while(bufferedPair != null && bufferedPair.r2.alignmentStart < pair.r1.alignmentStart) {
@@ -68,10 +80,16 @@ class OrderedPairWriter implements Closeable {
        buffer << pair
     }
     
+    @CompileStatic
+    void flushBuffer() {
+       for(SAMRecordPair bufferedPair in buffer) {
+           samWriter.addAlignment(bufferedPair.r2)
+       }
+       buffer.clear()
+    }
+    
     void close() {
-        for(SAMRecordPair pair in buffer) {
-            this.samWriter.addAlignment(pair.r2)
-        }
+        flushBuffer()
         this.samWriter.close()
     }
 }
