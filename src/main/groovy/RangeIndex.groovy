@@ -344,9 +344,39 @@ class RangeIndex implements Iterable<IntRange> {
         !getOverlaps(start,end, true).isEmpty()
     }
     
+    /**
+     * Return a list of the ranges in this index that overlap the given range.
+     * If there are multiple ranges that overlap, or multiple distinct occurrences
+     * of the same range that were added to the index, then these will be
+     * returned separately.
+     * 
+     * @param start start of query interval 
+     * @param end   end of query interval
+     * @param returnFirst   if true, return only the first overlap found
+     * 
+     * @return List of ranges in the index that overlap the query
+     */
     @CompileStatic
     List<Range> getOverlaps(int start, int end, boolean returnFirst) {
-        IntRange interval = start..end-1
+        
+        TreeSet<IntRange> resultSet = new TreeSet<IntRange>({ IntRange a, IntRange b -> 
+            if(a.is(b)) {
+                return 0
+            }
+            else {
+                int d = a.from - b.from; 
+                if(d == 0) {
+                    d = a.to - b.to 
+                    if(d == 0) {
+                        d = System.identityHashCode(a).compareTo(System.identityHashCode(b))
+                    }
+                }
+                return d
+            }
+        } as Comparator<IntRange>)
+            
+         IntRange interval = start..end-1
+         
         List<Range> result = []
         Map.Entry<Integer,List<IntRange>> entry = ranges.lowerEntry(start+1)
         if(!entry) 
@@ -356,14 +386,14 @@ class RangeIndex implements Iterable<IntRange> {
         while(entry != null && entry.key <= end) {
             for(IntRange r in entry.value) {
                if(r.from<=end && r.to>=start) {
-                   result.add(r)
+                   resultSet.add(r)
                    if(returnFirst)
-                       return result
+                       return resultSet as List
                }
             }
             entry = ranges.higherEntry(entry.key)
         }
-        return result
+        return resultSet as List
     }
     
     /**
