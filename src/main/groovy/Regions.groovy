@@ -215,11 +215,24 @@ class Regions implements Iterable<Region> {
      * @param r Region to test for overlaps
      * @return  true iff the region overlaps at least one region in this Regions
      */
-    boolean overlaps(IRegion r) {
-		RangeIndex chrIndex = this.index[r.chr]
+    @CompileStatic
+    boolean overlaps(String chr, int from, int to) {
+		RangeIndex chrIndex = this.index[chr]
 		if(chrIndex == null)
 			return false
-		return chrIndex.overlaps(r.range.from,r.range.to)        
+		return chrIndex.overlaps(from,to)        
+    }
+    
+    
+    /**
+     * Return true if the given region overlaps any range in this Regions
+     * 
+     * @param r Region to test for overlaps
+     * @return  true iff the region overlaps at least one region in this Regions
+     */
+    @CompileStatic
+    boolean overlaps(IRegion r) {
+        return this.overlaps(r.chr, r.range.from,r.range.to)        
     }
     
     /**
