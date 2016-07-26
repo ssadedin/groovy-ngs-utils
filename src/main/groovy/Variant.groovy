@@ -93,6 +93,16 @@ class SnpEffInfo {
      */
     String info
     
+    /**
+     * This is an alias for the SNPEFF 'type' which is useful when trying to make
+     * code use both SNPEFF and VEP annotations
+     * 
+     * @return the type of SNPEFF effect
+     */
+    String getConsequence() {
+        type
+    }
+    
     boolean isTruncating() {
         int index = EFFECTS_RANKED.indexOf(type)  
         
