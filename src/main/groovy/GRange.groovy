@@ -33,7 +33,9 @@ interface IRegion {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Region extends Expando implements IRegion {
+class Region extends Expando implements IRegion, Serializable {
+    
+    public static final long serialVersionUID = 0L
     
     final static Region EMPTY_REGION = new Region("empty", 0..0)
     
@@ -124,7 +126,13 @@ class Region extends Expando implements IRegion {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class GRange extends IntRange {
+class GRange extends IntRange implements Serializable {
+    
+    public static final long serialVersionUID = 0L
+    
+    GRange() { // for serialization
+        super("chrN",0,0)
+    }
     
     GRange(int from, int to, Object extra) {
         super(from,to)
