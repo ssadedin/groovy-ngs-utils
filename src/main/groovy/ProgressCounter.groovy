@@ -58,9 +58,6 @@ class ProgressCounter {
     
     Closure extra = null
     
-    ProgressCounter() {
-    }
-    
     @CompileStatic
     void count(Closure c = null) {
         if(startTimeMs < 0)
