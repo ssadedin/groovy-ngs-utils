@@ -662,4 +662,24 @@ class Regions implements Iterable<Region> {
     void save(String fileName) {
         new File(fileName).withWriter {  w -> this.each { w.println([it.chr, it.from, it.to+1].join('\t')) }}
     }
+    
+    /**
+     * Return a new regions object that has each distinct region of this object
+     * with a "coverage" value assigned.
+     * 
+     * @return
+     */
+    Regions coverage() {
+        Regions result = new Regions()
+        this.index.each { String chr, RangeIndex ranges ->
+            for(GRange r in ranges.coverage()) {
+                result.addRegion(new Region(chr, r))
+            }
+        }
+        return result        
+    }
+    
+    List<Map> bkr() {
+        this.collect { [ chr: it.chr, from: it.from, to: it.to] }
+    }
 }
