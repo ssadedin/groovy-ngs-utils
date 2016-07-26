@@ -937,11 +937,37 @@ class Variant implements IRegion {
      * @param alleleIndex   index of allele, reference = 0
      */
     List<Integer> getAlleleDepths(int alleleIndex) {
-       this.genoTypes.collect { gt ->
-            if(!gt.AD || gt.AD[alleleIndex]==null || (gt.AD[alleleIndex] == "."))
-               return 0
-                
-           (int)gt.AD[alleleIndex]
+        
+        if('AD' in this.header.formatMetaData) {
+            return this.genoTypes.collect { gt ->
+                if(!gt.AD || gt.AD[alleleIndex]==null || (gt.AD[alleleIndex] == "."))
+                    return 0
+
+                (int)gt.AD[alleleIndex]
+            }
+        }
+        else
+        // For a single sample VCF and a single alternate allele, we can use DP4 from samtools
+        if(this.header.hasInfo('DP4') && alleleIndex<2 && this.header.samples.size() == 1) {
+            List<Integer> dps = this.getInfo().DP4.tokenize(',')*.toInteger()
+            
+            assert dps.size() == 4 : "DP4 should always be list of 4 integers"
+            
+            int altDepth = dps[2] + dps[3]
+            if(alleleIndex == 0) {
+                return  [getInfo().DP.toInteger() - altDepth ] // arguably we should use the 1st and 2nd elements of DP4, but this
+                                                          // seems to produce an unreliable result
+            }
+            else
+            if(alleleIndex == 1) {
+                return [altDepth]
+            }
+            else 
+                assert false : "Only ref and single alternate allele supported!"
+            
+        }
+        else {
+            [0] * this.header.samples.size()
         }
     }
     
@@ -972,6 +998,12 @@ class Variant implements IRegion {
      * @return
      */
     float getAlleleBalance(int allele1, int allele2, int sampleIndex=0) {
+        
+        // Allele balance only make sense for  heterozygous mutations: return 0
+        if(this.getDosages(sampleIndex)[allele2] != 1) {
+            return 0
+        }
+        
         List<Integer> ads1 = getAlleleDepths(allele1)
         List<Integer> ads2 = getAlleleDepths(allele2)
         

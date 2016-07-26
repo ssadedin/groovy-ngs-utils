@@ -28,6 +28,17 @@ import htsjdk.tribble.index.Index
 import htsjdk.tribble.index.IndexFactory
 import org.codehaus.groovy.runtime.StackTraceUtils
 
+class FormatMetaData {
+    
+    String id
+    
+    String description
+    
+    Class type
+    
+    int number = -1
+}
+
 /**
  * The VCF class supports simple parsing, filtering, querying and updating of
  * VCF files.
@@ -103,6 +114,11 @@ class VCF implements Iterable<Variant> {
      * Lazily populated when getInfoMetaData is called
      */
     private Map<String, Map> infoMetaDatas
+    
+    /**
+     * Lazily populated when getFormatMetaData is called
+     */
+    private Map<String,FormatMetaData> formatMetaData
     
     VCF() {
     }
@@ -466,6 +482,42 @@ class VCF implements Iterable<Variant> {
               }
         }
         return this.infoMetaDatas[id]
+    }
+    
+    Map<String,FormatMetaData> getFormatMetaData() {
+        if(this.formatMetaData == null) {
+            this.formatMetaData = 
+              this.headerLines.grep { String hline -> hline.startsWith("##FORMAT") }.collect { String hline -> parseFormatMetaDataLine(hline) }.collectEntries { 
+                  FormatMetaData metaData -> [ metaData.id, metaData ] 
+              }            
+        }
+        
+        return this.formatMetaData
+    }
+    
+    FormatMetaData parseFormatMetaDataLine(String line) {
+        String attString = line[10..-2]
+        
+        Map attributes = attString.tokenize(',').collectEntries { String attList ->
+            attList.tokenize('=')
+        }
+        
+        Class type
+        switch(attributes.Type) {
+            case "String":
+                type = String
+                break
+                
+            case "Integer":
+                type = Integer
+                break
+                
+            case "Float":
+                type = Float
+                break
+        }
+        
+        new FormatMetaData(type:type, description:attributes.Description[1..-2], id: attributes.ID, number: attributes.Number.isNumber()?attributes.Number.toInteger():-1)
     }
     
     /**
