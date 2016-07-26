@@ -519,6 +519,12 @@ class RangeIndex implements Iterable<IntRange> {
         println("|"+[sizes,printSizes].transpose().collect { it[0].toString().center(it[1],"-") }.join("|") +"|")
 //        println("|"+sizes.collect { "-" * it }.join("|")+"|")
     }
+    
+    void debugdump() {
+        this.ranges.each { int pos, List intervalRanges ->
+            println "$pos\t:" + intervalRanges.collect { it.from + '-' + it.to }.join(",")
+        }
+    }
 
     @Override
     public Iterator<IntRange> iterator() {
