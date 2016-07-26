@@ -15,13 +15,23 @@ class VCFSummaryStats {
     
     int excludeByTarget = 0
     
+    int excludeComplex = 0
+    
     int excludeNotPresent = 0
     
+    int excludeByPreFilter = 0
+    
     int excludeByFilter = 0
+    
+    int excludeByMasked = 0
     
     int totalIncluded
     
 }
+
+banner = """
+
+"""
 
 Cli cli = new Cli(usage:"VCFtoHTML <options>")
 cli.with {
@@ -36,7 +46,11 @@ cli.with {
     maxMaf 'Filter out variants above this MAF', args:1
     maxVep 'Only write a single line for each variant, containing the most severe consequence'
     tsv 'Output TSV format with the same variants', args:1
-    filter 'A groovy expression to be used as a filter', args: Cli.UNLIMITED
+    filter 'A groovy expression to be used as a filter on variants before inclusion', args: Cli.UNLIMITED
+    prefilter 'A groovy expression to be used as a pre-filter before any other steps', args: Cli.UNLIMITED
+    nocomplex 'Ignore complex variants (regions where multiple variants overlap) in diff mode'
+    nomasked 'Ignore variants in regions of the genome that are masked due to repeats'
+    stats 'Write statistics to file', args:1
 }
 
 opts = cli.parse(args)
@@ -74,7 +88,6 @@ if(exportSamples.empty) {
     System.err.println "ERROR: No samples from families $exportFamilies found in VCF file $opts.i"
     System.err.println "\nSamples found in VCF are: " + (new VCF(opts.i)).samples
 }
-    
 
 
 float MAF_THRESHOLD=0.05
@@ -86,13 +99,28 @@ if(opts.filters) {
     filters = opts.filters 
 }        
 
+List<String> preFilters = []
+if(opts.prefilters) {
+    preFilters = opts.prefilters 
+}
+
+VCFSummaryStats stats = new VCFSummaryStats()
+
 List<VCF> vcfs 
-if(opts.chrs) {
-   vcfs = opts.is.collect { VCF.parse(it) { it.chr in opts.chrs } }
+   vcfs = opts.is.collect { VCF.parse(it) {  v ->
+      if(opts.chrs && !(v.chr in opts.chrs ))
+          return false
+              
+        if(!preFilters.every { Eval.x(v, it) }) {
+            ++stats.excludeByPreFilter
+            return false
+        }
+   } 
 }
-else {
-   vcfs = opts.is.collect { VCF.parse(it) }
-}
+   
+List<Regions> vcfRegions 
+if(opts.nocomplex)
+    vcfRegions = vcfs*.toRegions()   
 
 // -------- Handle duplicate sample ids ----------------
 // If VCFs have samples with the same id, we now need to rename them to get a sensible result
@@ -153,15 +181,17 @@ if(opts.a) {
 println "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.join(" ")
 println "Export samples are: " + exportSamples
 
+boolean hasVEP = true
 def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") }
 if(noVeps) {
     System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering may be ineffective."
     System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
+    hasVEP = false
     // System.exit(1)
 }
 
-    
-    
+boolean hasSNPEFF = vcfs.any { it.hasInfo("EFF") }
+
 def js = [
     "http://ajax.aspnetcdn.com/ajax/jQuery/jquery-2.1.0.min.js",
     "http://cdn.datatables.net/1.10.0/js/jquery.dataTables.min.js",
@@ -247,7 +277,7 @@ baseColumns += [
      }
 ]
 
-def vepColumns = [ 
+def consColumns = [ 
     'gene' : {it['SYMBOL']},
     'cons' : {vep -> vep['Consequence'].split('&').min { VEP_PRIORITY.indexOf(it) } },
     'maf'  : findMaxMaf
@@ -259,7 +289,7 @@ if(opts.tsv)
     tsvWriter = new CSVWriter(new File(opts.tsv).newWriter(), '\t' as char)
 
     
-VCFSummaryStats stats = new VCFSummaryStats()
+LOWER_CASE_BASE_PATTERN = ~/[agct]/
     
 new File(opts.o).withWriter { w ->
    
@@ -277,7 +307,7 @@ new File(opts.o).withWriter { w ->
     println "Merged samples are " + merged.samples
     
     if(opts.tsv) 
-        tsvWriter.writeNext((baseColumns*.key+ vepColumns*.key +exportSamples) as String[])
+        tsvWriter.writeNext((baseColumns*.key+ consColumns*.key +exportSamples) as String[])
             
     w.println """
     <html>
@@ -335,35 +365,60 @@ new File(opts.o).withWriter { w ->
         if(i++>0 && lastLines > 0)
             w.println ","
         
-        List<Map> veps 
-        try {
-            if(opts.maxVep) { 
-                veps = [v.maxVep]
+        List<Object> consequences = [
+            [
+                Consequence: 'Unknown'
+            ]
+        ]
+        
+        if(hasVEP) {
+            try {
+                if(opts.maxVep) { 
+                    consequences = [v.maxVep]
+                }
+                else {
+                    consequences = v.vepInfo
+                }
             }
-            else {
-                veps = v.vepInfo
+            catch(Exception e) {
+                // Ignore
             }
         }
-        catch(Exception e) {
-            veps =  [
-                    [ Consequence: 'Unknown']
-                ]
+        else
+        if(hasSNPEFF) {
+            consequences = v.snpEffInfo
         }
         
         lastLines = 0
         boolean excludedByCons = true
         boolean printed = false
-        veps.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
+        consequences.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
             
-            if(EXCLUDE_VEP.contains(vepColumns['cons'](vep))) {
+            if(EXCLUDE_VEP.contains(consColumns['cons'](vep))) {
                 return
             }
             excludedByCons = false
             
-            if(findMaxMaf(vep)>MAF_THRESHOLD)  {
-                ++stats.excludeByMaf
-                return
+            if(hasVEP) {
+                if(findMaxMaf(vep)>MAF_THRESHOLD)  {
+                    ++stats.excludeByMaf
+                    return
+                }
             }
+            
+            if(opts.nocomplex) {
+                if(vcfRegions.any { Regions regions -> regions.getOverlaps(v.chr, v.pos-1,v.pos+1).size() > 1}) {
+                    ++stats.excludeComplex
+                    return
+                }
+            }
+            
+            if(opts.nomasked) {
+                if(v.alt.find(LOWER_CASE_BASE_PATTERN) || v.ref.find(LOWER_CASE_BASE_PATTERN)) {
+                    ++stats.excludeByMasked
+                    return 
+                }
+            } 
             
             if(!filters.every { Eval.x(v, it) }) {
                 ++stats.excludeByFilter
@@ -373,7 +428,7 @@ new File(opts.o).withWriter { w ->
             if(lastLines>0)
                 w.println ","
                 
-            List vepInfo = vepColumns.collect { name, func -> func(vep) }
+            List vepInfo = consColumns.collect { name, func -> func(vep) }
             w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
 //            println(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
             
@@ -397,7 +452,7 @@ new File(opts.o).withWriter { w ->
     }
     w.println """];"""
     
-    w.println "var columnNames = ${json(baseColumns*.key + vepColumns*.key + exportSamples)};"
+    w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + exportSamples)};"
     
     w.println """
     var samples = ${json(exportSamples)};
@@ -461,7 +516,23 @@ if(tsvWriter != null)
     tsvWriter.close()
 
 println " Summary ".center(80,"=")
+
+Writer statsWriter = null
+if(opts.stats)
+    statsWriter = new File(opts.stats).newWriter()
     
-["total", "excludeByDiff", "excludeByCons", "excludeByMaf", "excludeByFilter", "excludeByTarget", "excludeNotPresent","totalIncluded"].each {
-    println it.padLeft(20) + " :" + stats[it]
+try {    
+    ["total", "excludeByPreFilter","excludeByDiff", "excludeByCons", "excludeByMaf", "excludeComplex", "excludeByMasked", "excludeByFilter", "excludeByTarget", "excludeNotPresent","totalIncluded"].each { prop ->
+        println prop.padLeft(20) + " :" + stats[prop]
+        if(opts.stats) {
+            statsWriter.println([prop,stats[prop]].join('\t'))
+        }
+    }
 }
+finally {
+    statsWriter.close()
+}
+    
+    
+    
+    
