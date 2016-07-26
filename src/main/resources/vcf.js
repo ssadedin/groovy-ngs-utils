@@ -84,6 +84,8 @@ var rowProperties = [];
 var highlightLink = null;
 var highlightTr = null;
 
+var enableGraying = false;
+
 /* Tag Support */
 var allTags = [];
 var userAnnotations = { 
@@ -623,9 +625,11 @@ var userAnnotations = {
                         } while(isPhase2 && otherReferenced && otherIndex<variantData.length);
 
                         if(allOtherIndexesFailed) {
-                            console.log("Gray out family " + family.id + " index = " + index);
-                            for(var j=0; j<family.members.length; ++j) {
-                                thisRowProperties[family.members[j]] = { color : 'gray'}; // NOTE: this color is not actually applied, it's hard coded.
+                            if(enableGraying) {
+                                console.log("Gray out family " + family.id + " index = " + index);
+                                for(var j=0; j<family.members.length; ++j) {
+                                    thisRowProperties[family.members[j]] = { color : 'gray'}; // NOTE: this color is not actually applied, it's hard coded.
+                                }
                             }
                         }
 
@@ -699,8 +703,10 @@ var userAnnotations = {
         tds[DEPTH_INDEX].title = ads
 
         if(rowProperties[dataIndex]) {
-            for(var i in rowProperties[dataIndex]) {
-                tds[parseInt(i)].style.color = '#eee';
+            if(enableGraying) {
+                for(var i in rowProperties[dataIndex]) {
+                    tds[parseInt(i)].style.color = '#eee';
+                }
             }
         }
         if(newTable[dataIndex][FAMILIES_INDEX] == 0) {
