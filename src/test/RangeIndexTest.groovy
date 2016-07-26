@@ -486,4 +486,47 @@ class RangeIndexTest {
        
         assert result.size() == 0
     }
+    
+    @Test
+    void testCoverage() {
+       RangeIndex index = new RangeIndex()
+        [0..50, 
+         70..90, 
+         80..85, 
+         60..65].each {index.add(it)}
+         
+        List cov = index.coverage()
+        
+        cov.each { println it.from + " - " + it.to + " : " + it.extra }
+    }
+    
+    @Test
+    void testOverlapsBug() {
+        
+        BED clipped = new BED("tests/data/small.overlaps.bed").load()
+        
+        println "Source regions:"
+        clipped.each { println it.from + '-' + it.to }
+        
+        List overlaps = clipped.index["chr22"].getOverlaps(26204614,26205124)
+        
+        println "Overlaps are: " 
+        overlaps.each { println it.from + '-' + it.to }
+        
+        assert overlaps.size() == 3
+    }
+    
+    @Test
+    void testGetOverlapsDupes() {
+       RangeIndex index = new RangeIndex()
+        [0..50, 
+         70..90, 
+         70..90, 
+         160..165].each {index.add(it)}
+         
+       List overlaps = index.getOverlaps(60,100)
+       
+       assert overlaps.size() == 2
+    }
+    
 }
