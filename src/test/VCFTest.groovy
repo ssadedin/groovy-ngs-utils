@@ -152,4 +152,63 @@ chr1\t38098177\trs5773597\tCA\tC\t1179.73\t.\tAC=2;AF=1.00;AN=2;DB;DP=27;FS=0.00
         assert v.sampleDosage("MA12878") == 1
         
     }
+    
+    @Test
+    void testMergeBug() {
+        
+        def v1Text = 
+"""##fileformat=VCFv4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##fileDate=2014-12-22
+##source=IlluminaPlatinumGenomes, version: 7.0.0-production
+##reference=hg19
+#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tNA12877
+chr1\t911916\trs74045046\tC\tT\t2668.77\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=-0.721;DB;DP=239;FS=2.199;MLEAC=1;MLEAF=0.500;MQ=59.97;MQ0=0;MQRankSum=0.180;QD=11.17;ReadPosRankSum=-0.379;SOR=0.848;CSQ=T|ENSG00000187642|ENST00000341290|Transcript|synonymous_variant|1932|1896|632|R|agG/agA|rs74045046||||||C1orf170|HGNC|||ENSP00000343864|ENST00000341290.2:c.1896G>A|ENST00000341290.2:c.1896G>A(p.%3D)|0.26|0.14|0.07|0.16||,T|ENSG00000187583|ENST00000491024|Transcript|downstream_gene_variant||||||rs74045046|||671|||PLEKHN1|HGNC|||ENSP00000462558|||0.26|0.14|0.07|0.16||\tGT:AD:GQ:PL\t0/1:105,133:99:2697,0,1980
+""".trim()
+
+        def v2Text = """##fileformat=VCFv4.1
+##FILTER=<ID=PASS,Description="All filters passed">
+##fileDate=2014-12-22
+##source=IlluminaPlatinumGenomes, version: 7.0.0-production
+##reference=hg19
+#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tNA12877
+chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.358;DB;DP=7;FS=0.000;MLEAC=1;MLEAF=0.500;MQ=60.00;MQ0=0;MQRankSum=0.358;QD=1.72;ReadPosRankSum=-1.231;SOR=0.223;CSQ=A|ENSG00000024048|ENST00000372901|Transcript|splice_region_variant&intron_variant&feature_elongation||||||rs35713624||||||UBR2|HGNC|||ENSP00000361992|ENST00000372901.1:c.3242+2_3242+3insA|||||||\tGT:AD:GQ:PL\t0/1:2,3:19:49,0,19
+""".trim()
+
+      VCF v1 = VCF.parse(new ByteArrayInputStream(v1Text.bytes) )
+      VCF v2 = VCF.parse(new ByteArrayInputStream(v2Text.bytes) )
+      VCF result = v1.merge(v2)
+      assert result.count { 1 } == 2
+    }
+    
+    // @Test
+    void testMergeBug2() {
+        
+        def dir = "/Users/simon/work/vcgs/verify_cluster_migration/merge_debug"
+        
+        VCF vcf1 = VCF.parse("$dir/1.tiny.vcf")
+        VCF vcf2 = VCF.parse("$dir/2.tiny.vcf")
+        
+        VCF merged = vcf1.merge(vcf2)
+        
+        assert merged.variantsAt("chr18", 48137).size() == 1
+    }
+    
+    @Test
+    void testParseFormatLine() { 
+        
+        VCF vcf = new VCF()
+        
+        
+        FormatMetaData meta = vcf.parseFormatMetaDataLine('##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">')
+        
+        assert meta.type == String
+        
+        println "description = " + meta.description 
+        
+        assert meta.description == "Genotype"
+        
+        assert meta.id == "GT"
+        
+    }
  }
