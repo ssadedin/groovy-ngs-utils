@@ -277,6 +277,22 @@ class SAM {
             }
         }
     }
+    
+    /**
+     * Call the given closure for every pair of reads in a BAM file containing paired end reads.
+     * <p>
+     * Note: the algorithm works by keeping a running buffer of reads, and iterating through
+     * the reads in order until each single read finds its mate. This means that 
+     * reads having no mate accumulate in the buffer without ever being removed. Thus 
+     * a large BAM file containing millions of unpaired reads could cause this method to use
+     * substantial ammounts of memory.
+     * 
+     * @param c        Closure to call    
+     */
+    @CompileStatic
+    void eachPair(Closure c) {
+        eachPair([:],c)
+    }
 
     /**
      * Call the given closure for every pair of reads in a BAM file containing paired end reads.
@@ -290,9 +306,9 @@ class SAM {
      * @param c        Closure to call
      */
     @CompileStatic
-    void eachPair(Closure c) {
+    void eachPair(Map options, Closure c) {
         SAMRecordIterator iter = samFileReader.iterator()
-        eachPair(iter,c)
+        eachPair(options, iter,c)
     }
     
     boolean verbose = false
@@ -310,7 +326,7 @@ class SAM {
      * @param c        Closure to call
      */
     @CompileStatic
-    void eachPair(SAMRecordIterator iter, Closure c) {
+    void eachPair(Map options, SAMRecordIterator iter, Closure c) {
         SAMFileReader pairReader = newReader()
         SAMFileReader randomLookupReader = newReader()
         Map<String,Integer> buffer = new HashMap()
@@ -318,6 +334,8 @@ class SAM {
         SortedMap<Integer,List<SAMRecord>> readPairs = new TreeMap<Integer,List<SAMRecord>>()
         Set<String> preprocessedReads = new HashSet()
         int pairs = 0
+        
+        boolean includeUnmapped = ((boolean)options?.includeUnmapped)
         
         // The spool holds a buffer that tries to pair up reads before outputting them
         // The right size for it depends on the coverage depth and the separation between
@@ -346,7 +364,8 @@ class SAM {
                                 continue
                             }
                             
-                            SAMRecord mate = randomLookupReader.queryMate(readPair.r1)
+                            SAMRecord mate = this.queryMate(randomLookupReader, readPair.r1)
+                           
                             if(mate != null) {
                                 c(readPair.r1, mate)
                             }
@@ -359,7 +378,17 @@ class SAM {
                     }
                         
                     progress.count()
+                    
+//                    println "Proper pair = " + record.getProperPairFlag()
+//                    println "Read paired = " + record.readPairedFlag
                         
+                    // Unmapped reads are not proper pairs, so for those we do not apply the
+                    // check about proper pairs. For 
+                    if(includeUnmapped && (record.readUnmappedFlag || record.mateUnmappedFlag)) {
+                        if(!record.getReadPairedFlag())
+                            continue
+                    }
+                    else
                     if(!record.getReadPairedFlag() || record.getReadUnmappedFlag() || !record.getProperPairFlag())
                         continue
                         
@@ -397,7 +426,7 @@ class SAM {
                     writeSpool[pairIndex].r2 = record
                     
                     if(writeSpool.size()>maxSpoolSize) {
-                        SAMRecord mate = randomLookupReader.queryMate(writeSpool[0].r1)
+                        SAMRecord mate = this.queryMate(randomLookupReader,writeSpool[0].r1)
 //                        assert writeSpool[0].r2 != null
                         if(mate != null) {
                             if(verbose)
@@ -429,11 +458,18 @@ class SAM {
                     }
                 }
 
-                // Run down the buffer
-                //                buffer.each { String readName, r1 ->
-                //                    c(r1, null)
-                //                }
-                
+                List<SAMRecordPair> spoolResidue = new LinkedList()
+                for(SAMRecordPair pair in writeSpool) {
+                    if(pair.hasBothReads() && pair.r1.referenceName == currentChr) {
+                        c(pair.r1, pair.r2)
+                        buffer.remove(pair.r1.readName)
+                        ++pairs                        
+                    }
+                    else {
+                        spoolResidue << pair
+                    }
+                }
+                writeSpool = spoolResidue
             }
             finally {
                 pairReader.close()
@@ -475,7 +511,7 @@ class SAM {
             iter = samFileReader.iterator()
 
         try {
-            eachPair(iter,c)
+            eachPair(null, iter,c)
         }
         finally {
             iter.close()
