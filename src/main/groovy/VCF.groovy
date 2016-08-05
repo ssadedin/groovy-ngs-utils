@@ -22,6 +22,7 @@ import groovy.transform.CompileStatic;
 import java.awt.event.ItemEvent;
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
+import java.util.zip.GZIPInputStream;
 
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
@@ -130,20 +131,25 @@ class VCF implements Iterable<Variant> {
      */
     VCF(String fileName) {
          this.fileName = fileName
-         
-         new File(fileName).withReader { Reader r ->
-           String line = r.readLine();
-           while(line != null) {
-             if(line.startsWith('#')) {
-                 this.headerLines.add(line)
-             }
-             else
-                 break
-                 
-             line = r.readLine()
-           }
-         }
-         parseLastHeaderLine()
+         File vcfFile = new File(fileName)
+         vcfFile.withInputStream { vcfIs ->
+            if(fileName.endsWith('.gz')) {
+                vcfIs = new GZIPInputStream(vcfIs)
+            }
+            vcfIs.withReader { Reader r ->
+                String line = r.readLine();
+                while(line != null) {
+                    if(line.startsWith('#')) {
+                        this.headerLines.add(line)
+                    }
+                    else
+                        break
+
+                    line = r.readLine()
+                }
+            }
+            parseLastHeaderLine()
+        }
     }
     
     VCF(Iterable<Variant> variants) {
