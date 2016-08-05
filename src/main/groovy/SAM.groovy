@@ -31,7 +31,8 @@ import htsjdk.samtools.BAMRecord;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileReader;
 import htsjdk.samtools.SAMFileWriter;
-import htsjdk.samtools.SAMFileWriterFactory;
+import htsjdk.samtools.SAMFileWriterFactory
+import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.ValidationStringency;
