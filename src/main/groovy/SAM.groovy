@@ -432,7 +432,7 @@ class SAM {
     }
 
     void eachPair(Region r, Closure c) {
-        this.eachPair(r.chr, r.from, r.to)
+        this.eachPair(r.chr, r.from, r.to, c)
     }
 
     void eachPair(String chr, Closure c) {
