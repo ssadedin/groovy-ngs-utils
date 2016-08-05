@@ -444,6 +444,18 @@ class SAM {
             iter.close()
         }
     }
+    
+    @CompileStatic
+    SAMRecord queryMate(SAMFileReader r, SAMRecord r1) {
+        try {
+            return r.queryMate(r1)
+        }
+        catch(SAMFormatException sfe) {
+            // ignore
+            // happens due to BWA secondary alignments
+        }
+        return null
+    }
 
     void eachPair(Region r, Closure c) {
         this.eachPair(r.chr, r.from, r.to, c)
