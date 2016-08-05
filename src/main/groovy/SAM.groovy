@@ -146,6 +146,11 @@ class SAM {
     File samFile
 
     File indexFile
+    
+    /**
+     * Only used when created from stream
+     */
+    InputStream samStream
 
     int minMappingQuality = 1
 
@@ -156,6 +161,12 @@ class SAM {
         // and let the user turn it back on with this property if they want it
         if("true" != System.properties.picardLogging)
             htsjdk.samtools.util.Log.setGlobalLogLevel(htsjdk.samtools.util.Log.LogLevel.WARNING)
+    }
+    
+    SAM(InputStream ips) {
+        SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
+        samStream = ips
+        newReader()
     }
 
     SAM(String fileName) {
@@ -190,7 +201,10 @@ class SAM {
     }
 
     SAMFileReader newReader() {
-        new SAMFileReader(samFile, indexFile, false)
+        if(samStream == null)
+            new SAMFileReader(samFile, indexFile, false)
+        else
+            new SAMFileReader(samStream)
     }
 
     /**
