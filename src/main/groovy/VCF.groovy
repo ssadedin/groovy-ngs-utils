@@ -382,31 +382,53 @@ class VCF implements Iterable<Variant> {
         result.parseLastHeaderLine()
         
         List<String> samples = this.samples + other.samples
-        
-        // Find the common set of genotype fields from each FORMAT column
-        List<String> myGtFields = this[0].line.split("\t")[8].split(":")
-        List<String> otherGtFields = other[0].line.split("\t")[8].split(":")
-        List<String> commonGtFields = myGtFields.intersect(otherGtFields)
-        
-//        println "Common genotype format fields are: " + commonGtFields
-        
-        int numGtFields = commonGtFields.size()
-        
         for(Region r in allVariants) {
             
             Variant v = r.extra
             
             if(result.find(v))
                 continue
-            
-            List fields = (v.line.split("\t") as List)
-            List newLine = fields[0..7] + [commonGtFields.join(":")]
                 
+            List fields = (v.line.split("\t") as List)
+            
             // If the variant is already in this VCF, then just add the sample genotype / dosage
             Variant myVariant = this.find(v)
+            Variant otherVariant = other.find(v)
+            
+            String [] mySplit = myVariant?.line?.tokenize("\t")
+            String [] otherSplit = otherVariant?.line?.tokenize("\t")
+            List<String> myGtFields 
+            List<String> otherGtFields 
+            
+            
+            List commonGtFields
+            if(myVariant && !otherVariant) {
+                myGtFields = mySplit[8].tokenize(':')
+                commonGtFields = myGtFields
+            }
+            else
+            if(!myVariant && otherVariant) {
+                otherGtFields = otherSplit[8].tokenize(':')
+                commonGtFields = otherGtFields
+            }
+            else {
+                // Variant in both - find the common set
+                if(mySplit[8] == otherSplit[8]) { // hopefully this is most of the time!
+                    myGtFields = otherGtFields = commonGtFields = mySplit[8].tokenize(':')
+                }
+                else {
+                    myGtFields = mySplit[8].tokenize(':')
+                    otherGtFields = otherSplit[8].tokenize(':')
+                    commonGtFields = myGtFields.intersect(otherGtFields)
+                }
+            }
+            int numGtFields = commonGtFields.size()
+            
+            List newLine = fields[0..7] + [commonGtFields.join(":")]
+                
             if(myVariant) {
                 // The variant is in my VCF - use the genotypes from there
-                def gts = myVariant.line.split("\t")[SAMPLE_COLUMN_INDEX..-1]
+                def gts = mySplit[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
                     def gtFields = [myGtFields,gt.split(":")].transpose().collectEntries()
                     commonGtFields.collect { gtField ->
@@ -419,7 +441,6 @@ class VCF implements Iterable<Variant> {
                 newLine.addAll(this.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(':') })
             }
             
-            Variant otherVariant = other.find(v)
             if(otherVariant) {
                 // The variant is in the other VCF - use the genotypes from there
                 // TODO: if different number of alleles in other sample, this
@@ -440,7 +461,14 @@ class VCF implements Iterable<Variant> {
                 // Add null genotypes from the other samples
                 newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(":") })
             }
-            Variant resultVariant = Variant.parse(newLine.join("\t"))
+            
+            Variant resultVariant 
+            try {
+                resultVariant = Variant.parse(newLine.join("\t"))
+            }
+            catch(Exception e) {
+                throw new IllegalStateException("Error merging variant records. Merged line = " + newLine, e)
+            }
             
             result.add(resultVariant)
         }
