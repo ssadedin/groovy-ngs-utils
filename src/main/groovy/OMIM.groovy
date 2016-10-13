@@ -40,10 +40,14 @@ class OMIM {
                 "Gene",
                 "Status",
                 "Title",
-                "MIM Number",
+                "Title2",
+                "MIMNumber",
                 "Method",
                 "Comments",
+                "Comments2",
                 "Disorders",
+                "Disorders2",
+                "Disorders3",
                 "Mouse",
                 "Reference"
                 ]
