@@ -1,3 +1,5 @@
+import java.nio.file.Files;
+
 import com.xlson.groovycsv.PropertyMapper;
 
 import groovy.util.logging.Log;
@@ -20,7 +22,6 @@ class RefGenes {
     /**
      * Transcripts indexed by gene
      */
-    
     Map<String,List<Integer>> geneToTranscripts = new HashMap(30000)
     
     Map<String, Region> transcriptIndex = new HashMap(80000)
@@ -36,6 +37,24 @@ class RefGenes {
     
     RefGenes(Reader r) {
         load(r)
+    }
+    
+    /**
+     * Default UCSC download URL for the refgene database
+     */
+    static String UCSC_REFGENE_URL = "http://hgdownload.soe.ucsc.edu/goldenPath/##genomeVersion##/database/refGene.txt.gz" 
+    
+    static RefGenes download(String genomeVersion="hg19") {
+        
+        File outputFile = new File("refGene.txt.gz")
+        if(!outputFile.exists()) {
+            outputFile.withOutputStream { outputStream ->
+                new URL(UCSC_REFGENE_URL.replace('##genomeVersion##',genomeVersion)).withInputStream { urlStream ->
+                    Files.copy(urlStream, outputStream)
+                }
+            }
+        }
+        return new RefGenes(outputFile.name)
     }
     
     void load(Reader r) {
