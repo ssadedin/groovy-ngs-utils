@@ -40,6 +40,9 @@ class FormatMetaData {
     int number = -1
 }
 
+class StopParsingVCFException extends Exception {
+}
+
 /**
  * The VCF class supports simple parsing, filtering, querying and updating of
  * VCF files.
@@ -263,53 +266,63 @@ class VCF implements Iterable<Variant> {
         List<String> samples = options.samples?: [] 
         
         List<Integer> keepColumns = null
-        f.eachLine { String line ->
-            
-            
-            ++count
-            
-            progress.count()
-           
-            if(line.startsWith('#')) {
-                vcf.headerLines.add(line)
-                return
-            }
-            
-            if(vcf.lastHeaderLine == null) {
-                // Modify the header to include only samples selected
-                if(samples) {
-                    def sampleHeader = vcf.headerLines[-1].split('[\t ]{1,}')
-                    keepColumns = (0..8) + sampleHeader.findIndexValues{it in samples}
-                    vcf.headerLines[-1] = sampleHeader[keepColumns].join("\t")
+        try {
+            f.eachLine { String line ->
+                
+                
+                ++count
+                
+                progress.count()
+               
+                if(line.startsWith('#')) {
+                    vcf.headerLines.add(line)
+                    return
                 }
-                vcf.parseLastHeaderLine()
-            }
-            
-            if(keepColumns) {
-                line = (line.split('[\t ]{1,}')[keepColumns]).join("\t")
-            }
-            
-            Variant v = Variant.parse(line)
-            v.header = vcf
-            try {
-              if(!samples || samples.any {v.sampleDosage(it)}) {
-                  if(!c || !(c(v)==false)) {
-                      if(filterMode) {
-                          if(!flushedHeader)  {
-                              vcf.printHeader()
-                              flushedHeader = true
+                
+                if(vcf.lastHeaderLine == null) {
+                    // Modify the header to include only samples selected
+                    if(samples) {
+                        def sampleHeader = vcf.headerLines[-1].split('[\t ]{1,}')
+                        keepColumns = (0..8) + sampleHeader.findIndexValues{it in samples}
+                        vcf.headerLines[-1] = sampleHeader[keepColumns].join("\t")
+                    }
+                    vcf.parseLastHeaderLine()
+                }
+                
+                if(keepColumns) {
+                    line = (line.split('[\t ]{1,}')[keepColumns]).join("\t")
+                }
+                
+                try {
+                  Variant v = Variant.parse(line)
+                  v.header = vcf
+                        
+                  if(!samples || samples.any {v.sampleDosage(it)}) {
+                      if(!c || !(c(v)==false)) {
+                          if(filterMode) {
+                              if(!flushedHeader)  {
+                                  vcf.printHeader()
+                                  flushedHeader = true
+                              }
+                              println v.line
                           }
-                          println v.line
-                      }
-                      else {
-                          vcf.add(v)
-                      }
+                          else {
+                              vcf.add(v)
+                          }
+                    }
+                  }
                 }
-              }
+                catch(StopParsingVCFException stop) {
+                    // rethrow
+                    throw stop
+                }
+                catch(Exception e) {
+                   throw new RuntimeException("Procesing failed at line $count :\n" + line, e)
+                }
             }
-            catch(Exception e) {
-               throw new RuntimeException("Procesing failed at line $count :\n" + line, e)
-            }
+        }
+        catch(StopParsingVCFException stop) {
+            // ignore
         }
         
         if(filterMode && !flushedHeader)  {
