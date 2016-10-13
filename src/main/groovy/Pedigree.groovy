@@ -164,7 +164,7 @@ class Pedigree {
     List<Integer> phenoTypes = []
     
     String toString() {
-        "$id $samples"
+        "$id: " + individuals.collect { it.id + '(' + it.sex + ')' }.join(',')
     }
     
     Subject motherOf(String id) {
