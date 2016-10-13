@@ -115,7 +115,7 @@ class Pedigrees {
             List<String> parentIds = s.relationships.grep { it.type.isChild() }*.to
             for(String parentId in parentIds) {
                 if(!subjectsToFamilies[parentId]) {
-                    if(parentId != "0")
+                    if(parentId != "0" && parentId != ".")
                         System.err.println "WARNING: Sample $s.id has a parent not specified in PED file: $parentId" 
                     continue
                 }
