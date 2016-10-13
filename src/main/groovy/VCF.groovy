@@ -228,7 +228,14 @@ class VCF implements Iterable<Variant> {
     }
     
     static void filter(File f, List<Pedigree> peds, Closure c = null) {
-        filter([fileName:f.path],new BufferedInputStream(new FileInputStream(f)),peds,c)
+        InputStream stream = null
+        if(f.name.endsWith('.gz')) {
+            stream = new BufferedInputStream(new GZIPInputStream(new FileInputStream(f)))
+        }
+        else {
+            stream = new BufferedInputStream(new FileInputStream(f))
+        }
+        filter([fileName:f.path],stream,peds,c)
     }
     
     static void filter(String fileName, Closure c = null) {
