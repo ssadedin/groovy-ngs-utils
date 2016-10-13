@@ -673,7 +673,17 @@ class Regions implements Iterable<Region> {
     }
     
     void save(String fileName) {
-        new File(fileName).withWriter {  w -> this.each { w.println([it.chr, it.from, it.to+1].join('\t')) }}
+        save(null, fileName)
+    }
+    
+    void save(Map options, String fileName) {
+        
+        def regionsToSave = this
+        if(options?.sorted) {
+            regionsToSave = this.toSorted(new RegionComparator())    
+        }
+        
+        new File(fileName).withWriter {  w -> regionsToSave.each { w.println([it.chr, it.from, it.to+1].join('\t')) }}
     }
     
     /**
