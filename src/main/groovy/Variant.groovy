@@ -423,18 +423,23 @@ class Variant implements IRegion {
         }
     }
     
+    // Causes strange typecast error (Char => CharSequence at marked line below
+//    @CompileStatic
     Map<String,Object> parseGenoTypeFields(String gt) {
         Set numericGTFields = ["DP","GQ"] as Set
         Set numericListFields = ["AD"] as Set
-        [genoTypeFields, gt.split(':')].transpose().collectEntries { 
-              if(it[0] in numericGTFields) 
-                  [it[0],it[1] == "." ? null : it[1].toFloat()] 
+        [genoTypeFields, gt.tokenize(':')].transpose().collectEntries { Object fieldObj ->
+              List field = (List)fieldObj
+              String key = (String)field[0]
+              String value = String.valueOf(field[1])
+              if(key in numericGTFields) 
+                  [key,value == "." ? null : value.toFloat()] 
               else
-              if(it[0] in numericListFields) {
-                  return [it[0],it[1].split(",")*.replaceAll("\\.","0")*.toFloat()] 
+              if(key in numericListFields) {
+                  return [key,value.tokenize(",")*.replace(".","0")*.toFloat()]  // strange typecast exc under compilestatic
               }
               else
-                  it
+                  field
         } 
     }
     
