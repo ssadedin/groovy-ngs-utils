@@ -70,18 +70,20 @@ class ProgressCounter {
                 else {
                     
                     String rateInfo = ""
-                    if(withRate)
-                        rateInfo = " @ ${1000*(count-lastPrintCount)/(deltaMs+1)} per second"
+                    if(withRate) {
+                        float rate = 1000.0*((count-lastPrintCount)/((float)(deltaMs+1)))
+                        rateInfo = String.format(" @ %.2f/s ", rate)
+                    }
                         
                    String extraInfo
                    if(extra != null) {
                        extraInfo = extra()
                    }   
                     
-                    if(withTime)
-                        out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + (extraInfo? " " + extraInfo : ""))
-                    else
-                        out.println((prefix?"\t$prefix :\t":"") + "Processed ${String.valueOf(count).padRight(12)}" + rateInfo + (extraInfo? " " + extraInfo : ""))
+                   if(withTime)
+                       out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + (extraInfo? " " + extraInfo : ""))
+                   else
+                       out.println((prefix?"\t$prefix :\t":"") + "Processed ${String.valueOf(count).padRight(12)}" + rateInfo + (extraInfo? " " + extraInfo : ""))
                 }
                 lastPrintTimeMs = System.currentTimeMillis()
                 lastPrintCount = count
@@ -103,15 +105,20 @@ class ProgressCounter {
         
         long endTime = System.currentTimeMillis()
         def timeDelta = TimeCategory.minus(new Date(endTime),new Date(startTimeMs))
-        out.println "Processed ${String.valueOf(count).padRight(11)} in ${timeDelta} @ ${1000*count/((endTime-startTimeMs)+1)} per second " + (extra != null ? " ($extraInfo)" : "")
+        out.println "Processed ${String.valueOf(count).padRight(11)} in ${timeDelta} @ ${1000L*count/((endTime-startTimeMs)+1)} per second " + (extra != null ? " ($extraInfo)" : "")
     }
     
     void getAbort() { 
         throw new Abort() 
     }; 
 
-    static withProgress(Closure c) { 
-        ProgressCounter progress = new ProgressCounter(withTime:true)
+    static withProgress(Map options=[:],Closure c) { 
+        ProgressCounter progress = new ProgressCounter()
+        
+        for(option in options) {
+            progress[option.key] = option.value
+        }
+        
         c.delegate = progress
         try {
             c(progress)
