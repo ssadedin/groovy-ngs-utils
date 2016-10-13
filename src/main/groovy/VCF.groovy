@@ -190,8 +190,17 @@ class VCF implements Iterable<Variant> {
     static VCF parse(String fileName, List<Pedigree> peds = null, Closure c = null) {
         if(fileName == "-")
           parse(System.in,peds,c)
-        else
-          parse(new File(fileName),peds,c)
+        else {
+            if(fileName.endsWith('.gz')) {
+                new File(fileName).withInputStream { vcfIs ->
+                    vcfIs = new GZIPInputStream(vcfIs)
+                    parse([fileName:fileName], vcfIs,peds,c)
+                }
+            }
+            else {
+              parse([fileName:fileName], new File(fileName),peds,c)
+            }
+        }
     }
     
     static VCF parse(String fileName, Closure c) {
@@ -199,7 +208,7 @@ class VCF implements Iterable<Variant> {
     }
     
     static VCF parse(File f, List<Pedigree> peds = null, Closure c = null) {
-        parse([:], new BufferedInputStream(new FileInputStream(f)),peds,c)
+        parse([fileName:f.path], new BufferedInputStream(new FileInputStream(f)),peds,c)
     }
     
     static VCF parse(Closure c = null) {
@@ -219,7 +228,7 @@ class VCF implements Iterable<Variant> {
     }
     
     static void filter(File f, List<Pedigree> peds, Closure c = null) {
-        filter([:],new BufferedInputStream(new FileInputStream(f)),peds,c)
+        filter([fileName:f.path],new BufferedInputStream(new FileInputStream(f)),peds,c)
     }
     
     static void filter(String fileName, Closure c = null) {
@@ -256,6 +265,10 @@ class VCF implements Iterable<Variant> {
 //    @CompileStatic
     private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
         VCF vcf = new VCF(pedigrees:peds)
+        
+        if(options.fileName)
+            vcf.fileName = options.fileName
+        
         String lastHeaderLine
         long lastPrintTimeMs = System.currentTimeMillis()
         int count = 0
