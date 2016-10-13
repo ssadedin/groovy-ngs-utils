@@ -2,6 +2,49 @@ import groovy.lang.Closure;
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import java.text.NumberFormat
+import java.util.logging.*
+import java.text.*
+
+/**
+ * The default Java log former uses a format that is too verbose, so
+ * replace it with something more compact.
+ */
+public class SimpleLogFormatter extends Formatter {
+    
+    private static final String lineSep = System.getProperty("line.separator");
+    
+    /**
+     * A Custom format implementation that is designed for brevity.
+     */
+    public String format(LogRecord record) {
+        
+        DateFormat format = new SimpleDateFormat("h:mm:ss");
+    
+        String loggerName = record.getLoggerName();
+        if(loggerName == null) {
+            loggerName = "root";
+        }
+        StringBuilder output = new StringBuilder()
+            .append(loggerName)
+            .append("\t[")
+            .append(record.threadID)
+            .append("]\t")
+            .append(record.getLevel()).append("\t|")
+            .append(format.format(new Date(record.getMillis())))
+            .append(' ')
+            .append(record.getMessage()).append(' ')
+            .append(lineSep);
+            
+        if(record.getThrown()!=null) {
+            StringWriter w = new StringWriter()
+            record.getThrown().printStackTrace(new PrintWriter(w))
+            output.append("Exception:\n" + w.toString())
+        }    
+            
+        return output.toString();
+    }
+}
+
 
 
 /**
@@ -63,5 +106,18 @@ class Utils {
                 return humanNumberFormat.format(value) + unit
             value = value / 1000
         }
+    }
+    
+    /**
+     * Set up Java logging with a nice, simple, reasonable format
+     */
+    public static void configureSimpleLogging(Level level = Level.INFO) {
+        ConsoleHandler console = new ConsoleHandler()
+        console.setFormatter(new SimpleLogFormatter())
+        console.setLevel(level)
+        Logger log = Logger.getLogger("dummy")
+        def parentLog = log.getParent()
+        parentLog.getHandlers().each { parentLog.removeHandler(it) }
+        log.getParent().addHandler(console)
     }
 }
