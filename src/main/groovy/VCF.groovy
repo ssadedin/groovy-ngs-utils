@@ -283,8 +283,13 @@ class VCF implements Iterable<Variant> {
         Map chrPosIndex = vcf.chrPosIndex
         ProgressCounter progress = new ProgressCounter(withTime:true)
         
-        List<String> samples = options.samples?: [] 
+        c.delegate = new Object() {
+            def stop() { throw new StopParsingVCFException() }
+            
+            Object getStop() {throw new StopParsingVCFException() }
+        }
         
+        List<String> samples = options.samples?: [] 
         List<Integer> keepColumns = null
         try {
             f.eachLine { String line ->
