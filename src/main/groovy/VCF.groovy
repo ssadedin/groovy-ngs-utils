@@ -198,7 +198,7 @@ class VCF implements Iterable<Variant> {
                 }
             }
             else {
-              parse([fileName:fileName], new File(fileName),peds,c)
+              parse(new File(fileName),peds,c)
             }
         }
     }
