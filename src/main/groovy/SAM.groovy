@@ -101,6 +101,14 @@ class SAMRecordCategory {
     }  
 }
 
+@CompileStatic
+class ReadWindow {
+    
+    int pos
+    
+    TreeMap<Integer, List<SAMRecord>> window = new TreeMap()
+}
+
 /**
  * Adds various Groovy idioms and convenience features to the 
  * Picard SAMFileReader.
@@ -909,6 +917,131 @@ class SAM {
           bp_on_target: totalBp,
           on_target: on_target
         ]
+    }
+    
+    Map<String, Integer> getContigs() {
+        SAMFileReader reader = newReader()
+        try {
+            List<SAMSequenceRecord> sequences = reader.getFileHeader().getSequenceDictionary().getSequences()
+            Map<String,Integer> contigs = sequences.collectEntries { seq ->
+                [seq.sequenceName, seq.sequenceLength]
+            }
+        }
+        finally {
+            reader.close()
+        }
+    }
+    
+    void movingWindow(int windowSize, String chr, Closure c, Closure filterFn=null) {
+        int chrSize = getContigs()[chr]
+        movingWindow(windowSize, chr, 0, chrSize, c, filterFn)
+    }
+    
+    
+    /**
+     * Call the given closure for each base position with a moving window of reads over that position
+     * <p>
+     * <b>NOTE:</b> Requires a BAM file sorted by position. Will not work with unsorted bam file.
+     * 
+     * @param windowSize    the size of window to use in bp
+     * @param start         start position
+     * @param end           end position
+     * @param c             callback function to invoke
+     * @param filterFn      optional filter function to apply that filters out reads
+     */
+    @CompileStatic
+    void movingWindow(int windowSize, String chr, int start, int end, Closure c, Closure filterFn=null) {
+        
+       assert windowSize > 0
+       
+       ReadWindow readWindow = new ReadWindow()
+        
+       int halfWindowSize = (int)Math.floor((float)windowSize / 2.0f)
+       
+       int trailingPosition = start - halfWindowSize
+       int leadingPosition = start + halfWindowSize
+       int currentPosition = trailingPosition
+       
+       
+       TreeMap<Integer,List<SAMRecord>> window = readWindow.window
+       
+       SAMFileReader reader = newReader()
+       SAMRecordIterator iter = reader.query(chr, Math.max(0,start-windowSize), end+windowSize, false)
+       try {
+           try {
+               while(iter.hasNext()) {
+                   
+                   SAMRecord r = iter.next()
+                   
+                   if((filterFn != null) && (filterFn(r) == false)) {
+                       continue
+                   }
+                   
+                   int pos = r.alignmentStart
+                   
+                   boolean verbose = false
+                   if(pos == 18057685) {
+                       println "Leading edge at debug position"
+                   }
+                   
+                   if(currentPosition == 18057685) {
+                       println "Window center at debug position"
+                   }
+     
+                   
+                   // Check if we already have reads at this position
+                   List<SAMRecord> readsAtPos = window[pos]
+                       
+                   if(readsAtPos == null) { // encounter a new position, move window forward
+                           
+                       while(currentPosition<pos-halfWindowSize) {
+                           
+                           // Call for current position
+                           readWindow.pos = currentPosition
+                           if(currentPosition>=start && currentPosition<end)
+                               c(readWindow)
+                               
+                           // Remove all that now fall outside lower window
+                           int trailingEdge = currentPosition - halfWindowSize
+                           while(!window.isEmpty() && window.firstKey()<trailingEdge) {
+                               window.pollFirstEntry()
+                           } 
+                               
+                           // Move forward 1
+                           ++currentPosition
+                       }
+                       readsAtPos = window[pos] = []
+                   }
+                   readsAtPos << r
+               }
+               
+               // We have ended where the reads ended, not necessarily where the requested
+               // window ended. Keep invoking callback until we do it for every position 
+               // requested
+               while(currentPosition<end) {
+                   
+                   int trailingEdge = currentPosition - halfWindowSize
+                   while(!window.isEmpty() && window.firstKey()<trailingEdge) {
+                       window.pollFirstEntry()
+                   }
+                   
+                   if(currentPosition == 18057685) {
+                       println "Window center at debug position: reads are " + window[currentPosition]
+                   }
+      
+                   readWindow.pos = currentPosition
+                   if(currentPosition>=start && currentPosition<end)
+                       c(readWindow)
+                   ++currentPosition
+               }
+           }
+           finally {
+               iter.close()
+           }
+       }
+       finally {
+           reader.close()
+       }
     }
 
     /**
