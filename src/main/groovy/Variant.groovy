@@ -152,6 +152,44 @@ class VEPConsequences {
         "intergenic_variant"
     ]
     
+    static Map<String,String> VEP_IMPACTS = [
+        "transcript_ablation":"HIGH",
+        "splice_acceptor_variant":"HIGH",
+        "splice_donor_variant":"HIGH",
+        "stop_gained":"HIGH",
+        "frameshift_variant":"HIGH",
+        "stop_lost":"HIGH",
+        "start_lost":"HIGH",
+        "transcript_amplification":"HIGH",
+        "inframe_insertion":"MODERATE",
+        "inframe_deletion":"MODERATE",
+        "missense_variant":"MODERATE",
+        "protein_altering_variant":"MODERATE",
+        "splice_region_variant":"LOW",
+        "incomplete_terminal_codon_variant":"LOW",
+        "stop_retained_variant":"LOW",
+        "synonymous_variant":"LOW",
+        "coding_sequence_variant":"MODIFIER",
+        "mature_miRNA_variant":"MODIFIER",
+        "5_prime_UTR_variant":"MODIFIER",
+        "3_prime_UTR_variant":"MODIFIER",
+        "non_coding_transcript_exon_variant":"MODIFIER",
+        "intron_variant":"MODIFIER",
+        "NMD_transcript_variant":"MODIFIER",
+        "non_coding_transcript_variant":"MODIFIER",
+        "upstream_gene_variant":"MODIFIER",
+        "downstream_gene_variant":"MODIFIER",
+        "TFBS_ablation":"MODIFIER",
+        "TFBS_amplification":"MODIFIER",
+        "TF_binding_site_variant":"MODIFIER",
+        "regulatory_region_ablation":"MODERATE",
+        "regulatory_region_amplification":"MODIFIER",
+        "feature_elongation":"MODIFIER",
+        "regulatory_region_variant":"MODIFIER",
+        "feature_truncation":"MODIFIER",
+        "intergenic_variant":"MODIFIER"
+    ]
+    
     /**
      * Returns an integer representing the severity of the consequence of a mutation. 
      * Larger integers represent MORE severe consequences.
@@ -1198,4 +1236,15 @@ class Variant implements IRegion {
         def vep = getVepInfo()[alleleIndex]
         return vep?.Consequence?.split("&")?.max { VEPConsequences.severityOf(it)}
     }
+    
+    String getMaxVepImpact() {
+        Map<String,Object> vep = getMaxVep()
+        List maxCons = vep.Consequence?.tokenize('&')?.collect { VEPConsequences.VEP_IMPACTS[it]?:"UNKNOWN" }
+        for(String impact in ["HIGH","MODERATE","MODIFIER","LOW"]) {
+            if(impact in maxCons)
+                return impact
+        }
+        return "UNKNOWN"
+    }
+    
 }
