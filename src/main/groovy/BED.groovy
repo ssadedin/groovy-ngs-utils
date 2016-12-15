@@ -193,7 +193,7 @@ class BED extends Regions {
               
              try {
                 if(includeInfo==true)
-                    c.call(chr,start,end,fields.size()>2?fields[3]:null)
+                    c.call(chr,start,end,fields.size()>3?fields[3]:null)
                 else {
                     c.call(chr,start,end)
                 }
