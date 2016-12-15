@@ -1,6 +1,8 @@
 import com.xlson.groovycsv.PropertyMapper;
 import java.util.zip.GZIPInputStream
 
+import org.codehaus.groovy.runtime.StackTraceUtils;
+
 /**
  * RangedData represents a set of genomic regions with data attached. The data is
  * parsed from a tab separated file, 3 columns of which are expected to be the genomic
@@ -115,14 +117,16 @@ class RangedData extends Regions {
             return this
         }
         catch(Exception e) {
-            throw new RuntimeException("Failed to parse line $lineNumber: \n\n" + currentLine.values)
+            def exceptionTrace = new StringWriter()
+            StackTraceUtils.sanitize(e).printStackTrace(new PrintWriter(exceptionTrace))
+            throw new RuntimeException("Failed to parse line $lineNumber: \n\n" + currentLine.values + "\n\n" + exceptionTrace)
         }
     }
 
     protected Region parseRegion(PropertyMapper line) {
         int startPosition = line.values[startColumn].toInteger()+genomeZeroOffset
         int endPosition = line.values[endColumn].toInteger()+genomeZeroOffset
-        Region r = new Region(line.values[chrColumn],
+        Region r = new Region(String.valueOf(line.values[chrColumn]),
                         new GRange(startPosition,endPosition,null))
         return r
     }
