@@ -66,6 +66,17 @@ class Utils {
         }
         // return endTime.time - startTime.time
     }
+    
+    static timeMs(Closure c) {
+        long startTimeMs = System.currentTimeMillis()
+        try {
+            c()
+        }
+        finally {
+            return System.currentTimeMillis() - startTimeMs
+        }
+    }
+    
 
 	@CompileStatic
 	static int[] array(int... values) {
