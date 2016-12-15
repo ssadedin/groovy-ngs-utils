@@ -20,6 +20,7 @@
 
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import java.util.logging.Logger
 
 /**
  * Simple utility for displaying progress 
@@ -56,6 +57,8 @@ class ProgressCounter {
     
     PrintStream out = System.err
     
+    Logger log
+    
     Closure extra = null
     
     @CompileStatic
@@ -80,10 +83,17 @@ class ProgressCounter {
                        extraInfo = extra()
                    }   
                     
+                   String progressLine
                    if(withTime)
-                       out.println(new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + (extraInfo? " " + extraInfo : ""))
+                       progressLine = new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + (extraInfo? " " + extraInfo : "")
                    else
-                       out.println((prefix?"\t$prefix :\t":"") + "Processed ${String.valueOf(count).padRight(12)}" + rateInfo + (extraInfo? " " + extraInfo : ""))
+                       progressLine = (prefix?"\t$prefix :\t":"") + "Processed ${String.valueOf(count).padRight(12)}" + rateInfo + (extraInfo? " " + extraInfo : "")
+                       
+                       
+                   if(log != null)
+                       log.info(progressLine)
+                   else
+                       out.println(progressLine) 
                 }
                 lastPrintTimeMs = System.currentTimeMillis()
                 lastPrintCount = count
@@ -94,7 +104,10 @@ class ProgressCounter {
     
     void end() {
         if(count == 0) {
-            out.println "0 records processed"
+            if(log)
+                log.info "0 records processed"
+            else
+                out.println "0 records processed"
             return
         }
         
@@ -104,8 +117,16 @@ class ProgressCounter {
         }
         
         long endTime = System.currentTimeMillis()
+        long deltaMs = (endTime-startTimeMs)+1 
         def timeDelta = TimeCategory.minus(new Date(endTime),new Date(startTimeMs))
-        out.println "Processed ${String.valueOf(count).padRight(11)} in ${timeDelta} @ ${1000L*count/((endTime-startTimeMs)+1)} per second " + (extra != null ? " ($extraInfo)" : "")
+        float rate = 1000.0d*((count)/((float)(deltaMs+1)))
+        String rateInfo = String.format(" @ %.2f/s ", rate)
+        
+        String progressLine = "Processed ${String.valueOf(count)} in ${timeDelta} ${rateInfo} " + (extra != null ? " ($extraInfo)" : "")
+        if(log)
+            log.info(progressLine)
+        else
+            out.println(progressLine)
     }
     
     void getAbort() { 
