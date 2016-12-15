@@ -74,6 +74,8 @@ class RangedData extends Regions {
         
         int lineNumber = 0
         
+        boolean stripChr = options.stripChr ? true : false
+        
         // Some data files (looking at you UCSC) are zero-based instead of 1-based
         if(options.zeroBased)
             genomeZeroOffset=1
@@ -90,6 +92,10 @@ class RangedData extends Regions {
                 }
                     
                 Region r = parseRegion(line)
+                if(stripChr && r.chr.startsWith('chr')) {
+                    r.setChr(r.chr.substring(3)) // must call setChr due to expando
+                }
+                    
                 r.range.extra = r
                 if(!columns)
                     columns = line.columns*.key

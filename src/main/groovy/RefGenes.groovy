@@ -29,9 +29,9 @@ class RefGenes {
     static COLUMN_NAMES= [ "num", "tx", "chr", "strand", "tx_start", "tx_end", "cds_start", "cds_end", "exons", "starts", "ends", 
                            "u1","gene", "cdsStartStat","cdsEndStat","exonFrames"]
     
-    RefGenes(String sourceFile) {
+    RefGenes(Map options = [:], String sourceFile) {
        this.refData = new RangedData(sourceFile, 2,4,5)
-       this.refData.load(columnNames:COLUMN_NAMES, zeroBased:true, readFirstLine:true)
+       this.refData.load(options + [columnNames:COLUMN_NAMES, zeroBased:true, readFirstLine:true])
        this.index() 
     }
     
@@ -46,6 +46,19 @@ class RefGenes {
     
     static RefGenes download(String genomeVersion="hg19") {
         
+        Map<String,String> genomeMap = [
+            "GRCh37" : "hg19",
+            "GRCh38" : "hg38"
+        ]
+        
+        boolean stripChr = false
+        
+        // Map to appropriate UCSC genome and strip chr if necessary
+        if(genomeVersion in genomeMap) {
+            genomeVersion = genomeMap[genomeVersion]
+            stripChr = true
+        }
+        
         File outputFile = new File("refGene.txt.gz")
         if(!outputFile.exists()) {
             outputFile.withOutputStream { outputStream ->
@@ -54,7 +67,7 @@ class RefGenes {
                 }
             }
         }
-        return new RefGenes(outputFile.name)
+        return new RefGenes(outputFile.name, stripChr:stripChr)
     }
     
     void load(Reader r) {
