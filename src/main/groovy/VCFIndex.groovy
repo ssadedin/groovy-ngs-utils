@@ -25,6 +25,7 @@ import java.nio.channels.FileChannel.MapMode
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
 import htsjdk.tribble.index.IndexFactory
+import htsjdk.tribble.readers.TabixReader
 import org.codehaus.groovy.runtime.StackTraceUtils
 
 
@@ -102,15 +103,22 @@ class VCFIndex {
          
          File indexFile = new File(fileName + ".idx")
          if(!indexFile.exists()) 
+             indexFile = new File(fileName + ".tbi")
+         
+         if(!indexFile.exists()) 
              throw new FileNotFoundException(indexFile.absolutePath, 
                  """
                      The VCF file specified is not indexed. Please index the VCF file, for example, using: 
                  
                      igvtools index $fileName
+
+                     or
+
+                     tabix -p vcf $fileName (bgz only)
                  
                  """.stripIndent())
              
-         this.index = IndexFactory.loadIndex(fileName + ".idx")
+         this.index = IndexFactory.loadIndex(indexFile.absolutePath)
          this.headerVCF = new VCF(fileName)
      }
     
@@ -169,6 +177,107 @@ class VCFIndex {
         query(r.chr, r.from, r.to, c)
     }
     
+    void query(String chr, int start, int end, Closure c) {
+        if(fileName.endsWith('gz')) {
+            queryTabix(chr,start,end,c)
+        }
+        else 
+            queryIdx(chr,start,end,c)
+    }
+    
+    Iterator<Variant> iterator(String chr, int start, int end) {
+        if(fileName.endsWith('.gz')) {
+            TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
+            return new Iterator<Variant>() {
+                
+                String nextLine = null
+                
+                TabixReader.Iterator i = tbr.query(chr,start,end)
+                Variant next() {
+                    if(nextLine) {
+                        String result = nextLine
+                        nextLine = null
+                        return Variant.parse(result)
+                    }
+                    else {
+                        nextLine = null
+                        return Variant.parse(i.next())
+                    }
+                }
+                
+                boolean hasNext() {
+                    
+                    if(nextLine)
+                        return true
+                    else {
+                        nextLine = i.next()
+                        return nextLine != null
+                    }
+                }
+                
+                void remove() {
+                    throw new UnsupportedOperationException()
+                }
+            }
+        }
+        else {
+            throw new IllegalStateException("Iterator queries are only supported for Tabix indexed VCFs")
+        }
+    }
+    
+    void queryTabix(String chr, int start, int end, Closure c) {
+        
+        TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
+        
+        TabixReader.Iterator iter = tbr.query(chr,start,end)
+        
+        try {
+            int blockLineCount = 0
+            String line
+            while((line = iter.next()) != null) {
+                
+                ++blockLineCount
+    
+                line = line.trim()
+    
+                if(line.startsWith('#'))
+                    continue
+    
+                if(line.isEmpty())
+                    break
+    
+                try {
+                    Variant v = Variant.parse(line)
+                    if(v == null) // by default, homref not included, returns null
+                        continue;
+                    
+                    if(v.pos > end)
+                        break
+    
+                    if(v.pos < start)
+                        continue
+    
+                    v.header = this.headerVCF
+                    try {
+                        if(c(v)==false)
+                            break
+                    }
+                    catch(Exception e) {
+                        System.err.println("Failure in processing line $blockLineCount [$line] empty=${line.trim().isEmpty()} lineSize=${line.size()}")
+                        StackTraceUtils.deepSanitize(e).printStackTrace()
+                    }
+                }
+                catch(Exception e) {
+                    System.err.println("Failure in parsing line $blockLineCount [$line] empty=${line.trim().isEmpty()} lineSize=${line.size()}")
+                }
+            }
+        }
+        finally {
+            tbr.close()
+        }
+
+    }
+    
     /**
      * Query the current VCF file for all variants in the specified
      * region
@@ -179,7 +288,7 @@ class VCFIndex {
      * @param c     Closure to call back
      */
     @CompileStatic
-    void query(String chr, int start, int end, Closure c) {
+    void queryIdx(String chr, int start, int end, Closure c) {
         
         if(this.index == null) {
             throw new RuntimeException("Random access queries require a VCF file loaded into memory")
@@ -228,6 +337,8 @@ class VCFIndex {
                 while((line = r.readLine()) != null) {
 //                    println "Parsing line: $line"
                     
+                    ++blockLineCount
+                    
                     line = line.trim()
                     
                     if(line.startsWith('#'))
@@ -236,7 +347,6 @@ class VCFIndex {
                     if(line.isEmpty())
                         break
                         
-                    ++blockLineCount
                     try {
                         Variant v = Variant.parse(line)
                         if(v.pos > end)
