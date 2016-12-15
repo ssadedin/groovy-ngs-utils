@@ -110,8 +110,8 @@ class Regions implements Iterable<Region> {
     }
     
     @CompileStatic
-    int size() {
-        int sizeCount = 0
+    long size() {
+        long sizeCount = 0
         this.eachRange { String chr, int start, int end ->
             sizeCount += (end - start + 1)
         }
