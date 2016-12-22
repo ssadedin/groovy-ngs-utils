@@ -423,15 +423,23 @@ class Variant implements IRegion {
     		return pos..(pos+alts.max { it.size() }.size())
 	}
     
-    // @CompileStatic
+    @CompileStatic
+    private boolean parseFields(String line) {
+        parseFields(line,true)   
+    }
+    
     /**
      * Parse the given line from a VCF file.
      * 
      * @param line
      */
-    private void parseFields(String line) {
+    @CompileStatic
+    private boolean parseFields(String line, boolean ignoreHomRef) {
         
-        def fields = line.split('[\t ]{1,}')
+//        def fields = line.split('[\t ]{1,}')
+        List<String>  fields = line.tokenize('\t')
+        if(ignoreHomRef && fields[4] == '<NON_REF>')
+            return false
         
         chr = fields[0]
         id = fields[2]
@@ -446,10 +454,12 @@ class Variant implements IRegion {
         parseGenotypes(fields)
         
         setAlt(alt)
+        return true
     }
     
-    private void parseGenotypes(String [] fields) {
-        if(fields.length > 8) {
+    @CompileStatic
+    private void parseGenotypes(List<String> fields) {
+        if(fields.size() > 8) {
             
           if(genoTypeFields == null)
               genoTypeFields = fields[8].split(':')
@@ -903,9 +913,16 @@ class Variant implements IRegion {
             return Math.abs(ref.size() - alt.size())
     }
 
+    @CompileStatic
     static Variant parse(String line) {
+        parse(line,true)
+    }
+    
+    @CompileStatic
+    static Variant parse(String line, boolean ignoreNonRef) {
         Variant parsed = new Variant(line:line)
-        parsed.parseFields(line)
+        if(!parsed.parseFields(line))
+            return null
         return parsed
     }
     
@@ -1159,6 +1176,7 @@ class Variant implements IRegion {
      *              should be provided, and this should be consistent with the {@link #pos}
      *              field.
      */
+    @CompileStatic
     void setAlt(String alt) {
         if(!alts) {
             alts = [alt]
@@ -1168,7 +1186,11 @@ class Variant implements IRegion {
         }
         this.alt = alt
         type = convertType(ref,alt)
-        altByte = (byte)alt.charAt(0)
+        
+        if(!alt.isEmpty())
+            altByte = (byte)alt.charAt(0)
+        else
+            altByte = '.'.charAt(0)
     }
     
     Region cachedRegion = null
