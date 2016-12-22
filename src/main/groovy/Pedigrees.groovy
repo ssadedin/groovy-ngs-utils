@@ -81,21 +81,25 @@ class Pedigrees {
         }
     }
     
+    final static Set<String> NULL_VALUES = [".","0"]
+    
     static Pedigrees parse(Reader r) {
         Map<String,Pedigree> families = [:]
         Map<String,Pedigree> subjectsToFamilies = [:]
         List<Subject> subjects = new TSV(r,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
+            
             if(!families.containsKey(line.familyId))
                 families[line.familyId] = new Pedigree(id:line.familyId)
+                
             Pedigree p = families[line.familyId]
             def sex = line.sex ?: "other"
             Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
             
             RelationshipType childType = s.sex == Sex.FEMALE ? DAUGHTER : SON
-            if(line.paternalId && line.paternalId != "0") 
+            if(line.paternalId && !NULL_VALUES.contains(line.paternalId))
                 s.relationships.add(new Relationship(type:childType,from:s.id, to: line.paternalId))
                 
-            if(line.maternalId && line.maternalId != "0") 
+            if(line.maternalId && !NULL_VALUES.contains(line.maternalId))
                 s.relationships.add(new Relationship(type:childType,from:s.id, to: line.maternalId)) 
             
             p.individuals.add(s)
@@ -115,7 +119,7 @@ class Pedigrees {
             List<String> parentIds = s.relationships.grep { it.type.isChild() }*.to
             for(String parentId in parentIds) {
                 if(!subjectsToFamilies[parentId]) {
-                    if(parentId != "0" && parentId != ".")
+                    if(!NULL_VALUES.contains(parentId))
                         System.err.println "WARNING: Sample $s.id has a parent not specified in PED file: $parentId" 
                     continue
                 }
