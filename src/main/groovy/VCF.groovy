@@ -419,6 +419,10 @@ class VCF implements Iterable<Variant> {
         result.headerLines = this.headerLines[1..-2] + [ newLastLine ]
         result.parseLastHeaderLine()
         
+        
+        this.mergeDifferentVepHeaders(this, other, result)
+        this.mergeDifferentVepHeaders(other, this, result)
+       
         List<String> samples = this.samples + other.samples
         for(Region r in allVariants) {
             
@@ -511,6 +515,37 @@ class VCF implements Iterable<Variant> {
             result.add(resultVariant)
         }
         return result
+    }
+    
+    /**
+     * Check if the first vcf uses a CSQ VEP info tag while the second uses
+     * an ANN info tag. If so, add the ANN info tag to the result.
+     * 
+     * this is an internal function for solving a specific case of merging
+     * two VCFs with VEP annotations done using different VEP versions / annotation
+     * info tags.
+     * 
+     * @param vcf1
+     * @param vcf2
+     * @param result VCF to add the ANN tag to
+     */
+    private static mergeDifferentVepHeaders(VCF vcf1, VCF vcf2, VCF result) {
+        
+        // If the other VCF has VEP annotations in different format,
+        // add an info line for the different format to our own
+        if(vcf1.getInfoMetaData("CSQ") && vcf2.getInfoMetaData("ANN")) {
+            
+            // Find where to add
+            int insertionPoint = result.headerLines.findLastIndexOf { it.startsWith('##INFO=') }
+            
+            // Find line to add
+            String lineToAdd = vcf2.headerLines.find { it.startsWith('##INFO=<ID=ANN,Number') }
+            if(!lineToAdd)
+                throw new Exception("Unable to locate INFO definition for VEP annotations (ANN) in VCF to be merged")
+            
+            result.headerLines.add(insertionPoint, lineToAdd)
+        }
+ 
     }
     
     Pedigree findPedigreeBySampleIndex(int i) {
@@ -642,23 +677,50 @@ class VCF implements Iterable<Variant> {
         return getInfoMetaData(id) != null
     }
     
+    String[] getVepColumns() {
+        getVepColumns("auto")
+    }
+    
     /**
      * Dedicated support for dynamically returning the VEP columns present in this VCF file
      * 
      * @return
      */
-    String[] getVepColumns() {
+    String[] getVepColumns(String vepType) {
+        parseVepColumns()
+        
+        if(vepType == "auto") {
+            return this.vepColumns.values()[0].value
+        }
+        else {
+            return this.vepColumns[vepType]
+        }
+    }
+    
+    String[] parseVepColumns() {
         
         if(vepColumns != null)
             return vepColumns
-        
-        Map csqInfo = getInfoMetaData("CSQ")
-        if(csqInfo==null) 
-            throw new IllegalArgumentException("VCF does not contain VEP annotations")
             
-        String fields = (csqInfo.Description =~ 'Format: (.*)')[0][1]
+        vepColumns = [:]
         
-        vepColumns = fields.split("\\|")
+        for(vepType in ["CSQ","ANN"]) { 
+               
+            Map csqInfo = getInfoMetaData(vepType)
+               
+            if(!csqInfo)
+                continue
+                
+            String fields = (csqInfo.Description =~ 'Format: (.*)')[0][1]
+            
+            String [] vepTypeColumns = fields.split("\\|")
+            
+            vepColumns[vepType] = vepTypeColumns
+        }
+        
+        if(vepColumns.size() == 0) 
+            throw new IllegalArgumentException("VCF does not contain VEP annotations")
+        
         return vepColumns
     }
     
