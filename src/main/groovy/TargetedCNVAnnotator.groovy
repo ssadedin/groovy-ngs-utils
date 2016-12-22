@@ -47,6 +47,9 @@ class TargetedCNVAnnotator {
    }
    
    Map annotate(IRegion v, String type) {
+       
+       if(!v.chr.startsWith('chr'))
+           v = new Region('chr'+v.chr, v.range)
 	   
        List<GRange> compatibleRanges = findCompatibleRanges(v)
            
