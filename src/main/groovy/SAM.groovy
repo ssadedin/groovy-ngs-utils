@@ -1103,4 +1103,30 @@ class SAM {
         return 0;
     }
     */
+    
+    /**
+     * Create an index for the given BAM file
+     * 
+     * @param bamFile
+     */
+    @CompileStatic
+    static void index(File bamFile) {
+            
+        SAMFileReader reader = new SAMFileReader(bamFile)
+        File outputFile = new File(bamFile.path + ".bai")
+        
+        if(outputFile.exists())
+            outputFile.delete()
+        
+        BAMIndexer indexer = new BAMIndexer(outputFile, reader.getFileHeader());
+            
+        reader.enableFileSource(true);
+        int totalRecords = 0;
+            
+        // create and write the content
+        for (SAMRecord rec : reader) {
+            indexer.processAlignment(rec);
+        }
+        indexer.finish();
+    }
 }
