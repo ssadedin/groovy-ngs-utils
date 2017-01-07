@@ -194,12 +194,14 @@ class Regions implements Iterable<Region> {
      * For a "flat" intersection of the two Regions, you should use {@link #reduce()} to
      * flatten the source and target first before calling this method.
      */
+    @CompileStatic
     Regions intersect(Regions other) {
         Regions result = new Regions()
         this.index.each { chr, chrIndex ->
             RangeIndex otherChrIndex = other.index[chr]
             for(IntRange r in chrIndex) {
-                otherChrIndex.intersect(r.from, r.to).each { result.addRegion(chr, it.from, it.to+1) }
+                if(otherChrIndex != null)
+                    otherChrIndex.intersect(r.from, r.to).each { Range xr -> result.addRegion(chr, (int)xr.from, ((int)xr.to)+1) }
             }
         }
         return result
