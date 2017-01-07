@@ -139,6 +139,7 @@ class VEPConsequences {
         "nc_transcript_variant",
         "intron_variant",
         "NMD_transcript_variant",
+        "non_coding_transcript_variant",
         "upstream_gene_variant",
         "downstream_gene_variant",
         "TFBS_ablation",
