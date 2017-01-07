@@ -115,18 +115,18 @@ class RefGenes {
      * @param gene
      * @return
      */
-    Regions getExons(String gene, codingOnly=true) {
+    Regions getExons(String gene, boolean codingOnly=true) {
         Regions exons = new Regions()
         geneToTranscripts[gene].collect { refData[it] }.collect { tx ->
             
             // Transcripts starting with NR are non-coding
-            if(!codingOnly && tx.tx.startsWith("NR_"))
+            if(codingOnly && tx.tx.startsWith("NR_"))
                 return null
                 
             [ tx.starts.split(","), tx.ends.split(",") ].transpose().collect { exonStartEnd ->
                 int start = exonStartEnd[0].toInteger()
                 int end = exonStartEnd[1].toInteger()
-                if(!codingOnly) {
+                if(codingOnly) {
                     start = Math.max(tx.cds_start.toInteger(), start)
                     end = Math.min(tx.cds_end.toInteger(), end)
                 }
