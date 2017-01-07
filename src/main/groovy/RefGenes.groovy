@@ -178,6 +178,20 @@ class RefGenes {
         return splices
     }
     
+    /**
+     * Look up the entire span of a gene from its HGNC symbol
+     * 
+     * @param hgncSymbol
+     * @return
+     */
+    Region getGeneRegion(String hgncSymbol) {
+       Regions exons = getExons(hgncSymbol, false) 
+       if(exons.numberOfRanges == 0)
+           return null // unknown gene
+       
+       new Region(exons[0].chr, exons*.from.min()..exons*.to.max())
+    }
+    
     List<String> getGenes(Region r) {
         refData.getOverlaps(r)*.extra*.gene.unique()
     }
