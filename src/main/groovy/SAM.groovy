@@ -1094,6 +1094,33 @@ class SAM {
         return count
     }
     
+    /**
+     * Probe the given BAM file to make a guess about what genome build it is 
+     * generated from.
+     * 
+     * @return
+     */
+    String sniffGenomeBuild() {
+        
+        Map<String,Integer> contigs = getContigs()
+        
+        Map hgMap = [
+            247249719 : "hg18",
+            249250621 : "hg19",
+            248956422 : "hg38"
+        ]
+        
+        Map grcMap = [
+            249250621 : "GRCh37",
+            248956422 : "GRCh38"
+        ]
+        
+        contigs.any { it.key.startsWith('chr') } ? 
+            hgMap[contigs['chr1']]
+        :
+            grcMap[contigs['1']]
+    }
+    
     /*
     public static long getOpenFileDescriptorCount() {
         OperatingSystemMXBean osStats = ManagementFactory.getOperatingSystemMXBean();
