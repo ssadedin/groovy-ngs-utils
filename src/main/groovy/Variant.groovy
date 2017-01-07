@@ -1112,17 +1112,31 @@ class Variant implements IRegion {
      */
     String toJson(String sample=null) {
         int sampleIndex = sample ? header.samples.indexOf(sample) : 0
-        def effect = getMaxEffect()
+        SnpEffInfo effect = getMaxEffect()
+        Map effectInfo = [:]
+        if(effect) {
+            effectInfo = [ truncating : effect.isTruncating(), effect: effect.type, impact: effect.impact ]            
+        }
+        else {
+            Map<String,Object> vepInfo = getMaxVep();
+            if(vepInfo) {
+                effectInfo = [
+                    truncating : vepInfo.IMPACT == "HIGH",
+                    effect : vepInfo.Consequence,
+                    impact : vepInfo.IMPACT
+                ]
+            }
+        }
+        
         JsonOutput.toJson([
             chr : chr,
             alt : alt, 
             type: type,
             dosage: getDosages()[sampleIndex],
             alleles : this.getAlleles(),
-            depths : [getAlleleDepths(0)[sampleIndex], getAlleleDepths(1)[sampleIndex]],
-            info : info
-        ] + (effect ? [ truncating : effect.isTruncating(), effect: effect.type, impact: effect.impact ] : [:])
-      )
+            depths : [getAlleleDepths(0)[sampleIndex], getAlleleDepths(1)[sampleIndex]]
+//            info : info
+        ] + effectInfo)
     }
     
     /**
