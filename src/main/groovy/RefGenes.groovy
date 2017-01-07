@@ -54,15 +54,18 @@ class RefGenes {
         boolean stripChr = false
         
         // Map to appropriate UCSC genome and strip chr if necessary
+        String ucscGenomeVersion = genomeVersion
         if(genomeVersion in genomeMap) {
-            genomeVersion = genomeMap[genomeVersion]
+            ucscGenomeVersion = genomeMap[genomeVersion]
             stripChr = true
         }
         
         File outputFile = new File("refGene.txt.gz")
         if(!outputFile.exists()) {
+            
+            String ucscUrl = UCSC_REFGENE_URL.replace('##genomeVersion##',ucscGenomeVersion)
             outputFile.withOutputStream { outputStream ->
-                new URL(UCSC_REFGENE_URL.replace('##genomeVersion##',genomeVersion)).withInputStream { urlStream ->
+                new URL(ucscUrl).withInputStream { urlStream ->
                     Files.copy(urlStream, outputStream)
                 }
             }
