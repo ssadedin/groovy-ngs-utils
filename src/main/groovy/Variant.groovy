@@ -195,8 +195,13 @@ class VEPConsequences {
      * Returns an integer representing the severity of the consequence of a mutation. 
      * Larger integers represent MORE severe consequences.
      */
+    @CompileStatic
     static int severityOf(String cons) {
-        RANKED_CONSEQUENCES.size() - RANKED_CONSEQUENCES.indexOf(cons)
+        
+        int index = RANKED_CONSEQUENCES.indexOf(cons)
+        if(index<0)
+            index = RANKED_CONSEQUENCES.size()
+        RANKED_CONSEQUENCES.size() - index
     }
     
     /**
