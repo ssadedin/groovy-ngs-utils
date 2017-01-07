@@ -274,14 +274,21 @@ class SAM {
      */
     void eachRecord(Closure c) {
         use(SAMRecordCategory) {
-            SAMRecordIterator i = samFileReader.iterator()
+            
+            SAMFileReader reader = this.newReader()
             try {
-                while(i.hasNext()) {
-                    c(i.next())
+                SAMRecordIterator i = reader.iterator()
+                try {
+                    while(i.hasNext()) {
+                        c(i.next())
+                    }
+                }
+                finally {
+                    i.close()
                 }
             }
             finally {
-                i.close()
+                reader.close()
             }
         }
     }
@@ -513,16 +520,23 @@ class SAM {
     @CompileStatic
     void eachPair(String chr, int start, int end, Closure c) {
         SAMRecordIterator<SAMRecord> iter
+        
+        SAMFileReader reader = this.newReader()
         if(chr)
-            iter = samFileReader.query(chr, start,end,false)
+            iter = reader.query(chr, start,end,false)
         else
-            iter = samFileReader.iterator()
+            iter = reader.iterator()
 
         try {
-            eachPair(null, iter,c)
+            try {
+                eachPair(null, iter,c)
+            }
+            finally {
+                iter.close()
+            }
         }
         finally {
-            iter.close()
+            reader.close()
         }
     }
 
