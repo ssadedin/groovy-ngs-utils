@@ -654,15 +654,24 @@ class Variant implements IRegion {
             new SnpEffInfo(gene:it[0], type: it[1], impact:it[2], info: it[3], transcript:it[4]) 
         }
     }
-    
+   
     List<Map<String,Object>> getVepInfo() {
         if(this.header == null)
             throw new IllegalStateException("Variant must have a header to query VEP information")
             
-        def vepFields = this.header.vepColumns
-        def csqs = getInfo().CSQ
+        def csqs = getInfo().CSQ 
+        def vepFields = null
+        if(csqs) {
+           vepFields = this.header.getVepColumns("CSQ")
+        }
+        else
+        if((csqs = getInfo().ANN)) {
+           vepFields = this.header.getVepColumns("ANN")
+        }
+        
         if(!csqs)
-            throw new IllegalStateException("This function requires VEP annotations. Please annotate with VEP in order to proceed")
+            return []
+//            throw new IllegalStateException("This function requires VEP annotations. Please annotate with VEP in order to proceed")
             
         csqs.split(",").collect { csq -> [vepFields,csq.split("\\|")].transpose().collectEntries() }
     }
