@@ -1274,7 +1274,9 @@ class Variant implements IRegion {
             veps.addAll(vep.Consequence.split("&").collect { [vep,it]})
             return veps;
         }
-        return allVeps.max { VEPConsequences.severityOf(it[1]) }[0]
+        return allVeps.max { 
+            VEPConsequences.severityOf(it[1]) 
+        }?.getAt(0)
     }
     
     /**
