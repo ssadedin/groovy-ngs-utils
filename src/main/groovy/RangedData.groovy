@@ -122,6 +122,15 @@ class RangedData extends Regions {
             throw new RuntimeException("Failed to parse line $lineNumber: \n\n" + currentLine.values + "\n\n" + exceptionTrace)
         }
     }
+    
+    /**
+     * Convert to a list of map objects
+     * 
+     * @return
+     */
+    List<Map<String,Object>> toListMap() {
+        this.collect {  [chr: it.chr, start: it.from, end: it.to] + it.properties }
+    }
 
     protected Region parseRegion(PropertyMapper line) {
         int startPosition = line.values[startColumn].toInteger()+genomeZeroOffset
