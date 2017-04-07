@@ -112,7 +112,7 @@ class Region extends Expando implements IRegion, Serializable {
         range instanceof GRange ? range.extra : null
     }
     
-    int size() {
+    long size() {
         range.size()
     }
     
