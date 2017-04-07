@@ -43,16 +43,38 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     Region(String region) {
-        int colonIndex = region.indexOf(":")
-        this.chr = region.substring(0, colonIndex)
-        int dashIndex = region.indexOf("-")
-        this.range = new GRange(region.substring(colonIndex+1, dashIndex).toInteger(),region.substring(dashIndex+1).toInteger(), null)
+        parseRegion(region)
         this.range.extra = this
     }
     
     Region(String chr, Range range) {
         this.chr = chr
         this.range = range
+    }
+    
+    Region(String chr, int from, int to) {
+        this.chr = chr
+        this.range = (from..to)
+    }
+  
+    
+    @CompileStatic
+    void parseRegion(String region) {
+        int colonIndex = region.indexOf(":")
+        if(colonIndex>0) {
+            this.chr = region.substring(0, colonIndex)
+            int dashIndex = region.indexOf("-")
+            try {
+                this.range = new GRange(region.substring(colonIndex+1, dashIndex).toInteger(),region.substring(dashIndex+1).toInteger(), null)
+            }
+            catch(java.lang.NumberFormatException f) {
+                this.range = new GRange(region.substring(colonIndex+1, dashIndex).replace(',','').toInteger(),region.substring(dashIndex+1).replace(',','').toInteger(), null)
+            }
+        }
+        else {
+           this.chr = region
+           this.range = new GRange((int)0,(int)0,null)
+        }
     }
     
     // Causes some weird conflict with toString()
