@@ -2,6 +2,7 @@ import java.nio.file.Files;
 
 import com.xlson.groovycsv.PropertyMapper;
 
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 
 /**
@@ -118,28 +119,31 @@ class RefGenes {
      * @param gene
      * @return
      */
+    @CompileStatic
     Regions getExons(String gene, boolean codingOnly=true) {
         Regions exons = new Regions()
-        geneToTranscripts[gene].collect { refData[it] }.collect { tx ->
+        geneToTranscripts[gene].collect { (Region)refData[it] }.collect { Region tx ->
             
             // Transcripts starting with NR are non-coding
-            if(codingOnly && tx.tx.startsWith("NR_"))
+            if(codingOnly && ((String)tx['tx']).startsWith("NR_"))
                 return null
                 
-            [ tx.starts.split(","), tx.ends.split(",") ].transpose().collect { exonStartEnd ->
+            [ ((String)tx['starts']).tokenize(","), ((String)tx['ends']).tokenize(",") ].transpose().collect { se ->
+                
+                List<String> exonStartEnd = (List<String>)(se);
                 int start = exonStartEnd[0].toInteger()
                 int end = exonStartEnd[1].toInteger()
                 if(codingOnly) {
-                    start = Math.max(tx.cds_start.toInteger(), start)
-                    end = Math.min(tx.cds_end.toInteger(), end)
+                    start = Math.max(((String)tx['cds_start']).toInteger(), start)
+                    end = Math.min(((String)tx['cds_end']).toInteger(), end)
                 }
                 if(start>end)
-                    null
+                    (Region)null
                 else
                     new Region(tx.chr, (start+1)..(end+1)) 
-            }.each {
-                if(it != null)
-                    exons.addRegion(it)
+            }.each { Region r ->
+                if(r != null)
+                    exons.addRegion(r)
             }
         }
         exons.reduce()
