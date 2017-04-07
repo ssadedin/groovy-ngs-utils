@@ -27,6 +27,8 @@ import java.util.zip.GZIPInputStream;
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
 import htsjdk.tribble.index.IndexFactory
+import htsjdk.tribble.readers.TabixReader;
+
 import org.codehaus.groovy.runtime.StackTraceUtils
 
 class FormatMetaData {
@@ -112,7 +114,7 @@ class VCF implements Iterable<Variant> {
      * Cached list of VEP columns, when they exist in the VCF file.
      * Lazily populated when getVepColumns() is called.
      */
-    private String [] vepColumns = null
+    private Map<String,String []> vepColumns = null
     
     /**
      * Lazily populated when getInfoMetaData is called
@@ -874,6 +876,133 @@ class VCF implements Iterable<Variant> {
         }
     }
     
+    /**
+     * Finds a set of high quality SNPs that distinguish this VCF from the
+     * other VCF provided.
+     */
+    List<Variant> getHighQualityHets(VCF p2) {
+        return this.grep { Variant v ->
+            (v.type == "SNP") && 
+            (v.qual > 20) &&
+            (v.dosages[0] == 1) &&
+            (v.alleleBalance < 0.1) &&
+            !p2.variantsAt(v.chr, v.pos)
+        }        
+    }
+    
+    /**
+     * Calculate the rate at which variants are transmitted to this sample from p1,
+     * given p2 is the other parent.
+     * 
+     * @param parent1
+     * @param parent2
+     * @return
+     */
+    double transmissionRate(VCF p1, VCF p2) {
+//        def counts = (p1.chrPosIndex.keySet() - p2.chrPosIndex.keySet()).countBy { it in chrPosIndex.keySet() } /* +
+//                     (p2.chrPosIndex.keySet() - p1.chrPosIndex.keySet()).countBy { it in this.chrPosIndex.keySet() } */
+//            
+        List<Variant> markers = p1.getHighQualityHets(p2)
+        
+        Map<Boolean,Integer> counts = markers.countBy { Variant v ->
+            variantsAt(v.chr, v.pos) != null
+        }
+        
+        if(!counts[true]) {
+            return 0.0d
+        }
+        
+        if(!counts[false]) {
+            return Double.MAX_VALUE
+        }
+  
+        return counts[true] / (Double)(counts[false] + counts[true])
+    }
+    
+    double denovoRate(VCF m, VCF d) {
+        Map<Boolean,Integer> counts = this.grep { Variant v ->
+            (v.type == "SNP") && (v.dosages[0] == 1) && (v.qual > 20) 
+        }.countBy { Object o -> Variant v = (Variant)(o); (v in m) || (v in d) }
+        
+        if(!counts[true]) {
+            return 1.0d
+        }
+        
+        if(!counts[false]) {
+            return 0.0d
+        }
+  
+        return counts[false] / (double)(counts[false] + counts[true])
+    }
+    
+    /**
+     * Attempt to guess the sex of a human VCF file by sampling high quality 
+     * variants on the X chromosome.
+     * <p>
+     * With various checks and constraints, the main test is: 
+     *   <li> if the number of homozygotes > 2 * number of hets,
+     *        then sex = FEMALE
+     *   <li> else sex = MALE
+     *   <li> if various checks fail (eg: less than 100 variants available),
+     *        then this method may return {@link Sex.UNKNOWN}.
+     *   
+     * <em>Note: requires an indexed VCF file</em>
+     * 
+     * @param vcf
+     * @return  estimated Sex of sample
+     */
+    Sex guessSex(VCF vcf, int sampleIndex = 0) {
+        
+        // open the VCF and sample 100 variants from the X and Y chromosomes
+        VCFIndex index = new VCFIndex(fileName)
+        
+        String chr = 'chrX'
+        if(new File(fileName + '.tbi').exists()) {
+            TabixReader r = new TabixReader(fileName, fileName + '.tbi')
+            if('X' in r.chromosomes) {
+                chr = 'X'
+            }
+        }
+        else {
+            System.err.println "WARNING: No contig index - assuming chrX for sex chromosome"
+        }
+        
+        int sexEstimationVariantCount = 500
+        
+        List<Variant> xVariants = new ArrayList(sexEstimationVariantCount+1)
+        
+        index.query(chr,5000000,155270560) { Variant v ->
+            if(xVariants.size() >= sexEstimationVariantCount)
+                return false
+                
+            // Consider only high quality variants that do not have a highly skewed 
+            // allele balance    
+            if(v.genoTypes[sampleIndex].DP > 20 && v.qual > 20 && v.alleleBalance<0.1)
+                xVariants << v
+        }
+        
+        Map<Integer, Integer> dosages = xVariants.countBy { it.dosages[0] }
+        
+        // No heterozygotes
+        if(dosages[1] == null) {
+            return Sex.MALE
+        }
+        
+        // No homozygotes 
+        if(dosages[2] == null) {
+            if(xVariants.size()>100) // make sure we sampled enough
+                return Sex.FEMALE
+            else
+                return Sex.UNKNOWN
+        }
+         
+        // Excess of homozygous?
+        if(dosages[2] > dosages[1] * 2)
+            return Sex.MALE
+        else
+            return Sex.FEMALE
+    }
+    
     void printHeader(PrintStream p) {
         p.println(headerLines.join('\n'))
     }
@@ -900,5 +1029,13 @@ class VCF implements Iterable<Variant> {
     
     int getSize() {
         this.variants.size()
+    }
+    
+    private VCFIndex index
+    
+    VCFIndex getIndex() {
+        if(!index)
+            index = new VCFIndex(fileName)
+        return index
     }
 }
