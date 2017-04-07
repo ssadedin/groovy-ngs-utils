@@ -274,6 +274,13 @@ class Regions implements Iterable<Region> {
         return chrIndex.getOverlaps(start,end)
     }
     
+    @CompileStatic
+    List<Region> subtractFrom(Region region) {
+        subtractFrom(region.chr, region.from, region.to+1).collect {
+            new Region(region.chr, it.from..it.to)
+        }
+    }
+    
     /**
      * Remove all of the regions belonging to this {@link Regions} object
      * from the interval specified, and return the list of Ranges that results.
