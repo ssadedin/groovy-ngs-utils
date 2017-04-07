@@ -215,7 +215,42 @@ class SAM {
         else
             new SAMFileReader(samStream)
     }
-
+    
+    
+    def withReader(Closure c) {
+        SAMFileReader r = newReader()
+        try {
+            c(r)
+        }
+        finally {
+            r.close()
+        }
+    }
+    
+    def withIterator(Region region, Closure c) {
+        withReader { SAMFileReader r ->
+            SAMRecordIterator i = r.query(region.chr, region.from, region.to, false) 
+            try {
+                c(i)
+            }
+            finally {
+                i.close()
+            }
+        }
+    }
+    
+    def withIterator(Closure c) {
+        withReader { SAMFileReader r ->
+            SAMRecordIterator i = r.iterator()
+            try {
+                c(i)
+            }
+            finally {
+                i.close()
+            }
+        }
+    } 
+    
     /**
      * Return a new SAMFileWriter configured with the same settings as this 
      * SAM. It is the caller's responsibility to close the writer.
