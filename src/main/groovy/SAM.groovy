@@ -27,6 +27,7 @@ import groovy.stream.Stream;
 //import com.sun.management.UnixOperatingSystemMXBean;
 
 import groovy.transform.CompileStatic;
+import htsjdk.samtools.BAMIndexer
 import htsjdk.samtools.BAMRecord;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileReader;
