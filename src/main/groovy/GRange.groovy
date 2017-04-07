@@ -19,6 +19,7 @@
  */
 
 import groovy.transform.CompileStatic;
+import java.util.regex.Pattern
 
 interface IRegion {
 	
@@ -136,6 +137,20 @@ class Region extends Expando implements IRegion, Serializable {
     
     long size() {
         range.size()
+    }
+    
+    private static Pattern ALTERNATE_HAPLOTYPE_PATTERN = ~'.*_hap[0-9]*$'
+    
+    @CompileStatic
+    static boolean isMinorContig(String chr) {
+        chr.startsWith('NC_') ||
+        chr.startsWith('GL') ||
+        chr.startsWith('Un_') ||
+        chr.startsWith('chrUn_') ||
+        chr.startsWith('M') ||
+        chr.startsWith('chrM') ||
+        chr.endsWith('_random') || 
+        chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
     }
     
     String toString() {
