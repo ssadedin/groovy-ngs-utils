@@ -37,7 +37,7 @@ class XPos {
     }
     
     @CompileStatic
-    public static Region parseId(long id) {
+    public static Region parsePos(long id) {
         int chrInt = (int)(id / 1000000000L)
         int pos = (int)(id - chrInt * 1000000000L)
         new Region(intToChr(chrInt), pos..pos)
