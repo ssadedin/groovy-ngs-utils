@@ -271,6 +271,9 @@ class VCF implements Iterable<Variant> {
      */
 //    @CompileStatic
     private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
+        
+        boolean ignoreHomRef = !(options.includeHomRef ?: false)
+        
         VCF vcf = new VCF(pedigrees:peds)
         
         if(options.fileName)
@@ -321,7 +324,10 @@ class VCF implements Iterable<Variant> {
                 }
                 
                 try {
-                  Variant v = Variant.parse(line)
+                  Variant v = Variant.parse(line,ignoreHomRef)
+                  if(v == null)
+                      return
+                      
                   v.header = vcf
                         
                   if(!samples || samples.any {v.sampleDosage(it)}) {
