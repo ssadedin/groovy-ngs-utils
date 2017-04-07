@@ -100,8 +100,8 @@ class Regions implements Iterable<Region> {
     /**
      * Create a Regions from a list of regions
      */
-    Regions(Map attributes=[:], Iterable<Region> regions) {
-        for(Region r in regions) {
+    Regions(Map attributes=[:], Iterable<IRegion> regions) {
+        for(IRegion r in regions) {
             if(r.range instanceof GRange)
                 addRegion(r.chr, r.from, r.to, r.range.extra)
             else
@@ -657,7 +657,7 @@ class Regions implements Iterable<Region> {
     
     @CompileStatic
     Regions plus(Regions other) {
-        Regions result = new Regions(this)
+        Regions result = new Regions((Iterable<IRegion>)this)
         for(Region r in other) {
             result.addRegion(r)
         }
