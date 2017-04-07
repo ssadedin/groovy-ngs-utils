@@ -897,11 +897,16 @@ class SAM {
 
     @CompileStatic
     PileupIterator pileup(String chr, int start, int end) {
-        PileupIterator p = new PileupIterator(new SAMFileReader(samFile, indexFile, false), chr,start,end);
-        p.setMinMappingQuality(this.minMappingQuality)
-        return p
+        SAMFileReader reader = new SAMFileReader(samFile, indexFile, false)
+        pileup(reader, chr, start, end)
     }
     
+    @CompileStatic
+    PileupIterator pileup(SAMFileReader reader, String chr, int start, int end) {
+        PileupIterator p = new PileupIterator(reader, chr,start,end);
+        p.setMinMappingQuality(this.minMappingQuality)
+        return p 
+    }
     
     /**
      * Return a set of read counts indicating the counts of reads in that overlap the target region.

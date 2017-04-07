@@ -216,6 +216,10 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
         this.samFile.close();
     }
     
+    public SAMRecordIterator getReadIterator() {
+        return readIterator;
+    }
+
     public int getMinMappingQuality() {
         return minMappingQuality;
     }
