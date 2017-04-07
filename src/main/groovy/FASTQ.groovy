@@ -63,8 +63,8 @@ class FASTQRead {
         this.quals = quals
     }
     
-    FASTQRead trimEnd(int count) {
-        new FASTQRead(header, bases.substring(0,bases.size()-count), quals.substring(0,quals.size() - count))
+    FASTQRead trimEnd(int count, int countStart=0) {
+        new FASTQRead(header, bases.substring(countStart,bases.size()-count), quals.substring(countStart,quals.size() - count))
     }
     
     void write(Writer w) {
