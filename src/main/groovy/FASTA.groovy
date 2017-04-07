@@ -19,6 +19,7 @@
  */
 
 import groovy.transform.CompileStatic;
+import groovy.transform.Memoized
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
 
@@ -78,6 +79,7 @@ class FASTA {
      * @param end       end position (inclusive)
      * @return
      */
+    @Memoized(maxCacheSize = 100)
     String basesAt(String contig, long start, long end) {
       return new String(this.indexedFastaFile.getSubsequenceAt(contig, start, end).bases)
     }
