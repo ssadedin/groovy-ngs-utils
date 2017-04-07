@@ -162,6 +162,8 @@ class SAM {
     InputStream samStream
 
     int minMappingQuality = 1
+    
+    boolean useMemoryMapping = true
 
     static boolean progress = false
 
@@ -210,8 +212,12 @@ class SAM {
     }
 
     SAMFileReader newReader() {
-        if(samStream == null)
-            new SAMFileReader(samFile, indexFile, false)
+        if(samStream == null) {
+            SAMFileReader r = new SAMFileReader(samFile, indexFile, false)
+            if(!useMemoryMapping)
+                r.enableIndexMemoryMapping(false)
+            r
+        }
         else
             new SAMFileReader(samStream)
     }
