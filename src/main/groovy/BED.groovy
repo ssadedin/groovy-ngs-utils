@@ -164,10 +164,10 @@ class BED extends Regions {
               if(line.startsWith("browser"))    
                   return
                   
-              String [] fields = line.split('\t')
+              List fields = line.tokenize('\t')
               
               if(count == 1 && readColumnNames) {
-                  columnNames = fields as List
+                  columnNames = fields 
                   return
               }
               
