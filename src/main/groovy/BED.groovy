@@ -249,7 +249,7 @@ class BED extends Regions {
      */
     @CompileStatic 
     void eachPosition(Closure c) {
-        int totalSize = super.size()
+        long totalSize = super.size()
         System.err.println("Scanning $totalSize positions")
         ProgressCounter counter = new ProgressCounter()
           bedFileStream.eachLine { String line ->
