@@ -11,8 +11,8 @@ class XPos {
     
     @CompileStatic
     public static long computePos(String chr, int pos) {
-        String contigNoChr = chr.startsWith('chr') ? chr.substring(4) : chr
-        computeId(chrToInt(chr), pos)
+        String contigNoChr = chr.startsWith('chr') ? chr.substring(3) : chr
+        computeId(chrToInt(contigNoChr), pos)
     }
     
     @CompileStatic
