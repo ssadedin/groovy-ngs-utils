@@ -211,4 +211,29 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
         assert meta.id == "GT"
         
     }
+    
+    @Test
+    void testMergeDifferentVEPs() {
+        
+        VCF vcf1 = VCF.parse('tests/data/test.21.vcf')
+        VCF vcf2 = VCF.parse('tests/data/test.23.vcf')
+        
+        VCF merged = vcf1.merge(vcf2)
+        
+        println "Merged VCF has ${merged.size()} variants"
+        
+        Variant v = merged[1]
+        println "Merged vep info = " + v.info
+        
+        println "EA_MAF = " + v.vepInfo.EA_MAF
+        println "EUR_MAF = " + v.vepInfo[0].EUR_MAF
+        
+        assert v.vepInfo[0].EUR_MAF.tokenize(':')[1].toFloat() > 0.9
+        
+        VCF merged2 = vcf2.merge(vcf1)
+        
+        v = merged[1]
+        assert v.vepInfo[0].EUR_MAF.tokenize(':')[1].toFloat() > 0.9
+        
+    }
  }
