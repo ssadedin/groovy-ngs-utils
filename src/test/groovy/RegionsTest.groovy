@@ -205,4 +205,20 @@ class RegionsTest {
         assert window[-1].from == 240
     }
     
+    @Test
+    void testSort() {
+        Regions r = 
+            new Regions([new Region("chr1:100-200"), 
+                         new Region("chr1:50-70"), 
+                         new Region("chr1:100-300"), 
+                         new Region("chr2:100-400"),
+                         new Region("chr1:500-700") 
+                         ])
+        
+       Regions sorted = r.toSorted(new RegionComparator())
+       
+       assert sorted[0].from == 50
+       assert sorted[0].chr == "chr1"
+       assert sorted[-1].chr == "chr2"
+    } 
 }
