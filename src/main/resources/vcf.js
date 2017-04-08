@@ -697,7 +697,15 @@ var userAnnotations = {
         var tags = userAnnotations[dataIndex] && userAnnotations[dataIndex].tags;
         addRowTags(row, tags);
         
-        $(tds[0]).find('.rowTagDiv').click(partial(removeRowTags,dataIndex, tds[0]));
+        $(tds[0]).dblclick(partial(removeRowTags,dataIndex, tds[0]));
+        $(tds[0]).click(function(evt) {
+            if(evt.altKey) {
+                removeRowTags(dataIndex, tds[0], evt);
+            }
+            else {
+                addTagToRow(dataIndex, function(variantIndex) { console.log("tag added for variant " + variantIndex) });
+            }
+        });
 
         var ads = data[MAF_INDEX+sampleCount+1].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
         tds[DEPTH_INDEX].title = ads
