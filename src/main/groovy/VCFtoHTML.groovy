@@ -182,7 +182,7 @@ println "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.
 println "Export samples are: " + exportSamples
 
 boolean hasVEP = true
-def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") }
+def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") && !it.hasInfo("ANN") }
 if(noVeps) {
     System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering may be ineffective."
     System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
@@ -254,7 +254,15 @@ def json(obj) {
 }
 
 findMaxMaf = { vep -> 
-    [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF].collect{it?it.split('&'):[]}.flatten().collect { it.toFloat()}.max() ?: 0.0f
+    [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF].collect{ mafValue ->
+        mafValue?mafValue.split('&'):[]
+    }.flatten().collect { 
+        it.tokenize(':') 
+    }.grep { 
+        !it.isEmpty()
+    }.collect {
+        it[-1].toFloat()
+    }.max() ?: 0.0f
 }
 
 def baseColumns = new LinkedHashMap()
