@@ -724,13 +724,17 @@ var userAnnotations = {
             newTable[dataIndex][FAMILIES_INDEX]=fc;
             tds[FAMILIES_INDEX].innerHTML = fc+"";
         }
+        
+        var gene = tds[GENE_INDEX].innerHTML;
+        $(tds[GENE_INDEX]).html('<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene='+gene + '#diseases">'+gene+'</a>')
+        
     }
     
     function add_display_events() {
         // $(".cnvRow").unbind('click').click(function() {
     
         console.log("Add display events");
-    
+        
         $("#variantTable tbody tr").unbind('click').click(function() {
             var variantIndex = parseInt($(this).find('a')[0].id.match(/variant_([0-9]*)_detail/)[1],10);
             console.log("Displaying variant " + variantIndex);
