@@ -1,3 +1,5 @@
+import org.codehaus.groovy.runtime.StackTraceUtils;
+
 import au.com.bytecode.opencsv.CSVWriter
 import groovy.xml.StreamingMarkupBuilder
 
@@ -27,6 +29,10 @@ class VCFSummaryStats {
     
     int totalIncluded
     
+    @Override
+    String toString() {
+        "total=$total, incl=$totalIncluded, excl: cons=$excludeByCons, maf=$excludeByMaf, complex=$excludeComplex, prefilter=$excludeByPreFilter, filter=$excludeByPreFilter, masked=$excludeByMasked, target=$excludeByTarget, diff=$excludeByDiff"
+    }
 }
 
 banner = """
@@ -107,7 +113,7 @@ if(opts.prefilters) {
 VCFSummaryStats stats = new VCFSummaryStats()
 
 List<VCF> vcfs 
-   vcfs = opts.is.collect { VCF.parse(it) {  v ->
+   vcfs = opts.is.collect { VCF.parse(it) { Variant  v ->
       if(opts.chrs && !(v.chr in opts.chrs ))
           return false
               
@@ -115,6 +121,10 @@ List<VCF> vcfs
             ++stats.excludeByPreFilter
             return false
         }
+        
+        // don't include variants only found in samples we aren't interested in
+        if(opts.f && !exportSamples.any { v.sampleDosage(it) > 0 })
+            return false
    } 
 }
    
@@ -340,124 +350,141 @@ new File(opts.o).withWriter { w ->
     int i=0;
     int lastLines = 0
     Variant last = null;
+    Variant current  = null
+    ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
+        stats.toString()
+    })
     merged.each { v->
         
-        ++stats.total
-        
-        if((target != null) && !(v in target)) {
-            ++stats.excludeByTarget
-            return
-        }
-        
-        List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
-        List dosages = exportSamples.collect { v.sampleDosage(it) }
-        if(dosages.every { it==0}) {
-            ++stats.excludeNotPresent
-            if(!opts.f) {
-                println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
-            }
-            return
-        }
+        try {
+            current = v
             
-        if(opts.diff && dosages.clone().unique().size()==1)  {
-            ++stats.excludeByDiff
-            return
-        }
+            ++stats.total
             
-        def refCount = v.getAlleleDepths(0)
-        def altCount = v.getAlleleDepths(1)
-        
-//        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
-        
-        
-        if(i++>0 && lastLines > 0)
-            w.println ","
-        
-        List<Object> consequences = [
-            [
-                Consequence: 'Unknown'
-            ]
-        ]
-        
-        if(hasVEP) {
-            try {
-                if(opts.maxVep) { 
-                    consequences = [v.maxVep]
-                }
-                else {
-                    consequences = v.vepInfo
-                }
-            }
-            catch(Exception e) {
-                // Ignore
-            }
-        }
-        else
-        if(hasSNPEFF) {
-            consequences = v.snpEffInfo
-        }
-        
-        lastLines = 0
-        boolean excludedByCons = true
-        boolean printed = false
-        consequences.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
-            
-            if(EXCLUDE_VEP.contains(consColumns['cons'](vep))) {
+            if((target != null) && !(v in target)) {
+                ++stats.excludeByTarget
                 return
             }
-            excludedByCons = false
+            
+            List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
+            List dosages = exportSamples.collect { v.sampleDosage(it) }
+            if(dosages.every { it==0}) {
+                ++stats.excludeNotPresent
+                if(!opts.f) {
+                    println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
+                }
+                return
+            }
+                
+            if(opts.diff && dosages.clone().unique().size()==1)  {
+                ++stats.excludeByDiff
+                return
+            }
+                
+            def refCount = v.getAlleleDepths(0)
+            def altCount = v.getAlleleDepths(1)
+            
+    //        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
+            
+            
+            if(i++>0 && lastLines > 0)
+                w.println ","
+            
+            List<Object> consequences = [
+                [
+                    Consequence: 'Unknown'
+                ]
+            ]
             
             if(hasVEP) {
-                if(findMaxMaf(vep)>MAF_THRESHOLD)  {
-                    ++stats.excludeByMaf
-                    return
+                try {
+                    if(opts.maxVep) { 
+                        consequences = [v.maxVep]
+                    }
+                    else {
+                        consequences = v.vepInfo
+                    }
+                }
+                catch(Exception e) {
+                    // Ignore
                 }
             }
-            
-            if(opts.nocomplex) {
-                if(vcfRegions.any { Regions regions -> regions.getOverlaps(v.chr, v.pos-1,v.pos+1).size() > 1}) {
-                    ++stats.excludeComplex
-                    return
-                }
+            else
+            if(hasSNPEFF) {
+                consequences = v.snpEffInfo
             }
             
-            if(opts.nomasked) {
-                if(v.alt.find(LOWER_CASE_BASE_PATTERN) || v.ref.find(LOWER_CASE_BASE_PATTERN)) {
-                    ++stats.excludeByMasked
-                    return 
-                }
-            } 
+            consequences = consequences.grep { it != null }
             
-            if(!filters.every { Eval.x(v, it) }) {
-                ++stats.excludeByFilter
-                return
-            }
-            
-            if(lastLines>0)
-                w.println ","
+            lastLines = 0
+            boolean excludedByCons = true
+            boolean printed = false
+            consequences.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
                 
-            List vepInfo = consColumns.collect { name, func -> func(vep) }
-            w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
-//            println(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+                if(EXCLUDE_VEP.contains(consColumns['cons'](vep))) {
+                    return
+                }
+                excludedByCons = false
+                
+                if(hasVEP) {
+                    if(findMaxMaf(vep)>MAF_THRESHOLD)  {
+                        ++stats.excludeByMaf
+                        return
+                    }
+                }
+                
+                if(opts.nocomplex) {
+                    if(vcfRegions.any { Regions regions -> regions.getOverlaps(v.chr, v.pos-1,v.pos+1).size() > 1}) {
+                        ++stats.excludeComplex
+                        return
+                    }
+                }
+                
+                if(opts.nomasked) {
+                    if(v.alt.find(LOWER_CASE_BASE_PATTERN) || v.ref.find(LOWER_CASE_BASE_PATTERN)) {
+                        ++stats.excludeByMasked
+                        return 
+                    }
+                } 
+                
+                if(!filters.every { Eval.x(v, it) }) {
+                    ++stats.excludeByFilter
+                    return
+                }
+                
+                if(lastLines>0)
+                    w.println ","
+                    
+                List vepInfo = consColumns.collect { name, func -> func(vep) }
+                w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+    //            println(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+                
+                printed = true
+                
+                if(opts.tsv)
+                    tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
+    
+                ++lastLines
+            }
             
-            printed = true
+            if(printed) {
+                ++stats.totalIncluded
+            }
             
-            if(opts.tsv)
-                tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
-
-            ++lastLines
+            last = v;
+            if(excludedByCons)
+                ++stats.excludeByCons
+                
         }
-        
-        if(printed) {
-            ++stats.totalIncluded
+        catch(Exception e) {
+            Exception e2 = new Exception("Failed to process variant " + current, e)
+            e2 = StackTraceUtils.sanitize(e2)
+            throw e2
         }
-        
-        last = v;
-        if(excludedByCons)
-            ++stats.excludeByCons
-        
-        
+        progress.count()
     }
+    
+    progress.end()
     w.println """];"""
     
     w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + exportSamples)};"
@@ -474,7 +501,7 @@ new File(opts.o).withWriter { w ->
     </script>
     <style type='text/css'>
     td.vcfcol { text-align: center; }
-    tr.highlight, tr.highlighted {
+    tr.highlight, tr.highlighted, tr.highlight td.sorting_1 {
         background-color: #ffeeee !important;
     }
 
@@ -538,7 +565,8 @@ try {
     }
 }
 finally {
-    statsWriter.close()
+    if(statsWriter)
+        statsWriter.close()
 }
     
     
