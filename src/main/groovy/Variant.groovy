@@ -407,6 +407,16 @@ class Variant implements IRegion {
     
     List<SnpEffInfo> snpEffInfo
     
+    /**
+     * Cached set of dosages for the first allele.
+     * <p>
+     * <li> 0 = hom ref
+     * <li> 1 = het
+     * <li> 2 = hom alt
+     * 
+     * There is one entry in the list for each sample, in the same order
+     * as the samples in the VCF header.
+     */
     List<Integer> dosages
     
     Set<Pedigree> pedigrees
