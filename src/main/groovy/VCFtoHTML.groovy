@@ -47,7 +47,7 @@ cli.with {
     f 'Comma separated list of families to export', args:1
     a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
     target 'Exclude variants outside this region', args:1
-    chr 'Confine analysis to chromosomel', args:Cli.UNLIMITED
+    chr 'Confine analysis to chromosome', args:Cli.UNLIMITED
     diff 'Only output variants that are different between the samples'
     maxMaf 'Filter out variants above this MAF', args:1
     maxVep 'Only write a single line for each variant, containing the most severe consequence'
