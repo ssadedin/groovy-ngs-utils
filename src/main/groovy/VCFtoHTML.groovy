@@ -57,6 +57,7 @@ cli.with {
     nocomplex 'Ignore complex variants (regions where multiple variants overlap) in diff mode'
     nomasked 'Ignore variants in regions of the genome that are masked due to repeats'
     stats 'Write statistics to file', args:1
+    mask 'Alias sample ids to first group of given regexp', args:1
 }
 
 opts = cli.parse(args)
@@ -166,11 +167,30 @@ if(vcfs.size() > 1) {
 
 println "Pedigree subjects are " + pedigrees.subjects.keySet()
 
-// -------- Handle Aliasing of Samples ----------------
-aliases = null
-if(opts.a) {
+List aliases = []
+if(opts.as)
     aliases = opts['as'].collect { it.split "," }
-    
+else    
+if(opts.mask) {
+    aliases = vcfs*.samples.flatten().collect { s ->
+        def matches = (s =~ opts.mask)
+        if(matches) {
+            // if starts with number, prefix with 'S' (required for javascript filtering)
+            def newSampleId = matches[0][1]
+            if(newSampleId ==~ /^[0-9].*/) {
+                'S' + newSampleId
+            }
+            else
+                newSampleId
+        }
+        else {
+            s // leave unchanged
+        }
+    }
+}
+
+// -------- Handle Aliasing of Samples ----------------
+if(aliases) {
     Map<String,String> sampleMap = [ vcfs*.samples.flatten(), aliases.flatten() ].transpose().collectEntries()
     
     println "Sample map = " + sampleMap
