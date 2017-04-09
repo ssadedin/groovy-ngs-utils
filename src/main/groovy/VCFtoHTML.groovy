@@ -520,6 +520,10 @@ new File(opts.o).withWriter { w ->
     });
     </script>
     <style type='text/css'>
+    table#variantTable {
+        font-size: 10px;
+        font-family: verdana;
+    }
     td.vcfcol { text-align: center; }
     tr.highlight, tr.highlighted, tr.highlight td.sorting_1 {
         background-color: #ffeeee !important;
