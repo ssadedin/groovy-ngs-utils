@@ -565,7 +565,6 @@ new File(opts.o).withWriter { w ->
             </div>
         </div>
         <div class="ui-layout-south">Report created ${new Date()}</div>
-        <div class="ui-layout-east" id="ui-layout-east"></div>
     </body>
     </html>
     """
