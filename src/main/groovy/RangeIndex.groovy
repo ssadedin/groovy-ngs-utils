@@ -203,7 +203,7 @@ class RangeIndex implements Iterable<IntRange> {
         int entryPos = startPosition
         Map.Entry<Integer, List<IntRange>> higherEntry = ranges.higherEntry(startPosition)
         Map.Entry<Integer, List<IntRange>> lastEntry = null
-        while(higherEntry && higherEntry.key < endPosition) {
+        while(higherEntry && higherEntry.key <= endPosition) {
             higherEntry.value.add(newRange)
 //            checkRanges(higherEntry.key)
             lastEntry = higherEntry
