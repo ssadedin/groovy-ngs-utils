@@ -164,6 +164,20 @@ class Pedigrees {
             p.unaffected 
         }.sum()
     }
+    
+    List<String> getMales() {
+        getSubjectsBySex(Sex.MALE)*.id ?: []
+    }
+     
+    List<String> getFemales() {
+        getSubjectsBySex(Sex.FEMALE)*.id ?: []
+    }
+    
+    List<String> getSubjectsBySex(Sex sex) {
+        families.collect { id, p -> 
+            p.individuals.grep { it.sex == sex }
+        }.sum() ?: []
+    }
      
     /**
      * A convenience method that creates a set of pedigrees from set of 
