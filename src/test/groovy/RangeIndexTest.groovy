@@ -529,4 +529,20 @@ class RangeIndexTest {
        assert overlaps.size() == 2
     }
     
+    @Test
+    void testAdjacentRegionOverlaps() {
+        
+        RangeIndex index = new RangeIndex()
+        [
+            2..3,
+            10..20,
+            5..10
+        ]
+        .each {index.add(it)}
+        
+        index.dump()
+   
+        assert index.getOverlaps(12,15).size()>0
+    }
+    
 }
