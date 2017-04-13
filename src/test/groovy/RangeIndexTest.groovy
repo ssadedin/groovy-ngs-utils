@@ -345,23 +345,6 @@ class RangeIndexTest {
         assert count == 6
     }
     
-    
-    @Test 
-    void testIterate3() {
-//        BED bed = new BED("/Users/simon/work/dsd/batch3/design/tmp.bed")
-        BED bed = new BED("/Users/simon/work/dsd/batch3/design/amplicons_with_filtered_enzymes.bed")
-        bed.load()
-        
-        int count = 0 
-        ProgressCounter c = new ProgressCounter()
-        for(Range r in bed.index["chrX"]) {
-//            println "$r.from\t$r.to"
-            ++ count
-            c.count()
-        }
-        println "Counted $count ranges"
-    }
-    
     @Test
     void testRemove2() {
         RangeIndex index = new RangeIndex()
