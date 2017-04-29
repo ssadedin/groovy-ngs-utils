@@ -583,6 +583,7 @@ class Variant implements IRegion {
         fields[3] = ref
         fields[4] = alt?:"."
         fields[5] = String.format("%2.2f",qual)
+        fields[6] = filter
         
         if(snpEffDirty) {
             // The only operation we support on the snpEff meta data is to remove some.
