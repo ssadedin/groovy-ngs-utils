@@ -108,6 +108,8 @@ class VCF implements Iterable<Variant> {
     
     String fileName
     
+    boolean lazyLoad = false
+    
     static final int SAMPLE_COLUMN_INDEX = 9
     
     /**
@@ -155,6 +157,7 @@ class VCF implements Iterable<Variant> {
             }
             parseLastHeaderLine()
         }
+        lazyLoad = true
     }
     
     VCF(Iterable<Variant> variants) {
@@ -263,6 +266,26 @@ class VCF implements Iterable<Variant> {
         parseImpl(options,f,true,peds,c)
     }
     
+    void each(Closure c) {
+        if(lazyLoad) {
+            load { v ->
+                c(v)
+                false
+            }
+        }
+        else {
+            this.iterator().each(c)
+        }
+    }
+    
+    void load(Closure c = null) {
+        VCF self = this
+        new File(this.fileName).withInputStream { ins ->
+            VCF.parse(ins, null, c, vcf:self)
+        }
+        lazyLoad = false
+    }
+    
     /**
      * Parse the given VCF file, returning a full VCF, optionally filtered
      * by the closure (only rows returning true from closure will be included)
@@ -276,7 +299,17 @@ class VCF implements Iterable<Variant> {
         
         boolean ignoreHomRef = !(options.includeHomRef ?: false)
         
-        VCF vcf = new VCF(pedigrees:peds)
+        VCF vcf = options.vcf ? options.vcf : new VCF(pedigrees:peds)
+        
+        PrintStream out
+        if(filterMode) {
+            if(options.outputStream) {
+                out = new PrintStream(options.outputStream)
+            }
+            else {
+                out = System.out
+            }
+        }
         
         if(options.fileName)
             vcf.fileName = options.fileName
@@ -301,13 +334,15 @@ class VCF implements Iterable<Variant> {
         try {
             f.eachLine { String line ->
                 
-                
                 ++count
                 
                 progress.count()
                
                 if(line.startsWith('#')) {
-                    vcf.headerLines.add(line)
+                    // Only add the header if the user didn't already provde a VCF
+                    // This allows a customised header to be used.
+                    if(!options.vcf)
+                        vcf.headerLines.add(line)
                     return
                 }
                 
@@ -336,10 +371,10 @@ class VCF implements Iterable<Variant> {
                       if(!c || !(c(v)==false)) {
                           if(filterMode) {
                               if(!flushedHeader)  {
-                                  vcf.printHeader()
+                                  vcf.printHeader(out)
                                   flushedHeader = true
                               }
-                              println v.line
+                              out.println v.line
                           }
                           else {
                               vcf.add(v)
