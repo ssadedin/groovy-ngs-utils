@@ -103,8 +103,11 @@ var userAnnotations = {
     var layout = null;
     var familyIndex = null;
     var familyNames = [];
+    var myTableId = null;
     
     $.VariantTable = function(tableId, samples, variants) {
+        
+        myTableId = tableId;
         
         sampleSubjects = indexSubjects(pedigrees);
         AD_INDEX = nonSampleColumnCount + sampleCount;
@@ -131,7 +134,7 @@ var userAnnotations = {
             "iDisplayLength": 40,
             columns: columns,
             data: variants,
-            createdRow: createVariantRow
+            createdRow: (row,data,dataIndex) => createVariantRow(tableId, row, data, dataIndex)
             });
         
         console.log('done...');
@@ -141,6 +144,7 @@ var userAnnotations = {
         layout = $('body').layout({ 
           applyDefaultStyles: true
         });
+        layout.sizePane("north",80);
         $('#'+tableId).on('order.dt',  add_display_events);
     
         add_display_events();
@@ -243,10 +247,14 @@ var userAnnotations = {
         if(!localStorage.variantSettings) {
              var defaultSettings = { }
              defaultSettings[settingsKey] = { filters: [] }
+             console.log("No settings defined: initializing defaults");
              localStorage.variantSettings = JSON.stringify(defaultSettings);
         }
         
        var oldSettings = JSON.parse(localStorage.variantSettings)[settingsKey]; 
+       if(typeof(oldSettings) == 'undefined')
+           oldSettings = { filters:[]};
+       
        loadSettings(tableId, oldSettings);
     }
     
@@ -276,7 +284,7 @@ var userAnnotations = {
             userAnnotations[cnvIndex] = { tags: { } };
     }
     
-    function addTagToRow(dataIndex, showFn) {
+    function addTagToRow(tableId, dataIndex, tr, showFn) {
         var newTag = prompt('Enter the new tag: ','');
         if(!newTag)
             return;
@@ -285,9 +293,10 @@ var userAnnotations = {
                     
         initAnnotations(dataIndex);
         userAnnotations[dataIndex].tags[newTag] = true;
-        addRowTags(highlightTr, userAnnotations[dataIndex].tags);
+        addRowTags(tr, userAnnotations[dataIndex].tags);
         saveSettings();
         showFn(dataIndex);
+        filterTable(tableId);
     }
     
     function addRowTags(row, rowTags) {
@@ -439,6 +448,7 @@ var userAnnotations = {
         $('input').bind('keydown keyup', editing_key_press);
         $('input').each(editing_key_press);
         layout.resizeAll();
+        layout.sizePane("north",100);
     }
     
     function editing_key_press(e){
@@ -688,8 +698,8 @@ var userAnnotations = {
 
     var newTable = null;
 
-    function createVariantRow(row, data, dataIndex ) {
-        console.log("create row");
+    function createVariantRow(tableId, row, data, dataIndex ) {
+        console.log("create row, table id = " + tableId);
         var tds = row.getElementsByTagName('td');
         tds[2].innerHTML = "<a id='variant_"+dataIndex+"_detail' href='http://localhost:60151/goto?locus="+tds[1].innerHTML + ":" + tds[2].innerHTML + "'>"+ tds[2].innerHTML + "</a>";
         $(tds[2]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
@@ -703,7 +713,7 @@ var userAnnotations = {
                 removeRowTags(dataIndex, tds[0], evt);
             }
             else {
-                addTagToRow(dataIndex, function(variantIndex) { console.log("tag added for variant " + variantIndex) });
+                addTagToRow(tableId, dataIndex, evt.target.parentNode, function(variantIndex) { console.log("tag added for variant " + variantIndex) });
             }
         });
 
@@ -751,7 +761,6 @@ var userAnnotations = {
     
     function show_variant_details(variantIndex) {
         console.log("I would show variant " + variantIndex)
-        addTagToRow(variantIndex, function(variantIndex) { console.log("tag added for variant " + variantIndex) });
     }
     
     function filterTable(tableId) {
@@ -774,7 +783,7 @@ var userAnnotations = {
                                        columns: columns, 
                                        iDisplayLength: 50,
                                        destroy: true,
-                                       createdRow: createVariantRow
+                                       createdRow: (row,data,dataIndex) => createVariantRow(tableId, row, data, dataIndex)
                                    });
         add_display_events();
     };

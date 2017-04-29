@@ -43,7 +43,7 @@ Cli cli = new Cli(usage:"VCFtoHTML <options>")
 cli.with {
     i 'vcf File', args: Cli.UNLIMITED, required:true
     p 'PED file describing relationships between the samples in the data', args:1
-    o 'Output HTML file', args:1, required:true
+    o 'Output HTML file', args:1, required:false
     f 'Comma separated list of families to export', args:1
     a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
     target 'Exclude variants outside this region', args:1
@@ -227,7 +227,7 @@ def js = [
     "http://cdn.datatables.net/1.10.0/js/jquery.dataTables.min.js",
     "http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js",
     "http://cdnjs.cloudflare.com/ajax/libs/jquery-layout/1.3.0-rc-30.79/jquery.layout.min.js",
-    "http://igv.org/web/beta/igv-beta.js"
+//    "http://igv.org/web/beta/igv-beta.js"
 ]
 
 def css = [
@@ -237,7 +237,7 @@ def css = [
     "http://fonts.googleapis.com/css?family=PT+Sans:400,700",
     "http://fonts.googleapis.com/css?family=Open+Sans'",
     "http://maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css",
-    "http://igv.org/web/beta/igv-beta.css"
+//     "http://igv.org/web/beta/igv-beta.css"
 ]
 
 def EXCLUDE_VEP = ["synonymous_variant","intron_variant","intergenic_variant","upstream_gene_variant","downstream_gene_variant","5_prime_UTR_variant"]
@@ -284,7 +284,7 @@ def json(obj) {
 }
 
 findMaxMaf = { vep -> 
-    [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF].collect{ mafValue ->
+    [vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF, vep.ExAC_MAF].collect{ mafValue ->
         mafValue?mafValue.split('&'):[]
     }.flatten().collect { 
         it.tokenize(':') 
@@ -328,6 +328,9 @@ if(opts.tsv)
 
     
 LOWER_CASE_BASE_PATTERN = ~/[agct]/
+
+// Default to writing out the VCF file name replacing vcf extension with html
+outputFileName = opts.o ?: opts.is[0].replaceAll('\\.vcf$','.html')
     
 new File(opts.o).withWriter { w ->
    
@@ -520,10 +523,17 @@ new File(opts.o).withWriter { w ->
     });
     </script>
     <style type='text/css'>
-    table#variantTable {
+    h1 {
+        font-size: 16px;
+    }
+    #filterHelp {
+        font-size: 9px;
+    }
+    label, .dataTables_info, .paginate_button, table#variantTable {
         font-size: 10px;
         font-family: verdana;
     }
+
     td.vcfcol { text-align: center; }
     tr.highlight, tr.highlighted, tr.highlight td.sorting_1 {
         background-color: #ffeeee !important;
@@ -556,7 +566,7 @@ new File(opts.o).withWriter { w ->
     <body>
     <p>Loading ...</p>
         <div class="ui-layout-north">
-            <h1>VCF File ${new File(opts.i).name}</h1>
+            <h1>Variants ${opts.diff ? 'different between' : 'found in' } ${vcfs*.samples.flatten().unique().join(",")}</h1>
             <span id=filterOuter><span id=filters> </span></span>
             <div id=filterHelp style='display:none'> </div>
         </div>
