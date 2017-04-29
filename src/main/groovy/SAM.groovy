@@ -158,6 +158,13 @@ class SAM {
     File indexFile
     
     /**
+     * List of samples in the BAM file. Note: this list can be overridden
+     * to associate different samples to the BAM files to those in the BAM 
+     * header.
+     */
+    List<String> samples
+    
+    /**
      * Only used when created from stream
      */
     InputStream samStream
@@ -393,6 +400,7 @@ class SAM {
         int pairs = 0
         
         boolean includeUnmapped = ((boolean)options?.includeUnmapped)
+        String sample = this.samples[0] ?: "";
         
         // The spool holds a buffer that tries to pair up reads before outputting them
         // The right size for it depends on the coverage depth and the separation between
@@ -627,7 +635,9 @@ class SAM {
     }
 
     List<String> getSamples() {
-        samFileReader.getFileHeader().getReadGroups()*.sample
+        if(samples == null)
+            samples = samFileReader.getFileHeader().getReadGroups()*.sample
+        return samples
     }
 
     void filter(Closure c) {
