@@ -81,7 +81,6 @@ class RefGenes {
     }
     
     void index() {
-       log.info "Indexing genes ..."
        int i=0
        for(refLine in this.refData) {
            List txes = geneToTranscripts[refLine.gene]    
