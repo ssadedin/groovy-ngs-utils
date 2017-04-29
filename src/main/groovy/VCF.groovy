@@ -173,6 +173,17 @@ class VCF implements Iterable<Variant> {
     }
     
     /**
+     * Replace the sample ids in the VCF with the given ones
+     * 
+     * @param sampleIds
+     */
+    void replaceSamples(List<String> sampleIds) {
+        this.samples = sampleIds.collect { it }
+        this.lastHeaderLine = this.lastHeaderLine[0..8] + this.samples.join("\t")
+        this.headerLines[-1] = this.lastHeaderLine.join("\t")
+    }
+    
+    /**
      * Return a list of variants starting at the given location
      *
      * @param chr
