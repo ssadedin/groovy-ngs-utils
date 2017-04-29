@@ -217,4 +217,22 @@ class VariantTest {
 
         assert v.equalsAnnovar(a.Chr, a.Start, a.Alt) > 0
     }
+    
+    @Test
+    void testParseVEPWithANN() {
+        Variant v = VCF.parse("tests/data/test.vep.ann.vcf")[0]
+        
+        println "VEP annotations are : " + v.vepInfo
+    }
+    
+    @Test
+    void testMaxVepImpact() {
+        VCF vcf = VCF.parse("src/test/data/ddx3x.vcf")
+        Variant v = vcf[0]
+        
+        String impact = v.maxVepImpact
+        
+        assert impact == "HIGH"
+    }
+    
 }
