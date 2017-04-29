@@ -1,12 +1,23 @@
+import org.apache.commons.cli.GnuParser
 import org.apache.commons.cli.Option
+import org.apache.commons.cli.PosixParser
 
+/**
+ * This class is a simple utility that configures a CliBuilder how I like it and adds a few
+ * simple options that I like.
+ * 
+ * @author simon
+ *
+ */
 class Cli extends CliBuilder {
     
     // To avoid script code having to do the above import, make an alias for it
     static int UNLIMITED = Option.UNLIMITED_VALUES
     
     public Cli() {
+        this.stopAtNonOption=false
         this.writer = new PrintWriter(System.err)
+//        this.parser = new PosixParser()
     }
     
 	void banner(String title) {
