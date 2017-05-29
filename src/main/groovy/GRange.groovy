@@ -123,6 +123,11 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     @CompileStatic
+    boolean overlaps(Regions regions) {
+        regions.overlaps(this)
+    }
+    
+    @CompileStatic
     boolean overlaps(IRegion other) {
         if(other.chr != this.chr)
             return false
