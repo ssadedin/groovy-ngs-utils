@@ -42,4 +42,11 @@ class DGV {
     List<Region> queryOverlapping(Region r) {
        return dgv.getOverlaps(r)*.extra
     }
+    
+    double maxFreq(Map options=[], Region region) {
+        int minSampleSize = options.minSampleSize?:10
+        this.queryOverlapping(region).collect {  dgvCnv ->
+             dgvCnv.sampleSize > minSampleSize ? ((dgvCnv.observedGains + dgvCnv.observedLosses) / dgvCnv.sampleSize) : 0.0
+        }.max()
+    }
 }
