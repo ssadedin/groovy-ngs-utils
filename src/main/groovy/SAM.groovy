@@ -400,7 +400,7 @@ class SAM {
         int pairs = 0
         
         boolean includeUnmapped = ((boolean)options?.includeUnmapped)
-        String sample = this.samples[0] ?: "";
+        String sample = this.getSamples()[0] ?: "";
         
         // The spool holds a buffer that tries to pair up reads before outputting them
         // The right size for it depends on the coverage depth and the separation between
