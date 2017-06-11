@@ -58,6 +58,13 @@ class TargetedCNVAnnotator {
    
    Map annotate(IRegion v, String type) {
        
+       // Make the type compatible with how we tag CNVs (DEL,DUP)
+       if(type == "DEL")
+           type = "LOSS"
+       
+       if(type == "DUP")
+           type = "GAIN"
+           
        if(!v.chr.startsWith('chr'))
            v = new Region('chr'+v.chr, v.range)
 	   
@@ -74,10 +81,20 @@ class TargetedCNVAnnotator {
            r.spans(v.range)  
        }*.extra
            
-       spanning = filterByType(type, spanning)
+       if(type != "ANY")
+           spanning = filterByType(type, spanning)
            
        float spanningFreq = spanning.grep { it.sampleSize>5}.collect { cnv ->
-           int cnvCount = type == "GAIN" ? cnv.observedGains : cnv.observedLosses
+           int cnvCount = 0
+           if(type == "GAIN")
+               cnvCount = cnv.observedGains
+           else
+           if(type == "LOSS")
+               cnvCount =  cnv.observedLosses
+           else
+           if(type == "ANY")
+               cnvCount =  cnv.observedLosses + cnv.observedGains
+               
            (float)cnvCount / cnv.sampleSize.toFloat()
        }.max()?:0.0f
    
