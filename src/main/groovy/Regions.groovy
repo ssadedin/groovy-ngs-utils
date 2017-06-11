@@ -715,3 +715,22 @@ class Regions implements Iterable<Region> {
         this.collect { [ chr: it.chr, from: it.from, to: it.to] }
     }
 }
+    
+    @CompileStatic
+    Regions enhance() {
+        Regions result = new Regions()
+        for(Region r in this) {
+            if(r instanceof GRange) {
+                GRange gr = ((GRange)r.range)
+                gr.extra = (Object)r;
+                result.addRegion(r)
+            }
+            else {
+                GRange gr = new GRange(r.from, r.to, null)
+                Region newRegion = new Region(r.chr, gr)
+                gr.extra = newRegion
+                result.addRegion(newRegion)
+            }
+        }
+        return result
+    }
