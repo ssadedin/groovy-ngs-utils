@@ -413,7 +413,7 @@ class SAM {
         String currentChr = null
         try {
             ProgressCounter progress = new ProgressCounter(extra:{
-                "Chromosome $currentChr, Spool Size=${writeSpool.size()}, Buffer Size=${buffer.size()}, ForcedQueries=$forcedQueries, Pairs=${pairs}"
+                "$sample $currentChr, Spool Size=${writeSpool.size()}, Buffer Size=${buffer.size()}, ForcedQueries=$forcedQueries, Pairs=${pairs}"
             }, withRate: true)
             
             try {
