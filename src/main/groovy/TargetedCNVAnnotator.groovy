@@ -46,6 +46,16 @@ class TargetedCNVAnnotator {
        }
    }
    
+   Map annotateSize(IRegion cnv) {
+       
+       Map result = [
+           targets : this.target.getOverlaps(cnv).size(),
+           targetBp : this.target.intersect(cnv).sum { it.size() }
+       ]
+       
+       return result
+   }
+   
    Map annotate(IRegion v, String type) {
        
        if(!v.chr.startsWith('chr'))
