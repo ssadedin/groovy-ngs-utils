@@ -89,9 +89,9 @@ class TargetedCNVAnnotator {
    
    List<Region> filterByType(String type, List<Region> regions) {
        if(type == "LOSS")
-          return regions.grep { it.varType in ["Loss","Gain+Loss","loss","gain+loss"] }
+          return regions.grep { it.varType in ["Loss","Gain+Loss","loss","gain+loss","deletion"] }
        else
-          return regions.grep { it.varType in ["Gain","Gain+Loss","loss","gain+loss"] }
+          return regions.grep { it.varType in ["Gain","Gain+Loss","gain","gain+loss","duplication"] }
    }
    
    List<GRange> findCompatibleRanges(IRegion v) {
