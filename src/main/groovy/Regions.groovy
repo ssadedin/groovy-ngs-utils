@@ -208,7 +208,7 @@ class Regions implements Iterable<Region> {
     }
     
     List<Range> getOverlaps(IRegion r) {
-        getOverlaps(r.chr, r.from, r.to)
+        getOverlaps(r.chr, r.range.from, r.range.to)
     }
     
     /**
@@ -692,7 +692,17 @@ class Regions implements Iterable<Region> {
             regionsToSave = this.toSorted(new RegionComparator())    
         }
         
-        new File(fileName).withWriter {  w -> regionsToSave.each { w.println([it.chr, it.from, it.to+1].join('\t')) }}
+        Closure c = options?.extra
+        
+        new File(fileName).withWriter {  w -> 
+            
+            if(c != null) {
+                regionsToSave.each { w.println([it.chr, it.from, it.to+1, c(it)].join('\t')) }
+            }
+            else {
+                regionsToSave.each { w.println([it.chr, it.from, it.to+1].join('\t')) }
+            }
+        }
     }
     
     /**
@@ -714,7 +724,6 @@ class Regions implements Iterable<Region> {
     List<Map> bkr() {
         this.collect { [ chr: it.chr, from: it.from, to: it.to] }
     }
-}
     
     @CompileStatic
     Regions enhance() {
@@ -734,3 +743,4 @@ class Regions implements Iterable<Region> {
         }
         return result
     }
+}
