@@ -139,13 +139,14 @@ class RefGenes {
                 if(start>end)
                     (Region)null
                 else
-                    new Region(tx.chr, (start+1)..(end+1)) 
+                    new Region(tx.chr, new GRange(start+1,end+1, null))
             }.each { Region r ->
                 if(r != null)
                     exons.addRegion(r)
             }
         }
-        exons.reduce()
+        
+        return exons.reduce().enhance()
     }
     
     Regions getTranscriptExons(String transcriptId) {
