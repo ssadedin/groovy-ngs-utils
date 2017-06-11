@@ -741,7 +741,7 @@ class RangeIndex implements Iterable<IntRange> {
             assert r.from >= currentRange.from
             
             if(GRange.overlaps(r,currentRange)) { 
-                currentRange = Math.min(r.from, currentRange.from)..Math.max(r.to, currentRange.to)
+                currentRange = new GRange(Math.min(r.from, currentRange.from),Math.max(r.to, currentRange.to),null)
             }
             else {
                 reduced.add(currentRange)
