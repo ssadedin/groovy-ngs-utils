@@ -1172,6 +1172,13 @@ class SAM {
             248956422 : "GRCh38"
         ]
         
+        Map mouseMap = [
+            195471971 : "mm10",
+            197195432 : "mm9",
+            197069962 : "mm8",
+            194923535 : "mm7"
+        ]
+        
         contigs.any { it.key.startsWith('chr') } ? 
             hgMap[contigs['chr1']]
         :
