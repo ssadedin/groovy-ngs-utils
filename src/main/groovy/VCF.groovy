@@ -746,14 +746,14 @@ class VCF implements Iterable<Variant> {
         parseVepColumns()
         
         if(vepType == "auto") {
-            return this.vepColumns.values()[0].value
+            return this.vepColumns.values()[0]
         }
         else {
             return this.vepColumns[vepType]
         }
     }
     
-    String[] parseVepColumns() {
+    Map<String,String[]> parseVepColumns() {
         
         if(vepColumns != null)
             return vepColumns
