@@ -121,7 +121,7 @@ class RefGenes {
     @CompileStatic
     Regions getExons(String gene, boolean codingOnly=true) {
         Regions exons = new Regions()
-        geneToTranscripts[gene].collect { (Region)refData[it] }.collect { Region tx ->
+        geneToTranscripts[gene]?.collect { (Region)refData[it] }?.each { Region tx ->
             
             // Transcripts starting with NR are non-coding
             if(codingOnly && ((String)tx['tx']).startsWith("NR_"))
