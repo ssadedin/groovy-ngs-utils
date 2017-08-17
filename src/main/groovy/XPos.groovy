@@ -22,6 +22,10 @@ class XPos {
                 return 22
             case "Y":
                 return 23
+            case "M":
+                return 24
+           case "MT":
+                return 24 
             default:
                 return chr.toInteger()-1
         }
