@@ -929,7 +929,11 @@ class SAM {
             i.close();
         }
     }
-
+    
+    int countOf(chr, pos, String baseString) {
+        return pileup(chr,pos).countOf(baseString)
+    }
+ 
     PileupIterator.Pileup pileup(String chr, int pos) {
         return pileup(chr,pos,pos).next()
     }
