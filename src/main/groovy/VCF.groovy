@@ -289,12 +289,13 @@ class VCF implements Iterable<Variant> {
         }
     }
     
-    void load(Closure c = null) {
+    VCF load(Closure c = null) {
         VCF self = this
         new File(this.fileName).withInputStream { ins ->
             VCF.parse(ins, null, c, vcf:self)
         }
         lazyLoad = false
+        return this
     }
     
     /**
