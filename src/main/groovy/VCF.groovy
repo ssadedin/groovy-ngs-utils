@@ -529,10 +529,7 @@ class VCF implements Iterable<Variant> {
                 // The variant is in my VCF - use the genotypes from there
                 def gts = mySplit[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
-                    def gtFields = [myGtFields,gt.split(":")].transpose().collectEntries()
-                    commonGtFields.collect { gtField ->
-                        gtFields[gtField]
-                    }.join(":")
+                    buildGtFieldValue(gt, myGtFields, commonGtFields)
                 })
             }
             else { 
@@ -542,19 +539,11 @@ class VCF implements Iterable<Variant> {
             
             if(otherVariant) {
                 // The variant is in the other VCF - use the genotypes from there
-                // TODO: if different number of alleles in other sample, this
-                // will not work!
-                
+                // TODO: if different number of alleles in other sample, this will not work!
                 def gts = otherVariant.line.split("\t")[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
-                    def gtFields = [otherGtFields,gt.split(":")].transpose().collectEntries()
-                    commonGtFields.collect { gtField ->
-                        gtFields[gtField]
-                    }.join(":")
+                    buildGtFieldValue(gt, otherGtFields, commonGtFields)
                 }) 
-                
-//                def otherGts = otherVariant.line.split("\t")[9..-1]
-//                newLine.addAll(otherGts)
             }
             else {
                 // Add null genotypes from the other samples
@@ -572,6 +561,16 @@ class VCF implements Iterable<Variant> {
             result.add(resultVariant)
         }
         return result
+    }
+    
+    @CompileStatic
+    String buildGtFieldValue(String gt, List<String> myGtFields, List<String> includedFields) {
+        Map<String,String> gtFields = [myGtFields,gt.tokenize(":")].transpose().collectEntries()
+        includedFields.collect { String gtField ->
+            String value = gtFields[gtField]
+            return value
+        }.grep { it != null }.join(":") // note: filtering by null necessary because the format field can be
+                                        // longer than the gt, eg: GT:DP  ./.
     }
     
     /**
