@@ -689,7 +689,11 @@ class Regions implements Iterable<Region> {
         
         def regionsToSave = this
         if(options?.sorted) {
-            regionsToSave = this.toSorted(new RegionComparator())    
+            
+            if(options.sorted instanceof Comparator)
+                regionsToSave = this.toSorted(options.sorted)    
+            else
+                regionsToSave = this.toSorted(new RegionComparator())    
         }
         
         Closure c = options?.extra

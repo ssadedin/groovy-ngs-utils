@@ -34,7 +34,7 @@ class RegionComparator implements Comparator<Region> {
     @Override
     public int compare(Region r1, Region r2) {
       if(r1.chr != r2.chr)
-        return r2.chr.compareTo(r1.chr)
+        return -r2.chr.compareTo(r1.chr)
       
       if(r1.from != r2.from)
         return r1.from.compareTo(r2.from)
@@ -43,6 +43,18 @@ class RegionComparator implements Comparator<Region> {
     }
     
 }
+
+@CompileStatic
+class NumericRegionComparator implements Comparator<Region> {
+
+    @Override
+    public int compare(Region r1, Region r2) {
+        int result = (int)Math.signum((long)XPos.computePos(r1.chr, r1.from) - XPos.computePos(r2.chr, r2.from))
+        return result
+    }
+    
+}
+
 
 
 /**
