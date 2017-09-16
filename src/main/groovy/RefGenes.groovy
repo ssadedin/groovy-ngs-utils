@@ -80,15 +80,17 @@ class RefGenes {
        this.index()
     }
     
+    @CompileStatic
     void index() {
        int i=0
        for(refLine in this.refData) {
-           List txes = geneToTranscripts[refLine.gene]    
+           String gene = (String)refLine.getProperty('gene')
+           List<Integer> txes = (List<Integer>)geneToTranscripts[gene]    
            if(!txes)
-               geneToTranscripts[refLine.gene] = txes = []
+               geneToTranscripts[gene] = txes = []
            txes.add(i)    
            ++i
-           transcriptIndex[refLine.tx] = refLine
+           transcriptIndex[(String)refLine.getProperty('tx')] = refLine
        }
     }
     
