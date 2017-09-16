@@ -123,11 +123,14 @@ class RefGenes {
     @CompileStatic
     Regions getExons(String gene, boolean codingOnly=true) {
         Regions exons = new Regions()
+        String strand
         geneToTranscripts[gene]?.collect { (Region)refData[it] }?.each { Region tx ->
             
             // Transcripts starting with NR are non-coding
             if(codingOnly && ((String)tx['tx']).startsWith("NR_"))
                 return null
+            
+            strand = tx.getProperty('strand')
                 
             [ ((String)tx['starts']).tokenize(","), ((String)tx['ends']).tokenize(",") ].transpose().collect { se ->
                 
@@ -140,15 +143,18 @@ class RefGenes {
                 }
                 if(start>end)
                     (Region)null
-                else
+                else {
                     new Region(tx.chr, new GRange(start+1,end+1, null))
+                }
             }.each { Region r ->
                 if(r != null)
                     exons.addRegion(r)
             }
         }
         
-        return exons.reduce().enhance()
+        Regions results = exons.reduce().enhance()
+        results.each { it.setProperty('strand', strand)}
+        return results
     }
     
     Regions getTranscriptExons(String transcriptId) {
