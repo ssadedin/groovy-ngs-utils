@@ -221,4 +221,20 @@ class RegionsTest {
        assert sorted[0].chr == "chr1"
        assert sorted[-1].chr == "chr2"
     } 
+    
+    @Test
+    void testCoverage() {
+        Regions r = 
+            new Regions([new Region("chr1:100-200"), 
+                         new Region("chr1:50-70"), 
+                         new Region("chr1:100-300"), 
+                         new Region("chr2:100-400"),
+                         new Region("chr1:500-700") 
+                         ])
+         
+       Regions cov = r.coverage()
+       
+       assert cov.find { it.overlaps('chr1', 60, 61) }.extra == 1 
+       assert cov.find { it.overlaps('chr1', 110, 115) }.extra == 2 
+    }
 }
