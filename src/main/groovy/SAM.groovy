@@ -937,6 +937,10 @@ class SAM {
     PileupIterator.Pileup pileup(String chr, int pos) {
         return pileup(chr,pos,pos).next()
     }
+    
+    Map<String, Integer> basesAt(String chr, int pos) {
+        return pileup(chr,pos).summaryAsMap
+    }
 
     @CompileStatic
     void pileup(String chr, int start, int end, Closure c) {
