@@ -130,5 +130,82 @@ class Utils {
         def parentLog = log.getParent()
         parentLog.getHandlers().each { parentLog.removeHandler(it) }
         log.getParent().addHandler(console)
+        
+        // Disable logging from groovy sql
+        Logger.getLogger("groovy.sql.Sql").useParentHandlers = false
+    }
+    
+    static String table(Map options = [:], List<String> headers, List<List> rows) {
+        
+        String indent = options.indent ? (" " * options.indent) : ""
+        
+        // Create formatters
+        Map formatters = options.get('format',[:])
+        headers.each { h ->
+            if(!formatters[h])
+                formatters[h] = { String.valueOf(it) }
+            else 
+            if(formatters[h] instanceof Closure) {
+                // just let it be - it will be called and expected to return the value
+            }
+            else { // Assume it is a String.format specifier (sprintf style)
+                String spec = formatters[h]
+                if(spec == "timespan") {
+                    formatters[h] = { times ->
+                        TimeCategory.minus(times[1],times[0]).toString().replaceAll(TRIM_SECONDS, '').replaceAll(TRIM_ZEROS,' seconds')
+                    }
+                }
+                else {
+                    formatters[h] = { val ->
+                        String.format(spec, val)
+                    }
+                }
+            }
+        }
+        
+        // Create renderers
+        Map renderers = options.get('render',[:])
+        headers.each { hd ->
+            if(!renderers[hd]) {
+                renderers[hd]  = { val, width  -> print val.padRight(width) }
+            }
+        }
+        
+        // Find the width of each column
+        Map<String,Integer> columnWidths = [:]
+        if(rows) {
+            headers.eachWithIndex { hd, i ->
+                Object widestRow = rows.max { row -> formatters[hd](row[i]).size() }
+                columnWidths[hd] = Math.max(hd.size(), formatters[hd](widestRow[i]).size())
+            }
+        }
+        else {
+            headers.each { columnWidths[it] = it.size() }
+        }
+            
+        // Now render the table
+        String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
+        println indent + header
+        println indent + ("-" * header.size())
+        
+        rows.each { row ->
+            int i=0
+            headers.each { hd -> 
+                if(i!=0)
+                    print(" | ");
+                else
+                    print(indent)
+                    
+                 renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
+            }
+            println ""
+        }
+    }
+    
+    public static int getNumberOfOpenFiles() {
+        java.lang.management.OperatingSystemMXBean os = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+        if(os instanceof com.sun.management.UnixOperatingSystemMXBean){
+            return ((com.sun.management.UnixOperatingSystemMXBean) os).getOpenFileDescriptorCount();
+        }
     }
 }
