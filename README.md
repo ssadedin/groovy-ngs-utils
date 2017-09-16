@@ -18,14 +18,30 @@ Since these utilities are optimized for scripting, they live in the default Java
 easily write command line scripts, such as:
 
 ```bash
+  # Get me a filtered VCF with QUAL>20 and DP > 5
   cat my.vcf | groovy -e 'VCF.filter { it.qual > 20 && it.info.DP.toInteger()>5 }' > filtered.vcf
 
+  # Which read shave MAPQ = 0?
   cat my.bam | groovy -e 'SAM.eachRead { if(it.mappingQuality == 0) { println it.readName } }'
   
+  # What's the median coverage of bedtools output?
   coverageBed -d  -abam test.bam -b test.bed | cut -f 6 | groovy -e 'Stats.read().median'
+
+  # What are the bases piled up at 25870138?
+  groovy -e 'println(new SAM("test.bam").basesAt("chr1", 25870138))'
+
+  # What are the exons in the DVL1 gene?
+  groovy -e 'println(RefGenes.download().getExons("DVL1").join(", "))'
+
+  # What are the total number of bases overlapped by regions in my BED file?
+  groovy -e 'println(new BED("./tests/data/small.overlaps.bed").load().reduce().size())'
+
 ```
+
+These are only examples and barely scratch the surface of all the functions built into
+groovy-ngs-utils.
   
-These functions are all built upon Samtools, Picard Tools, BioJava and Apache commons-math. The jar file that 
+Everything is built upon Samtools, Picard Tools, BioJava and Apache commons-math. The jar file that 
 is built bundles all the necessary libraries so that you can easily include them all with just one
 classpath entry (or put it into your .groovy/lib).
 
