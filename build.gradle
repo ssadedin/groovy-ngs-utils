@@ -43,6 +43,8 @@ dependencies {
      compile group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
      compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
      compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
+     compile group: 'org.codehaus.gpars', name: 'gpars', version: '1.2.1'
+
      compile group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
      compile group: 'org.biojava', name: 'biojava-core', version: '4.2.1'
      compile group: 'org.biojava', name:'biojava-alignment', version:'4.2.1' 
