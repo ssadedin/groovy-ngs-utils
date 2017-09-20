@@ -84,7 +84,7 @@ class LXPos {
     }
     
     static final String [] INT_CHRS = (
-        (1..22).collect { String.valueOf(it) }.sort() + ["X","Y"]
+        (1..22).collect { String.valueOf(it) }.sort() + ["X","Y","M"]
         ) as String[]
     
     static final int [] CHR_INTS = new int[71]
