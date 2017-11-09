@@ -40,10 +40,17 @@ class OrderedPairWriter implements Closeable {
         p1.r2.alignmentStart.compareTo(p2.r2.alignmentStart)
     })
     
+    int written = 0
+    
     int currentReferenceIndex = -1
+    
+    ProgressCounter progress 
     
     OrderedPairWriter(SAMFileWriter w) {
         this.samWriter = w
+        this.progress = new ProgressCounter(withTime:true, withRate:true, timeInterval:10000, extra: {
+            "Written ${written}, Buffered ${buffer.size()} RefIndex=${currentReferenceIndex}"
+        })
     }
     
     boolean verbose = false
@@ -53,6 +60,8 @@ class OrderedPairWriter implements Closeable {
         
        if(pair.isChimeric())
            return
+       
+       progress.count()
        
        int r1ReferenceIndex = pair.r1.referenceIndex
        if(currentReferenceIndex < 0)     
@@ -70,6 +79,7 @@ class OrderedPairWriter implements Closeable {
            if(verbose)
                println "WW: write R2 $bufferedPair.r1.readName ($bufferedPair.r1.referenceName:$bufferedPair.r1.alignmentStart,$bufferedPair.r2.referenceName:$bufferedPair.r2.alignmentStart)"
            samWriter.addAlignment(bufferedPair.r2) 
+           ++written
            bufferedPair = buffer.isEmpty() ? null : buffer.first() 
        }
        
@@ -84,6 +94,7 @@ class OrderedPairWriter implements Closeable {
     void flushBuffer() {
        for(SAMRecordPair bufferedPair in buffer) {
            samWriter.addAlignment(bufferedPair.r2)
+           ++written
        }
        buffer.clear()
     }
@@ -91,5 +102,7 @@ class OrderedPairWriter implements Closeable {
     void close() {
         flushBuffer()
         this.samWriter.close()
+        if(progress)
+            progress.end()
     }
 }
