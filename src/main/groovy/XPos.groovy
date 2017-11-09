@@ -32,7 +32,7 @@ class XPos {
     }
     
     static final String [] INT_CHRS = (
-        (1..22).collect { String.valueOf(it) } + ["X","Y"]
+        (1..22).collect { String.valueOf(it) } + ["X","Y","M"]
         ) as String[]
     
     @CompileStatic
