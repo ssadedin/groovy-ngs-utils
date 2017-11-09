@@ -167,6 +167,10 @@ class ReadWindow {
  * <li>All operations with this class require the BAM file to be indexed.
  * <li>SAM and BAM files are treated transparently the same.
  * <p>
+ * <h3>Progress</h3>
+ * Some operations can automatically print progress as they go. To enable this,
+ * set a {@link#ProgressCounter} on the #progress attribute.
+ * 
  * @author simon.sadedin@mcri.edu.au
  */
 class SAM {
@@ -688,7 +692,14 @@ class SAM {
         countPairs(r.chr, r.from, r.to)
     }
 
-    @CompileStatic
+    /**
+     * Count the number of read pairs in the given region
+     * @param chr   chromsome of region
+     * @param start start of region
+     * @param end   end of region
+     * @return  number of read pairs that overlap the region
+     */
+     @CompileStatic
     int countPairs(String chr, int start, int end) {
         int c = 0;
         eachPair(chr,start,end) { Object r1, Object r2 ->
@@ -697,6 +708,18 @@ class SAM {
         return c
     }
 
+    /**
+     * Call the given closure for each read in this alignment, using the
+     * given number of threads eg:
+     * 
+     * <code>
+     * SAM sam = new SAM("test.bam")
+     * sam.eachRecord(5) { r -> println(r.readName) }
+     * </code>
+     * 
+     * @param threads   number of threads to use
+     * @param c         closure to call
+     */
     void eachRecord(int threads, Closure c) {
         List<SAMSequenceRecord> sequences = samFileReader.fileHeader.sequenceDictionary.sequences
         ExecutorService executor = Executors.newFixedThreadPool(threads)
@@ -719,6 +742,9 @@ class SAM {
         executor.shutdown()
     }
 
+    /**
+     * @return Return the list of read groups present in the SAM file
+     */
     List<SAMReadGroupRecord> getReadGroups() {
         samFileReader.getFileHeader().getReadGroups()
     }
@@ -729,10 +755,24 @@ class SAM {
         return samples
     }
 
+    /**
+     * Filter the SAM/BAM file to include only the reads for which the 
+     * given closure returns true. Output is written to stdout.
+     * 
+     * @param c             Closure that should return true for reads that will be 
+     *                      included in the output BAM file
+     */
     void filter(Closure c) {
         filter("/dev/stdout",c)
     }
 
+    /**
+     * Filter the SAM/BAM file to include only the reads for which the given closure returns true
+     * 
+     * @param outputFile    the path to the output file
+     * @param c             Closure that should return true for reads that will be 
+     *                      included in the output BAM file
+     */
     @CompileStatic
     void filter(String outputFile, Closure c) {
 
@@ -1027,10 +1067,29 @@ class SAM {
         return pileup(chr,pos,pos).next()
     }
     
+    /**
+     * Return a Map with a key for each base observed at the given position,
+     * with the value being the number of times that base was observed. Additionally,
+     * a keys for deletions ('deletion') and total bases ('total') are set.
+     * 
+     * @param chr
+     * @param pos
+     * @return
+     */
     Map<String, Integer> basesAt(String chr, int pos) {
         return pileup(chr,pos).summaryAsMap
     }
 
+    /**
+     * Call the given closure once for each base between the 
+     * start and end positions with a Pileup object representing
+     * the pileup state at that position.
+     * 
+     * @param chr
+     * @param start
+     * @param end
+     * @param c
+     */
     @CompileStatic
     void pileup(String chr, int start, int end, Closure c) {
         PileupIterator i = pileup(chr,start,end)
@@ -1044,6 +1103,16 @@ class SAM {
         }
     }
 
+    /**
+     * Create and return an iterator that iterates over Pileup objects over
+     * the given range.
+     * 
+     * @param chr   Chromsome of range to iterate over
+     * @param start Start of range
+     * @param end   End of range
+     * 
+     * @return Iterator for iterating over Pileup state in range
+     */
     @CompileStatic
     PileupIterator pileup(String chr, int start, int end) {
         SAMFileReader reader = new SAMFileReader(samFile, indexFile, false)
@@ -1100,11 +1169,19 @@ class SAM {
         }
     }
     
+    /**
+     * Call the given closure for each base position with a moving window of reads over that position
+     * <p>
+     * <b>NOTE:</b> Requires a BAM file sorted by position. Will not work with unsorted bam file.
+     * 
+     * @param windowSize
+     * @param chr
+     * @param c
+     */
     void movingWindow(int windowSize, String chr, Closure c, Closure filterFn=null) {
         int chrSize = getContigs()[chr]
         movingWindow(windowSize, chr, 0, chrSize, c, filterFn)
     }
-    
     
     /**
      * Call the given closure for each base position with a moving window of reads over that position
