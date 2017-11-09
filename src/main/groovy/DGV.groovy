@@ -1,5 +1,7 @@
 import java.util.zip.GZIPInputStream
 
+import groovy.transform.CompileStatic
+
 /**
  * A thin wrapper around a RangedData object to add some utility functions
  * for accessing DGV data.
@@ -45,8 +47,10 @@ class DGV {
     
     double maxFreq(Map options=[:], Region region) {
         int minSampleSize = options.minSampleSize?:10
-        this.queryOverlapping(region).collect {  dgvCnv ->
+        Double result = this.queryOverlapping(region).collect {  dgvCnv ->
              dgvCnv.sampleSize > minSampleSize ? ((dgvCnv.observedGains + dgvCnv.observedLosses) / dgvCnv.sampleSize) : 0.0
         }.max()
+        
+        return result == null ? 0.0d : result
     }
 }
