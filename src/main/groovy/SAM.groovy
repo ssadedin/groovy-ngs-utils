@@ -36,24 +36,44 @@ import htsjdk.samtools.SAMFileWriterFactory
 import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SAMTagUtil
 import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 
-@CompileStatic 
 class SAMRecordPair {
     SAMRecord r1
     
     SAMRecord r2
     
+    @CompileStatic 
     boolean hasBothReads() {
         r2 != null && r1 != null
     }
     
+    @CompileStatic 
     boolean isChimeric() {
         return r1 != null && r2 != null && (r1.referenceIndex != r2.referenceIndex)
+    }
+    
+    @CompileStatic 
+    void setTag(String name, String value) {
+        r1.setAttribute(name, value)
+        r2.setAttribute(name, value)
+    }
+    
+    static short RG_TAG = SAMTagUtil.getSingleton().RG
+    
+    /**
+     * Do not static compile this as it relies on access to protected function
+     * 
+     * @param rgId
+     */
+    void setReadGroup(String rgId) {
+        r1.setAttribute(RG_TAG, rgId);
+        r2.setAttribute(RG_TAG, rgId);        
     }
 }
 
