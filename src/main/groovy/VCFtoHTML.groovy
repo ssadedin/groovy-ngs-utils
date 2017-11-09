@@ -43,7 +43,7 @@ Cli cli = new Cli(usage:"VCFtoHTML <options>")
 cli.with {
     i 'vcf File', args: Cli.UNLIMITED, required:true
     p 'PED file describing relationships between the samples in the data', args:1
-    o 'Output HTML file', args:1, required:false
+    o 'Output HTML file', args:1, required:true
     f 'Comma separated list of families to export', args:1
     a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
     target 'Exclude variants outside this region', args:1
