@@ -324,6 +324,65 @@ class SAM {
         }
     }
     
+    /**
+     * Execute the given closure with an actor (parallel thread) set to write ordered 
+     * pairs to the given output file, based on this BAM file.
+     * <p>
+     * If the closure returns a SAMRecordPair then the pair is written. If any other 
+     * value is returned, the value is evaluated as a boolean and the original read pair 
+     * is written if the boolean is true.
+     */
+    @CompileStatic
+    void filterOrderedPairs(Map options = [:], String outputFileName, Closure c) {
+        this.withOrderedPairWriter(outputFileName, true) { OrderedPairWriter w ->
+            OrderedPairActor actor = new OrderedPairActor(w)
+            actor.start()
+            
+            OrderedPairReader reader = new OrderedPairReader(options,this)
+            reader.eachPair { SAMRecord r1, SAMRecord r2 ->
+                SAMRecordPair pair = new SAMRecordPair(r1:r1, r2:r2)
+                def result = c(pair)
+                if(result instanceof SAMRecordPair) // allow to replace with modified pair
+                    actor.addAlignmentPair(result)
+                else
+                if(result instanceof List) {
+                    List<SAMRecordPair> resultList = (List<SAMRecordPair>) result;
+                    for(SAMRecordPair resultPair in resultList) {
+                        actor.addAlignmentPair(resultPair)
+                    }
+                }
+                else
+                if(result) {
+                    actor.addAlignmentPair(pair)
+                }
+            }
+            
+            if(options.end != null) {
+                Closure endClosure = (Closure)options.end;
+                endClosure(actor)
+            }
+            actor.shutdown()
+            actor.terminate()
+        }        
+    } 
+    
+    /**
+     * Execute the given closure with an actor set to write ordered pairs to the given
+     * output file, based on this BAM file.
+     */
+    def withOrderedPairActor(Map options = [:], String outputFileName, Closure c) {
+        this.withOrderedPairWriter(outputFileName, true) { w ->
+            OrderedPairActor actor = new OrderedPairActor(w)
+            actor.start()
+            c(actor)
+            if(options.end)
+                options.end(actor)
+                
+            actor.shutdown()
+            actor.terminate()
+        }        
+    }
+    
     def withOrderedPairWriter(String outputFileName, boolean sorted, Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = this.samFileReader.fileHeader
@@ -332,8 +391,17 @@ class SAM {
         try {
             return c(opw)
         }
+        catch(Exception e) {
+            e.printStackTrace()
+            throw e
+        }
         finally {
-            w.close()
+            try {
+                w.close()
+            }
+            catch(Exception e) {
+                // Ignore
+            }
         }
     }
 
@@ -410,7 +478,7 @@ class SAM {
      * @param c        Closure to call
      */
     @CompileStatic
-    void eachPair(Map options, SAMRecordIterator iter, Closure c) {
+    void eachPair(Map options=[:], SAMRecordIterator iter, Closure c) {
         SAMFileReader pairReader = newReader()
         SAMFileReader randomLookupReader = newReader()
         Map<String,Integer> buffer = new HashMap()
@@ -428,7 +496,8 @@ class SAM {
         // a read's pair is encountered before the buffer overflows. When it overflows
         // the loop below starts doing random queries (slow) to resolve the mates for reads
         // so that the pair can be output together. 
-        int maxSpoolSize = 4000
+        final int maxSpoolSize = options.spoolSize ? (int)options.spoolSize : 8000i
+        
         int forcedQueries = 0
         String currentChr = null
         try {
@@ -588,7 +657,7 @@ class SAM {
     }
 
     @CompileStatic
-    void eachPair(String chr, int start, int end, Closure c) {
+    void eachPair(Map options=[:],String chr, int start, int end, Closure c) {
         SAMRecordIterator<SAMRecord> iter
         
         SAMFileReader reader = this.newReader()
@@ -599,7 +668,7 @@ class SAM {
 
         try {
             try {
-                eachPair(null, iter,c)
+                eachPair(options, iter,c)
             }
             finally {
                 iter.close()
