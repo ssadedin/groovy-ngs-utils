@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -21,6 +22,8 @@
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import java.util.logging.Logger
+
+import Abort
 
 /**
  * Simple utility for displaying progress 

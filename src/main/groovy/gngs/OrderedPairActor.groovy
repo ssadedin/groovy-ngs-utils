@@ -1,3 +1,4 @@
+package gngs
 import java.util.concurrent.atomic.AtomicInteger
 
 import groovy.transform.CompileStatic

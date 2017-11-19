@@ -1,3 +1,4 @@
+import gngs.Cli
 
 Cli cli = new Cli()
 cli.with {

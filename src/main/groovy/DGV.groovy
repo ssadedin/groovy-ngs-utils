@@ -1,5 +1,7 @@
 import java.util.zip.GZIPInputStream
 
+import gngs.Region
+import gngs.Utils
 import groovy.transform.CompileStatic
 
 /**

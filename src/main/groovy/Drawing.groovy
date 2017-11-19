@@ -29,6 +29,8 @@ import java.awt.image.BufferedImage;
 
 import javax.imageio.*
 
+import gngs.IRegion
+
 
 /**
  * Drawing is a very simple graphics class that enables simple line and text drawings on a 

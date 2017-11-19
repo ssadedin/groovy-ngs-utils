@@ -22,6 +22,9 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import gngs.ProgressCounter
+import gngs.RangeIndex
+
 class RangeIndexTest {
     
     @Test

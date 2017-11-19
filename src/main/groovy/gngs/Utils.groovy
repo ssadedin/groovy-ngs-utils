@@ -1,3 +1,4 @@
+package gngs
 import groovy.lang.Closure;
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;

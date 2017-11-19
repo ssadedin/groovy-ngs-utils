@@ -2,6 +2,9 @@ import static org.junit.Assert.*;
 
 import org.junit.Test
 
+import gngs.Regions
+import gngs.SAM
+import gngs.Utils
 import groovy.transform.CompileStatic
 import htsjdk.samtools.SAMRecord;;;
 

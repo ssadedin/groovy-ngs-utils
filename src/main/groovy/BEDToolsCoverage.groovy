@@ -1,3 +1,6 @@
+import gngs.CoverageStats
+import gngs.Region
+import gngs.Regions
 import graxxia.*
 
 class BEDToolsCoverage {

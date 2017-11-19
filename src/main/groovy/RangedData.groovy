@@ -1,4 +1,9 @@
 import com.xlson.groovycsv.PropertyMapper;
+
+import gngs.GRange
+import gngs.Region
+import gngs.Regions
+
 import java.util.zip.GZIPInputStream
 
 import org.codehaus.groovy.runtime.StackTraceUtils;

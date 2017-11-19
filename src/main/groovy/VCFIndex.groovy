@@ -28,6 +28,8 @@ import htsjdk.tribble.index.IndexFactory
 import htsjdk.tribble.readers.TabixReader
 import org.codehaus.groovy.runtime.StackTraceUtils
 
+import gngs.IRegion
+
 
 /**
  * Support for querying indexed VCF files via random access.
@@ -90,6 +92,10 @@ class VCFIndex {
      */
     VCF headerVCF = null
 
+    public VCFIndex() {
+        // for tests
+    }
+    
     /**
      * Load and index for the given VCF file
      * 

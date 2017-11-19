@@ -18,6 +18,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import gngs.ProgressCounter
+import gngs.Regions
 import groovy.transform.CompileStatic;
 import groovy.transform.Memoized
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
@@ -53,6 +55,10 @@ class FASTA {
      * The internal (Picard) index for the FASTA file.
      */
     IndexedFastaSequenceFile indexedFastaFile
+    
+    FASTA() {
+        
+    }
     
     /**
      * Create a FASTA object for the given FASTA file, which must be indexed.

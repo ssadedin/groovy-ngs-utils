@@ -2,6 +2,9 @@ import java.nio.file.Files;
 
 import com.xlson.groovycsv.PropertyMapper;
 
+import gngs.GRange
+import gngs.Region
+import gngs.Regions
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log;
 

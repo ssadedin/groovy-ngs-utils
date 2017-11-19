@@ -31,6 +31,10 @@ import htsjdk.tribble.readers.TabixReader;
 
 import org.codehaus.groovy.runtime.StackTraceUtils
 
+import gngs.ProgressCounter
+import gngs.Region
+import gngs.Regions
+
 class FormatMetaData {
     
     String id

@@ -1,5 +1,7 @@
 import org.junit.Test
 
+import gngs.LXPos
+
 class XPosTest {
     
     @Test

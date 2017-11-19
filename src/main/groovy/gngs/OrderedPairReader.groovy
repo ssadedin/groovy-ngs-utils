@@ -1,3 +1,5 @@
+package gngs
+
 import groovy.transform.CompileStatic
 import htsjdk.samtools.SAMFileReader
 import htsjdk.samtools.SAMRecord

@@ -1,3 +1,4 @@
+package gngs
 import groovy.transform.CompileStatic;
 /**
  * A representation of a genomic position as a long

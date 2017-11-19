@@ -21,6 +21,7 @@
 import java.text.ParseException;
 import java.util.zip.GZIPInputStream;
 
+import gngs.ProgressCounter
 import groovy.transform.CompileStatic;
 
 /**

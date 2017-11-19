@@ -1,5 +1,8 @@
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
+import gngs.Cli
+import gngs.ProgressCounter
+
 Cli cli = new Cli()
 cli.with {
     vcf "VCF file to import to database", args:1, required:true

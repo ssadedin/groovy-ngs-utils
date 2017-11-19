@@ -1,3 +1,8 @@
+import gngs.Cli
+import gngs.ProgressCounter
+import gngs.Region
+import gngs.Regions
+
 Cli cli = new Cli()
 cli.with {
     refgene 'UCSC RefGene annotation file (download from UCSC website)', args:1, required:true

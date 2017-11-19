@@ -1,3 +1,5 @@
+import gngs.Region
+import gngs.Regions
 
 /**
  * Reads output of GATK DepthOfCoverage interval summary and

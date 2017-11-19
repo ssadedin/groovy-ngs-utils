@@ -18,6 +18,8 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import gngs.IRegion
+import gngs.Region
 import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
 

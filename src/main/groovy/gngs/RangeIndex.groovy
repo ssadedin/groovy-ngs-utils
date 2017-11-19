@@ -18,9 +18,10 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+package gngs
+
 import java.util.Iterator;
 
-import groovy.lang.IntRange;
 import groovy.transform.CompileStatic;
 
 /**

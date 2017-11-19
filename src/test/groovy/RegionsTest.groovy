@@ -2,6 +2,10 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import gngs.Region
+import gngs.RegionComparator
+import gngs.Regions
+
 
 /**
  * Note: most of the tests for Regions are in fact in the {@link BEDTest}

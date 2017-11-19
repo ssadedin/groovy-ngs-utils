@@ -1,3 +1,4 @@
+package gngs;
 import groovy.lang.Closure;
 
 import java.util.ArrayList;
@@ -25,6 +26,10 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
     public class Pileup {
         
         public int position = -1;
+        
+        Pileup() {
+            // testing
+        }
         
         Pileup(int position) {
             this.position = position;

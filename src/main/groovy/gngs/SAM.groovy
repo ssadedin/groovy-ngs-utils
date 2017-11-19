@@ -17,6 +17,7 @@
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+package gngs
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
@@ -204,6 +205,10 @@ class SAM {
         // and let the user turn it back on with this property if they want it
         if("true" != System.properties.picardLogging)
             htsjdk.samtools.util.Log.setGlobalLogLevel(htsjdk.samtools.util.Log.LogLevel.WARNING)
+    }
+    
+    SAM() {
+        // for unit tests
     }
     
     SAM(InputStream ips) {

@@ -1,3 +1,9 @@
+import gngs.Cli
+import gngs.CoverageStats
+import gngs.Regions
+import gngs.SAM
+import gngs.Utils
+
 /**
  * An algorithm based on simple heuristics for estimating the sex of a sample from
  * sequencing coverage.

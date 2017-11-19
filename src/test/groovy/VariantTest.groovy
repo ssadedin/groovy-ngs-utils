@@ -22,6 +22,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import gngs.CoverageStats
+
 
 class VariantTest {
 

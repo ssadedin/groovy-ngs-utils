@@ -3,6 +3,8 @@ import static org.junit.Assert.*;
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.junit.Test;
 
+import gngs.CoverageStats
+
 
 class CoveragePercentileTest {
 

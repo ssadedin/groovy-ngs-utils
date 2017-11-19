@@ -1,3 +1,4 @@
+package gngs
 import org.apache.commons.cli.GnuParser
 import org.apache.commons.cli.Option
 import org.apache.commons.cli.PosixParser
