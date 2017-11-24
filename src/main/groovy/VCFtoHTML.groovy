@@ -1,4 +1,5 @@
 
+import gngs.BED
 import gngs.Cli
 import gngs.ProgressCounter
 import gngs.Regions
@@ -37,7 +38,7 @@ class VCFSummaryStats {
     
     @Override
     String toString() {
-        "total=$total, incl=$totalIncluded, excl: cons=$excludeByCons, maf=$excludeByMaf, complex=$excludeComplex, prefilter=$excludeByPreFilter, filter=$excludeByPreFilter, masked=$excludeByMasked, target=$excludeByTarget, diff=$excludeByDiff"
+        String.valueOf("total=$total, incl=$totalIncluded, excl: cons=$excludeByCons, maf=$excludeByMaf, complex=$excludeComplex, prefilter=$excludeByPreFilter, filter=$excludeByPreFilter, masked=$excludeByMasked, target=$excludeByTarget, diff=$excludeByDiff")
     }
 }
 
@@ -611,3 +612,4 @@ finally {
     
     
     
+

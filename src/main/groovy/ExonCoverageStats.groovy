@@ -1,3 +1,4 @@
+import gngs.BED
 import gngs.Cli
 import gngs.ProgressCounter
 import gngs.Region

@@ -1,3 +1,4 @@
+import gngs.BED
 import gngs.Cli
 import gngs.CoverageStats
 import gngs.Regions

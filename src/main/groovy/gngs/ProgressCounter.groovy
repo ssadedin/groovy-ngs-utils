@@ -23,7 +23,7 @@ import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import java.util.logging.Logger
 
-import Abort
+import gngs.Abort
 
 /**
  * Simple utility for displaying progress 
