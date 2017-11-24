@@ -22,6 +22,7 @@ import gngs.IRegion
 import gngs.Region
 import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
+import java.util.regex.Pattern
 
 /**
  * Support for parsing annotations from SnpEff
@@ -332,6 +333,21 @@ class Allele {
  */
 class Variant implements IRegion {
     
+    ///
+    /// Common / shared regexes used in parsing
+    ///
+    final static Pattern COMMA_SPLIT = ~","
+    
+    final static Pattern AMPERSAND_SPLIT = ~"&"
+    
+    final static Pattern  PIPE_SPLIT = ~"\\|"
+    
+    final static Pattern  COLON_SPLIT = ~":"
+    
+    final static Pattern PIPE_OR_SLASH_SPLIT = ~'[/|]'
+    
+    final static Pattern TAB_SPLIT = ~'\t'
+ 
     /**
      * The chromosome on which the variant falls
      */
@@ -462,7 +478,7 @@ class Variant implements IRegion {
         chr = fields[0]
         id = fields[2]
         ref = fields[3]
-        alts = fields[4].split(",")
+        alts = COMMA_SPLIT.split(fields[4])
         alt = alts[0]
         qual = (fields[5] == ".") ? -1.0f : Float.parseFloat(fields[5])
         filter = fields[6]
@@ -480,7 +496,7 @@ class Variant implements IRegion {
         if(fields.size() > 8) {
             
           if(genoTypeFields == null)
-              genoTypeFields = fields[8].split(':')
+              genoTypeFields = COLON_SPLIT.split(fields[8])
           
           // Split the genoTypes field into separate values and parse them out
           genoTypes = fields[9..-1].collect { String gt -> 
@@ -579,7 +595,7 @@ class Variant implements IRegion {
             
         c(this)
         
-        def fields = line.split('\t')
+        def fields = TAB_SPLIT.split(line)
         fields[0] = chr
         fields[1] = String.valueOf(pos)
         fields[3] = ref
@@ -633,7 +649,7 @@ class Variant implements IRegion {
         if(infos == null) {
             infos =  [:]
             if(info != null) {
-                for(String s in info.split(';')) {
+                for(String s in info.tokenize(';')) {
                     int i = s.indexOf('=')
                     if(i<0) {
                         infos[s]=Boolean.TRUE
@@ -663,11 +679,11 @@ class Variant implements IRegion {
         if(!eff)
             return null
             
-        def genes = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { (it[1]+" ").split(/\|/)[5] }
-        def txs = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { (it[1]+" ").split(/\|/)[8] }
+        def genes = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { PIPE_SPLIT.split(it[1]+" ")[5] }
+        def txs = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { PIPE_SPLIT.split(it[1]+" ")[8] }
         def effs = (eff =~ /([A-Z0-9_]*)\(([^\)]*)\)/).collect { it[1] }
-        def ranks = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { (it[1]+" ").split(/\|/)[0] }
-        def infos = eff.split(',')
+        def ranks = (eff =~ /[A-Z]*\(([^\)]*)\)/).collect { PIPE_SPLIT.split(it[1]+" ")[0] }
+        def infos = COMMA_SPLIT.split(eff)
         
         snpEffInfo = [genes,effs,ranks,infos,txs].transpose().collect { 
             new SnpEffInfo(gene:it[0], type: it[1], impact:it[2], info: it[3], transcript:it[4]) 
@@ -692,7 +708,7 @@ class Variant implements IRegion {
             return []
 //            throw new IllegalStateException("This function requires VEP annotations. Please annotate with VEP in order to proceed")
             
-        csqs.split(",").collect { csq -> [vepFields,csq.split("\\|")].transpose().collectEntries() }
+        COMMA_SPLIT.split(csqs).collect { csq -> [vepFields,PIPE_SPLIT.split(csq)].transpose().collectEntries() }
     }
     
     /**
@@ -732,7 +748,7 @@ class Variant implements IRegion {
         //    ./. : not called
         // So to find the dosage for allele 1, we need to split the genotype on slash
         // and then count the number of times the requested allele appears.
-        def result = genoTypes*.GT*.split('[/|]')*.count { 
+        List<Integer> result = genoTypes*.GT.collect{PIPE_OR_SLASH_SPLIT.split(it)}*.count { 
             if(!it.isInteger())
                 return 0
                 
@@ -1254,9 +1270,9 @@ class Variant implements IRegion {
      */
     List<String> getGenes(String minVEPCons) {
         int thresholdConsequenceIndex = VEPConsequences.RANKED_CONSEQUENCES.indexOf(minVEPCons)
-        if(this.header.getInfoMetaData("CSQ"))
+        if(this.header.getInfoMetaData("CSQ") || this.header.getInfoMetaData("ANN"))
             return getVepInfo().grep { vep ->
-                vep.Consequence.split("&").every { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) <= thresholdConsequenceIndex }
+                AMPERSAND_SPLIT.split(vep.Consequence).every { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) <= thresholdConsequenceIndex }
             }*.SYMBOL
         else {
             return getSnpEffInfo().grep { snpeff ->
