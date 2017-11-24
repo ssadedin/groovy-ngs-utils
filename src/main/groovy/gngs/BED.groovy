@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -20,10 +21,6 @@
 
 import java.util.Iterator;
 
-import gngs.IRegion
-import gngs.ProgressCounter
-import gngs.Region
-import gngs.Regions
 import groovy.transform.CompileStatic;
 
 /**
