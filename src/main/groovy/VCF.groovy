@@ -645,9 +645,11 @@ class VCF implements Iterable<Variant> {
     Map<String,Object> getInfoMetaData(String id) {
         if(this.infoMetaDatas == null) {
           this.infoMetaDatas = 
-              this.headerLines.grep { String hline -> hline.startsWith("##INFO") }.collect { String hline -> parseInfoMetaData(hline) }.collectEntries { 
-                  Map hEntry -> [ hEntry.ID, hEntry ] 
-              }
+              this.headerLines.grep { String hline -> hline.startsWith("##INFO") }
+                              .collect { String hline -> parseInfoMetaData(hline) }
+                              .collectEntries { Map hEntry -> 
+                                  [ hEntry.ID, hEntry ] 
+                              }
         }
         return this.infoMetaDatas[id]
     }
@@ -796,12 +798,22 @@ class VCF implements Iterable<Variant> {
         String contents = (info =~ /##INFO=<(.*)>/)[0][1]
             
         // remove description
-        String description = contents.substring(contents.indexOf('Description='))
+        int descriptionIndex = contents.indexOf('Description=')
+        String description = contents.substring(descriptionIndex)
             
-        Map metaFields = contents.substring(0,contents.indexOf('Description=')).split(",").collectEntries {
-                                [it.split("=")[0], it.split("=")[1]] }
-        
-        metaFields.Description = (description =~ /"(.*)"/)[0][1]
+        // Get index of all the fields prior to description
+        Map metaFields = 
+            Variant.COMMA_SPLIT.split(contents.substring(0,descriptionIndex))
+                               .collectEntries {
+                                   [it.tokenize("=")[0], it.tokenize("=")[1]] 
+                               }
+                               
+              
+        // If description is in quotes, strip them off
+        if(description.startsWith('"') && description.endsWith('"'))
+            description = description[1..-1]
+            
+        metaFields.Description = description
             
         return metaFields
     }
