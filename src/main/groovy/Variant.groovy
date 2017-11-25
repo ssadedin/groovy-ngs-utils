@@ -595,7 +595,7 @@ class Variant implements IRegion {
             
         c(this)
         
-        def fields = TAB_SPLIT.split(line)
+        List<String> fields = TAB_SPLIT.split(line) as List
         fields[0] = chr
         fields[1] = String.valueOf(pos)
         fields[3] = ref
@@ -611,7 +611,7 @@ class Variant implements IRegion {
         
         fields[7] = getInfo().collect {k,v -> v != null?"$k=$v":k}.join(';')
         
-        line = fields.join('\t')
+        line = fields.collect { it?:'' }.join('\t')
         
         // Check if we need to add an INFO header line
         if(this.header != null) {
