@@ -52,17 +52,26 @@ memory is not a bottleneck in manipulating large data sets.
 
 Clone the repository:
 
+```
     git clone git@github.com:ssadedin/groovy-ngs-utils.git
+```
 
 Run gradle:
 
+```
     cd groovy-ngs-utils
-    ./gradlew jar
+    ./gradlew clean jar
+```
 
+Note: if behind a proxy, you can specify it like so:
+
+```
+./gradlew -Dhttp.proxyHost=<host> -Dhttp.proxyPort=<port> clean jar
+```
 
 ## Installation
 
-The easiest way is to put the file into your ~/.groovy/lib folder:
+If you want access to the classes from your own scripts easily, put the jar in your ~/.groovy/lib folder:
 
 ```bash
     mkdir -p ~/.groovy/lib
@@ -77,8 +86,26 @@ classpath that conflict with classes other applications using Groovy depend on.
 It's an easy way to experiment with the library but you are better off
 specifying it explicitly when you need it:
 
+So there are some other ways to use it.
+
+First, to execute ad hoc scripts, you can use the `gngs` tool in the bin directory:
+
 ```bash
 # What type of variants are in my VCF?
-groovy -cp ~/groovy-ngs-utils/build/libs/groovy-ngs-utils.jar \
-       -e 'println(VCF.parse("some.vcf").countBy { it.type })'
+./bin/gngs 'println(VCF.parse("some.vcf").countBy { it.type })'
 ```
+
+You can get a GNGS enabled interactive Groovy Shell like this:
+
+```
+./bin/gngsh
+groovy:000> new SAM("my.bam").basesAt("chr7", 117292917)
+===> [A:5, total:5, C:0, T:0, D:0, G:0]
+```
+
+For the command line tools implemented by GNGS, you can run them using `gngstools`:
+
+```
+./bin/gngstool ExtractFASTQ -bam my.bam | bwa mem -p hg19.fasta - | samtools view -Sb - >  my.realigned.bam
+```
+
