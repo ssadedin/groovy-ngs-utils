@@ -79,9 +79,9 @@ class ExtractFASTQ {
     
     static void main(String [] args) {
         
-        Cli cli = new Cli(usage: 'groovy gngs.tools.ExtractFASTQ -L <region> -bam <bam>')
+        Cli cli = new Cli(usage: 'groovy gngs.tools.ExtractFASTQ -bam <bam>')
         cli.with {
-            'L' 'Region to extract', args:1, required:true
+//             'L' 'Region to extract', args:1, required:true
             bam 'BAM file to extract reads from', args:1, required:true
         }
         
@@ -91,7 +91,7 @@ class ExtractFASTQ {
         }
         
         System.out.withWriter { Writer w ->
-            new ExtractFASTQ(new SAM(opts.bam), new Region(opts.L)).run(w)
+            new ExtractFASTQ(new SAM(opts.bam), null /*, new Region(opts.L) */).run(w)
         }
     }
 }
