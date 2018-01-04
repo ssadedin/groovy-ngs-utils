@@ -1,7 +1,10 @@
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import gngs.Cli
+import gngs.Pedigrees
 import gngs.ProgressCounter
+import gngs.VCF
+import gngs.Variant
 
 Cli cli = new Cli()
 cli.with {

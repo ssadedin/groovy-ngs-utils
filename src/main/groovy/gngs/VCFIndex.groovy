@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -27,8 +28,6 @@ import htsjdk.tribble.index.Index
 import htsjdk.tribble.index.IndexFactory
 import htsjdk.tribble.readers.TabixReader
 import org.codehaus.groovy.runtime.StackTraceUtils
-
-import gngs.IRegion
 
 
 /**

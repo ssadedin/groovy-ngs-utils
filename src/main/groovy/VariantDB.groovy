@@ -22,7 +22,12 @@ import java.sql.Timestamp;
 import com.xlson.groovycsv.PropertyMapper;
 
 import db.Schema;
+import gngs.Allele
+import gngs.Pedigree
+import gngs.Pedigrees
+import gngs.Subject
 import gngs.Utils
+import gngs.Variant
 import groovy.sql.Sql
 import groovy.util.logging.Log;
 

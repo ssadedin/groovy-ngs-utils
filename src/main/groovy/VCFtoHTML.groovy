@@ -1,9 +1,13 @@
 
 import gngs.BED
 import gngs.Cli
+import gngs.Pedigrees
 import gngs.ProgressCounter
 import gngs.Regions
 import gngs.Utils
+import gngs.VCF
+import gngs.VCFSummaryStats
+import gngs.Variant
 
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
@@ -12,35 +16,6 @@ import groovy.xml.StreamingMarkupBuilder
 
 int count = 1
 
-class VCFSummaryStats {
-    
-    int total = 0
-    
-    int excludeByDiff = 0
-    
-    int excludeByCons = 0
-    
-    int excludeByMaf = 0
-    
-    int excludeByTarget = 0
-    
-    int excludeComplex = 0
-    
-    int excludeNotPresent = 0
-    
-    int excludeByPreFilter = 0
-    
-    int excludeByFilter = 0
-    
-    int excludeByMasked = 0
-    
-    int totalIncluded
-    
-    @Override
-    String toString() {
-        String.valueOf("total=$total, incl=$totalIncluded, excl: cons=$excludeByCons, maf=$excludeByMaf, complex=$excludeComplex, prefilter=$excludeByPreFilter, filter=$excludeByPreFilter, masked=$excludeByMasked, target=$excludeByTarget, diff=$excludeByDiff")
-    }
-}
 
 banner = """
 

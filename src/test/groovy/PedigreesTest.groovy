@@ -2,6 +2,8 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import gngs.Pedigrees
+
 
 class PedigreesTest {
 

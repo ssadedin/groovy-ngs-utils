@@ -1,6 +1,8 @@
 
 import gngs.Cli
 import gngs.ProgressCounter
+import gngs.VCF
+import gngs.Variant
 import graxxia.Matrix
 
 /**

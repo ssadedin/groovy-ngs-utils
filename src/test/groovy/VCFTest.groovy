@@ -2,6 +2,10 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import gngs.FormatMetaData
+import gngs.VCF
+import gngs.Variant
+
 
 class VCFTest {
     

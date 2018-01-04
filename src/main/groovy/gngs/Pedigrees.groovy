@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,6 +19,8 @@
  */
 
 import static RelationshipType.*
+
+import graxxia.TSV
 
 class Pedigrees {
 

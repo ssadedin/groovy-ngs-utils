@@ -5,6 +5,7 @@ import org.junit.Test;
 import gngs.BED
 import gngs.Region
 import gngs.Regions
+import gngs.Variant
 
 class TargetedCNVAnnotatorTest {
 

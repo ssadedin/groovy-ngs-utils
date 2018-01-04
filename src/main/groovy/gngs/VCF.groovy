@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -31,10 +32,9 @@ import htsjdk.tribble.readers.TabixReader;
 
 import org.codehaus.groovy.runtime.StackTraceUtils
 
-import gngs.BED
-import gngs.ProgressCounter
-import gngs.Region
-import gngs.Regions
+import Pedigree
+import Pedigrees
+import Sex
 
 class FormatMetaData {
     
@@ -228,8 +228,10 @@ class VCF implements Iterable<Variant> {
         parse(fileName,null,c)
     }
     
-    static VCF parse(File f, List<Pedigree> peds = null, Closure c = null) {
-        parse([fileName:f.path], new BufferedInputStream(new FileInputStream(f)),peds,c)
+    static VCF parse(Map options=[:],File f, List<Pedigree> peds = null, Closure c = null) {
+        f.withInputStream { InputStream i ->
+            parse(options+[fileName:f.path], i, peds, c)
+        }
     }
     
     static VCF parse(Closure c = null) {
@@ -384,7 +386,7 @@ class VCF implements Iterable<Variant> {
                       
                   v.header = vcf
                         
-                  if(!samples || samples.any {v.sampleDosage(it)}) {
+                  if((samples==null) || samples.any {v.sampleDosage(it)}) {
                       if(!c || !(c(v)==false)) {
                           if(filterMode) {
                               if(!flushedHeader)  {

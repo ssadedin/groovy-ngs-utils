@@ -1,6 +1,8 @@
 import gngs.Cli
 import gngs.ProgressCounter
 import gngs.Utils
+import gngs.VCF
+import gngs.Variant
 import groovy.util.logging.Log
 
 /**

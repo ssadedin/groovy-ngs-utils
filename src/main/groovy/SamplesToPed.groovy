@@ -7,6 +7,11 @@
 
 import static RelationshipType.*
 
+import gngs.Pedigree
+import gngs.Relationship
+import gngs.RelationshipType
+import gngs.Subject
+
 class SamplesToPed {
 
     public SamplesToPed() {

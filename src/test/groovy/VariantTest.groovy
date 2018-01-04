@@ -23,6 +23,9 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import gngs.CoverageStats
+import gngs.VCF
+import gngs.VEPConsequences
+import gngs.Variant
 
 
 class VariantTest {

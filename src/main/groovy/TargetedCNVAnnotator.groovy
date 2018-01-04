@@ -5,6 +5,8 @@ import gngs.IRegion
 import gngs.Region
 import gngs.Regions
 import gngs.Utils
+import gngs.VCF
+import gngs.Variant
 
 class TargetedCNVAnnotator {
     

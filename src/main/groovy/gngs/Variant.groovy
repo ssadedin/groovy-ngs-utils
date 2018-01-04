@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,11 +19,11 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-import gngs.IRegion
-import gngs.Region
 import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
 import java.util.regex.Pattern
+
+import Pedigree
 
 /**
  * Support for parsing annotations from SnpEff
@@ -1054,10 +1055,7 @@ class Variant implements IRegion {
         
         if('AD' in this.header.formatMetaData) {
             return this.genoTypes.collect { gt ->
-                if(!gt.AD || gt.AD[alleleIndex]==null || (gt.AD[alleleIndex] == "."))
-                    return 0
-
-                (int)gt.AD[alleleIndex]
+                getGenotypeDepth(gt, alleleIndex)
             }
         }
         else

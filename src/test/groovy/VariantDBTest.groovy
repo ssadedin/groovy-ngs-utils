@@ -4,6 +4,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import gngs.VCF
+import gngs.Variant
+
 class VariantDBTest {
 
     VCF vcf
