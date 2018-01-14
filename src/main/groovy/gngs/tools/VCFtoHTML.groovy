@@ -34,6 +34,7 @@ import gngs.Variant
 import au.com.bytecode.opencsv.CSVWriter
 import groovy.util.logging.Log
 import groovy.xml.StreamingMarkupBuilder
+
 import java.util.regex.Pattern
 
 @Log
@@ -160,7 +161,7 @@ class VCFtoHTML {
         }
         else {
             // Find all the samples
-            println "Found samples: " + allSamples
+            log.info "Found samples: " + allSamples
             pedigrees = Pedigrees.fromSingletons(allSamples)
         }
         
@@ -235,12 +236,12 @@ class VCFtoHTML {
         if(aliases) {
             Map<String,String> sampleMap = [ vcfs*.samples.flatten(), aliases.flatten() ].transpose().collectEntries()
             
-            println "Sample map = " + sampleMap
+            log.info "Sample map = " + sampleMap
             
             vcfs.each { VCF vcf ->
                 for(String s in vcf.samples) {
                     if(s in pedigrees.subjects.keySet()) { // may have been removed by filter on export samples
-                        println "Pedigree rename $s => " + sampleMap[s]
+                        log.info "Pedigree rename $s => " + sampleMap[s]
                         pedigrees.renameSubject(s, sampleMap[s])
                     }
                     vcf.renameSample(s, sampleMap[s])
@@ -250,13 +251,13 @@ class VCFtoHTML {
             exportSamples = exportSamples.collect { id -> sampleMap[id] }
         }
         
-        println "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.join(" ")
-        println "Export samples are: " + exportSamples
+        log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.join(" ")
+        log.info "Export samples are: " + exportSamples
         
         boolean hasVEP = true
         def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") && !it.hasInfo("ANN") }
         if(noVeps) {
-            System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering may be ineffective."
+            System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering\nmay be ineffective for samples in following files:"
             System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
             hasVEP = false
             // System.exit(1)
@@ -321,7 +322,7 @@ class VCFtoHTML {
                 }
             }
                 
-            println "Merged samples are " + merged.samples
+            log.info "Merged samples are " + merged.samples
             
             if(opts.tsv)
                 tsvWriter.writeNext((baseColumns*.key+ consColumns*.key +exportSamples) as String[])
