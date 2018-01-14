@@ -1,6 +1,7 @@
 import java.util.List;
 import java.util.zip.GZIPInputStream
 
+import gngs.RangedData
 import gngs.Region
 import gngs.Utils
 import groovy.lang.Delegate;

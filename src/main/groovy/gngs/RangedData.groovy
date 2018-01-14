@@ -1,8 +1,7 @@
+package gngs
 import com.xlson.groovycsv.PropertyMapper;
 
-import gngs.GRange
-import gngs.Region
-import gngs.Regions
+import graxxia.TSV
 
 import java.util.zip.GZIPInputStream
 

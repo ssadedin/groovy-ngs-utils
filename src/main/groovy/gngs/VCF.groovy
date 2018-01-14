@@ -1,4 +1,3 @@
-package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,6 +17,9 @@ package gngs
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+
+package gngs
+ 
 import groovy.transform.CompileStatic;
 
 import java.awt.event.ItemEvent;
@@ -31,10 +33,6 @@ import htsjdk.tribble.index.IndexFactory
 import htsjdk.tribble.readers.TabixReader;
 
 import org.codehaus.groovy.runtime.StackTraceUtils
-
-import Pedigree
-import Pedigrees
-import Sex
 
 class FormatMetaData {
     
@@ -228,7 +226,11 @@ class VCF implements Iterable<Variant> {
         parse(fileName,null,c)
     }
     
-    static VCF parse(Map options=[:],File f, List<Pedigree> peds = null, Closure c = null) {
+    static VCF parse(File f, List<Pedigree> peds = null, Closure c = null) {
+        parse([:], f, peds, c)
+    }
+    
+    static VCF parse(Map options,File f, List<Pedigree> peds = null, Closure c = null) {
         f.withInputStream { InputStream i ->
             parse(options+[fileName:f.path], i, peds, c)
         }
@@ -242,7 +244,11 @@ class VCF implements Iterable<Variant> {
         parse("-",peds,c)
     }
     
-    static VCF parse(Map options=[:], InputStream f, List<Pedigree> peds = null, Closure c = null) {
+    static VCF parse(InputStream f, List<Pedigree> peds = null, Closure c = null) {
+        parse([:],f,peds,c)
+    }
+    
+    static VCF parse(Map options, InputStream f, List<Pedigree> peds = null, Closure c = null) {
         parseImpl(options,f,false, peds,c)
     }
     
@@ -348,7 +354,7 @@ class VCF implements Iterable<Variant> {
             }
         }
         
-        List<String> samples = options.samples?: [] 
+        List<String> samples = options.samples != null ? options.samples : null
         List<Integer> keepColumns = null
         try {
             f.eachLine { String line ->

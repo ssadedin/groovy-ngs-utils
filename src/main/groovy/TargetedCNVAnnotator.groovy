@@ -2,6 +2,7 @@ import gngs.BED
 import gngs.Cli
 import gngs.GRange
 import gngs.IRegion
+import gngs.RangedData
 import gngs.Region
 import gngs.Regions
 import gngs.Utils

@@ -24,8 +24,6 @@ import groovy.transform.CompileStatic;
 
 import java.util.List;
 
-import Sex
-
 import static RelationshipType.*
 
 /**

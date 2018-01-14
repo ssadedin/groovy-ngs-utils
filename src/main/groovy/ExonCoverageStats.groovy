@@ -1,6 +1,7 @@
 import gngs.BED
 import gngs.Cli
 import gngs.ProgressCounter
+import gngs.RefGenes
 import gngs.Region
 import gngs.Regions
 

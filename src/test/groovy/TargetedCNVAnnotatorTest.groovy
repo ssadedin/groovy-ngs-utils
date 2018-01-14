@@ -3,6 +3,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import gngs.BED
+import gngs.RangedData
 import gngs.Region
 import gngs.Regions
 import gngs.Variant

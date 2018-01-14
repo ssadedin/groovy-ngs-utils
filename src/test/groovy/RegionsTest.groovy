@@ -2,11 +2,7 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
-import gngs.BED
-import gngs.Region
-import gngs.RegionComparator
-import gngs.Regions
-
+import gngs.*
 
 /**
  * Note: most of the tests for Regions are in fact in the {@link BEDTest}
@@ -241,5 +237,25 @@ class RegionsTest {
        
        assert cov.find { it.overlaps('chr1', 60, 61) }.extra == 1 
        assert cov.find { it.overlaps('chr1', 110, 115) }.extra == 2 
+    }
+    
+    @Test
+    void reduceExtra() {
+        
+      Regions regions = new Regions([
+        new Region('chr1',new GRange(1,10,'foo')),
+        new Region('chr1', new GRange(5,25,'bar'))
+      ])
+                             
+      Regions red = regions.reduce()
+      red.each { r ->  println "$r \t: $r.extra" }
+      assert red[0].extra == 'foo'
+      
+      Regions red2 = regions.reduce { e1, e2 ->
+          e2.extra
+      }
+      
+      assert red2[0].extra == 'bar'
+      
     }
 }
