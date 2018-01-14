@@ -187,7 +187,8 @@ class Utils {
         // Now render the table
         String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
         println indent + header
-        println indent + ("-" * header.size())
+//        println indent + ("-" * header.size())
+        println indent + headers.collect { hd -> '-' *columnWidths[hd] }.join("-+-")
         
         rows.each { row ->
             int i=0
