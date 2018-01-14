@@ -119,7 +119,7 @@ class BED extends Regions {
      * 
      * <li>unique (whether identical ranges should be included multiple times or only once)
      */
-//    @CompileStatic
+    @CompileStatic
     void eachRange(Map options, Closure c) {
         
         if(bedFileStream == null || isLoaded) { // Used to be && isLoaded - why?
@@ -152,8 +152,16 @@ class BED extends Regions {
         boolean unique = options.unique?true:false
         
         c.delegate = new Object() { void abort() { throw new Abort() } }
-        ProgressCounter progress = new ProgressCounter(lineInterval:10, timeInterval:10000)
-        c.delegate = progress
+        
+        ProgressCounter progress
+        if(options.progress == true)
+            progress = new ProgressCounter(lineInterval:10, timeInterval:10000)
+        else
+        if(options.progress instanceof ProgressCounter) {
+            progress = (ProgressCounter)options.progress // User can set a progress object
+            c.delegate = progress
+        }
+            
         try {
           bedFileStream.eachLine { String line ->
               
@@ -175,7 +183,8 @@ class BED extends Regions {
               if(unique) {
                   String key = fields[chrColumn]+':'+fields[startColumn]+':'+fields[endColumn]   
                   if(processed.contains(key)) {
-                      progress.count()
+                      if(progress)
+                          progress.count()
                       return
                   }
                   processed.add(key)
@@ -199,7 +208,8 @@ class BED extends Regions {
                     c.call(chr,start,end)
                 }
                 
-                progress.count()
+                if(progress)
+                    progress.count()
               }
               catch(Exception e) {
                   System.err.println "Failure while handling line $count : \n$line\n\nException reported: $e"   
@@ -211,7 +221,8 @@ class BED extends Regions {
             System.err.println "Iteration aborted at line $count"
         }
         finally {
-            progress.end()
+            if(progress)
+                progress.end()
         }
     }
     
@@ -281,14 +292,14 @@ class BED extends Regions {
      * Note: this method returns the same BED object as a result to enable chaining
      */
     @CompileStatic
-    BED load() {
+    BED load(Map options=[:]) {
         if(!withExtra) {
-          eachRange([:]) { String chr, int start, int end ->
+          eachRange(options) { String chr, int start, int end ->
               add(chr,start,end)
           }
         }
         else {
-          eachRange([:]) { String chr, int start, int end, String extra ->
+          eachRange(options) { String chr, int start, int end, String extra ->
               add(chr,start,end,extra)
           }
         }
