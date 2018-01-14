@@ -1081,6 +1081,22 @@ class Variant implements IRegion {
         }
     }
     
+    @CompileStatic
+    int getGenotypeDepth(Map<String,Object> gt, int alleleIndex) {
+        List ad = (List)gt.AD
+        if(!gt.AD) {
+            if(alleleIndex==0 && (gt.GT=='0/0' || gt.GT=='0|0'))
+                return (int)gt.DP
+            else
+                return 0i
+        }
+        else
+        if(ad[alleleIndex]==null || (ad[alleleIndex] == "."))
+            return 0i
+
+        return (int)ad[alleleIndex]
+    }
+    
     /**
      * Return the distance of the balance of the default allele from 0.5
      * for the default alternate allele and first sample
