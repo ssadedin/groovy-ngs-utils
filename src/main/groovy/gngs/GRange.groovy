@@ -61,6 +61,20 @@ class NumericRegionComparator implements Comparator<Region> {
 
 /**
  * Region of a genome
+ * <p>
+ * Among all the different region-based objects this is the highest level and most heavy weight
+ * representation of a region. The Region is a Groovy {@link groovy.util.Expando} object, so 
+ * arbitrary properties can be set on it dynamically.
+ * <p>
+ * Regions can be created from common string representations of regions:
+ * <pre>
+ * Region r = new Region("chr1:20000-300000")
+ * </pre>
+ * Alternatively they can be created directly:
+ * <pre>
+ * Region r = new Region("chr1", 20000, 300000)
+ * </pre>
+ * 
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -122,10 +136,30 @@ class Region extends Expando implements IRegion, Serializable {
         return range.to
     }
     
+    /**
+     * Return true of this region overlaps the other.
+     * <p>
+     * Supports the groovy syntax:
+     * <pre>
+     * Region r1 = new Region("chr1:1-10")
+     * Region r2 = new Region("chr1:5-10")
+     * 
+     * assert r1 in r2
+     * </pre>
+     * 
+     * Note however that any overlap will return true, the region does not 
+     * have to be contained entirely.
+     * 
+     * @param other
+     * @return true iff this region overlaps the other
+     */
     boolean isCase(IRegion other) {
         return overlaps(other)
     }
     
+    /**
+     * @return true iff the specified region partially or fully overlaps this one
+     */
     @CompileStatic
     boolean overlaps(String chr, int from, int to) {
         if(chr != this.chr)
@@ -136,11 +170,18 @@ class Region extends Expando implements IRegion, Serializable {
         return result
     }
     
+    /**
+     * @return true if any region within the given {@link Regions} partially 
+     *              or fully overlaps this one
+     */
     @CompileStatic
     boolean overlaps(Regions regions) {
         regions.overlaps(this)
     }
     
+    /**
+     * @return true iff the specified region partially or fully overlaps this one
+     */ 
     @CompileStatic
     boolean overlaps(IRegion other) {
         if(other.chr != this.chr)
@@ -148,6 +189,10 @@ class Region extends Expando implements IRegion, Serializable {
         GRange.overlaps(this.range,other.range)
     }
     
+    /**
+     * @return  true iff this region fully encompasses the given region
+     */
+    @CompileStatic
     boolean spans(IRegion r) {
         (r.chr == this.chr) && (r.range.to <= this.to) && (r.range.from >= this.from)
     }
@@ -170,6 +215,10 @@ class Region extends Expando implements IRegion, Serializable {
         range instanceof GRange ? range.extra : null
     }
     
+    /**
+     * @return  the number of positions spanned by this region
+     */
+    @CompileStatic
     long size() {
         range.size()
     }
