@@ -567,6 +567,7 @@ class RangeIndex implements Iterable<IntRange> {
      * in genomic order by starting position, starting from the given 
      * position.
      */
+    @CompileStatic
     public Iterator<IntRange> iteratorAt(int startingPos) {
         
         if(startingPos >= 0) {
