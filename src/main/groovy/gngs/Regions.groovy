@@ -517,11 +517,11 @@ class Regions implements Iterable<Region> {
      *          this Regions merged together.
      */
     @CompileStatic
-    Regions reduce() {
+    Regions reduce(Closure reducer=null) {
         Regions result = new Regions()
         this.index.each { String chr, RangeIndex ranges ->
             result.allRanges[chr] = []
-            result.index[chr] = ranges.reduce()
+            result.index[chr] = ranges.reduce(reducer)
             result.index[chr].each { IntRange r ->
                 result.allRanges[chr].add(r)
             }
