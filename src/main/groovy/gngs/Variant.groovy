@@ -23,8 +23,6 @@ import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
 import java.util.regex.Pattern
 
-import Pedigree
-
 /**
  * Support for parsing annotations from SnpEff
  * 
