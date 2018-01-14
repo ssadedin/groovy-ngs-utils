@@ -128,10 +128,12 @@ class Region extends Expando implements IRegion, Serializable {
     
     String chr
     
+    @CompileStatic
     Integer getFrom() {
         return range.from
     }
     
+    @CompileStatic
     Integer getTo() {
         return range.to
     }
@@ -252,12 +254,13 @@ class Region extends Expando implements IRegion, Serializable {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@CompileStatic
 class GRange extends IntRange implements Serializable {
     
     public static final long serialVersionUID = 0L
     
     GRange() { // for serialization
-        super("chrN",0,0)
+        super(0,0)
     }
     
     GRange(int from, int to, Object extra) {
@@ -274,7 +277,7 @@ class GRange extends IntRange implements Serializable {
     }
     
     GRange intersect(IntRange other) {
-        GRange r = new GRange(Math.max(this.from, other.from), Math.min(this.to, other.to), extra)
+        GRange r = new GRange(Math.max(this.fromInt, other.fromInt), Math.min(this.toInt, other.toInt), extra)
         if(r.to < r.from)
             return null
         return r
