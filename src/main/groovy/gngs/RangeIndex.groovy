@@ -728,13 +728,14 @@ class RangeIndex implements Iterable<IntRange> {
      * 
      * @return
      */
-    RangeIndex reduce() {
+    @CompileStatic
+    RangeIndex reduce(Closure reducer = null) {
         RangeIndex reduced = new RangeIndex()
 
         // We take advantage of the fact that we iterate the ranges in order of genomic start position
         IntRange currentRange = null
         for(IntRange r in this) {
-            if(currentRange == null) {
+            if(null == currentRange) {
                 currentRange = r
                 continue
             }
@@ -742,14 +743,33 @@ class RangeIndex implements Iterable<IntRange> {
             assert r.from >= currentRange.from
             
             if(GRange.overlaps(r,currentRange)) { 
-                currentRange = new GRange(Math.min(r.from, currentRange.from),Math.max(r.to, currentRange.to),null)
+                if(currentRange instanceof GRange) {
+                    Object newExtra = currentRange.getExtra()
+                    if(r instanceof GRange) {
+                        if(newExtra == null)
+                            newExtra = ((GRange)r).getExtra()
+                        else
+                        if(reducer != null) {
+                            newExtra = reducer(currentRange, r)
+                        }
+                    }
+                    
+                    // Regions as extras violate the assumption that a Region extra reflects 
+                    // the same region as a range
+                    if(newExtra instanceof Region)
+                        newExtra = null
+                    
+                    currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to),newExtra)
+                }
+                else
+                    currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to),null)
             }
             else {
                 reduced.add(currentRange)
                 currentRange = r
             }
         }
-        if(currentRange != null)
+        if(null != currentRange)
             reduced.add(currentRange)
             
         return reduced
