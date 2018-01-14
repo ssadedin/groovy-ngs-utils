@@ -559,62 +559,7 @@ class Regions implements Iterable<Region> {
     @Override
     @CompileStatic
     public Iterator<Region> iterator() {
-        
-        
-        Map<String,List<IntRange>> allRangesRef = this.allRanges
-        
-        return new Iterator<Region>() {
-            
-            Iterator allIterator = allRangesRef.iterator()
-            
-            // Iterator chrIterator = allIterator.hasNext() ? allIterator.next().value.iterator() : null
-            Iterator chrIterator =  null
-            
-            
-            Map.Entry<String, RangeIndex> currentChr
-            
-            String chr
-            
-            boolean hasNext() {
-                if(!chr)
-                    return Regions.this.allRanges.any { it.value.size() > 0 }
-                return chrIterator.hasNext()
-            }
-            
-            Region next() {
-                if(chr == null)
-                    nextChr()
-               
-                Range nextRange = chrIterator.next()
-                String currentChr = chr
-                if(!chrIterator.hasNext())
-                    nextChr()
-                    
-                Region result
-                if(nextRange instanceof GRange) {
-                    GRange grange = nextRange
-                    if(nextRange.extra instanceof Region) {
-                        return (Region)nextRange.extra
-                    }
-                }
-                return new Region(currentChr,nextRange)
-            }
-            
-            void nextChr() {
-               while(allIterator.hasNext()) {
-                   currentChr = allIterator.next()
-                   if(currentChr.value) {
-                       chrIterator = currentChr.value.iterator()
-                       chr = currentChr.key
-                       break
-                   }
-               }
-            }
-            
-            void remove() {
-                throw new UnsupportedOperationException()
-            }
-        }
+        return new RegionIterator(this)
     }
     
     @CompileStatic
