@@ -39,6 +39,14 @@ import java.util.regex.Pattern
 
 @Log
 class VCFtoHTML {
+    private boolean hasSNPEFF
+    private boolean hasVEP
+    private Map consColumns
+    
+    private Map baseColumns = new LinkedHashMap()
+    private List<String> filters
+    private BED target
+    private Pedigrees pedigrees
 
     String banner = """
     """
@@ -47,7 +55,19 @@ class VCFtoHTML {
     
     OptionAccessor opts
     
+    /**
+     * Count of variants processed at any given time
+     */
     int count = 1
+    
+    /**
+     * Line that processing is up to in the VCF file
+     */
+    int lineIndex  
+    
+    int lastLines = 0
+    
+    Variant lastVariant  
     
     VCFSummaryStats stats = new VCFSummaryStats()
     
@@ -55,8 +75,17 @@ class VCFtoHTML {
     
     Map<String,SAM> bams = [:]
     
+    float MAF_THRESHOLD=0.05
+        
     VCFtoHTML(OptionAccessor opts) {
         this.opts = opts
+        filters = []
+        if(opts.filters) {
+            filters = opts.filters
+        }
+        
+        if(opts.maxMaf)
+            MAF_THRESHOLD=opts.maxMaf.toFloat()
     }
     
     def js = [
@@ -141,7 +170,7 @@ class VCFtoHTML {
             stats 'Write statistics to file', args:1
             mask 'Alias sample ids to first group of given regexp', args:1
             bam 'BAM File to compute coverage for variants if not in VCF', args:Cli.UNLIMITED, required:false
-            // roc 'Save a table of sensitivity and precision for Sample 2 vs Sample 1', args: 1, required:false
+            roc 'Save a table of sensitivity and precision with sample <arg> as reference', args: 1, required:false
         }
         
         OptionAccessor opts = cli.parse(args)
@@ -153,9 +182,8 @@ class VCFtoHTML {
     
     void run() {
         
-        def allSamples = opts.is.collect { new VCF(it).samples }.flatten()
+        List<String> allSamples = opts.is.collect { new VCF(it).samples }.flatten()
         
-        Pedigrees pedigrees = null
         if(opts.p) {
             pedigrees = Pedigrees.parse(opts.p)
         }
@@ -165,34 +193,11 @@ class VCFtoHTML {
             pedigrees = Pedigrees.fromSingletons(allSamples)
         }
         
-        BED target = null
         if(opts.target) {
             target = new BED(opts.target).load()
         }
         
-        exportSamples = pedigrees.families.values().collect { it.individuals*.id }.flatten().grep { it in allSamples };
-        
-        def exportFamilies = pedigrees.families.keySet()
-        if(opts.f) {
-            exportFamilies = opts.f.split(",").collect { it.trim() }
-            exportSamples = exportSamples.grep { s -> exportFamilies.any { f-> pedigrees.families[f].samples.contains(s)  }}
-            pedigrees.families.keySet().grep { !exportFamilies.contains(it) }.each { pedigrees.removeFamily(it) }
-        }
-        println "Samples to export: $exportSamples"
-        
-        if(exportSamples.empty) {
-            System.err.println "ERROR: No samples from families $exportFamilies found in VCF file $opts.i"
-            System.err.println "\nSamples found in VCF are: " + (new VCF(opts.i)).samples
-        }
-        
-        float MAF_THRESHOLD=0.05
-        if(opts.maxMaf)
-            MAF_THRESHOLD=opts.maxMaf.toFloat()
-        
-        List<String> filters = []
-        if(opts.filters) {
-            filters = opts.filters
-        }
+        resolveExportSamples(allSamples)
         
         List<VCF> vcfs = loadVCFs()
            
@@ -254,52 +259,9 @@ class VCFtoHTML {
         log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.join(" ")
         log.info "Export samples are: " + exportSamples
         
-        boolean hasVEP = true
-        def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") && !it.hasInfo("ANN") }
-        if(noVeps) {
-            System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering\nmay be ineffective for samples in following files:"
-            System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
-            hasVEP = false
-            // System.exit(1)
-        }
+        checkAnnotations(vcfs)
         
-        boolean hasSNPEFF = vcfs.any { it.hasInfo("EFF") }
-        
-        
-        def baseColumns = new LinkedHashMap()
-        baseColumns += [
-            'tags' : {''}, // reserved for tags
-            'chr' : {it.chr },
-            'pos' : {it.pos },
-            'ref': {it.ref },
-            'alt': {it.alt },
-            'qual': {it.qual },
-            'depth': {
-                def dp = it.info.DP
-                if(dp == null) {
-                     bams*.value*.coverage(it.chr, it.pos).min()
-                }
-                else { 
-                   dp
-                }
-            },
-            'families' : { v ->
-                def fcount = v.pedigrees.count {  ped ->
-                    def result = ped.samples.any {
-                        v.sampleDosage(it)
-                    }
-                    return result
-                }
-                return fcount;
-             }
-        ]
-        
-        def consColumns = [
-            'gene' : {it['SYMBOL']},
-            'cons' : {vep -> vep['Consequence'].split('&').min { VEP_PRIORITY.indexOf(it) } },
-            'maf'  : this.&findMaxMaf
-        ]
-        
+        initColumnMappings()
         
         def tsvWriter = null
         if(opts.tsv)
@@ -327,152 +289,19 @@ class VCFtoHTML {
             if(opts.tsv)
                 tsvWriter.writeNext((baseColumns*.key+ consColumns*.key +exportSamples) as String[])
                     
-            w.println """
-            <html>
-                <head>
-            """
-            w.println css.collect{"<link rel='stylesheet' href='$it'/>"}.join("\n").stripIndent()
-            w.println js.collect{"<script type='text/javascript' src='$it'></script>"}.join("\n").stripIndent()
+            printHeadContent(w)
             
-            // Embed the main vcf.js
-            def vcfjs
-            def fileVcfJsPath = "src/main/resources/vcf.js"
-            if(new File(fileVcfJsPath).exists())
-                vcfjs = new File(fileVcfJsPath).text
-            else
-                vcfjs = this.class.classLoader.getResourceAsStream("vcf.js").text
+            lineIndex=0;
             
-            w.println "<script type='text/javascript'>\n$vcfjs\n</script>"
-            
-            w.println "<script type='text/javascript'>"
-           
-            w.println "var variants = ["
-            int i=0;
-            int lastLines = 0
-            Variant last = null;
+            lastVariant = null;
             Variant current  = null
             ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
                 stats.toString()
             })
             merged.each { v->
-                
                 try {
                     current = v
-                    
-                    ++stats.total
-                    
-                    if((target != null) && !(v in target)) {
-                        ++stats.excludeByTarget
-                        return
-                    }
-                    
-                    List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
-                    List dosages = exportSamples.collect { v.sampleDosage(it) }
-                    if(dosages.every { it==0}) {
-                        ++stats.excludeNotPresent
-                        if(!opts.f) {
-                            println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
-                        }
-                        return
-                    }
-                        
-                    if(opts.diff && dosages.clone().unique().size()==1)  {
-                        ++stats.excludeByDiff
-                        return
-                    }
-                        
-                    def refCount = v.getAlleleDepths(0)
-                    def altCount = v.getAlleleDepths(1)
-                    
-            //        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
-                    
-                    
-                    if(i++>0 && lastLines > 0)
-                        w.println ","
-                    
-                    List<Object> consequences = [
-                        [
-                            Consequence: 'Unknown'
-                        ]
-                    ]
-                    
-                    if(hasVEP) {
-                        try {
-                            if(opts.maxVep) {
-                                consequences = [v.maxVep]
-                            }
-                            else {
-                                consequences = v.vepInfo
-                            }
-                        }
-                        catch(Exception e) {
-                            // Ignore
-                        }
-                    }
-                    else
-                    if(hasSNPEFF) {
-                        consequences = v.snpEffInfo
-                    }
-                    
-                    consequences = consequences.grep { it != null }
-                    
-                    lastLines = 0
-                    boolean excludedByCons = true
-                    boolean printed = false
-                    consequences.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
-                        
-                        if(EXCLUDE_VEP.contains(consColumns['cons'](vep))) {
-                            return
-                        }
-                        excludedByCons = false
-                        
-                        if(hasVEP) {
-                            if(findMaxMaf(vep)>MAF_THRESHOLD)  {
-                                ++stats.excludeByMaf
-                                return
-                            }
-                        }
-                        
-                        if(opts.nocomplex) {
-                            if(vcfRegions.any { Regions regions -> regions.getOverlaps(v.chr, v.pos-1,v.pos+1).size() > 1}) {
-                                ++stats.excludeComplex
-                                return
-                            }
-                        }
-                        
-                        if(opts.nomasked) {
-                            if(v.alt.find(LOWER_CASE_BASE_PATTERN) || v.ref.find(LOWER_CASE_BASE_PATTERN)) {
-                                ++stats.excludeByMasked
-                                return
-                            }
-                        }
-                        
-                        if(!filters.every { Eval.x(v, it) }) {
-                            ++stats.excludeByFilter
-                            return
-                        }
-                        
-                        if(lastLines>0)
-                            w.println ","
-                            
-                        List vepInfo = consColumns.collect { name, func -> func(vep) }
-                        w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
-                        printed = true
-                        
-                        if(opts.tsv)
-                            tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
-            
-                        ++lastLines
-                    }
-                    
-                    if(printed) {
-                        ++stats.totalIncluded
-                    }
-                    
-                    last = v;
-                    if(excludedByCons)
-                        ++stats.excludeByCons
-                        
+                    processVariant(v, w)
                 }
                 catch(Exception e) {
                     Exception e2 = new Exception("Failed to process variant " + current, e)
@@ -559,6 +388,211 @@ class VCFtoHTML {
             tsvWriter.close()
         
         printStats(stats)
+    }
+
+    private checkAnnotations(List vcfs) {
+        hasVEP = true
+        def noVeps = vcfs.findIndexValues { !it.hasInfo("CSQ") && !it.hasInfo("ANN") }
+        if(noVeps) {
+            System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering\nmay be ineffective for samples in following files:"
+            System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
+            hasVEP = false
+        }
+
+        hasSNPEFF = vcfs.any { it.hasInfo("EFF") }
+    }
+
+    private initColumnMappings() {
+        baseColumns += [
+            'tags' : {''}, // reserved for tags
+            'chr' : {it.chr },
+            'pos' : {it.pos },
+            'ref': {it.ref },
+            'alt': {it.alt },
+            'qual': {it.qual },
+            'depth': {
+                def dp = it.info.DP
+                if(dp == null) {
+                    bams*.value*.coverage(it.chr, it.pos).min()
+                }
+                else {
+                    dp
+                }
+            },
+            'families' : { v ->
+                def fcount = v.pedigrees.count {  ped ->
+                    def result = ped.samples.any {
+                        v.sampleDosage(it)
+                    }
+                    return result
+                }
+                return fcount;
+            }
+        ]
+
+        consColumns = [
+            'gene' : {it['SYMBOL']},
+            'cons' : {vep -> vep['Consequence'].split('&').min { VEP_PRIORITY.indexOf(it) } },
+            'maf'  : this.&findMaxMaf
+        ]
+    }
+    
+    void processVariant(Variant v, Writer w) {
+        
+        ++stats.total
+                    
+        if((target != null) && !(v in target)) {
+            ++stats.excludeByTarget
+            return
+        }
+                    
+        List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
+        List dosages = exportSamples.collect { v.sampleDosage(it) }
+        if(dosages.every { it==0}) {
+            ++stats.excludeNotPresent
+            if(!opts.f) {
+                println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
+            }
+            return
+        }
+                        
+        if(opts.diff && dosages.clone().unique().size()==1)  {
+            ++stats.excludeByDiff
+            return
+        }
+                        
+        def refCount = v.getAlleleDepths(0)
+        def altCount = v.getAlleleDepths(1)
+                    
+//        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
+                    
+                    
+        if(lineIndex++>0 && lastLines > 0)
+            w.println ","
+                    
+        List<Object> consequences = [
+            [
+                Consequence: 'Unknown'
+            ]
+        ]
+                    
+        if(hasVEP) {
+            try {
+                if(opts.maxVep) {
+                    consequences = [v.maxVep]
+                }
+                else {
+                    consequences = v.vepInfo
+                }
+            }
+            catch(Exception e) {
+                // Ignore
+            }
+        }
+        else
+        if(hasSNPEFF) {
+            consequences = v.snpEffInfo
+        }
+                    
+        consequences = consequences.grep { it != null }
+                    
+        lastLines = 0
+        boolean excludedByCons = true
+        boolean printed = false
+        consequences.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
+                        
+            if(EXCLUDE_VEP.contains(consColumns['cons'](vep))) {
+                return
+            }
+            excludedByCons = false
+                        
+            if(hasVEP) {
+                if(findMaxMaf(vep)>MAF_THRESHOLD)  {
+                    ++stats.excludeByMaf
+                    return
+                }
+            }
+                        
+            if(opts.nocomplex) {
+                if(vcfRegions.any { Regions regions -> regions.getOverlaps(v.chr, v.pos-1,v.pos+1).size() > 1}) {
+                    ++stats.excludeComplex
+                    return
+                }
+            }
+                        
+            if(opts.nomasked) {
+                if(v.alt.find(LOWER_CASE_BASE_PATTERN) || v.ref.find(LOWER_CASE_BASE_PATTERN)) {
+                    ++stats.excludeByMasked
+                    return
+                }
+            }
+                        
+            if(!filters.every { Eval.x(v, it) }) {
+                ++stats.excludeByFilter
+                return
+            }
+                        
+            if(lastLines>0)
+                w.println ","
+                            
+            List vepInfo = consColumns.collect { name, func -> func(vep) }
+            w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+            printed = true
+                        
+            if(opts.tsv)
+                tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
+            
+            ++lastLines
+        }
+                    
+        if(printed) {
+            ++stats.totalIncluded
+        }
+                    
+        lastVariant = v;
+        if(excludedByCons)
+            ++stats.excludeByCons
+        
+    }
+
+    private printHeadContent(BufferedWriter w) {
+        w.println """
+            <html>
+                <head>
+            """
+        w.println css.collect{"<link rel='stylesheet' href='$it'/>"}.join("\n").stripIndent()
+        w.println js.collect{"<script type='text/javascript' src='$it'></script>"}.join("\n").stripIndent()
+
+        // Embed the main vcf.js
+        def vcfjs
+        def fileVcfJsPath = "src/main/resources/vcf.js"
+        if(new File(fileVcfJsPath).exists())
+            vcfjs = new File(fileVcfJsPath).text
+        else
+            vcfjs = this.class.classLoader.getResourceAsStream("vcf.js").text
+
+        w.println "<script type='text/javascript'>\n$vcfjs\n</script>"
+
+        w.println "<script type='text/javascript'>"
+
+        w.println "var variants = ["
+    }
+
+    void resolveExportSamples(List allSamples) {
+        exportSamples = pedigrees.families.values().collect { it.individuals*.id }.flatten().grep { it in allSamples };
+
+        def exportFamilies = pedigrees.families.keySet()
+        if(opts.f) {
+            exportFamilies = opts.f.split(",").collect { it.trim() }
+            exportSamples = exportSamples.grep { s -> exportFamilies.any { f-> pedigrees.families[f].samples.contains(s)  }}
+            pedigrees.families.keySet().grep { !exportFamilies.contains(it) }.each { pedigrees.removeFamily(it) }
+        }
+        log.info "Samples to export: $exportSamples"
+
+        if(exportSamples.empty) {
+            System.err.println "ERROR: No samples from families $exportFamilies found in VCF file $opts.i"
+            System.err.println "\nSamples found in VCF are: " + (new VCF(opts.i)).samples
+        }
     }
 
     List<VCF> loadVCFs() {
