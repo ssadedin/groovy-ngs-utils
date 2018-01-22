@@ -21,6 +21,7 @@ package gngs.tools
 
 import gngs.*
 import groovy.transform.CompileStatic
+import groovy.util.logging.Log
 import htsjdk.samtools.SAMRecord
 
 /**
@@ -41,24 +42,27 @@ import htsjdk.samtools.SAMRecord
  * 
  * @author Simon Sadedin
  */
+@Log
 class ExtractFASTQ {
     
     SAM bam
     
-    Region region
+    Regions regions
     
     Writer out
     
-    public ExtractFASTQ(SAM bam, Region region) {
+    public ExtractFASTQ(SAM bam, Regions regions) {
         super();
         this.bam = bam;
-        this.region = region;
+        this.regions = regions;
     }
     
     @CompileStatic
     void run(Writer out) {
         StringBuilder b = new StringBuilder(500)
-        new OrderedPairReader(this.bam).eachPair { SAMRecord r1, SAMRecord r2 ->
+        OrderedPairReader opr = new OrderedPairReader(this.bam)
+        opr.progress.log = log
+        opr.eachPair(regions) { SAMRecord r1, SAMRecord r2 ->
             b.setLength(0)
             
             // R1
@@ -79,9 +83,12 @@ class ExtractFASTQ {
     
     static void main(String [] args) {
         
+        Utils.configureSimpleLogging()
+        
         Cli cli = new Cli(usage: 'groovy gngs.tools.ExtractFASTQ -bam <bam>')
         cli.with {
-//             'L' 'Region to extract', args:1, required:true
+            'L' 'Region to extract', args:1, required:false
+            gene 'Extract reads for the given gene symbol', args:Cli.UNLIMITED, required:false
             bam 'BAM file to extract reads from', args:1, required:true
         }
         
@@ -90,8 +97,32 @@ class ExtractFASTQ {
             System.exit(1)
         }
         
+        log.info "ExtractFASTQ starting ... "
+        log.info "BAM=$opts.bam"
+        
+        Regions bed = null
+        if(opts.L) {
+            bed = new BED(opts.L).load()
+            log.info "BED file $opts.L includes ${bed.size()} bp to scan"
+        }
+        else
+        if(opts.genes) {
+            String genomeVersion = new SAM(opts.bam).sniffGenomeBuild()
+            RefGenes refGenes = RefGenes.download(genomeVersion)
+            bed = new Regions()
+            for(String gene in opts.genes) {
+                Region geneRegion = refGenes.getGeneRegion(gene)
+                if(geneRegion == null) {
+                    System.err.println "Gene $opts.gene could not be resolved from RefSeq!"
+                    System.exit(1)
+                }
+                log.info "Gene symbol $opts.gene translated to $geneRegion"
+                bed.addRegion(geneRegion)
+            }
+        }
+        
         System.out.withWriter { Writer w ->
-            new ExtractFASTQ(new SAM(opts.bam), null /*, new Region(opts.L) */).run(w)
+            new ExtractFASTQ(new SAM(opts.bam), bed).run(w)
         }
     }
 }
