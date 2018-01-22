@@ -68,10 +68,10 @@ class ExtractFASTQ {
             b.append(r1.baseQualityString)
             
             // R2
-            b.append("\n@${r2.readName} 2:N:0:1\n")
-            b.append(r2.readString)
+            b.append("\n@${r1.readName} 2:N:0:1\n")
+            b.append(gngs.FASTA.reverseComplement(r2.readString))
             b.append('\n+\n')
-            b.append(r2.baseQualityString)
+            b.append(r2.baseQualityString.reverse())
             
             out.println(b.toString())
         }
