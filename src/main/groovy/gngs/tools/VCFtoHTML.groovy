@@ -76,6 +76,11 @@ class VCFtoHTML {
     Map<String,SAM> bams = [:]
     
     float MAF_THRESHOLD=0.05
+    
+    /**
+     * If enabled, a writer that outputs differences as tab separated format
+     */
+    CSVWriter tsvWriter = null
         
     VCFtoHTML(OptionAccessor opts) {
         this.opts = opts
@@ -263,7 +268,6 @@ class VCFtoHTML {
         
         initColumnMappings()
         
-        def tsvWriter = null
         if(opts.tsv)
             tsvWriter = new CSVWriter(new File(opts.tsv).newWriter(), '\t' as char)
         
