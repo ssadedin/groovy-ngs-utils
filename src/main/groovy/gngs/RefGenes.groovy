@@ -64,6 +64,12 @@ class RefGenes {
         
         File outputFile = new File("refGene.txt.gz")
         if(!outputFile.exists()) {
+            File homeRefGene = new File(System.properties['user.home'],'.refGene.txt.gz')
+            if(homeRefGene.exists())
+                outputFile = homeRefGene
+        }
+        
+        if(!outputFile.exists()) {
             
             String ucscUrl = UCSC_REFGENE_URL.replace('##genomeVersion##',ucscGenomeVersion)
             outputFile.withOutputStream { outputStream ->
@@ -72,7 +78,7 @@ class RefGenes {
                 }
             }
         }
-        return new RefGenes(outputFile.name, stripChr:stripChr)
+        return new RefGenes(outputFile.path, stripChr:stripChr)
     }
     
     void load(Reader r) {
