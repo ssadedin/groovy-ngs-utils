@@ -100,6 +100,34 @@ class OrderedPairReader {
         } 
     }
     
+    @CompileStatic
+    void eachPair(Regions regions, Closure c) {
+        
+        if(regions == null) {
+            eachPair(c)
+            return
+        }
+        
+        for(Region region in regions) {
+            
+            SAMFileReader reader = this.bam.newReader()
+            SAMRecordIterator<SAMRecord> iter = reader.query(region.chr, region.from, region.to, false)
+            try {
+                try {
+                    eachPairImpl(iter,c)
+                }
+                finally {
+                    iter.close()
+                }
+            }
+            finally {
+                reader.close()
+            }
+        }
+    }
+
+    
+    
     void eachPairImpl(SAMRecordIterator iter, Closure c) {
                 
         try {
