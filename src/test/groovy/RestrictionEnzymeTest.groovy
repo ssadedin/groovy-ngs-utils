@@ -25,6 +25,7 @@ import htsjdk.samtools.util.SequenceUtil;
 import org.junit.Test;
 
 import RestrictionEnzyme as RE
+import gngs.FASTA
 
 class RestrictionEnzymeTest {
     

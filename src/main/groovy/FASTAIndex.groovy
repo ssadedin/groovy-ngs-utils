@@ -20,6 +20,7 @@
 
 import gngs.Abort
 import gngs.BED
+import gngs.FASTA
 import gngs.ProgressCounter
 import gngs.Regions
 import groovy.transform.CompileStatic;
