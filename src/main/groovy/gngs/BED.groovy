@@ -20,6 +20,7 @@ package gngs
  */
 
 import java.util.Iterator;
+import java.util.zip.GZIPInputStream
 
 import groovy.transform.CompileStatic;
 
@@ -133,7 +134,11 @@ class BED extends Regions {
         try {
             if(bedFileStream == null || bedFileStream.available()<0) {
                 if(bedFile != null) {
-                  bedFileStream = new FileInputStream(bedFile)
+                  if(bedFile.name.endsWith(".gz")) {
+                      bedFileStream = new GZIPInputStream(new FileInputStream(bedFile))
+                  }
+                  else
+                      bedFileStream = new FileInputStream(bedFile)
                 }
                 else
                 try { bedFileStream.reset() } catch(Exception e) {}
