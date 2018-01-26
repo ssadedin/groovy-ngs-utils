@@ -104,11 +104,30 @@ class Regions implements Iterable<Region> {
      */
     Regions(Map attributes=[:], Iterable<IRegion> regions) {
         for(IRegion r in regions) {
+            Range range = r.range
             if(r.range instanceof GRange)
-                addRegion(r.chr, r.from, r.to, r.range.extra)
+                addRegion(r.chr, range.from, range.to, range.extra)
             else
-                addRegion(r.chr, r.from, r.to)
+                addRegion(r.chr, range.from, range.to)
         }
+    }
+    
+    /**
+     * Return a new Regions object that has <code>bp</code> bases
+     * added to the beginning and end of each interval. If this
+     * causes overlaps then these are left in the resulting 
+     * Objects.
+     * 
+     * @param bp
+     * @return  a new Regions with bp wider intervals
+     */
+    @CompileStatic
+    Regions widen(int bp) {
+        Regions regions = new Regions()
+        for(Region r in this) {
+            regions.addRegion(r.widen(bp))
+        }
+        return regions
     }
     
     @CompileStatic

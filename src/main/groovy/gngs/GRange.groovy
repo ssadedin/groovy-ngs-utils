@@ -139,6 +139,24 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     /**
+     * @param bp    number of base pairs to widen by
+     * 
+     * @return  a new Region object representing an interval bp wider than this one,
+     *          with the lower boundary being limited to zero
+     */
+    @CompileStatic
+    Region widen(int bp) {
+        if(range instanceof GRange) {
+            return new Region(this.chr, 
+                new GRange(Math.max(this.from-bp,0), this.to+bp, ((GRange)range).extra))
+        }
+        else {
+            return new Region(this.chr, 
+                new IntRange(Math.max(this.from-bp,0), this.to+bp))            
+        }
+    }
+    
+    /**
      * Return true of this region overlaps the other.
      * <p>
      * Supports the groovy syntax:
