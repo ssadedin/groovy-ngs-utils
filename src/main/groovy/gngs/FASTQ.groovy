@@ -123,22 +123,36 @@ class FASTQ {
     static void filter(String fileName1, String fileName2, Closure c) {
         new File(fileName1.replaceAll(/\.fastq.gz/, ".filter.fastq")).withWriter { Writer w1 ->
             new File(fileName2.replaceAll(/\.fastq.gz/, ".filter.fastq")).withWriter { Writer w2 ->
-                int passed = 0
-                int processed = 0
-                FASTQ.eachPair(fileName1,fileName2) { FASTQRead r1, FASTQRead r2 ->
-                    ++processed
-                    def result = c(r1,r2)
-                    if(result == true) {
-                        r1.write(w1)
-                        r2.write(w2)
-                        ++passed
-                    }
-                }
-                println "Wrote $passed / $processed reads"
+                filter(fileName1, fileName2, w1, w2, c)
             }
         }
         
     }
+    
+       /**
+     * Filter paired reads from fileName1 and fileName2 and write them to 
+     * uncompressed output files with extensions .filter.fastq based on the 
+     * input file names, only where true is returned from the given closure
+     * 
+     * @param fileName1
+     * @param fileName2
+     * @param c
+     */
+    @CompileStatic
+    static void filter(String fileName1, String fileName2, Writer output1, Writer output2, Closure c) {
+        int passed = 0
+        int processed = 0
+        FASTQ.eachPair(fileName1,fileName2) { FASTQRead r1, FASTQRead r2 ->
+            ++processed
+            def result = c(r1,r2)
+            if(result == true) {
+                r1.write(output1)
+                r2.write(output2)
+                ++passed
+            }
+        }
+    }
+  
     
     @CompileStatic
     static void eachPair(String fileName1, String fileName2, Closure c) {
