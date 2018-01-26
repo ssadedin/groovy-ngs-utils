@@ -70,7 +70,7 @@ class OrderedPairReader {
         // a read's pair is encountered before the buffer overflows. When it overflows
         // the loop below starts doing random queries (slow) to resolve the mates for reads
         // so that the pair can be output together. 
-        this.maxSpoolSize = options.spoolSize ? (int)options.spoolSize : 16000i
+        this.maxSpoolSize = options.spoolSize ? (int)options.spoolSize : 32000i
         this.bam = sam
         this.verbose = false
         this.readIndex = new HashMap(this.maxSpoolSize*2)
