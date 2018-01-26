@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -22,7 +23,6 @@ import java.text.ParseException;
 
 import java.util.zip.GZIPInputStream;
 
-import gngs.*
 import groovy.transform.CompileStatic;
 
 /**

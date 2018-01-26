@@ -1,3 +1,4 @@
+package gngs
 import groovy.transform.CompileStatic;
 
 import java.security.MessageDigest;
