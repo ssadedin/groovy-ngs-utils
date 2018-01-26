@@ -56,6 +56,8 @@ class OrderedPairReader {
     
     ProgressCounter progress
     
+    Region currentRegion = null
+    
     OrderedPairReader(Map options=[:], SAM sam) {
         this.randomLookupReader = sam.newReader()
             
@@ -75,7 +77,7 @@ class OrderedPairReader {
         
         this.progress = new ProgressCounter(
             extra:{
-                "$sample $currentChr, Spool Size=${writeSpool.size()}, Index size=${readIndex.size()} Preprocessed=${preprocessedReads.size()} Unpaired Reads=${unpairedReads}, ForcedQueries=$forcedQueries, Pairs=${pairs}"
+                "$sample ${currentRegion?:currentChr}, Spooled=${writeSpool.size()} (${writeSpool[-1].minPos()}-${writeSpool[0].minPos()}), Preproc=${preprocessedReads.size()} Unpaired=${unpairedReads}, ForcedQueries=$forcedQueries, Pairs=${pairs}"
             }, withRate: true, timeInterval:10000)
     }
     
@@ -96,6 +98,8 @@ class OrderedPairReader {
             this.eachPairImpl(iter,c)
         }
         finally {
+            progress.end()
+            randomLookupReader.close()
             iter.close()
         } 
     }
@@ -108,21 +112,25 @@ class OrderedPairReader {
             return
         }
         
-        for(Region region in regions) {
-            
-            SAMFileReader reader = this.bam.newReader()
-            SAMRecordIterator<SAMRecord> iter = reader.query(region.chr, region.from, region.to, false)
-            try {
+        SAMFileReader reader = this.bam.newReader()
+        try {
+            for(Region region in regions) {
+                currentRegion = region
+                SAMRecordIterator<SAMRecord> iter = reader.query(region.chr, region.from, region.to, false)
                 try {
                     eachPairImpl(iter,c)
+                    
+                    flushSpooledReads(c)
                 }
                 finally {
                     iter.close()
                 }
             }
-            finally {
-                reader.close()
-            }
+        }
+        finally {
+            progress.end()
+            randomLookupReader.close()
+            reader.close()
         }
     }
 
@@ -130,62 +138,55 @@ class OrderedPairReader {
     
     void eachPairImpl(SAMRecordIterator iter, Closure c) {
                 
-        try {
-            while(iter.hasNext()) {
-                SAMRecord record = (SAMRecord)iter.next();
+        while(iter.hasNext()) {
+            SAMRecord record = (SAMRecord)iter.next();
                         
-                String readName = record.readName
+            String readName = record.readName
                         
-                if(isNewChromosome(record)) {
-                    flushSpooledReads(c)
-                }
-                progress.count()
+            if(isNewChromosome(record)) {
+                flushSpooledReads(c)
+            }
+            progress.count()
                         
-                if(!isProcessableRead(record))
-                    continue
+            if(!isProcessableRead(record))
+                continue
                         
-                currentChr = record.referenceName
+            currentChr = record.referenceName
                         
-                SAMRecordPair pair = readIndex[readName]
-                if(pair == null) {
-                    if(verbose)
-                        println "XX: Buffer read $readName $record.referenceName:$record.alignmentStart (spool position ${writeSpool.size()})"
-                    pair = new SAMRecordPair(r1:record)
-                    writeSpool << pair
-                    readIndex[readName] = pair
-                    continue                    
-                }
-                
+            SAMRecordPair pair = readIndex[readName]
+            if(pair == null) {
                 if(verbose)
-                    println "XX: Pair found for $readName ($record.referenceName:$record.alignmentStart)"
+                    println "XX: Buffer read $readName $record.referenceName:$record.alignmentStart (spool position ${writeSpool.size()})"
+                pair = new SAMRecordPair(r1:record)
+                writeSpool << pair
+                readIndex[readName] = pair
+                continue                    
+            }
+                
+            if(verbose)
+                println "XX: Pair found for $readName ($record.referenceName:$record.alignmentStart)"
                     
-                pair.r2 = record
+            pair.r2 = record
                         
-                if(writeSpool.size()>maxSpoolSize) {
-                    forceQueryOverflowRead(record.alignmentStart)
-                }
+            if(writeSpool.size()>maxSpoolSize) {
+                forceQueryOverflowRead(record.alignmentStart)
+            }
        
-                processPartneredReads(c)
-            }
+            processPartneredReads(c)
+        }
     
-            List<SAMRecordPair> spoolResidue = new LinkedList()
-            for(SAMRecordPair pair in writeSpool) {
-                if(pair.hasBothReads() && pair.r1.referenceName == currentChr) {
-                    c(pair.r1, pair.r2)
-                    readIndex.remove(pair.r1.readName)
-                    ++pairs                        
-                }
-                else {
-                    spoolResidue << pair
-                }
+        List<SAMRecordPair> spoolResidue = new LinkedList()
+        for(SAMRecordPair pair in writeSpool) {
+            if(pair.hasBothReads() && pair.r1.referenceName == currentChr) {
+                c(pair.r1, pair.r2)
+                readIndex.remove(pair.r1.readName)
+                ++pairs                        
             }
-            writeSpool = spoolResidue
+            else {
+                spoolResidue << pair
+            }
         }
-        finally {
-            randomLookupReader.close()
-            progress.end()
-        }
-        
+        writeSpool = spoolResidue
     }
     
     boolean isProcessableRead(SAMRecord record) {

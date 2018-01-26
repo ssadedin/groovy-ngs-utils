@@ -76,6 +76,11 @@ class SAMRecordPair {
         r1.setAttribute(RG_TAG, rgId);
         r2.setAttribute(RG_TAG, rgId);        
     }
+    
+    @CompileStatic
+    int minPos() {
+        Math.min(r1?.alignmentStart?:Integer.MAX_VALUE, r2?.alignmentStart?:Integer.MAX_VALUE)
+    }
 }
 
 /*
