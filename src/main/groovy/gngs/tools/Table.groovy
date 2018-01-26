@@ -7,6 +7,11 @@ import graxxia.CSV
 import graxxia.TSV
 
 class Table {
+    
+    static Map<String,List<String>> AUTO_COLUMN_NAMES = [
+        bed: ['Chr', 'Start','End','Id'],
+        ped: ['Family','Sample','Father','Mother','Sex','Phenotype']
+    ]
 
     static void main(String [] args) {
         
@@ -20,6 +25,7 @@ class Table {
             filter 'Row filter: groovy expression to limit rows', args:Cli.UNLIMITED, required:false
             n 'Number of rows to show', args:1, required:false
             ofmt 'Output format: csv,tsv,txt default is text', args:1, required: false
+            h 'Specify headers. If specified first row of data is treated as data', longOpt: 'headers', args:1, required:false
         }
         
         OptionAccessor opts = cli.parse(args)
@@ -31,21 +37,32 @@ class Table {
         if(!opts.i && opts.arguments())
             file = opts.arguments()[0]
             
+        String fileExt = file.replaceAll(/^.*\./,'')
+
+        Map readOptions = [:]
+        if(opts.h) {
+            readOptions.columnNames = opts.h.tokenize(',')*.trim()
+        }
+        else
+        if(fileExt in AUTO_COLUMN_NAMES) {
+            readOptions.columnNames = AUTO_COLUMN_NAMES[fileExt]
+        }
+                        
         def data
         if(!file) {
-            data = new TSV(System.in.newReader()).toListMap()
+            data = new TSV(readOptions,System.in.newReader()).toListMap()
         }
         else
         if(opts.tsv || file.endsWith('tsv')) {
-            data = new TSV(file).toListMap()
+            data = new TSV(readOptions,file).toListMap()
         }
         else
         if(opts.csv || file.endsWith('csv')) {
-            data = new CSV(file).toListMap()
+            data = new CSV(readOptions,file).toListMap()
         }
         else
         if(file && new File(file).newReader().readLine().tokenize('\t').size()>3) {
-            data = new TSV(file).toListMap()
+            data = new TSV(readOptions,file).toListMap()
         }
         else {
             System.err.println()
