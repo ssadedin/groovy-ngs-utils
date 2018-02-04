@@ -105,13 +105,30 @@ class Utils {
     }
     
     final static NumberFormat humanNumberFormat = NumberFormat.numberInstance
-    
     static {
         humanNumberFormat.maximumFractionDigits=1
         humanNumberFormat.minimumFractionDigits=0
     }
     
-    static String humanSize(Number number, units=['bp','kb','Mb','Gb']) {
+    final static NumberFormat percNumberFormat = NumberFormat.numberInstance
+    static {
+        percNumberFormat.maximumFractionDigits=2
+        percNumberFormat.minimumFractionDigits=0
+    }
+    
+    static String perc(BigDecimal value) {
+            humanNumberFormat.format(100.0d*value)+"%"
+    }    
+    
+    static String perc(double value) {
+            humanNumberFormat.format(100.0d*value)+"%"
+    }
+    
+    static String human(Number number) {
+        humanBp(number,['','k','m','g','p'])
+    }
+    
+    static String humanBp(Number number, units=['bp','kb','Mb','Gb']) {
         double value = number.toDouble()
         for(unit in units) {
             if(value < 1000)
@@ -210,4 +227,15 @@ class Utils {
             return ((com.sun.management.UnixOperatingSystemMXBean) os).getOpenFileDescriptorCount();
         }
     }
+    
+    static closeQuietly(obj) {
+        if(obj == null)
+            return
+        try {
+            obj.close()
+        }
+        catch(Exception e) {
+            // ignore
+        }
+    } 
 }
