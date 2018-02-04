@@ -1,4 +1,3 @@
-package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,6 +17,8 @@ package gngs
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+
+package gngs
 
 import groovy.transform.CompileStatic;
 import htsjdk.samtools.SAMFileWriter
@@ -75,7 +76,7 @@ class OrderedPairWriter implements Closeable {
        currentReferenceIndex = r1ReferenceIndex
         
        SAMRecordPair bufferedPair = buffer.isEmpty() ? null : buffer.first() 
-       while(bufferedPair != null && bufferedPair.r2.alignmentStart < pair.r1.alignmentStart) {
+       while(bufferedPair != null && bufferedPair.r2.alignmentStart < pair.r1.alignmentStart) { 
            bufferedPair = buffer.pollFirst()
            if(verbose)
                println "WW: write R2 $bufferedPair.r1.readName ($bufferedPair.r1.referenceName:$bufferedPair.r1.alignmentStart,$bufferedPair.r2.referenceName:$bufferedPair.r2.alignmentStart)"
