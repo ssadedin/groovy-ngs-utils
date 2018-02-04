@@ -153,9 +153,24 @@ class Utils {
         Logger.getLogger("groovy.sql.Sql").useParentHandlers = false
     }
     
-    static String table(Map options = [:], List<String> headers, List<List> rows) {
+    /**
+     * A utility to print a table of values in a nice format for 
+     * output on a terminal. Columns are aligned, padded, borders
+     * drawn etc. The output format is compatible with markdown
+     * for downstream re-formatting into documents.
+     * <p>
+     * By default, the table is printed to stdout. To print it somewhere
+     * else, set the <code>out</code> option to a Writer object.
+     * 
+     * @param headers   a list of column names
+     * @param rows      a list of lists, where each inner list represents a
+     *                  row in the table
+     */
+    static void table(Map options = [:], List<String> headers, List<List> rows) {
         
         String indent = options.indent ? (" " * options.indent) : ""
+        
+        def out = options.out ?: System.out
         
         // Create formatters
         Map formatters = options.get('format',[:])
@@ -185,7 +200,7 @@ class Utils {
         Map renderers = options.get('render',[:])
         headers.each { hd ->
             if(!renderers[hd]) {
-                renderers[hd]  = { val, width  -> print val.padRight(width) }
+                renderers[hd]  = { val, width  -> out.print val.padRight(width) }
             }
         }
         
@@ -203,21 +218,25 @@ class Utils {
             
         // Now render the table
         String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
-        println indent + header
-//        println indent + ("-" * header.size())
-        println indent + headers.collect { hd -> '-' *columnWidths[hd] }.join("-+-")
+        
+        if(options.topborder) {
+            out.println indent + ("-" * header.size())
+        }
+        
+        out.println indent + header
+        out.println indent + headers.collect { hd -> '-' *columnWidths[hd] }.join("-+-")
         
         rows.each { row ->
             int i=0
             headers.each { hd -> 
                 if(i!=0)
-                    print(" | ");
+                    out.print(" | ");
                 else
-                    print(indent)
+                    out.print(indent)
                     
-                 renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
+                renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
             }
-            println ""
+            out.println ""
         }
     }
     
