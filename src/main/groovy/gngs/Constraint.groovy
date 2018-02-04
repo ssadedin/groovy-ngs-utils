@@ -1,6 +1,4 @@
-import gngs.Pedigree
-import gngs.Variant
-
+package gngs
 /**
  * Represents a constraint in a genetic model
  * 
