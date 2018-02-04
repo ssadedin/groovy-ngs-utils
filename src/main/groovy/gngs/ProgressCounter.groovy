@@ -83,7 +83,7 @@ class ProgressCounter {
                         
                    String extraInfo
                    if(extra != null) {
-                       extraInfo = extra()
+                       extraInfo = extra.call()
                    }   
                     
                    String progressLine
