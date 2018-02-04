@@ -32,13 +32,30 @@ import gngs.VCF
 import gngs.VCFSummaryStats
 import gngs.Variant
 import au.com.bytecode.opencsv.CSVWriter
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovy.xml.StreamingMarkupBuilder
 
 import java.util.regex.Pattern
 
+@CompileStatic
+class ROCPoint {
+    
+    Variant variant
+    
+    boolean truePositive
+    
+    int tpCount
+    
+    int fpCount
+    
+    int metricBin
+}
+
 @Log
 class VCFtoHTML {
+    private String outputFileName
+    private String rocSample
     private boolean hasSNPEFF
     private boolean hasVEP
     private Map consColumns
@@ -46,6 +63,7 @@ class VCFtoHTML {
     private Map baseColumns = new LinkedHashMap()
     private List<String> filters
     private BED target
+    private BED excludeRegions
     private Pedigrees pedigrees
 
     String banner = """
@@ -76,6 +94,19 @@ class VCFtoHTML {
     Map<String,SAM> bams = [:]
     
     float MAF_THRESHOLD=0.05
+    
+    List<ROCPoint> rocPoints = []
+    
+    /**
+     * The number of variants included from the reference sample 
+     * when roc option enabled
+     */
+    int rocTotalVariants = 0
+    
+    /**
+     * The sample selected as the refernece sample when ROC mode is enabled
+     */
+    String referenceSample
     
     /**
      * If enabled, a writer that outputs differences as tab separated format
@@ -162,7 +193,8 @@ class VCFtoHTML {
             o 'Output HTML file', args:1, required:true
             f 'Comma separated list of families to export', args:1
             a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
-            target 'Exclude variants outside this region', args:1
+            target 'Exclude variants outside this region from comparison', args:1
+            xtarget 'Exclude variants inside these target regions from the comparison', args:1
             chr 'Confine analysis to chromosome', args:Cli.UNLIMITED
             diff 'Only output variants that are different between the samples'
             maxMaf 'Filter out variants above this MAF', args:1
@@ -202,7 +234,18 @@ class VCFtoHTML {
             target = new BED(opts.target).load()
         }
         
+        if(opts.xtarget) {
+            excludeRegions = new BED(opts.xtarget).load()
+        }
+        
         resolveExportSamples(allSamples)
+        
+        if(opts.roc)
+            referenceSample = opts.roc
+        
+        // Sample to perform ROC on is the first that was not specifed
+        // as the reference sample
+        rocSample = exportSamples.find { it != referenceSample }
         
         List<VCF> vcfs = loadVCFs()
            
@@ -273,7 +316,7 @@ class VCFtoHTML {
         
             
         // Default to writing out the VCF file name replacing vcf extension with html
-        String outputFileName = opts.o ?: opts.is[0].replaceAll('\\.vcf$','.html')
+        outputFileName = opts.o ?: opts.is[0].replaceAll('\\.vcf$','.html')
             
         new File(outputFileName).withWriter { w ->
            
@@ -392,6 +435,80 @@ class VCFtoHTML {
             tsvWriter.close()
         
         printStats(stats)
+        
+        printROC()
+    }
+    
+    /**
+     * Calculate
+     */
+    void printROC() {
+        
+        if(rocTotalVariants == 0) {
+            log.warning("No variants in reference sample: ROC cannot be computed")
+            return
+        }
+        
+        log.info "ROC table is based on sensitivity against ${rocTotalVariants} reference variants"
+        
+        List<Map> roc = calculateROC()
+        
+        File rocFile = new File(outputFileName.replaceAll('.html$','.roc.md'))
+        rocFile.withWriter { w ->
+            
+            String hd = "ROC Table for ${rocSample} vs ${referenceSample}"
+            w.println hd
+            w.println ("=" * hd.size())
+            w.println ""
+            
+            Utils.table(out:w,
+                ['Depth', 'Variants', 'Sensitivity', 'Precision'],
+                [roc*.bin, roc*.total, roc*.sensitivity.collect {Utils.perc(it)}, roc*.precision.collect{Utils.perc(it)}].transpose()
+            )
+        }
+    }
+    
+    List<Map> calculateROC() {
+        
+        rocPoints.each { 
+            // For now, we are just using total depth as the metric
+            // but of course, others should be added!
+            Integer dp = it.variant.getTotalDepth(rocSample) 
+            it.metricBin = dp
+        }
+        
+        // Sort from highest value of metric to lowest
+        List<ROCPoint> sorted = 
+            rocPoints.sort { -it.metricBin }
+            
+        sorted.inject { ROCPoint last, ROCPoint next ->
+            next.tpCount = last.tpCount
+            next.fpCount = last.fpCount
+            if(next.truePositive) {
+                ++next.tpCount 
+            }
+            else {
+                ++next.fpCount
+            }
+            return next
+        }
+        
+        TreeMap<Integer,List<ROCPoint>> roc = sorted.groupBy { it.metricBin } 
+        
+        return roc.collect { Map.Entry<Integer, List<ROCPoint>> binEntry ->
+            
+            List<ROCPoint> bin = binEntry.value
+            
+            double sensitivityEstimate = graxxia.Stats.mean(bin.collect { it.tpCount / rocTotalVariants })
+            double precisionEstimate = 1.0d - graxxia.Stats.mean(bin.collect { it.fpCount / (1 + it.fpCount + it.tpCount) })
+            
+            [
+                bin: binEntry.key,
+                total: bin.size(), 
+                sensitivity: sensitivityEstimate,
+                precision: precisionEstimate
+            ]
+        }
     }
 
     private checkAnnotations(List vcfs) {
@@ -451,7 +568,7 @@ class VCFtoHTML {
         }
                     
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
-        List dosages = exportSamples.collect { v.sampleDosage(it) }
+        List<Integer> dosages = exportSamples.collect { v.sampleDosage(it) }
         if(dosages.every { it==0}) {
             ++stats.excludeNotPresent
             if(!opts.f) {
@@ -462,15 +579,12 @@ class VCFtoHTML {
                         
         if(opts.diff && dosages.clone().unique().size()==1)  {
             ++stats.excludeByDiff
+            updateROC(v)
             return
         }
                         
-        def refCount = v.getAlleleDepths(0)
-        def altCount = v.getAlleleDepths(1)
-                    
-//        println v.toString() + v.line.split("\t")[8..-1] + " ==> " + "$refCount/$altCount"
-                    
-                    
+        List<Integer> refCount = v.getAlleleDepths(0)
+        List<Integer> altCount = v.getAlleleDepths(1)
         if(lineIndex++>0 && lastLines > 0)
             w.println ","
                     
@@ -542,14 +656,15 @@ class VCFtoHTML {
             List vepInfo = consColumns.collect { name, func -> func(vep) }
             w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
             printed = true
-                        
+            
             if(opts.tsv)
                 tsvWriter.writeNext((baseInfo+vepInfo+dosages) as String[])
             
             ++lastLines
         }
-                    
+        
         if(printed) {
+            updateROC(v)
             ++stats.totalIncluded
         }
                     
@@ -557,6 +672,20 @@ class VCFtoHTML {
         if(excludedByCons)
             ++stats.excludeByCons
         
+    }
+    
+    void updateROC(Variant v) {
+        if(!opts.roc) 
+            return 
+        
+        int referenceDosage = v.sampleDosage(referenceSample)
+        int rocDosage = v.sampleDosage(rocSample)
+        if(referenceDosage > 0) {
+            ++rocTotalVariants
+        }
+        
+        if(rocDosage>0)
+            rocPoints << new ROCPoint(variant: v, truePositive:rocDosage == referenceDosage)
     }
 
     private printHeadContent(BufferedWriter w) {
