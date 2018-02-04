@@ -514,35 +514,42 @@ class VCF implements Iterable<Variant> {
             
             
             List commonGtFields
+            List<String> allGTFields = []
             if(myVariant && !otherVariant) {
                 myGtFields = mySplit[8].tokenize(':')
                 commonGtFields = myGtFields
+                allGTFields.addAll(myGtFields)
             }
             else
             if(!myVariant && otherVariant) {
                 otherGtFields = otherSplit[8].tokenize(':')
                 commonGtFields = otherGtFields
+                allGTFields.addAll(otherGtFields)
             }
             else {
                 // Variant in both - find the common set
                 if(mySplit[8] == otherSplit[8]) { // hopefully this is most of the time!
                     myGtFields = otherGtFields = commonGtFields = mySplit[8].tokenize(':')
+                    allGTFields.addAll(myGtFields)
                 }
                 else {
                     myGtFields = mySplit[8].tokenize(':')
                     otherGtFields = otherSplit[8].tokenize(':')
                     commonGtFields = myGtFields.intersect(otherGtFields)
                 }
+                allGTFields = (myGtFields + otherGtFields).unique()
             }
-            int numGtFields = commonGtFields.size()
             
-            List newLine = fields[0..7] + [commonGtFields.join(":")]
+//            int numGtFields = commonGtFields.size()
+            int numGtFields = allGTFields.size()
+            
+            List newLine = fields[0..7] + [allGTFields.join(":")]
                 
             if(myVariant) {
                 // The variant is in my VCF - use the genotypes from there
                 def gts = mySplit[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
-                    buildGtFieldValue(gt, myGtFields, commonGtFields)
+                    buildGtFieldValue(gt, myGtFields, allGTFields)
                 })
             }
             else { 
@@ -555,7 +562,7 @@ class VCF implements Iterable<Variant> {
                 // TODO: if different number of alleles in other sample, this will not work!
                 def gts = otherVariant.line.split("\t")[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
-                    buildGtFieldValue(gt, otherGtFields, commonGtFields)
+                    buildGtFieldValue(gt, otherGtFields, allGTFields)
                 }) 
             }
             else {
@@ -581,6 +588,8 @@ class VCF implements Iterable<Variant> {
         Map<String,String> gtFields = [myGtFields,gt.tokenize(":")].transpose().collectEntries()
         includedFields.collect { String gtField ->
             String value = gtFields[gtField]
+            if(!value)
+                value = '.'
             return value
         }.grep { it != null }.join(":") // note: filtering by null necessary because the format field can be
                                         // longer than the gt, eg: GT:DP  ./.
