@@ -121,6 +121,7 @@ class SAMRecordPair implements Comparable {
         r1 ?: r2
     }
     
+    @CompileStatic
     void setR2(SAMRecord r2) {
         assert r2 != null
         this.r2 = r2
