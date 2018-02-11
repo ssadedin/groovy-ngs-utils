@@ -219,7 +219,7 @@ class FASTA {
     @CompileStatic
     static String format(String contig, String sequence) {
         StringBuilder output = new StringBuilder()
-        final int iterations = (int)Math.ceil(sequence.size()/80)
+        final int iterations = (int)Math.ceil((double)sequence.size()/80)
         for(int i=0; i<iterations; ++i) {
             output.append(sequence.substring(i*80, Math.min((i+1)*80,sequence.size())))
             output.append("\n")
