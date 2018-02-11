@@ -19,14 +19,10 @@
  */
 package gngs
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.OperatingSystemMXBean;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+
 import groovy.stream.Stream;
-
-//import com.sun.management.UnixOperatingSystemMXBean;
-
 import groovy.transform.CompileStatic;
 import htsjdk.samtools.BAMIndexer
 import htsjdk.samtools.BAMRecord;
@@ -36,52 +32,11 @@ import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory
 import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMReadGroupRecord;
-import htsjdk.samtools.SAMSequenceRecord;
-import htsjdk.samtools.SAMTagUtil
-import htsjdk.samtools.ValidationStringency;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.ValidationStringency;
 
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
-
-class SAMRecordPair {
-    SAMRecord r1
-    
-    SAMRecord r2
-    
-    @CompileStatic 
-    boolean hasBothReads() {
-        r2 != null && r1 != null
-    }
-    
-    @CompileStatic 
-    boolean isChimeric() {
-        return r1 != null && r2 != null && (r1.referenceIndex != r2.referenceIndex)
-    }
-    
-    @CompileStatic 
-    void setTag(String name, String value) {
-        r1.setAttribute(name, value)
-        r2.setAttribute(name, value)
-    }
-    
-    static short RG_TAG = SAMTagUtil.getSingleton().RG
-    
-    /**
-     * Do not static compile this as it relies on access to protected function
-     * 
-     * @param rgId
-     */
-    void setReadGroup(String rgId) {
-        r1.setAttribute(RG_TAG, rgId);
-        r2.setAttribute(RG_TAG, rgId);        
-    }
-    
-    @CompileStatic
-    int minPos() {
-        Math.min(r1?.alignmentStart?:Integer.MAX_VALUE, r2?.alignmentStart?:Integer.MAX_VALUE)
-    }
-}
 
 /*
  * An alternate alignment for a read. 
