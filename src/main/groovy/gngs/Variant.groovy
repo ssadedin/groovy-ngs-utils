@@ -1043,6 +1043,18 @@ class Variant implements IRegion {
 		}
 	}
     
+    @CompileStatic
+    Integer getTotalDepth(String sample) {
+        int sampleIndex = this.header.samples.indexOf(sample)
+        if(sampleIndex <0) // no genotype for sample?
+            return 0
+            
+        if('DP' in this.header.formatMetaData) {
+            return this.genoTypes[sampleIndex].DP as Integer
+        }
+        return (int) (0..alts.size()).collect { getAlleleDepths(it)[sampleIndex] }.sum()
+    }
+    
     /**
      * Return the number of reads supporting the given allele as a list
      * with one entry for each sample in the VCF
