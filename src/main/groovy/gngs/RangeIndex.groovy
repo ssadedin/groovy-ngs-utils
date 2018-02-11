@@ -98,8 +98,8 @@ class RangeIndex implements Iterable<IntRange> {
     void add(IntRange newRange) {
        
         // Any existing range over start position?
-        int startPosition = (int)newRange.from
-        int endPosition = (int)newRange.to
+        final int startPosition = (int)newRange.from
+        final int endPosition = (int)newRange.to
         Map.Entry<Integer,List<IntRange>> lowerEntry = ranges.lowerEntry(startPosition+1)
         
         // Inserting a range at the lowest end is relatively straightforward, so 
@@ -109,29 +109,16 @@ class RangeIndex implements Iterable<IntRange> {
             return
         }
         
-        // Already a range preceding this position: we to check for overlap and maybe split it
-        if(lowerEntry.value == null) {
-            println "NULL VALUE"
-        }
-        else
-        if(lowerEntry.value[0].is(null)) {
-            println "VALUE HAS NULL CONTENTS"
-        }
+        assert lowerEntry.value != null
+        assert !lowerEntry.value[0].is(null) 
             
+        // Already a range preceding this position: we to check for overlap and maybe split it
         if(ranges.containsKey(startPosition)) { // If starts at exactly same position, share its entry
             ranges[startPosition].add(newRange)
             checkRanges(startPosition)
         }
         else { // starts at a new position, have to find overlapping ranges and split them
-                
-            // Add all the overlapping regions from the adjacent lower region to
-            // our new breakpoint
-            List<IntRange> lowerSplitRegion =  lowerEntry.value.grep { IntRange lwrRange -> lwrRange.to > startPosition }
-                
-            // Add our new range as covered by the split part
-            lowerSplitRegion.add(newRange)
-            ranges[startPosition] = lowerSplitRegion
-            checkRanges(startPosition)
+            splitStartRange(newRange, lowerEntry)
         }
                 
         Map.Entry containedEntry = ranges.higherEntry(startPosition)
@@ -161,12 +148,7 @@ class RangeIndex implements Iterable<IntRange> {
                 }
             }
             else { // The start is contained, but the end is not : split the upper range
-                // Make a new range from the end of our range to the start of the next higher range
-                // It needs to have the previous range only, not our new range
-                // NOTE: list.clone() causes static compilation to fail with verify error
-                List<IntRange> clonedList = containedEntry.value.grep { IntRange range -> endPosition < range.to }
-                ranges[endPosition+1] = clonedList
-                checkRanges(endPosition+1)
+                this.splitEndRange(newRange, containedEntry)
             }
             assert containedEntry.key < endPosition
             
@@ -175,7 +157,7 @@ class RangeIndex implements Iterable<IntRange> {
             containedEntry = higherEntry
         }
         
-        rangesToAddTo.each { int startPos -> 
+        for(int startPos in rangesToAddTo) {
             ranges[startPos] << newRange 
             checkRanges(startPos)
         }
@@ -188,6 +170,43 @@ class RangeIndex implements Iterable<IntRange> {
                 ranges[endPosition+1] = []
             }
         }
+    }
+    
+    @CompileStatic
+    private void splitEndRange(IntRange newRange, Map.Entry<Integer,List<IntRange>> containedEntry) {
+        
+        final int endPosition = (int)newRange.to
+        
+        // Make a new range from the end of our range to the start of the next higher range
+        // It needs to have the previous range only, not our new range
+        List<IntRange> clonedList = new ArrayList(containedEntry.value.size())
+        for(IntRange range in containedEntry.value) {
+            if(endPosition < range.to )
+                clonedList.add(range)
+        }
+        
+        ranges[endPosition+1] = clonedList
+        checkRanges(endPosition+1)
+    }
+    
+    @CompileStatic
+    private void splitStartRange(IntRange newRange, Map.Entry<Integer,List<IntRange>> lowerEntry) {
+                
+            final int startPosition = (int)newRange.from
+            
+            // Add all the overlapping regions from the adjacent lower region to
+            // our new breakpoint
+            List<IntRange> lowerSplitRegion =  new ArrayList(lowerEntry.value.size())
+            for(IntRange lwrRange in lowerSplitRegion) {
+                if(lwrRange.to > startPosition)
+                    lowerSplitRegion.add(lwrRange)
+            }
+                
+            // Add our new range as covered by the split part
+            lowerSplitRegion.add(newRange)
+            ranges[startPosition] = lowerSplitRegion
+            checkRanges(startPosition)
+        
     }
     
 //    @CompileStatic
