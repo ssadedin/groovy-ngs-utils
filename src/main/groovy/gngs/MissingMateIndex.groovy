@@ -36,6 +36,14 @@ class RegionScan {
 @Log
 class MissingMateIndex {
     
+    /**
+     * A list of unresolved read pairs (that is, where one pair is missing)
+     * ordered by the priority of resolving them.
+     * <p>
+     * We assume that genome is being scanned in sorted order, and thus
+     * the priority is to resolve the "left most" or lowest genomic
+     * position first, as this is most likely to hold up scanning.
+     */
     PriorityQueue<SAMRecordPair> resolveQueue = new PriorityQueue(100000)
     
     /**
@@ -63,6 +71,11 @@ class MissingMateIndex {
         this.chimericReadIndex = new HashMap(initialSize)
     }
     
+    /**
+     * Index this mate
+     * 
+     * @param pair
+     */
     synchronized void add(SAMRecordPair pair) {
         
        // Chimeric reads are indexed separately because they need
