@@ -6,6 +6,7 @@ import gngs.BED
 import gngs.Regions
 import gngs.SAM
 import gngs.Utils
+import gngs.PileupIterator
 import groovy.transform.CompileStatic
 import htsjdk.samtools.SAMRecord;;;
 

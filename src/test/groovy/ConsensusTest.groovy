@@ -22,6 +22,7 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
+import gngs.Consensus
 import gngs.Utils
 
 class ConsensusTest {

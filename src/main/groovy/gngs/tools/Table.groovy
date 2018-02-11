@@ -2,6 +2,8 @@ package gngs.tools
 
 import au.com.bytecode.opencsv.CSVWriter
 import gngs.Cli
+import gngs.RefGenes
+import gngs.Region
 import gngs.Utils
 import graxxia.CSV
 import graxxia.TSV
