@@ -21,8 +21,11 @@ package gngs
 import static RelationshipType.*
 
 import graxxia.TSV
+import static Sex.*
 
 class Pedigrees {
+    
+    final static List PED_COLUMNS = ['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']
 
     /**
      * Lookup table to find family by pedigree Id
@@ -87,21 +90,44 @@ class Pedigrees {
     /**
      * Parse a PED file to create a set of pedigrees from it
      * 
-     * @param pedFileName
+     * See {@link #parse(Reader,Closure)}
+     * 
+     * @param pedFileName   path to file
+     * @param c             filtering closure
+     * 
      * @return
      */
-    static Pedigrees parse(String pedFileName) {
+    static Pedigrees parse(String pedFileName, Closure c = null) {
         new File(pedFileName).withReader { r ->
-            parse(r)
+            parse(r,c)
         }
     }
     
     final static Set<String> NULL_VALUES = [".","0"]
     
-    static Pedigrees parse(Reader r) {
+    /**
+     * Parse a PED file from the given reader, with optional filtering via the provided closure
+     * 
+     * @param r the reader to read the PED file from
+     * @param c an optional Closure that will be called for each line (see {@link #PED_COLUMNS})
+     *          which will cause samples to be skipped from parsing if it returns false
+     * 
+     * @return  a Pedigrees object representing the families parsed from the PED file
+     */
+    static Pedigrees parse(Reader r, Closure c = null) {
         Map<String,Pedigree> families = [:]
         Map<String,Pedigree> subjectsToFamilies = [:]
-        List<Subject> subjects = new TSV(r,columnNames:['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']).collect { line ->
+        Map<String,Subject> validSubjects = [:]
+        List<Subject> subjects = new TSV(r,columnNames:PED_COLUMNS, columnTypes:[String,String,String,String,Integer,Integer]).findResults { line ->
+            
+            if(c != null) {
+                if(c(line) == false)
+                    return
+            }
+            
+            if(line.id in validSubjects)
+                throw new IllegalStateException("Sample $line.id is present multiple times in PED file")
+                
             
             if(!families.containsKey(line.familyId))
                 families[line.familyId] = new Pedigree(id:line.familyId)
