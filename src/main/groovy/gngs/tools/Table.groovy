@@ -12,7 +12,8 @@ class Table {
     
     static Map<String,List<String>> AUTO_COLUMN_NAMES = [
         bed: ['Chr', 'Start','End','Id'],
-        ped: ['Family','Sample','Father','Mother','Sex','Phenotype']
+        ped: ['Family','Sample','Father','Mother','Sex','Phenotype'],
+        vcf: { path -> ['Chr', 'Pos', 'Ref', 'Alt'] + new gngs.VCF(path).samples }
     ]
 
     static void main(String [] args) {
@@ -25,8 +26,10 @@ class Table {
             c 'Columns to show', longOpt: 'columns', args:1, required:false
             x 'Columns to exclude', longOpt: 'exclude', args:1, required:false
             filter 'Row filter: groovy expression to limit rows', args:Cli.UNLIMITED, required:false
+            gene 'Add a column with an HGNC gene symbol, based on interpreting the first 2 column BED style coordinates', required:false
             n 'Number of rows to show', args:1, required:false
             ofmt 'Output format: csv,tsv,txt default is text', args:1, required: false
+            // multi 'If there are empty lines, treat as multiple tables' // todo
             h 'Specify headers. If specified first row of data is treated as data', longOpt: 'headers', args:1, required:false
         }
         
@@ -47,7 +50,14 @@ class Table {
         }
         else
         if(fileExt in AUTO_COLUMN_NAMES) {
-            readOptions.columnNames = AUTO_COLUMN_NAMES[fileExt]
+            def autoMapper = AUTO_COLUMN_NAMES[fileExt]
+            if(autoMapper instanceof List)
+                readOptions.columnNames = autoMapper
+            else
+            if(autoMapper instanceof Closure)
+                readOptions.columnNames = autoMapper.call(file)
+            else
+                assert false
         }
                         
         def data
@@ -102,6 +112,10 @@ class Table {
         String outputFormat = 'txt'
         if(opts.ofmt)
             outputFormat = opts.ofmt
+            
+        if(opts.gene) {
+            annotateGenes(data)
+        }
         
         if(outputFormat == 'txt') {
             Utils.table(data[0]*.key, data.collect { it*.value })
@@ -136,6 +150,14 @@ class Table {
             for(Map row in data) {
                 csv.writeNext(row*.value.collect { String.valueOf(it) } as String [])
             }
+        }
+    }
+    
+    static void annotateGenes(List<Map> data) {
+        RefGenes refgenes = RefGenes.download()
+        data.each { Map row ->
+            List values = row*.value
+            row.Gene = refgenes.getGenes(new Region(values[0]  , values[1].toInteger(), values[2].toInteger())).join(',')
         }
     }
 }
