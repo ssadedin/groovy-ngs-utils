@@ -335,6 +335,11 @@ class Regions implements Iterable<Region> {
         }
     }
     
+    List<Region> regionsStartingAt(String chr, int pos) {
+        return startingAt(chr, pos)*.extra
+    }
+  
+    
     List<Range> startingAt(String chr, int pos) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
@@ -342,6 +347,17 @@ class Regions implements Iterable<Region> {
         
         return chrIndex.startingAt(pos)
     }
+    
+    /**
+     * Return a list of ranges that end exactly at the specified position.
+     *
+     * @param chr
+     * @param pos
+     * @return
+     */
+    List<Region> regionsEndingAt(String chr, int pos) {
+        return endingAt(chr, pos)*.extra
+    } 
     
     /**
      * Return a list of ranges that end exactly at the specified position.
