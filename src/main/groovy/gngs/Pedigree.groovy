@@ -69,6 +69,28 @@ class Subject {
         id + '(' + sex?.name() + ')'
     }
     
+    @CompileStatic
+    Subject createMother(String id) {
+        Subject s = new Subject()
+        s.id = id
+        s.sex = Sex.FEMALE
+        s.relationships << new Relationship(type:RelationshipType.MOTHER, to:this.id)
+        RelationshipType probandRel = this.sex == Sex.MALE ? RelationshipType.SON : RelationshipType.DAUGHTER 
+        this.relationships << new Relationship(type:probandRel, to:this.id) 
+        return s
+    }
+    
+    @CompileStatic
+    Subject createFather(String id) {
+        Subject s = new Subject()
+        s.id = id
+        s.sex = Sex.MALE
+        s.relationships << new Relationship(type:RelationshipType.FATHER, to:this.id)
+        RelationshipType probandRel = this.sex == Sex.MALE ? RelationshipType.SON : RelationshipType.DAUGHTER 
+        this.relationships << new Relationship(type:probandRel, to:this.id) 
+        return s
+    } 
+    
     String toJson() {
         JsonOutput.toJson(
             [
