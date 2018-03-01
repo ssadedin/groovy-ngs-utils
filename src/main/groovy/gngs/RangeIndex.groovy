@@ -774,12 +774,16 @@ class RangeIndex implements Iterable<IntRange> {
                         }
                     }
                     
-                    // Regions as extras violate the assumption that a Region extra reflects 
-                    // the same region as a range
-                    if(newExtra instanceof Region)
-                        newExtra = null
+                    currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to), null)
                     
-                    currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to),newExtra)
+                    // Regions as extras violate the assumption that a Region extra reflects 
+                    // the same region as a range. So we create a new region, but we 
+                    // preserve the properties
+                    if(newExtra instanceof Region) {
+                        Map props = ((Expando)newExtra).getProperties()
+                        newExtra = new Region(props,((Region)newExtra).chr, currentRange)
+                    }
+                    currentRange.extra = newExtra
                 }
                 else
                     currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to),null)
