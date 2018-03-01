@@ -347,5 +347,13 @@ class Pedigree {
             throw new IllegalArgumentException("Subject $fromId not found in this family")
         
         sub.id = toId
+        
+        // Have to reflect the new name in any relationships
+        this.individuals*.relationships.flatten().each { Relationship rel ->
+            if(rel.from == fromId)
+                rel.from = toId
+            if(rel.to == fromId)
+                rel.to = toId
+        }
     }
 }
