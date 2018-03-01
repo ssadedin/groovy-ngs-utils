@@ -30,9 +30,11 @@ class RegionsTest {
         
         result.each { println(it) }
         
+        result.each { println "from: " + it.from + "-" + it.to }
+        
         assert result.find { it.from == 100 && it.to == 129 }
         assert result.find { it.from == 120 && it.to == 129 }
-        assert result.find { it.from == 150 && it.to == 159 }
+        assert result.find { it.from == 151 && it.to == 160 }
         
     }
     
@@ -239,23 +241,79 @@ class RegionsTest {
        assert cov.find { it.overlaps('chr1', 110, 115) }.extra == 2 
     }
     
+// This behavior unfortunately forces the Regions to not set 
+// the added region as the extra info for the Region object,
+// which in turn means that iteration, etc, do not return the original
+// regions, which is very confusing. Therefore the behavior is changing such
+// that all regions added to a Regions object have themselves set as the extra
+// object on their ranges.
+//    
+//    @Test
+//    void 'extra should not be lost by reduce'() {
+//        
+//      Region r1 = new Region('chr1',new GRange(1,10,'foo'))
+//      assert r1.extra == 'foo'
+//      
+//      Regions regions = new Regions([
+//        r1,
+//        new Region('chr1', new GRange(5,25,'bar'))
+//      ])
+//                             
+//      Regions red = regions.reduce()
+//      red.each { r ->  println "$r \t: $r.extra" }
+//      assert red[0].extra == 'foo'
+//      
+//      Regions red2 = regions.reduce { e1, e2 ->
+//          e2.extra
+//      }
+//      
+//      assert red2[0].extra == 'bar'
+//      
+//    }
+    
+    
     @Test
-    void reduceExtra() {
+    void 'properties should not be lost by reduce'() {
         
+      Region r1 = new Region('chr1',1..10,foo:1)
+      assert r1.foo == 1
+      
       Regions regions = new Regions([
-        new Region('chr1',new GRange(1,10,'foo')),
-        new Region('chr1', new GRange(5,25,'bar'))
+        r1,
+        new Region('chr1', 5..25, bar:2)
       ])
                              
       Regions red = regions.reduce()
-      red.each { r ->  println "$r \t: $r.extra" }
-      assert red[0].extra == 'foo'
+      red.each { r ->  println "$r \t: $r.foo" }
+      
+      assert red[0].foo == 1
       
       Regions red2 = regions.reduce { e1, e2 ->
           e2.extra
       }
       
-      assert red2[0].extra == 'bar'
+      assert red2[0].bar == 2
       
+    } 
+    
+//    @Test
+    void testWiden() {
+        BED bed = new BED("/Users/simon.sadedin/work/stretch/chimerics/chimeric_regions.bed").load()
+        
+        Utils.time("Widen bed file by 100bp") {
+            bed.widen(100)
+        }
+    }
+    
+    @Test
+    void addExistingRegions() {
+        Region foo = new Region("chr1", 1..10, foo: 1)
+        
+        
+//        Regions regions = new Regions()
+//        regions.addRegion(foo)
+        
+        Regions regions = [foo] as Regions
+        assert regions.startingAt("chr1", 1)[0].extra == foo
     }
 }
