@@ -39,6 +39,18 @@ class Pedigrees {
     }
     
     /**
+     * Add the pedigree to this Pedigrees object
+     * 
+     * @param ped
+     */
+    void add(Pedigree ped) {
+        ped.individuals.each { Subject s ->
+            subjects[s.id] = ped
+        }
+        this.families[ped.id] = ped
+    }
+    
+    /**
      * Find the largest possible set of samples that are unrelated to 
      * the given sample. If null is passed, the maximal set of unrelated
      * samples from the entire set will be computed.
