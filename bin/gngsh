@@ -16,4 +16,4 @@ GNGS=$(dirname `dirname $0`)
 
 : ${GNGS_MEM:=8g}
 
-JAVA_OPTS="-Xmx$GNGS_MEM" groovysh -cp $GNGS/.eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar -e 'import gngs.*;'  $*
+JAVA_OPTS="-Xmx$GNGS_MEM $JAVA_OPTS" groovysh -cp $GNGS/.eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar -e 'import gngs.*;'  $*

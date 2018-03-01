@@ -32,4 +32,4 @@ then
     exit 1
 fi
 
-java -Xmx${GNGS_MEM} -cp $GROOVY_ALL_JAR:$GNGS/.eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar gngs.tools.${cmd} $*
+java -Xmx${GNGS_MEM} -cp $GROOVY_ALL_JAR:$GNGS/.eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar gngs.tools.${cmd} $@
