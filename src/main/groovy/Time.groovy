@@ -1,4 +1,6 @@
 
+import graxxia.Stats 
+
 class Time {
     
     static Hashtable<String,Stats> timings = new Hashtable()

@@ -5,6 +5,7 @@ import org.junit.Test;
 
 import gngs.BED
 import gngs.FASTA
+import gngs.FASTAIndex
 
 
 class FASTAIndexTest {
