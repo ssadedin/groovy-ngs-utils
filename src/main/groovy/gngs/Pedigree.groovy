@@ -319,6 +319,10 @@ class Pedigree {
        } 
     }
     
+    Subject getAt(String id) {
+        individuals.find { it.id == id }
+    }
+    
     Subject copySubject(String fromId, String toId) {
         Subject fromSub = this.individuals.find { it.id == fromId }
         if(fromSub == null)
