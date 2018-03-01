@@ -81,6 +81,12 @@ jar {
         if(details.relativePath.pathString.startsWith("groovy/"))
             return true
 
+        if(details.relativePath.pathString.contains("Log4jLoggerFactory"))
+            return true
+
+        if(details.relativePath.pathString.contains("slf4j"))
+            return true
+
         return false
     }
 
@@ -104,6 +110,6 @@ task doc << {
 }
 
 task wrapper(type: Wrapper) {
-    gradleVersion = '2.0'
+    gradleVersion = '4.3.1'
 }
 
