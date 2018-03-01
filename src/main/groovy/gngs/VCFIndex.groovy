@@ -322,7 +322,7 @@ class VCFIndex {
               
               byte [] buffer = new byte[block.size+1]
               
-              int bufferIndex = (int)Math.floor(block.startPosition / (long)ONE_GIG)
+              int bufferIndex = (int)Math.floor((double) block.startPosition / (long)ONE_GIG)
               
               if(bufferIndex > vcfBuffers.size())
                   throw new RuntimeException("Trying to access position beyond end of buffer $block.startPosition maps to buffer $bufferIndex")
