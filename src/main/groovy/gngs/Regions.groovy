@@ -104,6 +104,12 @@ class Regions implements Iterable<Region> {
      */
     Regions(Map attributes=[:], Iterable<IRegion> regions) {
         for(IRegion r in regions) {
+            
+            if(r instanceof Region) {
+                this.addRegion((Region)r)
+                continue
+            }
+            
             Range range = r.range
             if(r.range instanceof GRange)
                 addRegion(r.chr, range.from, range.to, range.extra)
