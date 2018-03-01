@@ -54,7 +54,7 @@ enum Sex {
         if(value instanceof String)
             value = value?.trim()
 		if(!value)
-			return FEMALE
+			return UNKNOWN
             
         if(codes.containsKey(value))
             return codes[value]
