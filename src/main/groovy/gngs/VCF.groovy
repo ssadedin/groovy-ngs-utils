@@ -1015,6 +1015,14 @@ class VCF implements Iterable<Variant> {
         return counts[false] / (double)(counts[false] + counts[true])
     }
     
+    Sex guessSex(String sampleId) {
+        if(!this.samples.contains(sampleId))
+            throw new IllegalArgumentException("Sample $sampleId is not contained in this VCF")
+            
+        guessSex(this.samples.indexOf(sampleId))
+    }
+    
+    
     /**
      * Attempt to guess the sex of a human VCF file by sampling high quality 
      * variants on the X chromosome.
@@ -1031,7 +1039,7 @@ class VCF implements Iterable<Variant> {
      * @param vcf
      * @return  estimated Sex of sample
      */
-    Sex guessSex(VCF vcf, int sampleIndex = 0) {
+    Sex guessSex(int sampleIndex = 0) {
         
         // open the VCF and sample 100 variants from the X and Y chromosomes
         VCFIndex index = new VCFIndex(fileName)
@@ -1043,9 +1051,9 @@ class VCF implements Iterable<Variant> {
                 chr = 'X'
             }
         }
-        else {
-            System.err.println "WARNING: No contig index - assuming chrX for sex chromosome"
-        }
+//        else {
+//            System.err.println "WARNING: No contig index - assuming chrX for sex chromosome"
+//        }
         
         int sexEstimationVariantCount = 500
         
