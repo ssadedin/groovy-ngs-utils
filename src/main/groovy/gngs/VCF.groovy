@@ -733,9 +733,9 @@ class VCF implements Iterable<Variant> {
             valueType = "Double"
         }
                      
-        this.headerLines = this.headerLines[0..lastInfo] + 
+        this.headerLines = this.headerLines[0..<lastInfo] + 
             ["##INFO=<ID=$id,Number=1,Type=${valueType},Description=\"$desc\">"] +
-            this.headerLines[(lastInfo+1)..-1]
+            this.headerLines[lastInfo..-1]
                         
         // Clear any cached meta data so it will get reparsed
         this.infoMetaDatas = null;
