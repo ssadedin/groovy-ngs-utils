@@ -87,21 +87,32 @@ class Region extends Expando implements IRegion, Serializable {
     Region() {
     }
     
-    Region(String region) {
+    Region(Map props=null, String region) {
         parseRegion(region)
         this.range.extra = this
+        setProps(props)
     }
     
-    Region(String chr, Range range) {
+    Region(Map props=null, String chr, Range range) {
         this.chr = chr
         this.range = range
+        setProps(props)
     }
     
-    Region(String chr, int from, int to) {
+    Region(Map props=null, String chr, int from, int to) {
         this.chr = chr
         this.range = (from..to)
+        setProps(props)
     }
-  
+    
+    @CompileStatic
+    private void setProps(Map props) {
+       if(props == null) 
+           return
+       for(Map.Entry e in props) {
+           this.setProperty((String)e.key, e.value)
+       }
+    }
     
     @CompileStatic
     void parseRegion(String region) {
