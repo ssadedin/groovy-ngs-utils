@@ -1126,4 +1126,8 @@ class VCF implements Iterable<Variant> {
             index = new VCFIndex(fileName)
         return index
     }
+    
+    String toString() {
+        "VCF ${this.fileName != null ? ('file ' + this.fileName) : '' } for ${samples?.join(',')}"
+    }
 }
