@@ -98,7 +98,20 @@ class VariantTest {
     }
     
     Variant var(String line) {
-        Variant.parse(line.replaceAll(' {1,}','\t'))
+        VCF vcf = new VCF()
+        vcf.lastHeaderLine = ['CHROM','POS','REF','ALT','QUAL','FILTER','INFO','FORMAT','JOHNSMITH'] as String[]
+        vcf.headerLines = [
+            '##fileformat=VCFv4.2', 
+            '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
+            '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">',
+            '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">',
+            '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
+            vcf.lastHeaderLine.join('\t')
+        ]
+        vcf.samples = ['JOHNSMITH']
+        Variant v = Variant.parse(line.replaceAll(' {1,}','\t'))
+        v.header = vcf
+        return v
     }
     
     @Test
@@ -236,8 +249,30 @@ class VariantTest {
         assert impact == "HIGH"
     }
     
+//    @Test
+    void testUpdateOld() {
+        v = var("chr10    46963776    .   C   <DEL> 20.00   PASS")
+        v.update('unit test') {
+            v.info.hi = 'there'
+        }
+        
+        assert v.info.hi == 'there'
+        
+        VCF vcf = VCF.parse("/Users/simon.sadedin/work/cpipe/designs/MOLGEN_CFTR_01/cftr_diagnostic.vcf")
+        vcf.each { v -> v.update('cftr diagnostic annotation') { v.info.Dx='1' } }
+    }
+    
     @Test
     void testUpdate() {
+        v = var("chr10    46963776    .   C   <DEL> 20.00   PASS FOO=1  GT:DP:AD 0/0:1:20,30")
         
+        VCF header = v.header
+        
+        v.update('unit test') {
+            v.genoTypes[0].DP = 10
+        }
+        
+        assert v.line.contains(':10:')
+        assert v.getTotalDepth('JOHNSMITH') == 10
     }
 }
