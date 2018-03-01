@@ -165,7 +165,7 @@ class VCF implements Iterable<Variant> {
     
     VCF(Iterable<Variant> variants) {
         if(variants.iterator().hasNext()) {
-            Variant v = variants[0]
+            Variant v = variants.first()
             if(v.header != null)
                 this.headerLines.addAll(v.header.headerLines)
         }
