@@ -19,6 +19,7 @@
  */
 package gngs
 
+import groovy.lang.IntRange
 import groovy.transform.CompileStatic
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMTagUtil
@@ -166,6 +167,11 @@ class SAMRecordPair implements Comparable {
     }
     
     @CompileStatic
+    String getR1ReferenceName() {
+        r1 != null ? r1.referenceName : r2.mateReferenceName
+    } 
+    
+    @CompileStatic
     int getR1ReferenceIndex() {
         r1 != null ? r1.referenceIndex : r2.mateReferenceIndex
     }
@@ -230,7 +236,30 @@ class SAMRecordPair implements Comparable {
     
     @CompileStatic
     String toString() {
-        this.readName + ": " + leftPosition + " - " + rightPosition
+        if(this.r1ReferenceIndex == this.r2ReferenceIndex)
+            this.readName + " @ " + r1Position + "-" + r2Pos
+        else
+            this.readName + " @ " + leftPosition + "-" + rightPosition
+    }
+    
+    @CompileStatic
+    boolean overlaps(Region region) {
+        int r1p = r1Pos
+        int r2p = r2Pos
+        
+        String chr = this.r1ReferenceName
+        if(this.isChimeric()) {
+            if(r1p < r2p)
+                return (chr == region.chr) && (r1p > region.from) && (r1p < region.to)
+            else
+                return (chr == region.chr) && (r2p > region.from) && (r1p < region.to)
+        }
+        else {
+            if(r1p < r2p)
+                return region.overlaps(chr, r1p, r2p)
+            else
+                return region.overlaps(chr, r2p, r1p)
+        }
     }
 }
 
