@@ -137,16 +137,23 @@ class Pedigrees {
             Subject s = new Subject(id: line.id, sex: Sex.decode(sex), phenoTypes:[line.phenotype])
             
             RelationshipType childType = s.sex == Sex.FEMALE ? DAUGHTER : SON
-            if(line.paternalId && !NULL_VALUES.contains(line.paternalId))
+            if(line.paternalId && !NULL_VALUES.contains(line.paternalId)) {
+                if(validSubjects[line.paternalId]?.sex == FEMALE)
+                    throw new IllegalStateException("Sex for $line.paternalId, father of sample $line.id is declared as female")
                 s.relationships.add(new Relationship(type:childType,from:s.id, to: line.paternalId))
-                
-            if(line.maternalId && !NULL_VALUES.contains(line.maternalId))
+            }
+              
+            if(line.maternalId && !NULL_VALUES.contains(line.maternalId)) {
+                if(validSubjects[line.maternalId]?.sex == MALE)
+                    throw new IllegalStateException("Sex for $line.maternalId, mother of sample $line.id is declared as male") 
                 s.relationships.add(new Relationship(type:childType,from:s.id, to: line.maternalId)) 
+            }
             
             p.individuals.add(s)
             p.phenoTypes.add(line.phenotype)
             
             subjectsToFamilies[s.id] = p
+            validSubjects[s.id] = s
             return s
         }
         
@@ -178,7 +185,22 @@ class Pedigrees {
         
         Pedigrees result = new Pedigrees(families:families, subjects: subjectsToFamilies)
         result.families.each { id, ped -> ped.validate() }
+        
+//        validate()
+        
         return result
+    }
+    
+    void validate() {
+        for(Subject s in allSubjects()) {
+            Subject m = motherOf(s.id)
+            if(m?.sex == MALE)
+                throw new IllegalStateException("Mother ${m.id} is specified as male for sample $s.id")
+                
+            Subject dad = fatherOf(s.id)
+            if(dad?.sex == FEMALE)
+                throw new IllegalStateException("Father ${dad.id} is specified as female for sample $s.id")
+        }
     }
     
 	Subject motherOf(String id) {
@@ -252,6 +274,25 @@ class Pedigrees {
         }
     }
     
+    void renameFamily(String id, String newId) {
+        Pedigree ped = this.families.remove(id)
+        if(ped == null)
+            throw new IllegalArgumentException("Family $id is not known")
+            
+        ped.id = newId
+        this.families[newId] = ped
+    }
+    
+    List<Subject> getAllSubjects() {
+        this.families*.value*.individuals.sum()
+    }
+    
+    /**
+     * Get Subject by their id
+     * 
+     * @param id
+     * @return
+     */
 	Subject getAt(String id) {
 		subjects[id]?.individuals.find { it.id == id }
 	}
