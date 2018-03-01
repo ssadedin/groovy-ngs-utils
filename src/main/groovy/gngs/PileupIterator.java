@@ -18,6 +18,13 @@ import htsjdk.samtools.SAMRecordIterator;
  */
 public class PileupIterator implements Iterator<PileupIterator.Pileup> {
     
+    final static int INDEX_A = 0;
+    final static int INDEX_T = 1;
+    final static int INDEX_C = 2;
+    final static int INDEX_G = 3;
+    final static int INDEX_DEL = 4;
+    final static int INDEX_TOTAL = 5;
+    
     /**
      * Inner class that captures pileup state at a specific position
      * 
