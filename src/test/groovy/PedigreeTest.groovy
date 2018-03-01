@@ -45,4 +45,27 @@ class PedigreeTest {
         println "Unrelated set for Q00013 = $unsetAll"
     }
 
+    @Test
+    void testRenameSubject() {
+        
+        Pedigree pedigree = new Pedigree(id:'TestPed')
+        
+        Subject child = new Subject(id:'child', sex:MALE)
+        pedigree.individuals << child
+        
+        Subject mum = child.createMother('mum')
+        pedigree.individuals << mum
+        pedigree.individuals << child.createFather('dad')
+        
+        println pedigree
+        
+        assert pedigree.motherOf(child.id).is(mum)
+        
+        pedigree.renameSubject('child','kid')
+        
+        assert child.id == 'kid'
+        
+        assert pedigree.motherOf(child.id).is(mum) : 'After renaming, mother should still be mother of child'
+        
+    }
 }
