@@ -1,3 +1,4 @@
+package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,11 +19,6 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-import gngs.Abort
-import gngs.BED
-import gngs.FASTA
-import gngs.ProgressCounter
-import gngs.Regions
 import groovy.transform.CompileStatic;
 import htsjdk.samtools.util.SequenceUtil;
 
