@@ -610,14 +610,18 @@ class Variant implements IRegion {
         
         fields[7] = getInfo().collect {k,v -> v != null?"$k=$v":k}.join(';')
         
+        if(this.@genoTypes) {
+            fields[9] = genoTypeFields.collect { fieldName -> 
+                genoTypes[fieldName] instanceof List ? genoTypes[fieldName].join(',') : genoTypes[fieldName]
+            }.join(':')
+        }
+        
         line = fields.collect { it?:'' }.join('\t')
         
         // Check if we need to add an INFO header line
         if(this.header != null) {
             getInfo().collect { k,v ->
-                
                 if(!header.hasInfo(k)) {
-                    
                     header.addInfoHeader(k,desc,v)
                 }
            }
