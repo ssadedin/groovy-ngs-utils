@@ -378,24 +378,27 @@ class SAM {
      * Iterate over each record in the same file in the order they are in the file
      * @param c
      */
-    void eachRecord(Closure c) {
-        use(SAMRecordCategory) {
-            
-            SAMFileReader reader = this.newReader()
+    void eachRecord(Map options=[:], Closure c) {
+        SAMFileReader reader = this.newReader()
+        if(options.fast) { 
+            reader.enableCrcChecking(false)
+            reader.enableIndexCaching(true)
+            reader.enableIndexMemoryMapping(true)
+        }
+        
+        try {
+            SAMRecordIterator i = reader.iterator()
             try {
-                SAMRecordIterator i = reader.iterator()
-                try {
-                    while(i.hasNext()) {
-                        c(i.next())
-                    }
-                }
-                finally {
-                    i.close()
+                while(i.hasNext()) {
+                    c(i.next())
                 }
             }
             finally {
-                reader.close()
+                i.close()
             }
+        }
+        finally {
+            reader.close()
         }
     }
     

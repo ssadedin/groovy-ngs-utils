@@ -23,6 +23,8 @@ import groovy.lang.IntRange
 import groovy.transform.CompileStatic
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMTagUtil
+import htsjdk.samtools.SAMUtils
+import htsjdk.samtools.util.SequenceUtil
  
 /**
  * Models a read pair, where one of the reads might be missing.
@@ -172,6 +174,11 @@ class SAMRecordPair implements Comparable {
     } 
     
     @CompileStatic
+    String getR2ReferenceName() {
+        r2 != null ? r2.referenceName : r1.mateReferenceName
+    } 
+  
+    @CompileStatic
     int getR1ReferenceIndex() {
         r1 != null ? r1.referenceIndex : r2.mateReferenceIndex
     }
@@ -216,7 +223,7 @@ class SAMRecordPair implements Comparable {
     @CompileStatic
     String getR1Position() {
         
-        if(r1) {
+        if(r1 != null) {
             r1.referenceName + ':' + r1.alignmentStart
         }
         else {
@@ -226,7 +233,7 @@ class SAMRecordPair implements Comparable {
     
     @CompileStatic
     String getR2Position() {
-        if(r2) {
+        if(r2 != null) {
             r2.referenceName + ':' + r2.alignmentStart
         }
         else {
@@ -243,7 +250,37 @@ class SAMRecordPair implements Comparable {
     }
     
     @CompileStatic
+    int getReadLength() {
+        if(r1 != null)
+            r1.readLength
+        else
+            r2.readLength
+    }
+    
+    /**
+     * @return true if either r1 or r2 is unmapped
+     */
+    @CompileStatic
+    boolean getUnmapped() {
+        if(r1 != null)
+            return r1.readUnmappedFlag || r1.mateUnmappedFlag
+        else
+            return r2.readUnmappedFlag || r2.mateUnmappedFlag
+    }
+    
+    @CompileStatic
     boolean overlaps(Region region) {
+        String chr = this.r1ReferenceName
+        int r1p = r1Pos
+        int len = this.readLength
+        if(region.overlaps(chr, r1p, r1p+len)) 
+            return true
+        
+        int r2p = r2Pos
+        return region.overlaps(r2ReferenceName, r2p, r2p+len)
+    }
+    
+    boolean spanOverlaps(Region region) {
         int r1p = r1Pos
         int r2p = r2Pos
         
@@ -260,6 +297,62 @@ class SAMRecordPair implements Comparable {
             else
                 return region.overlaps(chr, r2p, r1p)
         }
+    }
+    
+    @CompileStatic
+    void write(Writer out) {
+        
+        StringBuilder b = new StringBuilder(500)
+        b.setLength(0)
+        this.appendTo(b)
+        out.println(b.toString())
+    }
+    
+    @CompileStatic
+    void appendTo(final StringBuilder b, boolean addPosition=false) {
+        String r1Name = r1.readName
+        StringBuilder nameSuffix = null
+        
+        if(addPosition) { 
+            nameSuffix = new StringBuilder()
+            nameSuffix.append(':')
+            nameSuffix.append(r1.referenceName)
+            nameSuffix.append(':')
+            nameSuffix.append(r1.alignmentStart)
+            nameSuffix.append(':')
+            if(r1.referenceIndex != r2.referenceIndex)
+                nameSuffix.append(r2.referenceName)
+            nameSuffix.append(r2.alignmentStart)
+        }
+           
+        // R1
+        b.append()
+        b.append('@')
+        b.append(r1Name)
+        if(nameSuffix != null) { 
+            b.append((CharSequence)nameSuffix)
+        }        
+        b.append(' 1:N:0:1\n')
+        b.append(r1.readString)
+        b.append('\n+\n')
+        b.append(r1.baseQualityString)
+            
+        // R2
+        b.append('\n@')
+        b.append(r1Name)
+        if(nameSuffix != null) { 
+            b.append((CharSequence)nameSuffix)
+        }        
+        
+        b.append(' 2:N:0:1\n')
+        b.append(SequenceUtil.reverseComplement(r2.readString))
+        b.append('\n+\n')
+        
+        byte [] bq = r2.baseQualities
+        for(int i=bq.length-1; i>=0; --i) {
+            b.append(SAMUtils.phredToFastq(bq[i]))
+        }
+        b.append('\n')
     }
 }
 
