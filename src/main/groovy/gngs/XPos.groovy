@@ -28,13 +28,18 @@ class XPos {
            case "MT":
                 return 24 
             default:
-                return chr.toInteger()-1
+                return chr.isInteger() ? chr.toInteger()-1 : 99
         }
     }
     
-    static final String [] INT_CHRS = (
-        (1..22).collect { String.valueOf(it) } + ["X","Y","M"]
-        ) as String[]
+    static final String [] INT_CHRS  = new String[100]
+    
+    static {
+        ((1..22).collect { String.valueOf(it) } + ["X","Y","M"]).eachWithIndex { String chr, int index ->
+            XPos.INT_CHRS[index] = chr
+        }
+        INT_CHRS[99] = "Unk"
+    }
     
     @CompileStatic
     public static String intToChr(int chrInt) {
