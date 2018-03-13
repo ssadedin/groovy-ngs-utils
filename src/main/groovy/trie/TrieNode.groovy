@@ -65,7 +65,7 @@ class TrieNode<T> {
         return node.getAt(key.substring(1))       
     }
     
-    static TrieMismatchCosts DEFAULT_COSTS = new TrieMismatchCosts()
+    public static TrieMismatchCosts DEFAULT_COSTS = new TrieMismatchCosts()
     
     @CompileStatic
     List<TrieQuery> startsWith(String key, TrieQuery query, int maxValues = DEFAULT_MAX_VALUES) {
