@@ -42,7 +42,7 @@ class Table {
         if(!opts.i && opts.arguments())
             file = opts.arguments()[0]
             
-        String fileExt = file.replaceAll(/^.*\./,'')
+        String fileExt = file ? file.replaceAll(/^.*\./,'') : null
 
         Map readOptions = [:]
         if(opts.h) {
