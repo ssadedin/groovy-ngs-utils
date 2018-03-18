@@ -50,6 +50,14 @@ class PairScanner {
     
     int numLocators 
     
+    boolean throttleWarning = false
+    
+    /**
+     * If more than this number of reads are unwritten, assume that we are
+     * limited by downstream ability to consume our reads and start backing off
+     */
+    int maxWriteBufferSize = 3000000
+    
     PairScanner(Writer writer, int numLocators, Regions regions = null) {
         this.pairWriter = new PairWriter(writer)
         this.formatter = new PairFormatter(1000 * 1000, pairWriter)
@@ -117,6 +125,7 @@ class PairScanner {
         final int locatorSize = locatorIndex.size()
         final int shardId = this.shardId
         final int shardSize = this.shardSize
+        final int maxBufferedReads = this.maxWriteBufferSize
         
         final SAMFileReader reader = bam.newReader()
         reader.enableCrcChecking(false)
@@ -133,8 +142,17 @@ class PairScanner {
                     int hash = read.readName.hashCode()
                     int locatorOffset = hash % locatorSize
                     PairLocator locator = locatorIndex[locatorOffset]
-                    if(locator != null)
+                    if(locator != null) {
                         locator << read 
+                        if(pairWriter.pending > maxBufferedReads) {
+                            if(!throttleWarning) {
+                                log.info "Throttling output due to slow downstream consumption of reads"
+                                throttleWarning = true
+                            }
+                            Thread.sleep(50)
+                        }
+                    }
+                        
                 }
             }
             finally {

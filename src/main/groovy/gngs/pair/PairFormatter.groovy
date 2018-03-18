@@ -1,11 +1,15 @@
 package gngs.pair
 
+import gngs.CompactReadPair
 import gngs.SAMRecordPair
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.actor.DefaultActor
 import groovyx.gpars.util.DefaultMessageQueue
+import htsjdk.samtools.SAMRecord
+import htsjdk.samtools.SAMUtils
+import htsjdk.samtools.util.SequenceUtil
 
 @CompileStatic
 @Log
@@ -45,20 +49,22 @@ class PairFormatter extends DefaultActor {
                     terminate()
                 }
                 else {
-                    process((SAMRecordPair) msg)
+                    List msgList = (List)msg
+                    process((CompactReadPair)msgList[0], (SAMRecord)msgList[1])
                 }
                 
             }
         }
     }
     
-    void process(SAMRecordPair pair) {
-        pair.appendTo(buffer, this.addPosition)
+    void process(CompactReadPair pair, SAMRecord r2) {
+        pair.appendTo(buffer, r2, this.addPosition)
         assert writer != null
         assert buffer != null
         
         if(buffer.size() > maxBufferSize) {
             writer << [ content: buffer.toString(), reads: buffered ]
+            writer.pending.addAndGet(buffered)
             buffer.setLength(0)
             formatted += buffered
             buffered = 0

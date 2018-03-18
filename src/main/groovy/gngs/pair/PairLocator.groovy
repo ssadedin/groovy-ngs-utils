@@ -17,7 +17,7 @@ class PairLocator extends DefaultActor {
     /**
      * Read pairs we are indexing, keyed on name
      */
-    Map<String,SAMRecordPair> buffer 
+    Map<String,CompactReadPair> buffer 
     
     Actor consumer
     
@@ -28,6 +28,8 @@ class PairLocator extends DefaultActor {
     int chimeric
     
     Regions regions
+    
+    String debugRead = null // "SN7001291:342:HFMC7BCXX:2:1102:7840:64817"
     
     PairLocator(Actor consumer) {
         this.consumer = consumer
@@ -56,46 +58,56 @@ class PairLocator extends DefaultActor {
         if(record.secondaryOrSupplementary)
             return
         
-        SAMRecordPair pair = buffer[record.readName]
+        final String readName = record.readName
+        CompactReadPair pair = buffer[readName]
         if(pair) {
-            pair.r2 = record
-            consumer << pair
-            buffer.remove(record.readName)
+            consumer << [pair, record]
+            buffer.remove(readName)
             paired += 2
             return
         }
         
         // Pair not found - create a new one
-        pair = new SAMRecordPair(r1: record)
+        pair = new CompactReadPair(record)
         
         // Is it or its mate located in the desired regions?
         if(regions != null) 
-            if(notInRegion(pair))
+            if(readName == debugRead) {
+                log.info "Debug read: $record"
+            }
+            
+            if(notInRegion(pair, readName == debugRead)) {
+                if(readName == debugRead)
+                    log.info "$readName filtered out"
                 return
+            }
         
         if(pair.chimeric)
             ++this.chimeric
             
-        buffer[record.readName] = pair
+        buffer[readName] = pair
     }
     
-    boolean notInRegion(SAMRecordPair pair) {
+    boolean notInRegion(CompactReadPair pair, boolean debug) {
         
         if(pair.unmapped) {
             return false
         }
         
-        String chr1 = pair.r1ReferenceName
-        int r1p = pair.r1Pos
-        int len = pair.readLength 
+        final String chr1 = pair.r1ReferenceName
+        final int r1p = pair.r1AlignmentStart
+        final int len = pair.readLength
         if(regions.overlaps(chr1, r1p , r1p+len))
             return false
         
-        String chr2 = pair.r2ReferenceName
-        int r2p = pair.r2Pos
+        final String chr2 = pair.r2ReferenceName?:chr1
+        final int r2p = pair.r2AlignmentStart
         if(regions.overlaps(chr2, r2p , r2p+len)) {
             return false 
         }
+        
+        if(debug)
+            log.info "Regions do not overlap $chr2:$r2p-${r2p+len}"
        
         return true
     }
