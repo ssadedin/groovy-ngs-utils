@@ -39,7 +39,7 @@ easily write command line scripts, such as:
 ```
 
 These are only examples and barely scratch the surface of all the functions built into
-groovy-ngs-utils. You can documentation about the individual classes and methods
+groovy-ngs-utils. You can find documentation about the individual classes and methods
 in the [API Documentation](http://ssadedin.github.io/groovy-ngs-utils/doc/index.html)
   
 Everything is built upon Samtools, Picard Tools, BioJava and Apache commons-math. The jar file that 
