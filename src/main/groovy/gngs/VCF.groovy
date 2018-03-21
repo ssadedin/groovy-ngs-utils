@@ -53,43 +53,61 @@ class StopParsingVCFException extends Exception {
  * VCF files.
  * <p>
  * The primary method is the {@link #parse(Closure)} method which can be
- * optionally passed a file name, stream, or if left out, will parse
- * from standard input. When a Closure is supplied, it can be used for
- * filtering and updating the VCF file as it is read. Each record is passed
- * to the closure as it is read, and if false is returned
- * from the closure it will be discarded. Various forms of information can
- * be queried - the INFO section is parsed to a map and genotype information
- * is available as well as computed dosage for each variant (0,1,2). Support
- * for SnpEff annotations is also provided with a dedicated snpEffInfo property
- * that returns a list of {@link SnpEffInfo} objects describing the various
- * annotations available.
+ * optionally passed a file name, stream, or if left out, will parse from
+ * standard input. When a Closure is supplied, it can be used for filtering and
+ * updating the VCF file as it is read. Each record is passed to the closure as
+ * it is read, and if false is returned from the closure it will be discarded:
+ * 
+ * <pre>
+ * // Let's find all the indels on chr10!
+ * vcf = VCF.parse('test.vcf') { v ->
+ *   v.chr == 'chr10' && (v.type == 'INS' || v.type == 'DEL')
+ * }
+ * </pre>
+ * 
+ * Various forms of information can be queried - the INFO section is parsed to a
+ * map and genotype information is available, referred to as the "dosage" for each
+ * sample with respect to the variant (an integer number of copies, 0,1,2). 
+ * Support for SnpEff and VEP annotations is also provided via
+ * dedicated properties that return a list of {@link SnpEffInfo}
+ * objects describing the various annotations available. See the {@link Variant}
+ * class for more information about individual variants.
  * <p>
- * Most information is lazily computed so the cost of parsing complex fields is
- * deferred unless they are asked for.
+ * Note that most information is lazily computed so the cost of parsing complex
+ * fields is deferred unless they are asked for.
  * <p>
- * VCF variants can be updated by entering an update closure:
+ * Updating variants requires a special procedure because related fields need to
+ * be sycnhronised after modification, and it is a strong convention to add a
+ * header line describing updates. An {@link #update} method provides a closure
+ * based mechanism to make this straight forward:
  * <pre>
  * v.update { v.info.FOO='bar' }
  * </pre>
  * <p>
  * Limited support for "Pedigrees" is available. At the moment only grouping of
- * samples into families is supported and intra-family relationships are not modeled.
+ * samples into families is supported and intra-family relationships are not
+ * modeled.
  * <p>
- * The Iterable interface and "in" operator are supported so that you can do common
- * iteration and membership tests:
+ * The Iterable interface and "in" operator are supported, allowing all the normal
+ * Groovy collection-manipulation methods.  For example, you can do
+ * common iteration and membership tests:
  * <p>
  * <code>
  * for(Variant v in vcf) { 
  *   if(v in vcf2) { ... } 
  * }
  * </code>
+ * or grouping, counting, etc:
+ * <code>
+ * vcf.countBy { it.chr } // Count of variants by chromosome
+ * </code>  
  * <p>
- * If your desire is to lookup a specific region in a very large VCF file, you should
- * index the VCF file and use the {@link VCFIndex} class to query the region
- * specifically.
+ * If your desire is to lookup a specific region in a very large VCF file, you
+ * should index the VCF file and use the {@link VCFIndex} class to query the
+ * region specifically.
  * <p>
- * To stream a VCF without storing in memory, use the {@link #filter(Closure)} methods
- * which will print output, including header, directly to the output.
+ * To stream a VCF without storing in memory, use the {@link #filter(Closure)}
+ * methods which will print output, including header, directly to the output.
  *
  * @author simon.sadedin@mcri.edu.au
  */

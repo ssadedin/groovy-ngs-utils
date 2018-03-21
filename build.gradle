@@ -99,7 +99,7 @@ jar {
 }
 
 groovydoc {
-    
+    overviewText = resources.text.fromFile('src/main/groovy/overview.html')
 }
 
 task doc << {

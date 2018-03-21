@@ -1,3 +1,22 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) 2018 Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 package gngs.tools
 
 import gngs.*
@@ -6,7 +25,18 @@ import gngs.pair.PairScanner
 import groovy.util.logging.Log
 import groovyx.gpars.actor.DefaultActor
 
-
+/**
+ * Extracts read pairs from BAM or CRAM files sorted in coordinate order.
+ * <p>
+ * Extracting paired reads from BAM files when sorted in coordinate order is 
+ * problematic because each read's mate may be stored at a distance from the read
+ * itself within the BAM file. Random lookup of each mate is too slow, so it is
+ * necessary to buffer reads until their mate becomes available through efficient
+ * linear scan. This in turn however leads to significant memory usage, requiring
+ * careful design to balance performance and memory.
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 class Pairs extends ToolBase {
     
