@@ -1,9 +1,23 @@
-    <h1>Gooooooooroovy NGS Utils</h1>
+<h1>Groovy NGS Utils</h1>
 
-    <p>A set of Groovy libraries for working with Next Generation Sequencing data.
+<p>A set of Groovy and scripting support for working with Next Generation Sequencing data.<p>
 
-    I wonder why it doesn't print the rest of the text.
+<p>
+   Groovy NGS Utils is designed to support easy creation of small to medium size 
+   scripts that work with modern high throughput sequencing data, with high
+   levels of performance.
+</p>
+<p>There are classes supporting a wide range of functionality including:
+<ul>
+    <li>Parsing VCF files and working with the variants inside them, including annotations
+    <li>Parsing SAM and BAM files and working with reads
+    <li>Parsing BED files and other formats representable as genomic intervals,
+        and performing operations on these intervals
+    <li>Working with FASTA, FASTQ and related formats
+    <li>Many other miscellaneous functions!
+</ul>
 
-    <ul>
-        <li>Who knows?</li>
-    </ul>
+<p>Apart from providing all these individual classes, an important aspect is that
+   all of these classes and interfaces interoperation. For example, a <code>Variant</code>
+   implements the <code>IRegion</code> interface, and thus can be used with most of the
+   APIs related to genomic intervals, etc</p>
