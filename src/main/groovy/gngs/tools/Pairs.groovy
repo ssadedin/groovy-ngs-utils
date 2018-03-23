@@ -56,7 +56,7 @@ class Pairs extends ToolBase {
         }
         
         out.withWriter { 
-            PairScanner scanner = new PairScanner(out, opts.n ? opts.n.toInteger():4, opts.L?getRegions():null)
+            PairScanner scanner = new PairScanner(out, opts.n ? opts.n.toInteger():4, opts.L?getRegions():null, opts.f?:null)
             if(opts.s) {
                 if(!opts.s ==~ /[0-9]*,[0-9*]/)
                     throw new IllegalArgumentException("Please provide shard number and total number of shards in form s,N to -s")
@@ -120,6 +120,7 @@ class Pairs extends ToolBase {
             s 'Sharding factor: format <n>,<N>: output only reads belonging to shard n of N', args:1, required: false
             namepos 'Add original position to the read names', required:false
             'L' 'Regions to include reads (and mates of reads) from', longOpt: 'regions', args:1, required: false
+            'f' 'Filter using specified groovy expression', longOpt: 'filter', args:1, required: false
             o 'Output file', args:1, required: false
         }
     }

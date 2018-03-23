@@ -20,6 +20,7 @@
 package gngs.pair
 
 import gngs.CompactReadPair
+import gngs.ReadPair
 import gngs.SAMRecordPair
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
@@ -80,15 +81,22 @@ class PairFormatter extends DefaultActor {
                 }
                 else {
                     List msgList = (List)msg
-                    process((CompactReadPair)msgList[0], (SAMRecord)msgList[1])
+                    process((ReadPair)msgList[0], (SAMRecord)msgList[1])
                 }
                 
             }
         }
     }
     
-    void process(CompactReadPair pair, SAMRecord r2) {
-        pair.appendTo(buffer, r2, this.addPosition)
+    void process(ReadPair pair, SAMRecord r2) {
+        
+        if(pair instanceof CompactReadPair) {
+            pair.appendTo(buffer, r2, this.addPosition)
+        }
+        else {
+            ((SAMRecordPair)pair).appendTo(buffer, this.addPosition)
+        }
+        
         assert writer != null
         assert buffer != null
         

@@ -31,12 +31,12 @@ import htsjdk.samtools.SAMRecord
 
 @CompileStatic
 @Log
-class PairLocator extends DefaultActor {
+class PairLocator<PairType extends ReadPair> extends DefaultActor {
     
     /**
      * Read pairs we are indexing, keyed on name
      */
-    Map<String,CompactReadPair> buffer 
+    Map<String,PairType> buffer 
     
     Actor consumer
     
@@ -49,6 +49,8 @@ class PairLocator extends DefaultActor {
     Regions regions
     
     String debugRead = null // "SN7001291:342:HFMC7BCXX:2:1102:7840:64817"
+    
+    boolean compact = true
     
     PairLocator(Actor consumer) {
         this.consumer = consumer
@@ -78,8 +80,10 @@ class PairLocator extends DefaultActor {
             return
         
         final String readName = record.readName
-        CompactReadPair pair = buffer[readName]
+        PairType pair = buffer[readName]
         if(pair) {
+            if(pair instanceof SAMRecordPair)
+                pair.r2 = record
             consumer << [pair, record]
             buffer.remove(readName)
             paired += 2
@@ -87,8 +91,11 @@ class PairLocator extends DefaultActor {
         }
         
         // Pair not found - create a new one
-        pair = new CompactReadPair(record)
-        
+        if(compact)
+            pair = new CompactReadPair(record)
+        else
+            pair = new SAMRecordPair(r1:record)
+       
         // Is it or its mate located in the desired regions?
         if(regions != null) 
             if(readName == debugRead) {
@@ -107,28 +114,16 @@ class PairLocator extends DefaultActor {
         buffer[readName] = pair
     }
     
-    boolean notInRegion(CompactReadPair pair, boolean debug) {
+    boolean notInRegion(PairType pair, boolean debug) {
         
         if(pair.unmapped) {
             return false
         }
         
-        final String chr1 = pair.r1ReferenceName
-        final int r1p = pair.r1AlignmentStart
-        final int len = pair.readLength
-        if(regions.overlaps(chr1, r1p , r1p+len))
+        if(regions == null)
             return false
         
-        final String chr2 = pair.r2ReferenceName?:chr1
-        final int r2p = pair.r2AlignmentStart
-        if(regions.overlaps(chr2, r2p , r2p+len)) {
-            return false 
-        }
-        
-        if(debug)
-            log.info "Regions do not overlap $chr2:$r2p-${r2p+len}"
-       
-        return true
+        return pair.notInRegions(regions)
     }
     
     String toString() {

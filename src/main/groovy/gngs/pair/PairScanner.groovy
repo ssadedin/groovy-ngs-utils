@@ -67,6 +67,8 @@ class PairScanner {
     
     List<PairLocator> locators = []
     
+    List<PairFilter> filters = []
+    
     PairLocator chimericLocator
     
     PairFormatter formatter 
@@ -85,18 +87,21 @@ class PairScanner {
     
     boolean throttleWarning = false
     
+    String filterExpr
+    
     /**
      * If more than this number of reads are unwritten, assume that we are
      * limited by downstream ability to consume our reads and start backing off
      */
     int maxWriteBufferSize = 3000000
     
-    PairScanner(Writer writer, int numLocators, Regions regions = null) {
+    PairScanner(Writer writer, int numLocators, Regions regions = null, String filterExpr = null) {
         this.pairWriter = new PairWriter(writer)
         this.formatter = new PairFormatter(1000 * 1000, pairWriter)
         this.chimericLocator = new PairLocator(formatter)
         this.regions = regions
         this.numLocators = numLocators
+        this.filterExpr = filterExpr
         progress.log = log
     }
     
@@ -111,23 +116,40 @@ class PairScanner {
         for(int i=0; locatorsCreated < numLocators; ++i) {
             if(shardId<0 || ((i%shardSize) == shardId)) {
                 ++locatorsCreated
-                PairLocator pl = new PairLocator(formatter)
-                if(this.regions)
-                    pl.regions = new Regions(this.regions)        
-                this.locators << pl
-                this.locatorIndex << pl
+                
+                createLocator()
             }
             else {
                 this.locatorIndex.add(null)
             }
         }
         
-        this.actors = locators + [
+        this.actors = locators + filters + [
             chimericLocator,
             formatter,
             pairWriter,
         ]
         this.actors*.start()
+    }
+    
+    @CompileStatic
+    void createLocator() {
+        PairLocator pl 
+        if(filterExpr != null) {
+            PairFilter filter = new PairFilter(formatter, filterExpr)
+            this.filters << filter
+            pl = new PairLocator(filter)
+            pl.compact = false // pass full SAMRecordPair through
+        }
+        else {
+            pl = new PairLocator(formatter)
+        }
+                
+        if(this.regions)
+            pl.regions = new Regions((Iterable)this.regions)        
+            
+        this.locators << pl
+        this.locatorIndex << pl
     }
     
     @CompileStatic
@@ -142,6 +164,8 @@ class PairScanner {
             log.info "Stopping parallel threads ..."
             
             locators.eachWithIndex { a, i -> stopActor("Locator $i", a) }
+            
+            filters.eachWithIndex { a, i -> stopActor("Filter $i", a) }
             
             stopActor "Chimeric Locator", chimericLocator
             stopActor "Formatter", formatter
@@ -177,7 +201,7 @@ class PairScanner {
                     PairLocator locator = locatorIndex[locatorOffset]
                     if(locator != null) {
                         locator << read 
-                        if(pairWriter.pending > maxBufferedReads) {
+                        if(pairWriter.pending.get() > maxBufferedReads) {
                             if(!throttleWarning) {
                                 log.info "Throttling output due to slow downstream consumption of reads"
                                 throttleWarning = true
