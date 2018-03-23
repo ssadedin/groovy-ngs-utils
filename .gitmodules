@@ -1,3 +1,3 @@
 [submodule "graxxia"]
 	path = graxxia
-	url = ./graxxia
+	url = git@github.com:ssadedin/graxxia.git
