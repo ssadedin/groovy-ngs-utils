@@ -20,12 +20,19 @@
 package gngs
 
 import groovy.lang.IntRange
+
 import groovy.transform.CompileStatic
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMTagUtil
 import htsjdk.samtools.SAMUtils
 import htsjdk.samtools.util.SequenceUtil
- 
+
+interface ReadPair {
+    boolean isChimeric()
+    boolean getUnmapped()
+    boolean notInRegions(Regions regions)
+}
+
 /**
  * Models a read pair, where one of the reads might be missing.
  * <p>
@@ -36,7 +43,7 @@ import htsjdk.samtools.util.SequenceUtil
  * 
  * @author Simon Sadedin
  */
-class SAMRecordPair implements Comparable {
+class SAMRecordPair implements Comparable, ReadPair {
     
     SAMRecord r1
     
@@ -353,6 +360,25 @@ class SAMRecordPair implements Comparable {
             b.append(SAMUtils.phredToFastq(bq[i]))
         }
         b.append('\n')
+    }
+
+    @CompileStatic
+    @Override
+    public boolean notInRegions(Regions regions) {
+        
+        final String chr1 = this.r1ReferenceName
+        final int r1p = this.r1.alignmentStart
+        final int len = this.readLength
+        if(regions.overlaps(chr1, r1p , r1p+len))
+            return false
+        
+        final String chr2 = this.r2ReferenceName?:chr1
+        final int r2p = this.r2Pos
+        if(regions.overlaps(chr2, r2p , r2p+len)) {
+            return false 
+        }
+        
+        return true 
     }
 }
 

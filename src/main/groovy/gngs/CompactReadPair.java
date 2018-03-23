@@ -5,7 +5,7 @@ import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.cram.encoding.readfeatures.BaseQualityScore;
 import htsjdk.samtools.util.SequenceUtil;
 
-public class CompactReadPair {
+public class CompactReadPair implements ReadPair {
     
     public String r1ReferenceName;
     
@@ -42,8 +42,22 @@ public class CompactReadPair {
        return r2ReferenceName != null;
    }
    
-   public boolean isUnmapped() {
+   public boolean getUnmapped() {
        return (r1ReferenceName == "*") || (r2ReferenceName == "*");
+   }
+   
+   public boolean notInRegions(Regions regions) {
+       final String chr1 = this.r1ReferenceName;
+       final int r1p = this.r1AlignmentStart;
+       final int len = this.getReadLength();
+       if(regions.overlaps(chr1, r1p , r1p+len))
+           return false;
+       final String chr2 = this.r2ReferenceName != null ? this.r2ReferenceName:chr1;
+       final int r2p = this.r2AlignmentStart;
+       if(regions.overlaps(chr2, r2p , r2p+len)) {
+           return false;
+       }
+       return true;
    }
    
    public void appendTo(StringBuilder b, SAMRecord r2, boolean addPosition) {
