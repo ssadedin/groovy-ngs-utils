@@ -4,6 +4,7 @@ import gngs.ProgressCounter
 import gngs.VCF
 import gngs.Variant
 import graxxia.Matrix
+import graxxia.Stats
 
 /**
  * A simple measurement of similarity of different samples by counting the number of 
