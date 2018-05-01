@@ -56,6 +56,8 @@ class PairFormatter extends DefaultActor {
     
     int buffered = 0
     
+    String debugRead = null // "SN7001291:342:HFMC7BCXX:2:1113:1980:38527"
+    
     /**
      * If true, the original position of the read will be appended 
      * to the read name. This allows backtracking of reads to compare between
@@ -77,6 +79,7 @@ class PairFormatter extends DefaultActor {
             react { Object msg ->
                 assert msg != null
                 if(msg == "stop") {
+                    flushBuffer()
                     terminate()
                 }
                 else {
@@ -90,6 +93,9 @@ class PairFormatter extends DefaultActor {
     
     void process(ReadPair pair, SAMRecord r2) {
         
+        if(debugRead != null && (r2.readName == debugRead)) {
+            log.info "Format: $debugRead"
+        }
         if(pair instanceof CompactReadPair) {
             pair.appendTo(buffer, r2, this.addPosition)
         }
@@ -101,14 +107,18 @@ class PairFormatter extends DefaultActor {
         assert buffer != null
         
         if(buffer.size() > maxBufferSize) {
-            writer << [ content: buffer.toString(), reads: buffered ]
-            writer.pending.addAndGet(buffered)
-            buffer.setLength(0)
-            formatted += buffered
-            buffered = 0
+            flushBuffer()
         }
         else {
             buffered += 2
         }
+    }
+    
+    void flushBuffer() {
+        writer << [ content: buffer.toString(), reads: buffered ]
+        writer.pending.addAndGet(buffered)
+        buffer.setLength(0)
+        formatted += buffered
+        buffered = 0
     }
 }
