@@ -7,13 +7,13 @@ class TSVTest {
 
     String testTsv = 
         [ 
-           ["foo","cat","5", "10"],
+           ["foo","cat","5", "10.1"],
            ["bar","dog","9", "4.2"]
         ]*.join("\t").join("\n").trim().stripIndent()
             
     String testCsv = 
         [ 
-           ["foo","cat","5", "10"],
+           ["foo","cat","5", "10.4"],
            ["bar","dog","9", "4.2"]
         ]*.join(",").join("\n").trim().stripIndent()
         
@@ -50,5 +50,26 @@ class TSVTest {
         
         assert csv.contains(/"dog"/) : "CSV does not contain expected quoted string"
         assert !csv.contains(/cat/) : "CSV contains unexpected string"
+    }
+    
+    
+    
+    @Test
+    void testRaggedToListMap() {
+        
+        Reader ragged = toTsv([
+            ["animal","legs","colour"],
+            ["dog",4,"brown"],
+            ["snake",0],
+            ["duck",2,"white"]
+        ])
+        
+        TSV tsv = new TSV(ragged)
+        
+        println tsv.toListMap()
+    }
+    
+    Reader toTsv(List values) {
+        new StringReader(values*.join("\t").join("\n").trim().stripIndent())
     }
 }
