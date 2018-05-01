@@ -38,6 +38,16 @@ abstract class ToolBase {
         tool.run()
     }
     
+    /**
+     * Print a formatted error message and exit
+     */
+    void error(String msg) {
+        System.err.println ""
+        System.err.println "ERROR: " + msg
+        System.err.println ""
+        System.exit(1)
+    }
+    
     abstract void run() 
 
 }
