@@ -4,10 +4,12 @@ import org.junit.Test;
 
 import gngs.Pedigree
 import gngs.Pedigrees
+import gngs.Subject
+import static gngs.Sex.*
 
 class PedigreeTest {
 
-    @Test
+//    @Test
     public void testParse() {
         def pedigrees = Pedigrees.parse("/Users/simon/work/seth/samples.ped").families
         
@@ -28,7 +30,7 @@ class PedigreeTest {
         
     }
     
-    @Test
+//    @Test
     void testFindMaximalUnrelatedSamples() {
         def pedigrees = Pedigrees.parse("tests/test.ped")
         

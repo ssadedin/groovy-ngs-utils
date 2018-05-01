@@ -21,6 +21,64 @@ class PedigreesTest {
             "IND_FAM6_19",
             "IND_FAM7_22"
         ]
+    }
+    
+    @Test
+    void testParentsFirst() {
+        List pedData = [
+            ["F","A",0,0,1,1],
+            ["F","B",0,0,2,1],
+            ["F","C","A","B",1,1],
+        ]
         
+        String pedString = pedData*.join('\t').join('\n')+'\n'
+
+        println "PED file: \n" + pedString
+        
+        def ped = Pedigrees.parse(new StringReader(pedString))
+        
+        assert ped.motherOf("C").id == "B"
+    }
+    
+    @Test
+    void testFailParentWrongSex() {
+        List pedData = [
+            ["F","A",0,0,1,1],
+            ["F","B",0,0,1,1],
+            ["F","C","A","B",1,1],
+        ]
+        
+        String pedString = pedData*.join('\t').join('\n')+'\n'
+
+        println "PED file: \n" + pedString
+        
+        boolean caught = false
+        try {
+            def ped = Pedigrees.parse(new StringReader(pedString))
+        }
+        catch(IllegalStateException e) {
+            // expected
+            caught = true
+        }
+        
+        assert caught : "Failed to throw exception when mother was specified as male"
+    } 
+    
+    @Test
+    void testRenameFamily() {
+        List pedData = [
+            ["F","A",0,0,1,1],
+            ["F","B",0,0,2,1],
+            ["F","C","A","B",1,1],
+        ]
+        
+        String pedString = pedData*.join('\t').join('\n')+'\n'
+
+        def ped = Pedigrees.parse(new StringReader(pedString))
+        
+        ped.renameFamily("F","G")
+        
+        assert ped.families["G"] != null
+        assert ped.subjects["B"].id == "G"
     }
 }

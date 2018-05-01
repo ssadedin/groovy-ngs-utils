@@ -1,4 +1,3 @@
-package gngs
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,6 +17,7 @@ package gngs
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+package gngs
 
 import java.text.ParseException;
 
@@ -28,8 +28,6 @@ import groovy.transform.CompileStatic;
 /**
  * Models a single FASTQ read, including the header (with name), bases and 
  * quality information.
- * 
- * @author Simon
  */
 @CompileStatic
 class FASTQRead {
@@ -37,6 +35,7 @@ class FASTQRead {
     /**
      * This constructor is really just for testing purposes.
      * However you can use it if you want to fake all the data except the bases.
+     * 
      * @param bases
      */
     FASTQRead(String bases) {

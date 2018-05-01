@@ -286,6 +286,14 @@ class Allele {
  * and {@link #getVepInfo()} for accessors that return parsed annotation
  * information.
  * <p>
+ * <b>Important:</b>The {@link Variant} class represents a line in a VCF file and therefore
+ * potentially multiple alleles and corresponding annotations, genotypes, etc. However it is 
+ * very common to work with normalised VCFs that guarantee only a single allele per site.
+ * To make operations on variants more convenient, some methods have both an allele specific
+ * and 'default allele' version. The default allele version will operate on the first allele
+ * listed in the alleles. These are convenient to use, but you should always keep in mind they
+ * ignore any other alleles and could be unsafe to use on non-normalised VCFs.
+ * <p>
  * Although {@link Variant} instances can be constructed manually, typically
  * you will query them from {@link VCF} or {@link VCFIndex} classes, and this
  * is required for some operations because the VCF header is required to 

@@ -154,6 +154,16 @@ enum RelationshipType {
     }
 }
 
+/**
+ * Models a relationship between two people
+ * <p>
+ * The {@link #from} is the individual labeled by the relationship,
+ * and the {@link #to} is the other individual. For example, if
+ * Tom is the son of Jane, the relationship is from Tom to Jane,
+ * as in, Tom is a son "to" Jane 
+ * 
+ * @author Simon Sadedin
+ */
 class Relationship {
     
     RelationshipType type

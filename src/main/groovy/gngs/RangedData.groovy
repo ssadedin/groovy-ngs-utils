@@ -43,11 +43,30 @@ class RangedData extends Regions {
     
     Reader source = null
     
+    /**
+     * Index of the column containing the reference sequence (or "chromosome")
+     */
     int chrColumn 
+    
+    /**
+     * Index of the column containing the start index
+     */
     int startColumn
+    
+    /**
+     * Index of the column containing the end index
+     */
     int endColumn
+    
+    /**
+     * The separator used between values in the file
+     */
     String separator='\t'
     
+    /**
+     * The starting index for the first base in the genome. Some formats use 1 as the first base,
+     * but mostly it is zero.
+     */
     int genomeZeroOffset=0
     
     List<String> columns

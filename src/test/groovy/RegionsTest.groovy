@@ -316,4 +316,28 @@ class RegionsTest {
         Regions regions = [foo] as Regions
         assert regions.startingAt("chr1", 1)[0].extra == foo
     }
+    
+    void 'enhanced regions should retain properties during multiple iterations'() {
+        BED regions = new Regions()
+        regions.add('chr1', 8, 20)
+        regions = regions.enhance()
+        
+        for(Region region in regions) {
+            region.foo = 'bar'
+        }
+        
+//        for(Region region in regions) {
+//            assert region.foo == 'bar'
+//        }
+        
+        List<Range> overlaps = regions.getOverlaps('chr1',10,12)
+        
+        assert overlaps.size()==1
+        assert overlaps[0].extra != null
+        
+        Region r = overlaps[0].extra
+        
+        assert r.foo == 'bar'
+        
+    }
 }

@@ -5,8 +5,9 @@ import org.junit.Test;
 
 import gngs.Pedigree
 import gngs.Relationship
+import gngs.RelationshipType
 import gngs.Subject
-
+ 
 import static RelationshipType.*
 
 class SamplesToPedTest {
