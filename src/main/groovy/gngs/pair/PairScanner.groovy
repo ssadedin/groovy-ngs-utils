@@ -89,6 +89,8 @@ class PairScanner {
     
     String filterExpr
     
+    String debugRead = null
+    
     /**
      * If more than this number of reads are unwritten, assume that we are
      * limited by downstream ability to consume our reads and start backing off
@@ -106,6 +108,10 @@ class PairScanner {
     }
     
     void initLocators() {
+        
+        if(this.debugRead)
+            formatter.debugRead = this.debugRead
+        
         int locatorsCreated = 0
         this.locators = []
         
@@ -148,6 +154,9 @@ class PairScanner {
         if(this.regions)
             pl.regions = new Regions((Iterable)this.regions)        
             
+        if(debugRead != null)
+            pl.debugRead = debugRead
+            
         this.locators << pl
         this.locatorIndex << pl
     }
@@ -155,6 +164,9 @@ class PairScanner {
     @CompileStatic
     void scan(SAM bam) {
         log.info "Beginning scan of $bam.samFile"
+        if(debugRead != null)
+            log.info "Debugging read $debugRead"
+            
         running = this
         this.initLocators()
         try {
@@ -208,6 +220,10 @@ class PairScanner {
                             }
                             Thread.sleep(50)
                         }
+                    }
+                    else {
+                        if(debugRead == read.readName)
+                            log.info "Read $debugRead not assigned to shard (hash=$hash, lcoffset=$locatorOffset/$locatorSize)"
                     }
                         
                 }

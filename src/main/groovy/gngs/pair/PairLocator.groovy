@@ -48,7 +48,7 @@ class PairLocator<PairType extends ReadPair> extends DefaultActor {
     
     Regions regions
     
-    String debugRead = null // "SN7001291:342:HFMC7BCXX:2:1102:7840:64817"
+    String debugRead = null // "SN7001291:342:HFMC7BCXX:2:1113:1980:38527"
     
     boolean compact = true
     
@@ -82,6 +82,10 @@ class PairLocator<PairType extends ReadPair> extends DefaultActor {
         final String readName = record.readName
         PairType pair = buffer[readName]
         if(pair) {
+            if(debugRead != null && (readName == debugRead)) {
+                log.info "Paired: $record"
+            }
+
             if(pair instanceof SAMRecordPair)
                 pair.r2 = record
             consumer << [pair, record]
@@ -96,17 +100,16 @@ class PairLocator<PairType extends ReadPair> extends DefaultActor {
         else
             pair = new SAMRecordPair(r1:record)
        
-        // Is it or its mate located in the desired regions?
-        if(regions != null) 
-            if(readName == debugRead) {
-                log.info "Debug read: $record"
-            }
+        if(debugRead != null && (readName == debugRead)) {
+            log.info "Buffer: $record"
+        }
             
-            if(notInRegion(pair, readName == debugRead)) {
-                if(readName == debugRead)
-                    log.info "$readName filtered out"
-                return
-            }
+        // Is it or its mate located in the desired regions?
+        if(notInRegion(pair, readName == debugRead)) {
+            if(readName == debugRead)
+                log.info "$readName filtered out"
+            return
+        }
         
         if(pair.chimeric)
             ++this.chimeric
