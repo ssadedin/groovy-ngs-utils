@@ -130,6 +130,14 @@ class PairScanner {
             }
         }
         
+        // Fill up any trailing null positions needed
+        int requiredIndexSize = shardSize*numLocators
+        while(this.locatorIndex.size()<requiredIndexSize) {
+            this.locatorIndex.add(null)
+        }
+        
+        log.info "Created ${locatorsCreated} read pair locators"
+        
         this.actors = locators + filters + [
             chimericLocator,
             formatter,
