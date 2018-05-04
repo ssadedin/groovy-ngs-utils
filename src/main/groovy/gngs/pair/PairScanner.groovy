@@ -208,7 +208,7 @@ class PairScanner {
                     SAMRecord read = i.next()
                     lastRead = read
                     progress.count()
-                    int hash = read.readName.hashCode()
+                    int hash = Math.abs(read.readName.hashCode())
                     int locatorOffset = hash % locatorSize
                     PairLocator locator = locatorIndex[locatorOffset]
                     if(locator != null) {
