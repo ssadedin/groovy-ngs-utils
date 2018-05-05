@@ -14,21 +14,68 @@ The kind of operations supported are:
   * Predicting Restriction Enzyme cut sites
   * A range of statistical operations including R-like data frames and linear modeling constructs
 
-## Scripting
+## Build
 
-Most of the classes live in the `gngs` package, so if you are writing stand alone scripts
-and includeing GNGS as a jar file, you should add:
+Clone the repository:
 
 ```
-import gngs.*
+    git clone git@github.com:ssadedin/groovy-ngs-utils.git
+    git submodule update --init
 ```
 
-to get everything imported.
+Run gradle:
 
-However you can also run scripts directly using the `gngs` script that is shipped in the `bin`
-directory of the distribution. In that case, this import is done automatically.
+```
+    cd groovy-ngs-utils
+    ./gradlew clean jar
+```
 
-Here are some examples of simple command line scripts showing how GNGS can be used:
+Note: if behind a proxy, you can specify it like so:
+
+```
+./gradlew -Dhttp.proxyHost=<host> -Dhttp.proxyPort=<port> clean jar
+```
+
+## Install
+
+GNGS doesn't actually need any installation. However, since it is using groovy,
+should have Groovy 2.4.x installed. Although other 2.4 versions should
+, I suggest using 2.4.10 since that version is what GNGS is tested
+currently. You can install it easily without any administrative
+using [SDK man](http://sdkman.io/). With SDKMan, it is just:
+
+```
+sdk install groovy 2.4.10
+```
+
+Once groovy is available and the build instructions have worked, the `gngs` and `gngstool` scripts
+should "just work":
+
+```bash
+# What type of variants are in my VCF?
+./bin/gngs 'println(VCF.parse("some.vcf").countBy { it.type })'
+```
+
+You can get a GNGS enabled interactive Groovy Shell like this:
+
+```
+./bin/gngsh
+groovy:000> new SAM("my.bam").basesAt("chr7", 117292917)
+===> [A:5, total:5, C:0, T:0, D:0, G:0]
+```
+
+For the command line tools implemented by GNGS, you can run them using `gngstools`:
+
+```
+./bin/gngstool ExtractFASTQ -bam my.bam | bwa mem -p hg19.fasta - | samtools view -Sb - >  my.realigned.bam
+```
+
+
+## Command Line Scripting 
+
+
+If you want to write command line scripts, the easiest way is using the `gngs` launcher
+tool.  Here are some examples of simple command line scripts showing how GNGS can be used:
 
 ```bash
   # Get me a filtered VCF with QUAL>20 and DP > 5
@@ -54,6 +101,19 @@ Here are some examples of simple command line scripts showing how GNGS can be us
 These are only examples and barely scratch the surface of all the functions built into
 groovy-ngs-utils. You can find documentation about the individual classes and methods
 in the [API Documentation](http://ssadedin.github.io/groovy-ngs-utils/doc/index.html)
+
+
+## Programming 
+
+If you want to write longer scripts or full programs using GNGS as a library, 
+most of the classes live in the `gngs` package:
+```
+import gngs.*
+```
+
+Then nearly everything will be imported.
+
+## How it Works
   
 Everything is built upon Samtools, Picard Tools, BioJava and Apache commons-math. The jar file that 
 is built bundles all the necessary libraries so that you can easily include them all with just one
@@ -87,66 +147,4 @@ Some useful tools include:
 | Table                  | Print out formated table from tab or comma separated data with many other features     |
 | MeanCoverageEstimator  | A fast sampling based method to estimate mean coverage from a BAM file                 |
 | Gaps                   | Identify regions of coverage below a threshold with statistics from BEDTools output    |
-
-## Building
-
-Clone the repository:
-
-```
-    git clone git@github.com:ssadedin/groovy-ngs-utils.git
-    git submodule update --init
-```
-
-Run gradle:
-
-```
-    cd groovy-ngs-utils
-    ./gradlew clean jar
-```
-
-Note: if behind a proxy, you can specify it like so:
-
-```
-./gradlew -Dhttp.proxyHost=<host> -Dhttp.proxyPort=<port> clean jar
-```
-
-## Installation
-
-If you want access to the classes from your own scripts easily, put the jar in your ~/.groovy/lib folder:
-
-```bash
-    mkdir -p ~/.groovy/lib
-    cp build/libs/groovy-ngs-utils.jar ~/.groovy/lib
-```
-
-This way you can use commands without modifying your classpath at all.
-
-However: since this places groovy-ngs-utils.jar into your default groovy path
-it is probably not a great idea since it may introduce versions of classes to your default Groovy
-classpath that conflict with classes other applications using Groovy depend on.
-It's an easy way to experiment with the library but you are better off
-specifying it explicitly when you need it:
-
-So there are some other ways to use it.
-
-First, to execute ad hoc scripts, you can use the `gngs` tool in the bin directory:
-
-```bash
-# What type of variants are in my VCF?
-./bin/gngs 'println(VCF.parse("some.vcf").countBy { it.type })'
-```
-
-You can get a GNGS enabled interactive Groovy Shell like this:
-
-```
-./bin/gngsh
-groovy:000> new SAM("my.bam").basesAt("chr7", 117292917)
-===> [A:5, total:5, C:0, T:0, D:0, G:0]
-```
-
-For the command line tools implemented by GNGS, you can run them using `gngstools`:
-
-```
-./bin/gngstool ExtractFASTQ -bam my.bam | bwa mem -p hg19.fasta - | samtools view -Sb - >  my.realigned.bam
-```
 
