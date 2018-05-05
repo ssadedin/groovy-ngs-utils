@@ -53,6 +53,9 @@ dependencies {
      compile group: 'org.apache.commons', name: 'commons-compress', version: '1.4.1'
      compile group: 'commons-io', name: 'commons-io', version: '2.4'
      compile 'org.apache.commons:commons-math3:3.0'
+
+     compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
+     
      // compile group: 'com.github.samtools', name: 'htsjdk', version: '1.141'
      // compile 'org.utgenome.thirdparty:picard:1.102.0'
      compile 'com.xlson.groovycsv:groovycsv:1.0'
