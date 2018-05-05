@@ -43,9 +43,9 @@ Note: if behind a proxy, you can specify it like so:
 ## Install
 
 GNGS doesn't actually need any installation. However, since it is using groovy,
-should have Groovy 2.4.x installed. Although other 2.4 versions should
-, I suggest using 2.4.10 since that version is what GNGS is tested
-currently. You can install it easily without any administrative
+you need Groovy 2.4.x installed. Although other 2.4 versions should
+work, I suggest using 2.4.10 since that version is what GNGS is tested
+with currently. You can install it easily without any administrative
 using [SDK man](http://sdkman.io/). With SDKMan, it is just:
 
 ```
