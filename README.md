@@ -80,7 +80,6 @@ MALE
 
 Some useful tools include:
 
-```
 Tool            | Description           
 ----------------+-----------------------------------------------------------------------------------
 VCFtoHTML       | Convert a VCF to HTML format, Diff VCFs
@@ -88,9 +87,6 @@ Sex             | Determine Sex from VCF file
 Table           | Print out formated table from tab or comma separated data with many other features
 MeanCoverageEstimator | A fast sampling based method to estimate mean coverage from a BAM file
 Gaps            | Identify regions of coverage below a threshold with statistics from BEDTools output
-
-
-```
 
 ## Building
 
