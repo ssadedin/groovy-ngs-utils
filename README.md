@@ -1,9 +1,6 @@
 # Groovy NGS Utils
 
-A collection of utilities for working with next generation (MPS) sequencing data in Groovy
-
-This is a collection of Groovy classes, and tools that make it easy to perform 
-scripting operations to process NGS data.
+A library for working with next generation (MPS) sequencing data in Groovy.
 
 The kind of operations supported are:
 
@@ -13,6 +10,13 @@ The kind of operations supported are:
   * Working with SAM files (particularly, generating and working with Pileups)
   * Predicting Restriction Enzyme cut sites
   * A range of statistical operations including R-like data frames and linear modeling constructs
+
+The code in this library is usable in three different ways:
+
+ * Directly as tools on the command line
+ * For writing simple scripts (bash-style)
+ * As a library of classes for building full-scale applications
+
 
 ## Build
 
