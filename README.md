@@ -7,7 +7,7 @@ The kind of operations supported are:
   * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP, Annovar and SnpEFF
   * Reading, processing and filtering BED files or any source of genomic ranges
   * Reading, processing and performing logical operations with pedigree (PED) files and family structures
-  * Working with SAM files (particularly, generating and working with Pileups)
+  * Working with BAM/SAM/CRAM files (particularly, generating and working with Pileups)
   * Predicting Restriction Enzyme cut sites
   * A range of statistical operations including R-like data frames and linear modeling constructs
 
