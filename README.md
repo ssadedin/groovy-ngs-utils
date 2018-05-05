@@ -2,10 +2,10 @@
 
 A collection of utilities for working with next generation (MPS) sequencing data in Groovy
 
-This is a collection of Groovy wrappers and interfaces that make it easy to perform 
-scripting operations with Groovy to process NGS data.
+This is a collection of Groovy classes, and tools that make it easy to perform 
+scripting operations to process NGS data.
 
-The kind of operations currently supported are:
+The kind of operations supported are:
 
   * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP, Annovar and SnpEFF
   * Reading, processing and filtering BED files or any source of genomic ranges
@@ -14,27 +14,40 @@ The kind of operations currently supported are:
   * Predicting Restriction Enzyme cut sites
   * A range of statistical operations including R-like data frames and linear modeling constructs
 
-Since these utilities are optimized for scripting, they live in the default Java package. This means you can 
-easily write command line scripts, such as:
+## Scripting
+
+Most of the classes live in the `gngs` package, so if you are writing stand alone scripts
+and includeing GNGS as a jar file, you should add:
+
+```
+import gngs.*
+```
+
+to get everything imported.
+
+However you can also run scripts directly using the `gngs` script that is shipped in the `bin`
+directory of the distribution. In that case, this import is done automatically.
+
+Here are some examples of simple command line scripts showing how GNGS can be used:
 
 ```bash
   # Get me a filtered VCF with QUAL>20 and DP > 5
-  cat my.vcf | groovy -e 'VCF.filter { it.qual > 20 && it.info.DP.toInteger()>5 }' > filtered.vcf
+  cat my.vcf | gngs 'VCF.filter { it.qual > 20 && it.info.DP.toInteger()>5 }' > filtered.vcf
 
   # Which read shave MAPQ = 0?
-  cat my.bam | groovy -e 'SAM.eachRead { if(it.mappingQuality == 0) { println it.readName } }'
+  cat my.bam | gngs 'SAM.eachRead { if(it.mappingQuality == 0) { println it.readName } }'
   
   # What's the median coverage of bedtools output?
-  coverageBed -d  -abam test.bam -b test.bed | cut -f 6 | groovy -e 'Stats.read().median'
+  coverageBed -d  -abam test.bam -b test.bed | cut -f 6 | gngs 'Stats.read().median'
 
   # What are the bases piled up at 25870138?
-  groovy -e 'println(new SAM("test.bam").basesAt("chr1", 25870138))'
+  gngs 'println(new SAM("test.bam").basesAt("chr1", 25870138))'
 
   # What are the exons in the DVL1 gene?
-  groovy -e 'println(RefGenes.download().getExons("DVL1").join(", "))'
+  gngs 'println(RefGenes.download().getExons("DVL1").join(", "))'
 
   # What are the total number of bases overlapped by regions in my BED file?
-  groovy -e 'println(new BED("./tests/data/small.overlaps.bed").load().reduce().size())'
+  gngs 'println(new BED("./tests/data/small.overlaps.bed").load().reduce().size())'
 
 ```
 
@@ -48,6 +61,24 @@ classpath entry (or put it into your .groovy/lib).
 
 Careful attention has been paid to make, wherever possible, operations operate on streaming data so that
 memory is not a bottleneck in manipulating large data sets.
+
+## Tools
+
+GNGS also includes a bunch of pre-written tools which are mostly simple wrappers of 
+the internal classes, but which expose them directly as command line tools in their 
+own right. These are launched using the `gngstool` command: 
+
+```
+$ gngstool Sex test.vcf
+================================================================================
+
+Sex
+
+================================================================================
+
+MALE
+ 
+```
 
 ## Building
 
