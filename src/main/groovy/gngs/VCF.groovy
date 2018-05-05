@@ -1033,6 +1033,14 @@ class VCF implements Iterable<Variant> {
         return counts[false] / (double)(counts[false] + counts[true])
     }
     
+    /**
+     * Return the sex of a sample, estimated from the heterozygosity of its variants.
+     * <p>
+     * See {@link #guessSex(int)} for details of the implementation.
+     * 
+     * @param sampleId
+     * @return  estimated Sex of Sample
+     */
     Sex guessSex(String sampleId) {
         if(!this.samples.contains(sampleId))
             throw new IllegalArgumentException("Sample $sampleId is not contained in this VCF")
