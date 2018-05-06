@@ -468,7 +468,7 @@ class SAM {
         // a read's pair is encountered before the buffer overflows. When it overflows
         // the loop below starts doing random queries (slow) to resolve the mates for reads
         // so that the pair can be output together. 
-        final int maxSpoolSize = options.spoolSize ? (int)options.spoolSize : 8000i
+        final int maxSpoolSize = options.spoolSize ? (int)options.spoolSize : 32000i
         
         int forcedQueries = 0
         String currentChr = null
