@@ -32,9 +32,7 @@ class DGV {
     } 
      
     DGV parse() {
-        this.dgv = Utils.time("Loading DGV data ...") { 
-            new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) 
-        }
+        this.dgv = new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) 
         return this
     }
     
@@ -48,12 +46,27 @@ class DGV {
        return dgv.getOverlaps(r)*.extra
     }
     
+    /**
+     * Find the maximum frequency of this CNV within any study within DGV where the 
+     * study has more than a minimum threshold size (default: 10 people).
+     * 
+     * @param region    region to search
+     * @return  maximum frequency, or zero if no CNVs found
+     */
     double maxFreq(Map options=[:], Region region) {
         int minSampleSize = options.minSampleSize?:10
-        Double result = this.queryOverlapping(region).collect {  dgvCnv ->
-             dgvCnv.sampleSize > minSampleSize ? ((dgvCnv.observedGains + dgvCnv.observedLosses) / dgvCnv.sampleSize) : 0.0
-        }.max()
+        List<Region> overlappingEntries = this.queryOverlapping(region)
         
-        return result == null ? 0.0d : result
+        
+        Region maxEntry = overlappingEntries.grep {
+            (it.sampleSize > minSampleSize) && (it.observedGains + it.observedLosses < it.sampleSize)
+        }.max {
+            (it.observedGains + it.observedLosses) / it.sampleSize
+        }
+        
+        if(maxEntry == null)
+            return 0.0d
+            
+        return (maxEntry.observedGains + maxEntry.observedLosses) / maxEntry.sampleSize
     }
 }
