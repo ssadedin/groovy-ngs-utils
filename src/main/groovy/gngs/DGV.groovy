@@ -26,6 +26,10 @@ import groovy.transform.CompileStatic
 /**
  * A {@link CNVDatabase} implementation for CNVs from the Database of
  * Genomic Variants (sourced via UCSC).
+ * <p>
+ * Note: the database is not parsed by the constructor, you must
+ * call the {@link #parse()} method yourself before using any
+ * query methods.
  * 
  * @author simon.sadedin@gmail.com
  */
@@ -49,14 +53,16 @@ class DGV extends CNVDatabase {
         this.dgv = dgv
     } 
      
+    /**
+     * Parse the data source set for this database
+     */
     DGV parse() {
         this.dgv = new RangedData(dgvFile, 1,2,3).load(columnNames:DGV_COLUMNS) 
         return this
     }
     
     /**
-     * Convenience method to return CNVS overlapping the specified region
-     * 
+     * return CNVS overlapping the specified region
      * @param r
      * @return
      */

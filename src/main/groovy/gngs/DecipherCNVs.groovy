@@ -27,6 +27,10 @@ import groovy.transform.CompileStatic
  * A {@link CNVDatabase} implementation for CNVs from Decipher 
  * Developmental Delay project.
  * <p>
+ * Note: the database is not parsed by the constructor, you must
+ * call the {@link #parse()} method yourself before using any
+ * query methods.
+ * <p>
  * See https://decipher.sanger.ac.uk/files/downloads/population_cnv.txt.gz
  * 
  * @author simon.sadedin@gmail.com
@@ -55,6 +59,10 @@ class DecipherCNVs extends CNVDatabase {
     DecipherCNVs parse() {
         this.ddd = new RangedData(dddFile, 1,2,3).load(readFirstLine: false, columnNames:DECIPHER_COLUMNS) { Region r ->
             r.setChr('chr' + r.chr)
+            
+            // Work around for seemingly incorrect parsing
+            r.deletion_frequency = r.deletion_frequency.toDouble()
+            r.duplication_frequency = r.duplication_frequency.toDouble()
         }
         return this
     }
@@ -85,7 +93,7 @@ class DecipherCNVs extends CNVDatabase {
         Region maxEntry = overlappingEntries.grep {
             (it.sample_size > minSampleSize) 
         }.max {
-            (it.deletion_frequency + it.duplication_frequency) 
+            return (it.deletion_frequency + it.duplication_frequency) 
         }
         
         if(maxEntry == null)
