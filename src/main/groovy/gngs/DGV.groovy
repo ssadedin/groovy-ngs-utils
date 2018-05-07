@@ -1,22 +1,40 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+package gngs
+
 import java.util.zip.GZIPInputStream
 
-import gngs.RangedData
-import gngs.Region
-import gngs.Utils
 import groovy.transform.CompileStatic
 
 /**
- * A thin wrapper around a RangedData object to add some utility functions
- * for accessing DGV data.
+ * A {@link CNVDatabase} implementation for CNVs from the Database of
+ * Genomic Variants (sourced via UCSC).
  * 
- * @author simon
+ * @author simon.sadedin@gmail.com
  */
-class DGV {
+class DGV extends CNVDatabase {
     
     /**
      * Columns from schema of DGV in UCSC table
      */
-    List DGV_COLUMNS = ["bin", "chrom", "chromStart", "chromEnd", "name", "score", "strand", "thickStart", "thickEnd", "itemRgb", "varType", "reference", "pubMedId", "method", "platform", "mergedVariants", "supportingVariants", "sampleSize", "observedGains", "observedLosses", "cohortDescription", "genes", "samples"]
+    final static List<String> DGV_COLUMNS = ["bin", "chrom", "chromStart", "chromEnd", "name", "score", "strand", "thickStart", "thickEnd", "itemRgb", "varType", "reference", "pubMedId", "method", "platform", "mergedVariants", "supportingVariants", "sampleSize", "observedGains", "observedLosses", "cohortDescription", "genes", "samples"]
     
     String dgvFile 
     
@@ -68,5 +86,5 @@ class DGV {
             return 0.0d
             
         return (maxEntry.observedGains + maxEntry.observedLosses) / maxEntry.sampleSize
-    }
+    } 
 }

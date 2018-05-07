@@ -24,10 +24,12 @@ import java.util.zip.GZIPInputStream
 import groovy.transform.CompileStatic
 
 /**
- * A thin wrapper around a RangedData object to add some utility functions
- * for accessing DGV data.
+ * A {@link CNVDatabase} implementation for CNVs from Decipher 
+ * Developmental Delay project.
+ * <p>
+ * See https://decipher.sanger.ac.uk/files/downloads/population_cnv.txt.gz
  * 
- * @author simon
+ * @author simon.sadedin@gmail.com
  */
 class DecipherCNVs extends CNVDatabase {
     
