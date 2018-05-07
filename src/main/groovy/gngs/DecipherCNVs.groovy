@@ -1,0 +1,94 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
+package gngs
+
+import java.util.zip.GZIPInputStream
+
+import groovy.transform.CompileStatic
+
+/**
+ * A thin wrapper around a RangedData object to add some utility functions
+ * for accessing DGV data.
+ * 
+ * @author simon
+ */
+class DecipherCNVs extends CNVDatabase {
+    
+    /**
+     * Columns from schema of DGV in UCSC table
+     */
+    final static List<String> DECIPHER_COLUMNS = 
+        ['population_cnv_id','chr','start','end','deletion_observations','deletion_frequency','deletion_standard_error','duplication_observations','duplication_frequency','duplication_standard_error','observations','frequency','standard_error','type','sample_size','study']
+    
+    String dddFile 
+    
+    @Delegate
+    RangedData ddd
+    
+    DecipherCNVs(String dddFile) {
+        this.dddFile = dddFile
+    } 
+    
+    DecipherCNVs(RangedData ddd) {
+        this.ddd = ddd
+    } 
+     
+    DecipherCNVs parse() {
+        this.ddd = new RangedData(dddFile, 1,2,3).load(readFirstLine: false, columnNames:DECIPHER_COLUMNS) { Region r ->
+            r.setChr('chr' + r.chr)
+        }
+        return this
+    }
+    
+    /**
+     * Convenience method to return CNVS overlapping the specified region
+     * 
+     * @param r
+     * @return
+     */
+    @Override
+    List<Region> queryOverlapping(Region r) {
+       return ddd.getOverlaps(r)*.extra
+    }
+    
+    /**
+     * Find the maximum frequency of this CNV within any study within DDD where the 
+     * study has more than a minimum threshold size (default: 10 people).
+     * 
+     * @param region    region to search
+     * @return  maximum frequency, or zero if no CNVs found
+     */
+    @Override
+    double maxFreq(Map options=[:], Region region) {
+        int minSampleSize = options.minSampleSize?:10
+        List<Region> overlappingEntries = this.queryOverlapping(region)
+        
+        Region maxEntry = overlappingEntries.grep {
+            (it.sample_size > minSampleSize) 
+        }.max {
+            (it.deletion_frequency + it.duplication_frequency) 
+        }
+        
+        if(maxEntry == null)
+            return 0.0d
+            
+        return (maxEntry.deletion_frequency + maxEntry.duplication_frequency)
+    } 
+}
