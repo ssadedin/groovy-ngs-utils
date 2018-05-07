@@ -21,7 +21,11 @@ package gngs
 
 /**
  * Abstract interface that can be implemented by different
- * CNV sources
+ * CNV sources.
+ * <p>
+ * CNVs are operated on as {@link Region} objects, but 
+ * implementations will set implementation-specific properties
+ * that can be accessed as properties directly on the class.
  * 
  * @author Simon Sadedin
  */
@@ -33,8 +37,8 @@ abstract class CNVDatabase {
     abstract List<Region> queryOverlapping(Region r) 
     
     /**
-     * Find the maximum frequency of this CNV within any study within DGV where the 
-     * study has more than a minimum threshold size (default: 10 people).
+     * Find the maximum frequency of this CNV within any study within the database
+     * where the study has more than a minimum threshold size (default: 10 people).
      * 
      * @param   region  region to search
      * @return  maximum frequency, or zero if no CNVs found
