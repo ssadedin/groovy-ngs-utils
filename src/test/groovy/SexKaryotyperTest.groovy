@@ -6,6 +6,7 @@ import org.junit.Test;
 import gngs.BED
 import gngs.Regions
 import gngs.SAM
+import gngs.SexKaryotyper
 
 
 class SexKaryotyperTest {
