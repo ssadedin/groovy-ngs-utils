@@ -263,7 +263,7 @@ class Allele {
     String alt
     
     /**
-     * INS, DEL or SNP
+     * INS, DEL or SNP, INV, DUP, DEL
      */
     String type
     
@@ -549,6 +549,9 @@ class Variant implements IRegion {
         else
         if(altSeq == "DEL" || altSeq == "<DEL>")
             result = "LOSS"
+        else
+        if(altSeq == "INV" || altSeq == "<INV>")
+            result = "INV"
         else
         if(refSeq.size() < altSeq.size())
             result = 'INS'
@@ -938,7 +941,7 @@ class Variant implements IRegion {
     
     @CompileStatic
     boolean isSV() {
-        return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>") 
+        return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>" || alt == "INV" || alt == "<INV>") 
     }
     
     /**
@@ -950,19 +953,12 @@ class Variant implements IRegion {
      */
     @CompileStatic
     int size() {
-        if(alt == "DEL" || alt == "<DEL>") {
+        if(isSV()) {
            Object svLen = this.getInfo().SVLEN
            if(!svLen)
                throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
            
             return Math.abs(Integer.parseInt(String.valueOf(svLen)))
-        }
-        else
-        if(alt == "DUP" || alt == "<DUP>") {
-           Object svLen = this.getInfo().SVLEN
-           if(!svLen)
-               throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
-            return Integer.parseInt(String.valueOf(svLen))           
         }
         else
             return Math.abs(ref.size() - alt.size())
