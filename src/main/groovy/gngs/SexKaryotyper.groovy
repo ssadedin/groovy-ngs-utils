@@ -1,9 +1,4 @@
-import gngs.BED
-import gngs.Cli
-import gngs.CoverageStats
-import gngs.Regions
-import gngs.SAM
-import gngs.Utils
+package gngs
 
 /**
  * An algorithm based on simple heuristics for estimating the sex of a sample from
@@ -28,7 +23,7 @@ class SexKaryotyper implements Runnable {
     
     List<String> autosomeChrs = ["chr1","chr22"]
     
-    Sex sex = null
+    gngs.Sex sex = null
     
     public SexKaryotyper(SAM bam, Regions regions) {
         this.bam = bam

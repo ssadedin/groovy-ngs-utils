@@ -1,5 +1,6 @@
 import gngs.BED
 import gngs.Cli
+import gngs.DGV
 import gngs.GRange
 import gngs.IRegion
 import gngs.RangedData
