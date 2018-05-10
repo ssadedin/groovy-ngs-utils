@@ -257,4 +257,43 @@ class Utils {
             // ignore
         }
     } 
+    
+    /**
+     * Execute the given action repeatedly until it does not throw an exception,
+     * or the given number of attempts is exceeded.
+     * <p>
+     * An optional <code>message</code> argument can be specified to give a 
+     * custom message to display with each retry.
+     * 
+     * @param maxRetries    number of attempts
+     * @param action        action to execute
+     * @return  the return value from the action
+     */
+    static Object withRetries(Map options=[:], int maxRetries, Closure action) {
+        Logger log = Logger.getLogger('gngs.Utils')
+        int count = 0
+        long sleepTimeMs = 1000
+        if(options.sleepTimeMs != null)
+            sleepTimeMs = options.sleepTimeMs.toLong()
+            
+        while(true) {
+             try {
+                 return action(count)
+             }
+             catch(Exception e) {
+                 if(count > maxRetries) {
+                     log.warning "Exceed max $maxRetries: $options.message"
+                     throw e
+                 }
+                 if(options.message != null)
+                     log.info "$options.message: try ${count+1} of $maxRetries failed ($e), retrying ..."
+                 else
+                     log.info "Try ${count+1} of $maxRetries failed, retrying ..."
+             }
+                 
+             Thread.sleep(sleepTimeMs)
+             ++count
+             sleepTimeMs = Math.min(10000,sleepTimeMs*2)
+         }
+     }
 }
