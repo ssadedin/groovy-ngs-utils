@@ -1,12 +1,55 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) 2018 Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 package gngs
 
 import java.lang.invoke.MethodHandles
 import java.lang.reflect.Constructor
 
+/**
+ * A support class that makes implementing a tool based on GNGS very easy 
+ * while supporting some standard behaviors (such as logging, etc).
+ * <p>
+ * To implement a tool, use the following steps:
+ * <li>Create a class extending <code>ToolBase</code>
+ * <li>Implement the <code>static void main(String [] args)</code> method
+ * <li>In the main method, add a call to the {@link #cli} support method,
+ *     which will run the context of a {@link gngs.Cli} class to allow you
+ *     to configure the command line behavior
+ * <li>
+ * 
+ * @author Simon Sadedin
+ */
 abstract class ToolBase {
     
     OptionAccessor opts
     
+    /**
+     * Create an instance of the enclosing class and call its {@link #run} method after 
+     * parsing options with a {@link gngs.Cli} instance configured by 
+     * the provided <code>specBiulder</code> closure.
+     * 
+     * @param usage         a string to present to the user explaining usage of the tool
+     * @param args          raw args from command line
+     * @param specBuilder   a closure to configure a {@link groovy.util.CliBuilder} via a 
+     *                      {@link gngs.Cli} instance
+     */
     static void cli(String usage, String [] args, Closure specBuilder) {
         
         Utils.configureSimpleLogging()
