@@ -149,6 +149,14 @@ class Region extends Expando implements IRegion, Serializable {
         return range.to
     }
     
+    String startString() {
+        "$chr:$from"
+    }
+    
+    String endString() {
+        "$chr:$to"
+    } 
+    
     /**
      * @param bp    number of base pairs to widen by
      * 
