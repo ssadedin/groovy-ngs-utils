@@ -38,6 +38,8 @@ import java.lang.reflect.Constructor
  */
 abstract class ToolBase {
     
+    Cli parser
+    
     OptionAccessor opts
     
     /**
@@ -77,6 +79,7 @@ abstract class ToolBase {
         }
             
         ToolBase tool = originalDelegate.newInstance()
+        tool.parser = cli
         tool.opts = opts
         tool.run()
     }
