@@ -34,6 +34,12 @@ import gngs.*
 class Sex extends ToolBase {
     
     void run() {
+        
+        if(!opts.arguments()) {
+            parser.usage()
+            System.exit(1)
+        }
+        
         for(String vcf in opts.arguments().grep { it.endsWith('.vcf') }) {
             gngs.Sex sex = new VCF(vcf).guessSex()
             println sex
