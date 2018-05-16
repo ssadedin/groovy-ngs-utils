@@ -1138,6 +1138,20 @@ class SAM {
     }
     
     /**
+     * @return a list of contigs in the BAM file in sort order of the BAM file
+     */
+    List<String> getContigList() {
+        SAMFileReader reader = newReader()
+        try {
+            List<SAMSequenceRecord> sequences = reader.getFileHeader().getSequenceDictionary().getSequences()
+            return sequences.collect { seq -> seq.sequenceName }
+        }
+        finally {
+            reader.close()
+        }
+    } 
+    
+    /**
      * Call the given closure for each base position with a moving window of reads over that position
      * <p>
      * <b>NOTE:</b> Requires a BAM file sorted by position. Will not work with unsorted bam file.
