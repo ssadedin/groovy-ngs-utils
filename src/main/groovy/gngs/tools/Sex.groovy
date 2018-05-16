@@ -49,7 +49,8 @@ class Sex extends ToolBase {
             if(!opts.t)
                 throw new IllegalArgumentException('Please provide a target region to ascertain sex from BAM files')
                 
-            SexKaryotyper kt = new SexKaryotyper(new SAM(bamPath))
+            Regions targetRegions = new BED(opts.t).load()
+            SexKaryotyper kt = new SexKaryotyper(new SAM(bamPath), targetRegions)
             kt.run()
             println kt.sex
         }        
