@@ -22,6 +22,8 @@ package gngs
 import java.lang.invoke.MethodHandles
 import java.lang.reflect.Constructor
 
+import groovy.util.logging.Log
+
 /**
  * A support class that makes implementing a tool based on GNGS very easy 
  * while supporting some standard behaviors (such as logging, etc).
@@ -36,6 +38,7 @@ import java.lang.reflect.Constructor
  * 
  * @author Simon Sadedin
  */
+@Log
 abstract class ToolBase {
     
     Cli parser
@@ -77,11 +80,37 @@ abstract class ToolBase {
             err.println "This tool is built with Groovy NGS - the Groovy way to work with NGS data. "
             System.exit(1)
         }
+        
+        setProxy()
             
         ToolBase tool = originalDelegate.newInstance()
         tool.parser = cli
         tool.opts = opts
         tool.run()
+    }
+    
+    /**
+     * Check if the http_proxy variable is set, and if no proxy set, initialize the system properties
+     * needed from there.
+     */
+    static void setProxy() {
+        String envProxy = System.getenv('http_proxy')
+        if(envProxy && !System.properties.containsKey('http.proxyHost')) {
+            // Parse the proxy out
+            
+            String host = null
+            String port = null
+            List<String> parts = envProxy.tokenize(':')
+            host = parts[1].replaceAll('^//','')
+            if(parts.size()>2) { // Port set
+                port = parts[2]
+            }
+            log.info "Auto detected proxy host=$host, proxy port=$port"
+            System.properties['http.proxyHost'] = host
+            
+            if(port != null)
+                System.properties['http.proxyPort'] = port
+        }
     }
     
     /**

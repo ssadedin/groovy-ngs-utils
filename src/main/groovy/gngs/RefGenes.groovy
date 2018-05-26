@@ -51,10 +51,14 @@ class RefGenes {
     static COLUMN_NAMES= [ "num", "tx", "chr", "strand", "tx_start", "tx_end", "cds_start", "cds_end", "exons", "starts", "ends", 
                            "u1","gene", "cdsStartStat","cdsEndStat","exonFrames"]
     
-    RefGenes(Map options = [:], String sourceFile) {
-       this.refData = new RangedData(sourceFile, 2,4,5)
+    RefGenes(Map options = [:], File sourceFile) {
+       this.refData = new RangedData(sourceFile.absolutePath, 2,4,5)
        this.refData.load(options + [columnNames:COLUMN_NAMES, zeroBased:true, readFirstLine:true])
        this.index() 
+    }
+    
+    RefGenes(Map options = [:], String sourceFile) {
+        this(options, new File(sourceFile))
     }
     
     RefGenes(Reader r) {
@@ -66,39 +70,10 @@ class RefGenes {
      */
     static String UCSC_REFGENE_URL = "http://hgdownload.soe.ucsc.edu/goldenPath/##genomeVersion##/database/refGene.txt.gz" 
     
+    @CompileStatic
     static RefGenes download(String genomeVersion="hg19") {
-        
-        Map<String,String> genomeMap = [
-            "GRCh37" : "hg19",
-            "GRCh38" : "hg38"
-        ]
-        
-        boolean stripChr = false
-        
-        // Map to appropriate UCSC genome and strip chr if necessary
-        String ucscGenomeVersion = genomeVersion
-        if(genomeVersion in genomeMap) {
-            ucscGenomeVersion = genomeMap[genomeVersion]
-            stripChr = true
-        }
-        
-        File outputFile = new File("refGene.txt.gz")
-        if(!outputFile.exists()) {
-            File homeRefGene = new File(System.properties['user.home'],'.refGene.txt.gz')
-            if(homeRefGene.exists())
-                outputFile = homeRefGene
-        }
-        
-        if(!outputFile.exists()) {
-            
-            String ucscUrl = UCSC_REFGENE_URL.replace('##genomeVersion##',ucscGenomeVersion)
-            outputFile.withOutputStream { outputStream ->
-                new URL(ucscUrl).withInputStream { urlStream ->
-                    Files.copy(urlStream, outputStream)
-                }
-            }
-        }
-        return new RefGenes(outputFile.path, stripChr:stripChr)
+        GenomeResource resource = new ResourceDownloader(UCSC_REFGENE_URL).download(genomeVersion)
+        return new RefGenes(resource.path, stripChr: resource.stripChr)
     }
     
     void load(Reader r) {
