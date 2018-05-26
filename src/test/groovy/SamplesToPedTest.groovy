@@ -8,7 +8,7 @@ import gngs.Relationship
 import gngs.RelationshipType
 import gngs.Subject
  
-import static RelationshipType.*
+import static gngs.RelationshipType.*
 
 class SamplesToPedTest {
 
