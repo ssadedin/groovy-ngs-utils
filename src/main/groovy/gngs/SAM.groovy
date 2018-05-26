@@ -303,7 +303,7 @@ class SAM {
      */
     @CompileStatic
     void filterOrderedPairs(Map options = [:], String outputFileName, Closure c) {
-        this.withOrderedPairWriter(outputFileName, true) { OrderedPairWriter w ->
+        this.withOrderedPairWriter(options, outputFileName, true) { OrderedPairWriter w ->
             OrderedPairActor actor = new OrderedPairActor(w)
             actor.start()
             
@@ -340,7 +340,7 @@ class SAM {
      * output file, based on this BAM file.
      */
     def withOrderedPairActor(Map options = [:], String outputFileName, Closure c) {
-        this.withOrderedPairWriter(outputFileName, true) { w ->
+        this.withOrderedPairWriter(options, outputFileName, true) { w ->
             OrderedPairActor actor = new OrderedPairActor(w)
             actor.start()
             c(actor)
@@ -352,9 +352,14 @@ class SAM {
         }        
     }
     
-    def withOrderedPairWriter(String outputFileName, boolean sorted, Closure c) {
+    def withOrderedPairWriter(Map options=[:], String outputFileName, boolean sorted, Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = this.samFileReader.fileHeader
+        
+        if(options.sampleId) {
+            header.readGroups[0].setSample(options.sampleId)
+        }
+        
         SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
         OrderedPairWriter opw = new OrderedPairWriter(w)
         try {
