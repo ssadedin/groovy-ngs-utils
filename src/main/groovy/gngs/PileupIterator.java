@@ -199,12 +199,12 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
 
           // The next read is past the current position - we should return
           // First though, remove all the reads that do not overlap this position
-          List<PileupState> remove = new ArrayList<PileupState>(this.alignments.size());
-          for(PileupState s :  this.alignments) {
-              if(!s.next()) // next returns false if the position doesn't overlap
-                  remove.add(s);
+          final Iterator<PileupState> iter = this.alignments.iterator();
+          while(iter.hasNext()) {
+              if(!iter.next().next())// next returns false if the position doesn't overlap
+                  iter.remove();
           }
-          this.alignments.removeAll(remove);
+          
           this.nextRead = r;        
         } 
         while(iteratorPosition > 0 && iteratorPosition < start) ;
@@ -212,7 +212,6 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
         return new Pileup(this.iteratorPosition);
      }
     
-
     @Override
     public boolean hasNext() {
         return iteratorPosition < end; // && !(!readIterator.hasNext() && iteratorPosition == -1);
