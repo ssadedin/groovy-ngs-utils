@@ -673,6 +673,13 @@ class Regions implements Iterable<Region> {
         save(null, fileName)
     }
     
+    /**
+     * Save the regions in BED format. If an 'extra' option is provided, this is called
+     * as a closure to return an id field to use for each region.
+     * 
+     * @param options
+     * @param fileName
+     */
     void save(Map options, String fileName) {
         
         def regionsToSave = this
