@@ -90,6 +90,46 @@ class FASTA {
     }
     
     /**
+     * Return the fraction of bases that are 'G' or 'C' over the specified region
+     */
+    @CompileStatic
+    double gc(Region region) {
+        gc(region.chr, region.from, region.to)
+    }
+    
+    /**
+     * Return the fraction of bases that are 'G' or 'C' over the specified region
+     * 
+     * @param chr
+     * @param start
+     * @param end
+     * @return
+     */
+    @CompileStatic
+    double gc(String chr, long start, long end) {
+        
+        byte [] bases = baseBytesAt(chr, start, end)
+        
+        int gOrC = 0
+        int aOrT = 0
+        
+        final int numBases = bases.length
+        for(int i=0; i<numBases; ++i) {
+            switch(bases[i]) {
+                case T:
+                case A:
+                    ++aOrT
+                    break
+               case G:
+               case C:
+                   ++gOrC
+                   break
+            }
+        }
+        return gOrC / (1+gOrC + aOrT)
+    }
+    
+    /**
      * Returns the sequence of bases over the given range
      * <b>NOTE:</b>The range is <i>inclusive</i>.
      * 
