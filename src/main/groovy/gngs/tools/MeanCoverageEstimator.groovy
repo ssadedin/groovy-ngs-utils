@@ -51,7 +51,13 @@ class MeanCoverageEstimator {
         DescriptiveStatistics meanWindow = new DescriptiveStatistics(50)
         
         List<Region> regionList = new ArrayList()
-        regionList.addAll(regions)
+        
+        if(this.regions != null) {
+            regionList.addAll(regions)
+        }
+        else {
+            regionList = generateRandomSamplingRegions()
+        }
         
         Set<Integer> usedIndices = new HashSet()
         
@@ -85,6 +91,20 @@ class MeanCoverageEstimator {
         return meanWindow.mean
     }
     
+    @CompileStatic
+    List<Region> generateRandomSamplingRegions() {
+        List<Region> regionList = []
+        Map<String,Integer> contigs = bam.contigs
+        for(i in 1..1000) {
+            int contigIndex = (int)(random.nextDouble() * contigs.size())
+            String contig = contigs*.key[contigIndex]
+            int start = (int)(random.nextDouble() * (contigs[contig]))
+            Region samplingRegion = new Region(contig, start, start + 300)
+            regionList.add(samplingRegion)
+        }
+        return regionList
+    }
+    
     static void main(String [] args) {
         
         Utils.configureSimpleLogging()
@@ -92,7 +112,7 @@ class MeanCoverageEstimator {
         Cli cli = new Cli(usage: "MeanCoverageEstimator <args>")
         cli.with {
             bam 'BAM file to estimate coverage for', args:1, required:true
-            bed 'Regions to estimate coverage over', args:1, required:true
+            bed 'Regions to estimate coverage over', args:1, required:false
             padding 'Padding to add to regions', args:1, required:false
             sd 'Threshold for standard deviation for convergence of estimate (accuracy)', args:1, required:false
             seed 'Random seed to use in selecting regions', args:1, required:false
@@ -103,7 +123,7 @@ class MeanCoverageEstimator {
         if(!opts) 
             System.exit(1)
         
-        MeanCoverageEstimator mce = new MeanCoverageEstimator(new SAM(opts.bam), new BED(opts.bed).load())
+        MeanCoverageEstimator mce = new MeanCoverageEstimator(new SAM(opts.bam), opts.bed ? new BED(opts.bed).load() : null)
         if(opts.padding) 
             mce.padding = opts.padding.toInteger()
         
