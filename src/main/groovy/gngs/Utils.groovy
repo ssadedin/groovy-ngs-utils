@@ -54,8 +54,11 @@ public class SimpleLogFormatter extends Formatter {
  * @author simon.sadedin@mcri.edu.au
  */
 class Utils {
-    static time(String desc, Closure c) {
-        System.err.println((" Starting " + desc + " ").center(80, "="))
+    static time(Map options=[:],String desc, Closure c) {
+        
+        Closure printMsg = options.log ? { options.log.info(it) } : { System.err.println(it) }
+        
+        printMsg((" Starting " + desc + " ").center(80, "="))
         Date startTime = new Date()
         Date endTime = startTime
         try {
@@ -63,9 +66,8 @@ class Utils {
         }
         finally {
             endTime = new Date()
-            System.err.println(("$desc executed in " + TimeCategory.minus(endTime,startTime)).center(80,"="))
+            printMsg(("$desc executed in " + TimeCategory.minus(endTime,startTime)).center(80,"="))
         }
-        // return endTime.time - startTime.time
     }
     
     static timeMs(Closure c) {
