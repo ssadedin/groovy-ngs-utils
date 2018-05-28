@@ -38,8 +38,11 @@ class Table {
             System.exit(1)
         }
         
-        def file = opts.i
-        if(!opts.i && opts.arguments())
+        def file = null
+        if(opts.i) 
+            file = opts.i
+        else
+        if(opts.arguments())
             file = opts.arguments()[0]
             
         String fileExt = file ? file.replaceAll(/^.*\./,'') : null
