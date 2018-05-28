@@ -1,13 +1,14 @@
 package gngs;
 import groovy.lang.Closure;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import htsjdk.samtools.SAMFileReader;
+import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 
@@ -135,14 +136,14 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
     
     private SAMRecord nextRead;
     
-    private SAMFileReader samFile;
+    private SamReader samFile;
     
     private int minMappingQuality = 1;
     
 
     public PileupIterator() {}
     
-    public PileupIterator(SAMFileReader samFile, String chr, int start, int end) {
+    public PileupIterator(SamReader samFile, String chr, int start, int end) {
         this.start = start;
         this.end = end;
         this.chr = chr;
@@ -222,7 +223,7 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
         throw new UnsupportedOperationException();
     }
     
-    public void close() {
+    public void close() throws IOException {
         this.readIterator.close();
         this.samFile.close();
     }

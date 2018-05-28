@@ -27,7 +27,8 @@ import groovy.transform.CompileStatic;
 import htsjdk.samtools.BAMIndexer
 import htsjdk.samtools.BAMRecord;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.SAMFileReader;
+import htsjdk.samtools.SamReader;
+import htsjdk.samtools.SamReaderFactory
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMFileWriterFactory
 import htsjdk.samtools.SAMFormatException;
@@ -35,6 +36,7 @@ import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.samtools.SamInputResource
 import htsjdk.samtools.ValidationStringency;
 
 
@@ -93,7 +95,7 @@ class ReadWindow {
 
 /**
  * Adds various Groovy idioms and convenience features to the 
- * Picard SAMFileReader.
+ * Picard SamReader.
  * <p>
  * There are three major classes of functionality supported:
  * 
@@ -136,7 +138,7 @@ class ReadWindow {
  */
 class SAM {
 
-    SAMFileReader samFileReader;
+    SamReader samFileReader;
 
     File samFile
 
@@ -172,7 +174,7 @@ class SAM {
     }
     
     SAM(InputStream ips) {
-        SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
+        SamReader.setDefaultValidationStringency(ValidationStringency.SILENT)
         samStream = ips
         newReader()
     }
@@ -203,25 +205,30 @@ class SAM {
         if(!indexFile.exists())
             throw new FileNotFoundException("Please ensure your BAM / SAM / CRAM file is indexed. File $indexFile could not be found.")
 
-        SAMFileReader.setDefaultValidationStringency(ValidationStringency.SILENT)
         this.samFileReader = newReader()
 
     }
 
-    SAMFileReader newReader() {
+    @CompileStatic
+    SamReader newReader() {
+        
+        SamReaderFactory samReaderFactory = 
+            SamReaderFactory.makeDefault()
+                            .validationStringency(ValidationStringency.SILENT)
+        
+        if(!useMemoryMapping)
+            samReaderFactory.disable(SamReaderFactory.Option.EAGERLY_DECODE)
+            
         if(samStream == null) {
-            SAMFileReader r = new SAMFileReader(samFile, indexFile, false)
-            if(!useMemoryMapping)
-                r.enableIndexMemoryMapping(false)
-            r
+            return samReaderFactory.open(samFile)
         }
         else
-            new SAMFileReader(samStream)
+            return samReaderFactory.open(SamInputResource.of(samStream))
     }
     
     
     def withReader(Closure c) {
-        SAMFileReader r = newReader()
+        SamReader r = newReader()
         try {
             c(r)
         }
@@ -231,7 +238,7 @@ class SAM {
     }
     
     def withIterator(Region region, Closure c) {
-        withReader { SAMFileReader r ->
+        withReader { SamReader r ->
             SAMRecordIterator i = r.query(region.chr, region.from, region.to, false) 
             try {
                 c(i)
@@ -243,7 +250,7 @@ class SAM {
     }
     
     def withIterator(Closure c) {
-        withReader { SAMFileReader r ->
+        withReader { SamReader r ->
             SAMRecordIterator i = r.iterator()
             try {
                 c(i)
@@ -384,7 +391,7 @@ class SAM {
      * @param c
      */
     void eachRecord(Map options=[:], Closure c) {
-        SAMFileReader reader = this.newReader()
+        SamReader reader = this.newReader()
         if(options.fast) { 
             reader.enableCrcChecking(false)
             reader.enableIndexCaching(true)
@@ -456,8 +463,8 @@ class SAM {
      */
     @CompileStatic
     void eachPair(Map options=[:], SAMRecordIterator iter, Closure c) {
-        SAMFileReader pairReader = newReader()
-        SAMFileReader randomLookupReader = newReader()
+        SamReader pairReader = newReader()
+        SamReader randomLookupReader = newReader()
         Map<String,Integer> buffer = new HashMap()
         List<SAMRecordPair> writeSpool = new LinkedList()
         SortedMap<Integer,List<SAMRecord>> readPairs = new TreeMap<Integer,List<SAMRecord>>()
@@ -614,7 +621,7 @@ class SAM {
     }
     
     @CompileStatic
-    SAMRecord queryMate(SAMFileReader r, SAMRecord r1) {
+    SAMRecord queryMate(SamReader r, SAMRecord r1) {
         try {
             return r.queryMate(r1)
         }
@@ -637,7 +644,7 @@ class SAM {
     void eachPair(Map options=[:],String chr, int start, int end, Closure c) {
         SAMRecordIterator<SAMRecord> iter
         
-        SAMFileReader reader = this.newReader()
+        SamReader reader = this.newReader()
         if(chr)
             iter = reader.query(chr, start,end,false)
         else
@@ -698,7 +705,7 @@ class SAM {
         ExecutorService executor = Executors.newFixedThreadPool(threads)
         sequences.each { seq ->
             executor.execute {
-                def reader = new SAMFileReader(samFile, indexFile, false)
+                def reader = newReader()
                 try {
                     use(SAMRecordCategory) {
                         Iterator i = reader.query(seq.sequenceName, 1, seq.sequenceLength, false)
@@ -749,34 +756,35 @@ class SAM {
     @CompileStatic
     void filter(String outputFile, Closure c) {
 
-        SAMFileReader reader = new SAMFileReader(samFile, indexFile, false)
-
-        SAMFileWriterFactory f = new SAMFileWriterFactory()
-        SAMFileHeader header = reader.fileHeader
-        SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFile))
-        SAMRecordIterator i = reader.iterator()
-        int count = 0
-        long lastPrintMs = System.currentTimeMillis()
-        try {
-            while(i.hasNext()) {
-                SAMRecord r = (SAMRecord)i.next()
-                if(c(r) == true) {
-                    w.addAlignment(r)
-                }
-                if(count % 1000 == 0) {
-                    if(System.currentTimeMillis() - lastPrintMs > 15000) {
-                        System.err.println "${new Date()} Processed $count records"
-                        lastPrintMs = System.currentTimeMillis()
+        this.withReader { SamReader reader ->
+    
+            SAMFileWriterFactory f = new SAMFileWriterFactory()
+            SAMFileHeader header = reader.fileHeader
+            SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFile))
+            SAMRecordIterator i = reader.iterator()
+            int count = 0
+            long lastPrintMs = System.currentTimeMillis()
+            try {
+                while(i.hasNext()) {
+                    SAMRecord r = (SAMRecord)i.next()
+                    if(c(r) == true) {
+                        w.addAlignment(r)
+                    }
+                    if(count % 1000 == 0) {
+                        if(System.currentTimeMillis() - lastPrintMs > 15000) {
+                            System.err.println "${new Date()} Processed $count records"
+                            lastPrintMs = System.currentTimeMillis()
+                        }
                     }
                 }
             }
-        }
-        finally {
-            if(i != null)
-                i.close()
-
-            if(w)
-                w.close()
+            finally {
+                if(i != null)
+                    i.close()
+    
+                if(w)
+                    w.close()
+            }
         }
     }
 
@@ -907,7 +915,7 @@ class SAM {
     
     def stream(Closure c) {
         SAMRecordIterator i = null
-        SAMFileReader r = newReader()
+        SamReader r = newReader()
         i = r.iterator()
         use(SAMRecordCategory) {
             Stream s = Stream.from(i)
@@ -1000,14 +1008,14 @@ class SAM {
     /**
      * Return the number of mapped reads overlapping the given position
      * 
-     * @param r     the SAMFileReader (SAM / BAM file) containing reads
+     * @param r     the SamReader (SAM / BAM file) containing reads
      * @param chr   the sequence name / chromosome to query
      * @param pos   the chromosomal position to query
      * 
      * @return  the number of reads overlapping the position in the file
      */
     @CompileStatic
-    static int coverage(SAMFileReader r, String chr, int pos, int end=-1, Closure c=null, int minMappingQuality=1) {
+    static int coverage(SamReader r, String chr, int pos, int end=-1, Closure c=null, int minMappingQuality=1) {
         if(end == -1)
             end = pos
 
@@ -1088,12 +1096,12 @@ class SAM {
      */
     @CompileStatic
     PileupIterator pileup(String chr, int start, int end) {
-        SAMFileReader reader = new SAMFileReader(samFile, indexFile, false)
+        SamReader reader = newReader()
         pileup(reader, chr, start, end)
     }
     
     @CompileStatic
-    PileupIterator pileup(SAMFileReader reader, String chr, int start, int end) {
+    PileupIterator pileup(SamReader reader, String chr, int start, int end) {
         PileupIterator p = new PileupIterator(reader, chr,start,end);
         p.setMinMappingQuality(this.minMappingQuality)
         return p 
@@ -1130,7 +1138,7 @@ class SAM {
     }
     
     Map<String, Integer> getContigs() {
-        SAMFileReader reader = newReader()
+        SamReader reader = newReader()
         try {
             List<SAMSequenceRecord> sequences = reader.getFileHeader().getSequenceDictionary().getSequences()
             Map<String,Integer> contigs = sequences.collectEntries { seq ->
@@ -1146,7 +1154,7 @@ class SAM {
      * @return a list of contigs in the BAM file in sort order of the BAM file
      */
     List<String> getContigList() {
-        SAMFileReader reader = newReader()
+        SamReader reader = newReader()
         try {
             List<SAMSequenceRecord> sequences = reader.getFileHeader().getSequenceDictionary().getSequences()
             return sequences.collect { seq -> seq.sequenceName }
@@ -1197,7 +1205,7 @@ class SAM {
        
        TreeMap<Integer,List<SAMRecord>> window = readWindow.window
        
-       SAMFileReader reader = newReader()
+       SamReader reader = newReader()
        SAMRecordIterator iter = reader.query(chr, Math.max(0,start-windowSize), end+windowSize, false)
        try {
            try {
@@ -1277,7 +1285,7 @@ class SAM {
     }
 
     /**
-     * Close the underlying SAMFileReader
+     * Close the underlying SamReader
      */
     void close() {
         if(this.samFileReader != null)
@@ -1291,7 +1299,12 @@ class SAM {
      */
     @CompileStatic
     static void eachRead(Closure c) {
-        SAMFileReader reader = new SAMFileReader(System.in)
+        
+        SamReaderFactory samReaderFactory =
+                SamReaderFactory.makeDefault()
+                .validationStringency(ValidationStringency.SILENT)
+
+        SamReader reader = samReaderFactory.open(SamInputResource.of(System.in))
         Iterator<SAMRecord> iter = reader.iterator()
         while(iter.hasNext()) {
             c(iter.next())
@@ -1363,8 +1376,17 @@ class SAM {
      */
     @CompileStatic
     static void index(File bamFile) {
+        
+        println "New index code"
+        
+        
+        SamReaderFactory samReaderFactory = 
+            SamReaderFactory.makeDefault()
+                            .validationStringency(ValidationStringency.SILENT)
             
-        SAMFileReader reader = new SAMFileReader(bamFile)
+        samReaderFactory.enable(SamReaderFactory.Option.INCLUDE_SOURCE_IN_RECORDS)
+        SamReader reader = samReaderFactory.open(bamFile)
+        
         File outputFile = new File(bamFile.path + ".bai")
         
         if(outputFile.exists())
@@ -1372,7 +1394,8 @@ class SAM {
         
         BAMIndexer indexer = new BAMIndexer(outputFile, reader.getFileHeader());
             
-        reader.enableFileSource(true);
+//        reader.enableFileSource(true);
+        
         int totalRecords = 0;
             
         // create and write the content

@@ -24,7 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import java.util.logging.Logger
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
-import htsjdk.samtools.SAMFileReader
+import htsjdk.samtools.SamReader
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
 
@@ -47,7 +47,7 @@ import htsjdk.samtools.SAMRecordIterator
 @CompileStatic
 class OrderedPairReader implements Closeable {
     
-    SAMFileReader randomLookupReader
+    SamReader randomLookupReader
     
     Logger log = Logger.getLogger("OrderedPairReader")
     
@@ -174,7 +174,7 @@ class OrderedPairReader implements Closeable {
     
     void eachPair(Closure c) {
         
-       SAMFileReader r = bam.newReader() 
+       SamReader r = bam.newReader() 
        try {
            eachPair(r.iterator(),c)
        }
@@ -203,7 +203,7 @@ class OrderedPairReader implements Closeable {
             return
         }
         
-        SAMFileReader reader = this.bam.newReader()
+        SamReader reader = this.bam.newReader()
         try {
             for(Region region in regions) {
                 currentRegion = region

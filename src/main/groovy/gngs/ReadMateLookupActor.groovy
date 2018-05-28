@@ -28,7 +28,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
-import htsjdk.samtools.SAMFileReader
+import htsjdk.samtools.SamReader
 import htsjdk.samtools.SAMFormatException
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
@@ -56,7 +56,7 @@ class ReadMateLookupActor extends DefaultActor implements Closeable {
     
     private static Logger log = Logger.getLogger("ReadMateLookupActor")
     
-    SAMFileReader reader
+    SamReader reader
     
     int resolved = 0
     
@@ -88,7 +88,7 @@ class ReadMateLookupActor extends DefaultActor implements Closeable {
     
     int presolved = 0
     
-    public ReadMateLookupActor(SAMFileReader reader, MissingMateIndex mateIndex, Closure resolvedCallback) {
+    public ReadMateLookupActor(SamReader reader, MissingMateIndex mateIndex, Closure resolvedCallback) {
         super();
         this.reader = reader;
         this.resolvedCallback = resolvedCallback

@@ -28,7 +28,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
-import htsjdk.samtools.SAMFileReader
+import htsjdk.samtools.SamReader
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
 
@@ -204,7 +204,7 @@ class PairScanner {
         final int shardSize = this.shardSize
         final int maxBufferedReads = this.maxWriteBufferSize
         
-        final SAMFileReader reader = bam.newReader()
+        final SamReader reader = bam.newReader()
         reader.enableCrcChecking(false)
         reader.enableIndexCaching(true)
         reader.enableIndexMemoryMapping(true)

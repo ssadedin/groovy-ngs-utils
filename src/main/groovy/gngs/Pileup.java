@@ -19,13 +19,14 @@ package gngs;
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import htsjdk.samtools.SAMFileReader;
+import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
 
@@ -50,11 +51,11 @@ public class Pileup implements Iterator<Pileup> {
     
     private SAMRecord nextRead;
     
-    private SAMFileReader samFile;
+    private SamReader samFile;
     
     public Pileup() {}
     
-    public Pileup(SAMFileReader samFile, String chr, int start, int end) {
+    public Pileup(SamReader samFile, String chr, int start, int end) {
         this.start = start;
         this.end = end;
         this.chr = chr;
@@ -200,7 +201,7 @@ public class Pileup implements Iterator<Pileup> {
         throw new UnsupportedOperationException();
     }
     
-    public void close() {
+    public void close() throws IOException {
         this.readIterator.close();
         this.samFile.close();
     }
