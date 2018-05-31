@@ -396,8 +396,9 @@ class CoveragePrinter extends DefaultActor {
         List coeffVColumn = []
         if(coeffV) {
             Stats stats = Stats.from(values)
-            coeffVColumn = [numberFormat.format(stats.standardDeviation / (1 + stats.mean))]
-            coeffvStats.addValue(coeffVColumn[0])
+            double coeffV = stats.standardDeviation / (1 + stats.mean)
+            coeffVColumn = [numberFormat.format(coeffV)]
+            coeffvStats.addValue(coeffV)
         }
         
         w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
@@ -434,8 +435,6 @@ class CoveragePrinter extends DefaultActor {
         }
     }
 }
-
-
 
 /**
  * A command line tool to rapidly calculate per-base coverage across multiple BAM files
@@ -567,6 +566,16 @@ class MultiCov extends ToolBase {
         log.info "Finished"
         
         if(opts.stats) {
+            log.info "Per sample coverage statistics are: " 
+            Utils.table(out:System.err,
+                ["Sample", "Mean (actual" + (opts.rel?",relative":"") + ")", "Mean (Est)", "StdDev"], 
+                [ 
+                    printer.samples, 
+                    printer.samples.collect { printer.sampleStats[printer.samples.indexOf(it)].mean },
+                    printer.samples.collect { printer.sampleMeans[it] },
+                    printer.samples.collect { printer.sampleStats[printer.samples.indexOf(it)].standardDeviation }
+                ].transpose()
+            )
             log.info "Overall Coefficient of Variation: $printer.coeffvStats.mean"
         }
         
