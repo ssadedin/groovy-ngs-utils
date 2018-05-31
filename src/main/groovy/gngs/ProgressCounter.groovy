@@ -42,6 +42,11 @@ class ProgressCounter {
     
     int count = 0
     
+    /**
+     * Optional total: if provided, percentage progress can be displayed
+     */
+    Integer total = null
+    
     int lastPrintCount = 0
     
     int lineInterval = 500
@@ -80,18 +85,24 @@ class ProgressCounter {
                         float rate = 1000.0*((count-lastPrintCount)/((float)(deltaMs+1)))
                         rateInfo = String.format(" @ %.2f/s ", rate)
                     }
+                    
+                    String totalInfo = ""
+                    int padding = 12
+                    if(total != null) {
+                        totalInfo = " (" + Utils.perc(count/(1+total)) + ")"
+                        padding = total.toString().size() + 7
+                    }
                         
-                   String extraInfo
+                   String extraInfo = ""
                    if(extra != null) {
                        extraInfo = extra.call()
                    }   
                     
                    String progressLine
                    if(withTime)
-                       progressLine = new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + (extraInfo? " " + extraInfo : "")
+                       progressLine = new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + extraInfo
                    else
-                       progressLine = (prefix?"\t$prefix :\t":"") + "Processed ${String.valueOf(count).padRight(12)}" + rateInfo + (extraInfo? " " + extraInfo : "")
-                       
+                       progressLine = (prefix?"\t$prefix :\t":"") + "Processed ${(String.valueOf(count) + totalInfo).padRight(padding)}" + rateInfo + extraInfo
                        
                    if(log != null)
                        log.info(progressLine)
