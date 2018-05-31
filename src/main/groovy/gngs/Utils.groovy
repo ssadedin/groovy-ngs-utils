@@ -54,6 +54,18 @@ public class SimpleLogFormatter extends Formatter {
  * @author simon.sadedin@mcri.edu.au
  */
 class Utils {
+    
+    
+    /**
+     * Call the given closure and print the time it takes to run
+     * <p>
+     * Options:
+     * <li>log - print to the given logger instead of stderr
+     * 
+     * @param desc
+     * @param c
+     * @return
+     */
     static time(Map options=[:],String desc, Closure c) {
         
         Closure printMsg = options.log ? { options.log.info(it) } : { System.err.println(it) }
@@ -118,18 +130,42 @@ class Utils {
         percNumberFormat.minimumFractionDigits=0
     }
     
+    /**
+     * Convenience method to format a fraction in a reasonable way as a percentage
+     * <p>
+     * Note: includes the '%' symbol.
+     */
     static String perc(BigDecimal value) {
             humanNumberFormat.format(100.0d*value)+"%"
     }    
     
+    /**
+     * Convenience method to format a fraction in a reasonable way as a percentage
+     * <p>
+     * Note: includes the '%' symbol.
+     */
     static String perc(double value) {
             humanNumberFormat.format(100.0d*value)+"%"
     }
     
+    /**
+     * Convenience method to format a number in a "human readable" manner, where
+     * this means rounding and expressing as millions (m), thousands (k), 
+     * billions (g) etc.
+     */        
     static String human(Number number) {
         humanBp(number,['','k','m','g','p'])
     }
     
+    
+    /**
+     * Convenience method to format a number in a "human readable" manner, where
+     * this means rounding and expressing as millions (m), thousands (k), 
+     * billions (g) etc.
+     * <p>
+     * Optionally, custom unit labels can be passed as a list in the second
+     * parameter.
+     */         
     static String humanBp(Number number, units=['bp','kb','Mb','Gb']) {
         double value = number.toDouble()
         for(unit in units) {
@@ -163,6 +199,12 @@ class Utils {
      * <p>
      * By default, the table is printed to stdout. To print it somewhere
      * else, set the <code>out</code> option to a Writer object.
+     * <p>
+     * Optional parameters: 
+     * <li><code>indent</code>: amount to indent table by
+     * <li><code>format</code>: Map keyed on column containing custom formatters
+     * <li><code>topborder</code>: if true, a top border will be added
+     * <li><code>out</code>: Custom output writer / stream to write results to
      * 
      * @param headers   a list of column names
      * @param rows      a list of lists, where each inner list represents a
