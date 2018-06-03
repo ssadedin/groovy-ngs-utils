@@ -524,6 +524,7 @@ var userAnnotations = {
           get depth() { return rowSource[DEPTH_INDEX]; },
           get families() { familyCountReferenced=true; return rowSource[FAMILIES_INDEX];},
           get gene() { return rowSource[GENE_INDEX]; },
+          get priority() { console.log(genePriorities[rowSource[GENE_INDEX]]); return genePriorities[rowSource[GENE_INDEX]] || 0; },
           get cons() { return rowSource[CONS_INDEX]; },
           get maf() { return rowSource[MAF_INDEX]; },
           get ad() {return rowSource[AD_INDEX]  },
@@ -600,7 +601,7 @@ var userAnnotations = {
                             }
                             
                             if(!familyResult) {
-                                console.log("Family failed: index=" + index + " otherIndex = " + otherIndex + " family=" + family.id ); // + " proband = " + proband);
+//                                console.log("Family failed: index=" + index + " otherIndex = " + otherIndex + " family=" + family.id ); // + " proband = " + proband);
                                 if(familyCountReferenced) {
                                     // Don't bother evaluating this at all - we'll look at it once all the families are evaluated on other conditions
                                     familyCountExprs.push(filtersToRun[i].expr);
@@ -613,7 +614,7 @@ var userAnnotations = {
                                 else {
                                     // False result not in context of family (variant level filter) means fail whole filter straight away
                                     // PROBLEM: Here we are failing and it aborts the iteration of otherIndexes too
-                                    console.log("Fail without family contex: abort early");
+//                                    console.log("Fail without family contex: abort early");
                                     result = false;
                                 	break; 
                                 }
@@ -699,10 +700,18 @@ var userAnnotations = {
     var newTable = null;
 
     function createVariantRow(tableId, row, data, dataIndex ) {
-        console.log("create row, table id = " + tableId);
+//        console.log("create row, table id = " + tableId);
         var tds = row.getElementsByTagName('td');
         tds[2].innerHTML = "<a id='variant_"+dataIndex+"_detail' href='http://localhost:60151/goto?locus="+tds[1].innerHTML + ":" + tds[2].innerHTML + "'>"+ tds[2].innerHTML + "</a>";
         $(tds[2]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
+        
+        let ref = tds[REF_INDEX].innerHTML;
+        if(ref.length>25)
+            tds[REF_INDEX].innerHTML = ref.substring(0,6) + '(' + (ref.length-12) + 'bp)' + ref.substring(ref.length-6,ref.length-1)
+            
+        let alt = tds[ALT_INDEX].innerHTML;
+        if(alt.length>25)
+            tds[ALT_INDEX].innerHTML = alt.substring(0,6) + '(' + (alt.length-12) + 'bp)' + alt.substring(alt.length-6,alt.length-1) 
         
         var tags = userAnnotations[dataIndex] && userAnnotations[dataIndex].tags;
         addRowTags(row, tags);
@@ -738,6 +747,10 @@ var userAnnotations = {
         var gene = tds[GENE_INDEX].innerHTML;
         $(tds[GENE_INDEX]).html('<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene='+gene + '#diseases">'+gene+'</a>')
         
+        let genePriority = genePriorities[gene]
+        if(genePriority) {
+           $(tds[GENE_INDEX]).addClass(`priority-${genePriority}`) 
+        }
     }
     
     function add_display_events() {

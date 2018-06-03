@@ -195,6 +195,7 @@ class VCFtoHTML {
             a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
             target 'Exclude variants outside this region from comparison', args:1
             xtarget 'Exclude variants inside these target regions from the comparison', args:1
+            genelist 'Add gene priorities based on two column, tab separated file', args:1
             chr 'Confine analysis to chromosome', args:Cli.UNLIMITED
             diff 'Only output variants that are different between the samples'
             maxMaf 'Filter out variants above this MAF', args:1
@@ -359,14 +360,22 @@ class VCFtoHTML {
             }
             
             progress.end()
+            
+            
+            Map<String,Integer> genePriorities = [:]
+            if(opts.genelist) 
+                genePriorities = new File(opts.genelist).readLines()*.tokenize('\t').collectEntries { [it[0],it[1].toInteger()] } 
+            
             w.println """];"""
             
             w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + exportSamples)};"
             
             w.println """
             var samples = ${json(exportSamples)};
-        
+
             var pedigrees = ${pedigrees.toJson()};
+
+            var genePriorities = ${json(genePriorities)};
         
             var variantTable = null;
             \$(document).ready(function() {
@@ -407,6 +416,12 @@ class VCFtoHTML {
             .tag2 { background-color: #aa33aa; }
             .tag3 { background-color: #ff6600; }
             .unassignedTag { display: none; }
+
+            td.priority-1  { font-weight: bold; color: #ffaa00 !important; }
+            td.priority-2  { font-weight: bold; color: #ffaa00 !important; }
+            td.priority-3  { font-weight: bold; color: #ff6600 !important; }
+            td.priority-4  { font-weight: bold; color: #ff0000 !important; }
+        
         
             </style>
             """;
