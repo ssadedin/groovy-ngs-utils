@@ -1,10 +1,12 @@
 apply plugin: 'groovy'
 
+
 project.ext {
     VERSION="0.0.1"
     STAGE="build/stage/groovy-ngs-utils-$VERSION"
-    GROOVY_VERSION="2.4.10"
+    // GROOVY_VERSION="2.4.13"
 }
+
 
 /*
  TODO: use proguard to shrink down the output jars
@@ -63,6 +65,7 @@ dependencies {
      compile 'log4j:log4j:1.2.17'
      compile 'org.xerial:sqlite-jdbc:3.8.6'
      compile files(fileTree(dir:'lib', includes:['*.jar']))
+     compile project(':htsjdk')
      compile project(':graxxia')
 }
 
@@ -83,6 +86,9 @@ jar {
             return false
         }
         if(details.relativePath.pathString.startsWith("groovy/"))
+            return true
+
+        if(details.relativePath.pathString.contains("groovyjarjar"))
             return true
 
         if(details.relativePath.pathString.contains("Log4jLoggerFactory"))

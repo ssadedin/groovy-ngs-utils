@@ -1,3 +1,6 @@
 [submodule "graxxia"]
 	path = graxxia
 	url = https://github.com/ssadedin/graxxia.git
+[submodule "htsjdk"]
+	path = htsjdk
+	url = https://github.com/samtools/htsjdk.git
