@@ -91,6 +91,11 @@ class ReadWindow {
     int pos
     
     TreeMap<Integer, List<SAMRecord>> window = new TreeMap()
+    
+    String toString() {
+        "Reads at ${window.count { it.value.size() > 1 }} positions: " + 
+            window.grep { Map.Entry e -> ((List)e.value).size() > 1 }
+    }
 }
 
 /**
