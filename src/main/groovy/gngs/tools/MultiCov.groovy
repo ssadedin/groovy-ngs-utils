@@ -473,6 +473,8 @@ class MultiCov extends ToolBase {
         
         resolveRegionsToScan()
         
+        this.scanRegions = this.scanRegions.toSorted(new RegionComparator())    
+        
         this.bams = opts.arguments().collect { new SAM(it) }
         
         List<String> samples = bams*.samples*.getAt(0)
