@@ -23,8 +23,12 @@ import java.text.NumberFormat
 import java.util.Iterator
 import java.util.concurrent.atomic.AtomicInteger
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
+
 import gngs.*
+import graxxia.IntegerStats
 import graxxia.Stats
+import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.transform.ToString
 import groovy.util.logging.Log
@@ -303,7 +307,12 @@ class CoveragePrinter extends DefaultActor {
     
     List<String> samples
     
-    Stats coeffvStats = new Stats()
+    /**
+     * Statistics for coefficient of variation - to avoid large memory use in tracking
+     * individual values we (ab)use the integer stats class and bin coeffv as
+     * integers from 0 - 100.
+     */
+    IntegerStats coeffvStats = new IntegerStats(100)
     
     /**
      * If set to true, the coverage value for each sample is divided by its mean
@@ -332,7 +341,7 @@ class CoveragePrinter extends DefaultActor {
     private Integer correlationSampleIndex = null
     
     /**
-     * Mean coverage for each sampl
+     * Mean coverage for each sample
      * <p>
      * Only used if {@link #relative} is enabled
      */
@@ -398,7 +407,7 @@ class CoveragePrinter extends DefaultActor {
             Stats stats = Stats.from(values)
             double coeffV = stats.standardDeviation / (1 + stats.mean)
             coeffVColumn = [numberFormat.format(coeffV)]
-            coeffvStats.addValue(coeffV)
+            coeffvStats.addValue((int)(100*coeffV))
         }
         
         w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
@@ -464,6 +473,8 @@ class MultiCov extends ToolBase {
             stats 'Print statistics about coverage values and variation'
             corr 'Determine corellation of other samples to specified sample', args:1
             co 'Correlation output file', longOpt: 'correlationOutput', args:1, required: false
+            cvo 'Coefficient of variation output file: write coeffv in tab separated form to this file', args:1, required:false 
+            cvj 'Coefficient of variation output file: write coeffv in javascript loadable form to this file', args:1, required:false 
             o 'Output file to write results to', longOpt: 'output', args:1
         }
     }
@@ -498,6 +509,10 @@ class MultiCov extends ToolBase {
         }
     } 
     
+    /**
+     * Combine the various possible options for specifying which region to analyse
+     * into a single regions object (see {@link #scanRegions}).
+     */
     void resolveRegionsToScan() {
         if(opts.gene) {
             SAM bam = new SAM(opts.arguments()[0])
@@ -545,6 +560,8 @@ class MultiCov extends ToolBase {
             bams.eachParallel { SAM bam ->
                 
                 MeanCoverageEstimator meanEstimator = new MeanCoverageEstimator(bam, estRegions)
+                meanEstimator.sdThreshold = 0.5 // the default is slightly less accurate than wanted for this purpose
+                meanEstimator.minRegions = 30
                 double mean = meanEstimator.estimate()
                 
                 String sample = bam.samples[0]
@@ -578,12 +595,53 @@ class MultiCov extends ToolBase {
                     printer.samples.collect { printer.sampleStats[printer.samples.indexOf(it)].standardDeviation }
                 ].transpose()
             )
-            log.info "Overall Coefficient of Variation: $printer.coeffvStats.mean"
+            if(opts.cv) {
+                printCVInfo(printer.coeffvStats)
+            }
         }
+        
+        if(opts.cvo) {
+            new File(opts.cvo).withWriter { cvw ->
+                writeCVOutput(cvw, printer.coeffvStats)
+            }
+        }
+        
+        if(opts.cvj) {
+            new File(opts.cvj).withWriter { cvw ->
+                writeCVOutputJS(cvw, printer.coeffvStats)
+            }
+        }
+  
         
         if(opts.corr) {
             printCorrelationTable(printer)
         }
+    }
+    
+    final List cvThresholds = (0..100).step(5)
+    
+    private void writeCVOutputJS(Writer w, IntegerStats coeffvStats) {
+        w.println(
+            'coeffvPercentiles = // NOJSON\n' + JsonOutput.toJson(
+                [ 
+                      cvThresholds.collect{ it/100},
+                      cvThresholds.collect { thresh -> (1 - coeffvStats.fractionAbove(thresh)) }
+                ].transpose()
+            )
+        )
+    } 
+    
+    private void writeCVOutput(Writer w, IntegerStats coeffvStats) {
+        w.println cvThresholds.collect{ it/100}*.toString().join('\t')
+        w.println cvThresholds.collect { thresh -> Utils.perc(1 - coeffvStats.fractionAbove(thresh)) }.join('\t')
+    }
+    
+    private void printCVInfo(IntegerStats coeffvStats) {
+        log.info "Overall Coefficient of Variation: mean = ${coeffvStats.mean/100} median = ${coeffvStats.median/100}"
+        Utils.table(out:System.err, topborder:true,
+                    cvThresholds.collect{ it/100}*.toString(),
+                    [cvThresholds.collect { thresh -> Utils.perc(1 - coeffvStats.fractionAbove(thresh)) }]
+       )
     }
 
     private printCorrelationTable(CoveragePrinter printer) {
