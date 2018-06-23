@@ -756,13 +756,14 @@ class SAM {
     @CompileStatic
     void filter(String outputFile, Closure c) {
 
+        ProgressCounter progress = new ProgressCounter(withTime:true, withRate:true)
+        
         this.withReader { SamReader reader ->
     
             SAMFileWriterFactory f = new SAMFileWriterFactory()
             SAMFileHeader header = reader.fileHeader
             SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFile))
             SAMRecordIterator i = reader.iterator()
-            int count = 0
             long lastPrintMs = System.currentTimeMillis()
             try {
                 while(i.hasNext()) {
@@ -770,12 +771,7 @@ class SAM {
                     if(c(r) == true) {
                         w.addAlignment(r)
                     }
-                    if(count % 1000 == 0) {
-                        if(System.currentTimeMillis() - lastPrintMs > 15000) {
-                            System.err.println "${new Date()} Processed $count records"
-                            lastPrintMs = System.currentTimeMillis()
-                        }
-                    }
+                    progress.count()
                 }
             }
             finally {
@@ -784,6 +780,8 @@ class SAM {
     
                 if(w)
                     w.close()
+                    
+                progress.end()
             }
         }
     }
