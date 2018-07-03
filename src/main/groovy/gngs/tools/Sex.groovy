@@ -20,6 +20,10 @@
 package gngs.tools
 
 import gngs.*
+import groovy.transform.CompileStatic
+import groovy.util.logging.Log
+import groovyx.gpars.actor.Actor
+import groovyx.gpars.actor.Actors
 
 /**
  * Estimates the sex of a sample from one or more VCF file and prints to the console.
@@ -31,7 +35,12 @@ import gngs.*
  * 
  * @author Simon Sadedin
  */
+@Log
 class Sex extends ToolBase {
+    
+    final static String AMELY_BASES = "CCACTTCCTCCTGCTTGGTCTTGTCTGTTGCTGGCCAAGCTTCCAGATGCAGATCAGGAAGTATGGGGGGCAGGGGCCGCAGGGGGAACATTGGAGGCAGAGGTGGCTGTGGCAGCAGGGGCTGCATGGGTTGCACAGGTGGCTGGGGCTGCATGGGCTGGTGAGGCTGTGGCTGAACAGGCTGGGGCTGGAAGGGCTGCTGGGCAGGCAGAGGGAGGTTTGGCTGATGGTGTTGGGTTGGAGTCATGGATTGCTGGCCAGGAACAGGCATCAGTGCTTGCTGGCGGACCCTGGGCTGCTGAGCTGGCACCACTGGGATGTGGTGATGAGACTGCAGGGTGTGAGTCAGGGGGTGCTGTTGGGACACCACG"
+    
+    final static MALE_AMELY_READ_THRESHOLD = 100
     
     void run() {
         
@@ -54,11 +63,61 @@ class Sex extends ToolBase {
             kt.run()
             println kt.sex
         }        
+        
+        for(String fastqPath in opts.arguments().grep { it.endsWith('.fastq.gz') }) {
+            gngs.Sex sex = guessFastqSex(fastqPath)
+            println sex
+        }
+    }
+    
+    @CompileStatic
+    gngs.Sex guessFastqSex(String fastqPath) {
+        
+        // Compute a set of 30 base seeds from the sequence of this chrY exon
+        // Note we discard the last entry as it may be less than 30 bases
+        final List seeds = AMELY_BASES.toList().collate(30,60)*.join('')[1..-2]
+        
+        final boolean verbose = opts ? opts['v'] : true
+        
+        ProgressCounter progress = new ProgressCounter(withRate: true, withTime: true, log: log)
+        int count = 0
+        Actor counter = Actors.actor {
+            loop {
+                react { String bases ->
+                    if(bases == "stop")
+                        terminate()
+                    else
+                    if(seeds.any { bases.contains(it) })
+                        ++count 
+                }
+            }
+        }
+        
+        FASTQ.eachRead(fastqPath) { FASTQRead r ->
+            counter << r.bases
+            if(verbose)
+                progress.count()
+        }
+        
+        counter << "stop"
+        counter.join()
+        
+        if(verbose) {
+            progress.end()
+            log.info "Observed $count reads carrying sequence from unique Y chromosome gene"
+        }
+            
+        if(count > 30) {
+            return gngs.Sex.MALE
+        }
+        else
+            return gngs.Sex.FEMALE
     }
     
     static main(args) {
-        cli("Sex [-t <target region>] <vcf file | bam file> <vcf file | bam file> ...", args) {
+        cli("Sex [-t <target region>] <vcf file | bam file | fastq> <vcf file | bam file | fastq> ...", args) {
             t 'Target regions to analyse (required for BAM files)', longOpt: 'target', args:1, required: false
+            v 'Print verbose information about how sex is being determined'
         }
     }
 }
