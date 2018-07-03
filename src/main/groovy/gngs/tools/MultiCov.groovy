@@ -91,9 +91,9 @@ class CoverageReaderActor extends DefaultActor {
     
     ProgressCounter progress = new ProgressCounter(
         withRate:true, 
-        extra:  {"region: $currentRegion, readBuffer: ${reads.reads.size()}, pending: $pending"},
+        extra:  {"region: $currentRegion, sample: $sample, readBuffer: ${reads.reads.size()}, pending: $pending"},
         log: log,
-        timeInterval: 5000,
+        timeInterval: 1000,
         lineInterval: 100
         )
     
@@ -118,6 +118,7 @@ class CoverageReaderActor extends DefaultActor {
         loop { 
             react { msg ->
                 if(msg == "stop") {
+                    this.flushToEnd()
                     this.progress.end()
                     this.terminate()
                 }
@@ -169,7 +170,22 @@ class CoverageReaderActor extends DefaultActor {
         
         reads.add(r)
     }
-
+    
+    private void flushToEnd() {
+        if(currentRegion == null)
+            return
+            
+        while(currentRegion != null) {
+            int regionEnd = currentRegion.to
+            while(pos < regionEnd) {
+                ++pos
+                flushPosition()
+            }
+            
+            nextRegion()
+        }
+    }
+    
     @CompileStatic
     private flushToReadPosition(SAMRecord r) {
         final int alignmentStart = r.alignmentStart
@@ -255,7 +271,8 @@ class CoverageCombinerActor extends DefaultActor {
     
     Actor consumer
     
-    ProgressCounter progress = new ProgressCounter(withRate: true, log:log, extra: {pos: XPos.parsePos(pos).startString() })
+    ProgressCounter progress = new ProgressCounter(withRate: true, timeInterval: 1000, lineInterval: 200, log:log, 
+        extra: { "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]}/$numSamples reported" })
     
     @Override
     void act() {
@@ -263,6 +280,7 @@ class CoverageCombinerActor extends DefaultActor {
             react { msg ->
                 if(msg == "stop") {
                     this.progress.end()
+                    log.info "Combiner terminating"
                     this.terminate()
                 }
                 else
@@ -284,10 +302,11 @@ class CoverageCombinerActor extends DefaultActor {
         }
         
         positionCounts[count.sample] = count.reads
+        progress.count()
+        
         if(pos == xpos) {
             if(positionCounts.size() == numSamples) {
                         
-                progress.count()
                 counts.pollFirstEntry()
                 
                 if(!counts.isEmpty())
@@ -484,7 +503,7 @@ class MultiCov extends ToolBase {
         
         resolveRegionsToScan()
         
-        this.scanRegions = this.scanRegions.toSorted(new RegionComparator())    
+        this.scanRegions = this.scanRegions.reduce().toSorted(new NumericRegionComparator())    
         
         this.bams = opts.arguments().collect { new SAM(it) }
         
@@ -688,6 +707,7 @@ class MultiCov extends ToolBase {
         for(String chr in chrs) {
             int start = Math.max(0, this.scanRegions.index[chr].ranges.firstKey() - 1000)
             int end = this.scanRegions.index[chr].ranges.lastKey() + 1000
+            log.info "Scan $chr from $start to $end"
             bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
                 while(iter.hasNext()) {
                     cra << iter.next()
