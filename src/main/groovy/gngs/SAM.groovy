@@ -215,14 +215,19 @@ class SAM {
     }
 
     @CompileStatic
-    SamReader newReader() {
+    SamReader newReader(Map options = [:]) {
         
         SamReaderFactory samReaderFactory = 
             SamReaderFactory.makeDefault()
                             .validationStringency(ValidationStringency.SILENT)
+        if(options.fast) {
+            samReaderFactory.disable(SamReaderFactory.Option.VALIDATE_CRC_CHECKSUMS)
+            samReaderFactory.disable(SamReaderFactory.Option.EAGERLY_DECODE)
+            samReaderFactory.disable(SamReaderFactory.Option.CACHE_FILE_BASED_INDEXES)
+        }
         
         if(!useMemoryMapping)
-            samReaderFactory.disable(SamReaderFactory.Option.EAGERLY_DECODE)
+            samReaderFactory.enable(SamReaderFactory.Option.DONT_MEMORY_MAP_INDEX)
             
         if(samStream == null) {
             return samReaderFactory.open(samFile)
