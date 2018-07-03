@@ -1,20 +1,10 @@
-import gngs.BED
-import gngs.Cli
-import gngs.DGV
-import gngs.GRange
-import gngs.IRegion
-import gngs.RangedData
-import gngs.Region
-import gngs.Regions
-import gngs.Utils
-import gngs.VCF
-import gngs.Variant
+import gngs.*
 
 class TargetedCNVAnnotator {
     
     Regions target
     
-    DGV dgv 
+    Map<String, CNVDatabase> cnvDatabases
     
     String omimFile
     
@@ -22,14 +12,20 @@ class TargetedCNVAnnotator {
     
     public TargetedCNVAnnotator(Regions targetRegions, RangedData dgv/*, String omimFile*/) {
         this.target = targetRegions
-        this.dgv = new DGV(dgv)
+        this.cnvDatabases["dgv"] = new DGV(dgv)
     }
     
     public TargetedCNVAnnotator(Regions targetRegions, String dgvFile/*, String omimFile*/) {
         this.target = targetRegions
-        this.dgv = new DGV(dgvFile).parse()
+        this.cnvDatabases["dgv"] = new DGV(dgvFile).parse()
 //        this.omimFile = omimFile
     }
+    
+    public TargetedCNVAnnotator(Map<String, CNVDatabase> databases, Regions targetRegions) {
+        this.target = targetRegions
+        this.cnvDatabases = databases
+    }
+    
     
    void annotate(String vcfFile, Writer output) {
 	   
@@ -66,7 +62,15 @@ class TargetedCNVAnnotator {
        return result
    }
    
-   Map annotate(IRegion v, String type) {
+   /**
+    * Compute the frequency of CNVs in databases that are compatible with a CNV
+    * identified in the given range, and matching the given type
+    * 
+    * @param v
+    * @param type   One of DEL, LOSS, DUP, GAIN or ANY
+    * @return       a map of frequencies, keyed on database id
+    */
+   Map<String, CNVFrequency> annotate(IRegion v, String type) {
        
        // Make the type compatible with how we tag CNVs (DEL,DUP)
        if(type == "DEL")
@@ -78,17 +82,24 @@ class TargetedCNVAnnotator {
        if(!v.chr.startsWith('chr'))
            v = new Region('chr'+v.chr, v.range)
 	   
-       List<GRange> compatibleRanges = findCompatibleRanges(v)
+       this.cnvDatabases.collectEntries { databaseId, CNVDatabase db ->
+           [ databaseId, annotateFromDatabase(db, v, type)]
+       }
+   }
+   
+   CNVFrequency annotateFromDatabase(CNVDatabase db, IRegion v, String type) {
+       
+       List<GRange> compatibleRanges = findCompatibleRanges(db, v)
            
        // These GRanges have Regions as extra's:
        List<Region> dgvCnvs = compatibleRanges*.extra
            
        // They must be the same type
        dgvCnvs = filterByType(type, dgvCnvs)
-           
-       // Look for "crossing" variants
-       List<Region> spanning = dgv.getOverlaps(v.chr, v.range.from, v.range.to).grep { GRange r ->
-           r.spans(v.range)  
+       
+       // Look for "crossing" CNVs
+       List<Region> spanning = db.queryOverlapping(v).grep { Region r ->
+           r.spans(v)  
        }*.extra
            
        if(type != "ANY")
@@ -111,7 +122,7 @@ class TargetedCNVAnnotator {
        if(verbose)
            System.err.println "Found ${dgvCnvs.size()} plausible known DGV variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
 		   
-	   return [ spanning: spanning, spanningFreq: spanningFreq, ]
+	   return new CNVFrequency(spanning: spanning, spanningFreq: spanningFreq)
    }
    
    List<Region> filterByType(String type, List<Region> regions) {
@@ -121,7 +132,7 @@ class TargetedCNVAnnotator {
           return regions.grep { it.varType in ["Gain","Gain+Loss","gain","gain+loss","duplication"] }
    }
    
-   List<GRange> findCompatibleRanges(IRegion v) {
+   List<GRange> findCompatibleRanges(CNVDatabase db, IRegion v) {
        
        // First determine the true possible range of the CNV
        // That means, from the first upstream unaffected target region 
@@ -135,7 +146,7 @@ class TargetedCNVAnnotator {
        Region minRange = new Region(v.chr, v.range)
            
        // Find in DGV any CNVs that *start* inside the required region
-       def compatibleRanges = dgv.getOverlaps(minRange).grep { IntRange r ->
+       def compatibleRanges = db.queryOverlapping(minRange).grep { Region r ->
            boolean result = (r.from > maxRange.from) && (r.from < minRange.from) &&
                (r.to > minRange.to) && (r.to < maxRange.to)
            return result

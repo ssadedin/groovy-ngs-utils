@@ -36,7 +36,7 @@ import groovy.transform.CompileStatic
  * @author simon.sadedin@gmail.com
  */
 class DecipherCNVs extends CNVDatabase {
-    
+     
     /**
      * Columns from schema of DGV in UCSC table
      */
@@ -63,6 +63,11 @@ class DecipherCNVs extends CNVDatabase {
             // Work around for seemingly incorrect parsing
             r.deletion_frequency = r.deletion_frequency.toDouble()
             r.duplication_frequency = r.duplication_frequency.toDouble()
+            
+            // These make it have properties compatible with DGV
+            r.observedGains = r.duplication_observations
+            r.observedLosses = r.deletion_observations
+            r.sampleSize = r.sample_size
         }
         return this
     }

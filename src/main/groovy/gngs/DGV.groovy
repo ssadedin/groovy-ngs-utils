@@ -93,4 +93,12 @@ class DGV extends CNVDatabase {
             
         return (maxEntry.observedGains + maxEntry.observedLosses) / maxEntry.sampleSize
     } 
+    
+   List<Region> filterByType(String type, List<Region> regions) {
+       if(type == "LOSS")
+          return regions.grep { it.varType in ["Loss","Gain+Loss","loss","gain+loss","deletion"] }
+       else
+          return regions.grep { it.varType in ["Gain","Gain+Loss","gain","gain+loss","duplication"] }
+   }
+    
 }
