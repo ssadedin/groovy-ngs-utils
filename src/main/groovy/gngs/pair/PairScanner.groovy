@@ -63,6 +63,8 @@ class PairScanner {
     
     PairWriter pairWriter
     
+    PairWriter pairWriter2
+    
     List<PairLocator> locatorIndex = []
     
     List<PairLocator> locators = []
@@ -97,6 +99,18 @@ class PairScanner {
      */
     int maxWriteBufferSize = 3000000
     
+    PairScanner(Writer writer1, Writer writer2, int numLocators, Regions regions = null, String filterExpr = null) {
+        this.pairWriter = new PairWriter(writer1)
+        this.pairWriter2 = new PairWriter(writer2)
+        this.formatter = new PairFormatter(1000 * 1000, pairWriter, pairWriter2)
+        this.chimericLocator = new PairLocator(formatter)
+        this.regions = regions
+        this.numLocators = numLocators
+        this.filterExpr = filterExpr
+        progress.log = log
+    }
+  
+    
     PairScanner(Writer writer, int numLocators, Regions regions = null, String filterExpr = null) {
         this.pairWriter = new PairWriter(writer)
         this.formatter = new PairFormatter(1000 * 1000, pairWriter)
@@ -106,7 +120,7 @@ class PairScanner {
         this.filterExpr = filterExpr
         progress.log = log
     }
-    
+  
     void initLocators() {
         
         if(this.debugRead)
@@ -143,6 +157,10 @@ class PairScanner {
             formatter,
             pairWriter,
         ]
+        
+        if(pairWriter2 != null)
+            this.actors << pairWriter2
+            
         this.actors*.start()
     }
     
@@ -190,6 +208,9 @@ class PairScanner {
             stopActor "Chimeric Locator", chimericLocator
             stopActor "Formatter", formatter
             stopActor "Writer", pairWriter
+            if(pairWriter2)
+                stopActor "Writer2", pairWriter2
+                
             progress.end()
             running = null
         }
@@ -204,11 +225,7 @@ class PairScanner {
         final int shardSize = this.shardSize
         final int maxBufferedReads = this.maxWriteBufferSize
         
-        final SamReader reader = bam.newReader()
-        reader.enableCrcChecking(false)
-        reader.enableIndexCaching(true)
-        reader.enableIndexMemoryMapping(true)
-        
+        final SamReader reader = bam.newReader(fast:true)
         try {
             final SAMRecordIterator i = reader.iterator()
             try {

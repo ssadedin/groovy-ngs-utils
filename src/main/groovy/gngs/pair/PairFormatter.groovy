@@ -48,9 +48,13 @@ class PairFormatter extends DefaultActor {
     
     StringBuilder buffer
     
+    StringBuilder buffer2
+    
     int maxBufferSize
     
     PairWriter writer
+    
+    PairWriter writer2
     
     int formatted = 0
     
@@ -65,11 +69,14 @@ class PairFormatter extends DefaultActor {
      */
     boolean addPosition = false
     
-    PairFormatter(int bufferSize, PairWriter writer) {
+    PairFormatter(int bufferSize, PairWriter writer, PairWriter writer2=null) {
         buffer = new StringBuilder(bufferSize+2000)
         this.maxBufferSize = bufferSize
         assert writer != null
         this.writer = writer
+        this.writer2 = writer2
+        if(writer2 != null)
+            this.buffer2 = new StringBuilder(bufferSize+2000)
     }
 
     @CompileDynamic
@@ -96,11 +103,12 @@ class PairFormatter extends DefaultActor {
         if(debugRead != null && (r2.readName == debugRead)) {
             log.info "Format: $debugRead"
         }
+        
         if(pair instanceof CompactReadPair) {
-            pair.appendTo(buffer, r2, this.addPosition)
+            pair.appendTo(buffer, (StringBuilder) (buffer2 != null ? buffer2 : buffer), r2, this.addPosition)
         }
         else {
-            ((SAMRecordPair)pair).appendTo(buffer, this.addPosition)
+            ((SAMRecordPair)pair).appendTo(buffer, (buffer2 != null ? buffer2 : buffer), this.addPosition)
         }
         
         assert writer != null
@@ -115,10 +123,16 @@ class PairFormatter extends DefaultActor {
     }
     
     void flushBuffer() {
+        flushBufferAndWriter(buffer, writer)
+        if(writer2 != null)
+            flushBufferAndWriter(buffer2, writer2)
+        formatted += buffered
+        buffered = 0
+    }
+    
+    void flushBufferAndWriter(StringBuilder buffer, PairWriter writer) {
         writer << [ content: buffer.toString(), reads: buffered ]
         writer.pending.addAndGet(buffered)
         buffer.setLength(0)
-        formatted += buffered
-        buffered = 0
     }
 }

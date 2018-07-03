@@ -45,9 +45,9 @@ interface ReadPair {
  */
 class SAMRecordPair implements Comparable, ReadPair {
     
-    SAMRecord r1
+    public SAMRecord r1
     
-    SAMRecord r2
+    public SAMRecord r2
     
     Map<String,Object> flags = Collections.synchronizedMap([:])
     
@@ -311,12 +311,12 @@ class SAMRecordPair implements Comparable, ReadPair {
         
         StringBuilder b = new StringBuilder(500)
         b.setLength(0)
-        this.appendTo(b)
+        this.appendTo(b,b)
         out.println(b.toString())
     }
     
     @CompileStatic
-    void appendTo(final StringBuilder b, boolean addPosition=false) {
+    void appendTo(final StringBuilder b1, StringBuilder b2, boolean addPosition=false) {
         String r1Name = r1.readName
         StringBuilder nameSuffix = null
         
@@ -333,33 +333,34 @@ class SAMRecordPair implements Comparable, ReadPair {
         }
            
         // R1
-        b.append()
-        b.append('@')
-        b.append(r1Name)
+        b1.append()
+        b1.append('@')
+        b1.append(r1Name)
         if(nameSuffix != null) { 
-            b.append((CharSequence)nameSuffix)
+            b1.append((CharSequence)nameSuffix)
         }        
-        b.append(' 1:N:0:1\n')
-        b.append(r1.readString)
-        b.append('\n+\n')
-        b.append(r1.baseQualityString)
+        b1.append(' 1:N:0:1\n')
+        b1.append(r1.readString)
+        b1.append('\n+\n')
+        b1.append(r1.baseQualityString)
+        b1.append('\n')
             
         // R2
-        b.append('\n@')
-        b.append(r1Name)
+        b2.append('@')
+        b2.append(r1Name)
         if(nameSuffix != null) { 
-            b.append((CharSequence)nameSuffix)
+            b2.append((CharSequence)nameSuffix)
         }        
         
-        b.append(' 2:N:0:1\n')
-        b.append(SequenceUtil.reverseComplement(r2.readString))
-        b.append('\n+\n')
+        b2.append(' 2:N:0:1\n')
+        b2.append(SequenceUtil.reverseComplement(r2.readString))
+        b2.append('\n+\n')
         
         byte [] bq = r2.baseQualities
         for(int i=bq.length-1; i>=0; --i) {
-            b.append(SAMUtils.phredToFastq(bq[i]))
+            b2.append(SAMUtils.phredToFastq(bq[i]))
         }
-        b.append('\n')
+        b2.append('\n')
     }
 
     @CompileStatic

@@ -48,40 +48,57 @@ class Pairs extends ToolBase {
         bam = new SAM(opts.bam)
         
         Writer out
-        if(opts.o) {
-            out = new BufferedWriter(new File(opts.o).newWriter(), 2024*1024)
+        if(opts.o || opts.r1) {
+            out = new BufferedWriter(new File(opts.o?:opts.r1).newWriter(), 2024*1024)
         }
         else {
             out = System.out.newWriter()
         }
         
+        Writer out2
+        if(opts.r2) {
+            out2 = new BufferedWriter(new File(opts.r2).newWriter(), 2024*1024)
+        }
+        else {
+            out2 = out
+        }
+        
         out.withWriter { 
-            PairScanner scanner = new PairScanner(out, opts.n ? opts.n.toInteger():4, opts.L?getRegions():null, opts.f?:null)
-            if(opts.s) {
-                if(!opts.s ==~ /[0-9]*,[0-9*]/)
-                    throw new IllegalArgumentException("Please provide shard number and total number of shards in form s,N to -s")
-                    
-                scanner.shardId = opts.s.tokenize(',')[0].toInteger()-1
-                if(scanner.shardId<0)
-                    throw new IllegalArgumentException("Please specify shard id > 0")
-                    
-                scanner.shardSize = opts.s.tokenize(',')[1].toInteger()
-                if(scanner.shardId >= scanner.shardSize)
-                    throw new IllegalArgumentException("Please specify shard id < number of shards ($scanner.shardSize)")
-            }
-            
-            if(opts.namepos)
-                scanner.formatter.addPosition = true
+            out2.withWriter { 
+                PairScanner scanner
+                if(!opts.r2)
+                    scanner = new PairScanner(out, opts.n ? opts.n.toInteger():4, opts.L?getRegions():null, opts.f?:null)
+                else {
+                    log.info "Outputting pairs to separate files"
+                    scanner = new PairScanner(out, out2, opts.n ? opts.n.toInteger():4, opts.L?getRegions():null, opts.f?:null)
+                }
                 
-            scanner.scan(bam)
-            
-            // Debug option: dumps residual unpaired reads at end
-            if(opts.du) {
-                scanner.locators.each { PairLocator locator ->
-                    if(!locator.buffer.isEmpty()) {
-                        log.info "ERROR: Residual reads in locator: "
-                        locator.buffer.each { key, value ->
-                            log.info "$key: $value.r1ReferenceName:$value.r1AlignmentStart"
+                if(opts.s) {
+                    if(!opts.s ==~ /[0-9]*,[0-9*]/)
+                        throw new IllegalArgumentException("Please provide shard number and total number of shards in form s,N to -s")
+                        
+                    scanner.shardId = opts.s.tokenize(',')[0].toInteger()-1
+                    if(scanner.shardId<0)
+                        throw new IllegalArgumentException("Please specify shard id > 0")
+                        
+                    scanner.shardSize = opts.s.tokenize(',')[1].toInteger()
+                    if(scanner.shardId >= scanner.shardSize)
+                        throw new IllegalArgumentException("Please specify shard id < number of shards ($scanner.shardSize)")
+                }
+                
+                if(opts.namepos)
+                    scanner.formatter.addPosition = true
+                    
+                scanner.scan(bam)
+                
+                // Debug option: dumps residual unpaired reads at end
+                if(opts.du) {
+                    scanner.locators.each { PairLocator locator ->
+                        if(!locator.buffer.isEmpty()) {
+                            log.info "ERROR: Residual reads in locator: "
+                            locator.buffer.each { key, value ->
+                                log.info "$key: $value.r1ReferenceName:$value.r1AlignmentStart"
+                            }
                         }
                     }
                 }
@@ -122,6 +139,9 @@ class Pairs extends ToolBase {
             'L' 'Regions to include reads (and mates of reads) from', longOpt: 'regions', args:1, required: false
             'f' 'Filter using specified groovy expression', longOpt: 'filter', args:1, required: false
             o 'Output file', args:1, required: false
+            r1 'Output for R1 if extracting FASTQ in separate files', args:1, required: false
+            r2 'Output for R2 if extracting FASTQ in separate files', args:1, required: false
+            
         }
     }
 }

@@ -60,7 +60,7 @@ public class CompactReadPair implements ReadPair {
        return true;
    }
    
-   public void appendTo(StringBuilder b, SAMRecord r2, boolean addPosition) {
+   public void appendTo(StringBuilder b1, StringBuilder b2, SAMRecord r2, boolean addPosition) {
        
         String r1Name = r2.getReadName();
         int readLength = basesAndQuals.length >> 1;
@@ -81,35 +81,36 @@ public class CompactReadPair implements ReadPair {
            
         // R1
         final byte [] basesAndQuals = this.basesAndQuals;
-        b.append('@');
-        b.append(r1Name);
+        b1.append('@');
+        b1.append(r1Name);
         if(nameSuffix != null) { 
-            b.append((CharSequence)nameSuffix);
+            b1.append((CharSequence)nameSuffix);
         }        
-        b.append(" 1:N:0:1\n");
-        b.append(new String(basesAndQuals, 0, readLength));
-        b.append("\n+\n");
+        b1.append(" 1:N:0:1\n");
+        b1.append(new String(basesAndQuals, 0, readLength));
+        b1.append("\n+\n");
         
         final int twoRL = readLength*2;
         for(int i=readLength; i<twoRL; ++i) {
-            b.append(SAMUtils.phredToFastq(basesAndQuals[i]));
+            b1.append(SAMUtils.phredToFastq(basesAndQuals[i]));
         } 
+        b1.append('\n');
             
         // R2
-        b.append("\n@");
-        b.append(r1Name);
+        b2.append("@");
+        b2.append(r1Name);
         if(nameSuffix != null) { 
-            b.append((CharSequence)nameSuffix);
+            b2.append((CharSequence)nameSuffix);
         }        
         
-        b.append(" 2:N:0:1\n");
-        b.append(SequenceUtil.reverseComplement(r2.getReadString()));
-        b.append("\n+\n");
+        b2.append(" 2:N:0:1\n");
+        b2.append(SequenceUtil.reverseComplement(r2.getReadString()));
+        b2.append("\n+\n");
         
         byte [] bq = r2.getBaseQualities();
         for(int i=bq.length-1; i>=0; --i) {
-            b.append(SAMUtils.phredToFastq(bq[i]));
+            b2.append(SAMUtils.phredToFastq(bq[i]));
         }
-        b.append('\n');
+        b2.append('\n');
    }
 }
