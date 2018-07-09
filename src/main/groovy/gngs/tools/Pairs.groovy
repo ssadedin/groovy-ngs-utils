@@ -19,6 +19,8 @@
  */
 package gngs.tools
 
+import java.util.zip.GZIPOutputStream
+
 import gngs.*
 import gngs.pair.PairLocator
 import gngs.pair.PairScanner
@@ -49,7 +51,11 @@ class Pairs extends ToolBase {
         
         Writer out
         if(opts.o || opts.r1) {
-            out = new BufferedWriter(new File(opts.o?:opts.r1).newWriter(), 2024*1024)
+            String fileName = opts.o?:opts.r1
+            if(fileName.endsWith('.gz'))
+                out = new BufferedWriter(new GZIPOutputStream(new FileOutputStream(fileName)).newWriter(), 2024*1024)
+            else
+                out = new BufferedWriter(new File(fileName).newWriter(), 2024*1024)
         }
         else {
             out = System.out.newWriter()
@@ -57,7 +63,10 @@ class Pairs extends ToolBase {
         
         Writer out2
         if(opts.r2) {
-            out2 = new BufferedWriter(new File(opts.r2).newWriter(), 2024*1024)
+            if(opts.r2.endsWith('.gz'))
+                out2 = new BufferedWriter(new GZIPOutputStream(new FileOutputStream(opts.r2)).newWriter(), 2024*1024)
+            else
+                out2 = new BufferedWriter(new File(opts.r2).newWriter(), 2024*1024)
         }
         else {
             out2 = out
