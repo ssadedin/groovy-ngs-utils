@@ -27,6 +27,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 
 import gngs.*
 import graxxia.IntegerStats
+import graxxia.Matrix
 import graxxia.Stats
 import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
@@ -352,12 +353,12 @@ class CoveragePrinter extends DefaultActor {
     /**
      * If set, correlation between this sample and other samples will be calculated and printed
      */
-    String correlationSample = null
+    List<String> correlationSamples = null
     
     /**
-     * The index of the correlation sample, if one is set (internal)
+     * Cached indices of the samples to be used for correlation calculations
      */
-    private Integer correlationSampleIndex = null
+    int [] correlationSampleIndices = null
     
     /**
      * Mean coverage for each sample
@@ -366,7 +367,7 @@ class CoveragePrinter extends DefaultActor {
      */
     Map<String, Double> sampleMeans = Collections.synchronizedMap([:])
     
-    double [] correlationNumerators = null
+    Matrix correlationNumerators = null
     
     double [] orderedMeans = null
     
@@ -444,21 +445,28 @@ class CoveragePrinter extends DefaultActor {
     @CompileStatic
     void computeCorrelation(List<Double> values) {
         
-        if(correlationSample == null) 
+        if(correlationSamples == null) 
             return 
             
-        if(correlationSampleIndex == null)
-            correlationSampleIndex = samples.indexOf(correlationSample)
+        if(correlationSampleIndices == null) {
+            correlationSampleIndices = correlationSamples.collect { samples.indexOf(it) } as int[]
+            if(correlationSampleIndices.any { int i ->i <0 })
+                throw new IllegalArgumentException("One or more samples $correlationSamples specified for correlation calculation is not found in samples for analysis: $samples")
+        }
                 
         if(this.correlationNumerators == null)
-            this.correlationNumerators = new double[values.size()]
+            this.correlationNumerators = new Matrix(new double[values.size()][values.size()])
             
-        double sampleDelta = values[correlationSampleIndex] - (relative ? 1.0d : sampleMeans[correlationSample])
-        final int numValues = values.size()
-        double meanDiffSum = 0.0d
-        for(int i=0; i<numValues; ++i) {
-            if(i != correlationSampleIndex) {
-                this.correlationNumerators[i] += (values[i]  - orderedMeans[i]) * (sampleDelta)
+        double [][] dataRef = this.correlationNumerators.matrix.dataRef
+        
+        for(int correlationSampleIndex in correlationSampleIndices) {
+            double sampleDelta = values[correlationSampleIndex] - (relative ? 1.0d : sampleMeans[samples[correlationSampleIndex]])
+            final int numValues = values.size()
+            for(int i=0; i<numValues; ++i) {
+                // TODO: we could only calculate one half of the matrix since it is symmetrical
+                if(i != correlationSampleIndex) {
+                    dataRef[i][correlationSampleIndex] += (values[i]  - orderedMeans[i]) * (sampleDelta)
+                }
             }
         }
     }
@@ -481,6 +489,9 @@ class MultiCov extends ToolBase {
     
     List<SAM> bams
     
+    NumberFormat fmt = NumberFormat.numberInstance        
+    
+    
     static void main(String [] args) {
         cli('-bed <bed file> <bam1> <bam2> ...', args) {
             bed 'BED file describing target regions to analyse coverage for', args:1
@@ -490,8 +501,8 @@ class MultiCov extends ToolBase {
             rel 'Output values relative to sample mean'
             std 'Standardise output values to mean at each bp'
             stats 'Print statistics about coverage values and variation'
-            corr 'Determine corellation of other samples to specified sample', args:1
-            co 'Correlation output file', longOpt: 'correlationOutput', args:1, required: false
+            corr 'Determine corellation of other samples to specified samples (separated by comma)', args:1
+            co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
             cvo 'Coefficient of variation output file: write coeffv in tab separated form to this file', args:1, required:false 
             cvj 'Coefficient of variation output file: write coeffv in javascript loadable form to this file', args:1, required:false 
             o 'Output file to write results to', longOpt: 'output', args:1
@@ -500,6 +511,8 @@ class MultiCov extends ToolBase {
     
     @Override
     public void run() {
+        
+        fmt.maximumFractionDigits = 2
         
         resolveRegionsToScan()
         
@@ -522,7 +535,7 @@ class MultiCov extends ToolBase {
                 printer.std = true
                 
             if(opts.corr)
-                printer.correlationSample = opts.corr
+                printer.correlationSamples = opts.corr == '.' ? samples : opts.corr.tokenize(',')
                 
             run(w, printer)
         }
@@ -665,30 +678,63 @@ class MultiCov extends ToolBase {
 
     private printCorrelationTable(CoveragePrinter printer) {
         
-        List<String> nonCorrSamples = printer.samples.grep { it != printer.correlationSample }
+        final List<Stats> sampleStats = printer.sampleStats
         
-        int targetSampleIndex = printer.samples.indexOf(printer.correlationSample)
-        Stats targetSampleStats = printer.sampleStats[targetSampleIndex]
-
-        log.info "There were ${targetSampleStats.n} stats collected"
-
-        List finalCorrelations = nonCorrSamples.collect { String s ->
-            final int sampleIndex = printer.samples.indexOf(s)
-            return printer.correlationNumerators[sampleIndex] /
-                    (targetSampleStats.n * printer.sampleStats[sampleIndex].standardDeviation*targetSampleStats.standardDeviation)
+        Matrix finalCorrelationMatrix = printer.correlationNumerators.transform { double value, int i, int j ->
+            if(i==j)
+                return 1.0
+            else
+                return value / (sampleStats[i].n * sampleStats[i].standardDeviation*sampleStats[j].standardDeviation)
         }
-
-        log.info "Final correlations with $printer.correlationSample: "
         
-        Utils.table(out:System.err, ['Sample', 'Correlation'], [nonCorrSamples, finalCorrelations].transpose())
+        finalCorrelationMatrix.@names = printer.samples
         
-        if(opts.co) {
-            new File(opts.co).withWriter { w ->
-                w.println([nonCorrSamples, finalCorrelations].transpose()*.join('\t').join('\n'))
+        println "Raw correlation matrix = \n"  + finalCorrelationMatrix
+        
+        finalCorrelationMatrix = new Matrix(finalCorrelationMatrix.getColumns(printer.correlationSamples))
+        
+        log.info "Computed correlations: "
+       
+        if(opts.cos) {
+            opts.cos.each { String co ->
+                log.info "Writing $co"
+                new File(co).withWriter { w ->
+                    if(co.endsWith('js')) 
+                        writeCorrelationJs(w, printer, finalCorrelationMatrix)
+                    else
+                        writeCorrelationTSV(w, printer, finalCorrelationMatrix)
+                }
             }
+        }
+        
+        System.err.println "Final correlation: "
+        finalCorrelationMatrix.@names = printer.samples
+        finalCorrelationMatrix.sample = printer.correlationSamples
+        System.err.println finalCorrelationMatrix.toString()
+    }
+
+    private writeCorrelationTSV(BufferedWriter w, CoveragePrinter printer, Matrix finalCorrelationMatrix) {
+        w.println printer.samples.join('\t')
+        for(String sample in printer.correlationSamples) {
+            w.println finalCorrelationMatrix[][printer.correlationSamples.indexOf(sample)].collect {fmt.format(it)}.join('\t')
         }
     }
     
+    private writeCorrelationJs(BufferedWriter w, CoveragePrinter printer, Matrix finalCorrelationMatrix) {
+        Map correlationBySample = printer.correlationSamples.collectEntries { corrSample ->
+            [
+                corrSample, 
+                printer.samples.collectEntries { sample ->
+                    [ 
+                        sample, 
+                        fmt.format(finalCorrelationMatrix[printer.samples.indexOf(sample)][printer.correlationSamples.indexOf(corrSample)])
+                    ]
+                }
+            ]
+        }
+        w.println('corr=// NOJSON' + JsonOutput.prettyPrint(JsonOutput.toJson(correlationBySample)))
+    }
+     
     /**
      * Last time a warning was issued about throttled reading - only want to log this
      * once per minute or so
