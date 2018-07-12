@@ -205,25 +205,23 @@ class FASTQ {
         
         InputStream readIn = openStream(fileName)
             
-        def progress =new ProgressCounter()
         readIn.withReader { Reader reader ->
             // Read the file 4 lines at a time
             while(true) {
               FASTQRead read = consumeRead(reader)
-//              c(read.name,read.bases,read.quals)
               if(read == null)
                   break
                   
               c(read)
-              progress.count()
             }
         }
     }
     
     static InputStream openStream(String fileName) {
+        int bufferSize = 1024*1024
         if(fileName.endsWith(".gz"))
-          new GZIPInputStream(new FileInputStream(fileName))
+          new BufferedInputStream(new GZIPInputStream(new FileInputStream(fileName)), bufferSize)
         else
-          new File(fileName).newInputStream()
+          new BufferedInputStream(new File(fileName).newInputStream(), bufferSize)
     }
 }
