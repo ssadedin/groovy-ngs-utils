@@ -1,6 +1,4 @@
-import gngs.Region
-import gngs.Regions
-
+package gngs
 /**
  * Reads output of GATK DepthOfCoverage interval summary and
  * makes it available as a Regions object
