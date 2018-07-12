@@ -373,12 +373,15 @@ class CoveragePrinter extends DefaultActor {
     
     Stats [] sampleStats = null
     
+    IntegerStats [] rawCoverageStats = null
+    
     final NumberFormat numberFormat = NumberFormat.numberInstance
     
     CoveragePrinter(Writer w, List<String> samples) {
         this.w = w
         this.samples = samples
         this.sampleStats = (1..samples.size()).collect { new Stats() } 
+        this.rawCoverageStats = (1..samples.size()).collect { new IntegerStats(1000) } 
         numberFormat.maximumFractionDigits=3
         numberFormat.minimumFractionDigits=0
     }
@@ -394,9 +397,15 @@ class CoveragePrinter extends DefaultActor {
         }
     }
     
+    void setRelative(boolean value) {
+        this.relative = value
+        if(this.sampleMeans != null)
+            this.setSampleMeans(this.sampleMeans)
+    }
+    
     void setSampleMeans(Map<String, Double> means) {
         
-        this.sampleMeans = means
+        this.sampleMeans = Collections.synchronizedMap(means)
         
         // For efficiency, it is helpful to have the means pre-ordered in the same order 
         // that we want to output them in
@@ -412,9 +421,11 @@ class CoveragePrinter extends DefaultActor {
         if(relative) {
             values = samples.collect{countInfo.counts[it]/(1 + sampleMeans[it])}
         }
-        else
+        else {
             values = samples.collect{countInfo.counts[it]}
+        }
             
+        updateRawCoverageStats(samples.collect{countInfo.counts[it]})
         updateStats(values)
         
         if(std) {
@@ -430,8 +441,17 @@ class CoveragePrinter extends DefaultActor {
             coeffvStats.addValue((int)(100*coeffV))
         }
         
-        w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
+        if(w != null)
+            w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
     }
+    
+    @CompileStatic
+    void updateRawCoverageStats(List<Double> values) {
+        final int numValues = values.size()
+        for(int i=0; i<numValues; ++i) {
+            rawCoverageStats[i].addValue((int)values[i])
+        }
+    } 
     
     @CompileStatic
     void updateStats(List<Double> values) {
@@ -492,6 +512,8 @@ class MultiCov extends ToolBase {
     NumberFormat fmt = NumberFormat.numberInstance        
     
     
+    boolean phase1 = false
+    
     static void main(String [] args) {
         cli('-bed <bed file> <bam1> <bam2> ...', args) {
             bed 'BED file describing target regions to analyse coverage for', args:1
@@ -505,7 +527,9 @@ class MultiCov extends ToolBase {
             co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
             cvo 'Coefficient of variation output file: write coeffv in tab separated form to this file', args:1, required:false 
             cvj 'Coefficient of variation output file: write coeffv in javascript loadable form to this file', args:1, required:false 
+            '2pass' 'use two phase analysis to get accurate estimates of means'
             o 'Output file to write results to', longOpt: 'output', args:1
+            covo 'Write statistics about coverage to the given file in js format', args:1
         }
     }
     
@@ -527,6 +551,27 @@ class MultiCov extends ToolBase {
         output.withWriter { w ->
             
             CoveragePrinter printer = new CoveragePrinter(w, samples)
+            
+            if(opts['2pass']) {
+                log.info " Executing Phase 1 / 2 to estimate sample means ".center(80,"=")
+                CoveragePrinter printer1 = new CoveragePrinter(null, samples)
+                this.phase1 = true
+                run(printer1)
+                
+                Map means = samples.collectEntries { sample ->
+                    [ sample,  printer1.sampleStats[printer1.samples.indexOf(sample)].mean ]
+                }
+                printer.setSampleMeans(means)
+                
+                log.info "Set means to: $means"
+                
+                log.info "Estimated coverage from ${printer1.sampleStats[0].n} values"
+                
+                this.phase1 = false
+                log.info " Executing Phase 2 / 2 to Compute Coverage Statistics ".center(80,"=")
+            }
+            
+            
             if(opts.cv)
                 printer.coeffV = true
             if(opts.rel)
@@ -537,7 +582,7 @@ class MultiCov extends ToolBase {
             if(opts.corr)
                 printer.correlationSamples = opts.corr == '.' ? samples : opts.corr.tokenize(',')
                 
-            run(w, printer)
+            run(printer)
         }
     } 
     
@@ -572,7 +617,7 @@ class MultiCov extends ToolBase {
         }
     }
     
-    void run(Writer w, CoveragePrinter printer) {
+    void run(CoveragePrinter printer) {
         printer.start()
             
         CoverageCombinerActor combiner = new CoverageCombinerActor(consumer: printer, numSamples: bams.size())
@@ -588,20 +633,26 @@ class MultiCov extends ToolBase {
         
         GParsPool.withPool(bams.size()) {
             
-            Map<String, Double> sampleMeans = [:]
-            bams.eachParallel { SAM bam ->
-                
-                MeanCoverageEstimator meanEstimator = new MeanCoverageEstimator(bam, estRegions)
-                meanEstimator.sdThreshold = 0.5 // the default is slightly less accurate than wanted for this purpose
-                meanEstimator.minRegions = 30
-                double mean = meanEstimator.estimate()
-                
-                String sample = bam.samples[0]
-                log.info "Mean of $sample = $mean"
-                sampleMeans[sample] = mean
+            // If no means were provided, compute them
+            if(printer.sampleMeans == null || printer.sampleMeans.isEmpty()) {
+                Map<String, Double> sampleMeans = [:]
+                bams.eachParallel { SAM bam ->
+                    
+                    MeanCoverageEstimator meanEstimator = new MeanCoverageEstimator(bam, estRegions)
+                    meanEstimator.sdThreshold = 0.5 // the default is slightly less accurate than wanted for this purpose
+                    meanEstimator.minRegions = 30
+                    double mean = meanEstimator.estimate()
+                    
+                    String sample = bam.samples[0]
+                    log.info "Mean of $sample = $mean"
+                    sampleMeans[sample] = mean
+                }
+                printer.setSampleMeans(sampleMeans)
             }
-            
-            printer.setSampleMeans(sampleMeans)
+            else {
+                log.info "Sample Means: " + printer.sampleMeans.collect { s, m -> "${s}=$m"}.join(", ")
+            }
+            log.info "Ordered Means: " + printer.orderedMeans.join(", ")
             
             bams.eachParallel { SAM bam ->
                 processBAM(bam, combiner)
@@ -615,6 +666,9 @@ class MultiCov extends ToolBase {
         printer << "stop"
         printer.join()
         log.info "Finished"
+        
+        if(phase1)
+            return
         
         if(opts.stats) {
             log.info "Per sample coverage statistics are: " 
@@ -643,11 +697,32 @@ class MultiCov extends ToolBase {
                 writeCVOutputJS(cvw, printer.coeffvStats)
             }
         }
-  
         
         if(opts.corr) {
             printCorrelationTable(printer)
         }
+        
+        if(opts.covo) {
+            printCoverageJs(printer, opts.covo)
+        }
+    }
+    
+    private void printCoverageJs(CoveragePrinter printer, String fileName) {
+        
+        Map statsJson = [ 
+            means: printer.samples.collectEntries { sample ->
+                [ sample, printer.sampleStats[printer.samples.indexOf(sample)].mean] 
+            },
+                
+            medians: printer.samples.collectEntries { sample ->
+                [ sample, printer.rawCoverageStats[printer.samples.indexOf(sample)].median]
+            },
+        ]
+        
+        new File(fileName).withWriter { w ->
+            w.println('covs = // NOJSON\n' + JsonOutput.prettyPrint(JsonOutput.toJson(statsJson)))
+        }
+        log.info "Wrote coverage stats to $fileName"
     }
     
     final List cvThresholds = (0..100).step(5)
@@ -727,12 +802,12 @@ class MultiCov extends ToolBase {
                 printer.samples.collectEntries { sample ->
                     [ 
                         sample, 
-                        fmt.format(finalCorrelationMatrix[printer.samples.indexOf(sample)][printer.correlationSamples.indexOf(corrSample)])
+                        fmt.format(finalCorrelationMatrix[printer.samples.indexOf(sample)][printer.correlationSamples.indexOf(corrSample)]).toDouble()
                     ]
                 }
             ]
         }
-        w.println('corr=// NOJSON' + JsonOutput.prettyPrint(JsonOutput.toJson(correlationBySample)))
+        w.println('corr=// NOJSON\n' + JsonOutput.prettyPrint(JsonOutput.toJson(correlationBySample)))
     }
      
     /**
