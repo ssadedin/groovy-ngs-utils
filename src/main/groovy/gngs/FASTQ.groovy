@@ -128,7 +128,31 @@ class FASTQ {
         
     }
     
-       /**
+    /**
+     * Filter paired reads from fileName1 and fileName2 and write them to 
+     * the output in interleaved format.
+     * 
+     * @param fileName1
+     * @param fileName2
+     * @param c
+     */
+    @CompileStatic
+    static void filter(String fileName1, String fileName2, Writer output, Closure c) {
+        int passed = 0
+        int processed = 0
+        FASTQ.eachPair(fileName1,fileName2) { FASTQRead r1, FASTQRead r2 ->
+            ++processed
+            def result = c(r1,r2)
+            if(result == true) {
+                r1.write(output)
+                r2.write(output)
+                ++passed
+            }
+        }
+    }
+  
+    
+    /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * uncompressed output files with extensions .filter.fastq based on the 
      * input file names, only where true is returned from the given closure

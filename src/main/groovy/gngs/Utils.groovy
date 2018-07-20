@@ -4,6 +4,7 @@ import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import java.text.NumberFormat
 import java.util.logging.*
+import java.util.zip.GZIPOutputStream
 import java.text.*
 
 /**
@@ -340,4 +341,12 @@ class Utils {
              sleepTimeMs = Math.min(10000,sleepTimeMs*2)
          }
      }
+     
+    static Writer outputWriter(String fileName) {
+        int bufferSize = 1024*1024
+        if(fileName.endsWith(".gz"))
+          new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(fileName)), bufferSize).newWriter()
+        else
+          new BufferedOutputStream(new File(fileName).newInputStream(), bufferSize).newWriter()
+    } 
 }
