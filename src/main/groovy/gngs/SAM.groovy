@@ -195,9 +195,14 @@ class SAM {
 
         String indexExt;
         String fileExt;
-        if(file.name.endsWith(".bam") || file.name.endsWith(".cram")) {
+        if(file.name.endsWith(".bam")) {
             indexExt = ".bai"
             fileExt = ".bam"
+        }
+        else
+        if(file.name.endsWith(".cram")) {
+            indexExt = ".crai"
+            fileExt = ".cram" 
         }
         else
             throw new IllegalArgumentException("This class only supports BAM or CRAM files. File type $file is not supported")
