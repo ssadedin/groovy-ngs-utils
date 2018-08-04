@@ -21,6 +21,7 @@
 package gngs
 
 import groovy.transform.CompileStatic;
+import htsjdk.samtools.SAMRecord
 import java.util.regex.Pattern
 
 interface IRegion {
@@ -75,7 +76,6 @@ class NumericRegionComparator implements Comparator<Region> {
  * Region r = new Region("chr1", 20000, 300000)
  * </pre>
  * 
- * 
  * @author simon.sadedin@mcri.edu.au
  */
 class Region extends Expando implements IRegion, Serializable {
@@ -103,6 +103,12 @@ class Region extends Expando implements IRegion, Serializable {
         this.chr = chr
         this.range = (from..to)
         setProps(props)
+    }
+    
+    Region(SAMRecord read) {
+        this(read.referenceName, read.alignmentStart, read.alignmentEnd)
+        this.extra = read
+        this.read = read
     }
     
     @CompileStatic
