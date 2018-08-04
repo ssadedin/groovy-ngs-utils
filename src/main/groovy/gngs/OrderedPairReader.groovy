@@ -207,7 +207,7 @@ class OrderedPairReader implements Closeable {
         try {
             for(Region region in regions) {
                 currentRegion = region
-                SAMRecordIterator<SAMRecord> iter = reader.query(region.chr, region.from, region.to, false)
+                SAMRecordIterator iter = reader.query(region.chr, region.from, region.to, false)
                 try {
                     eachPairImpl(iter,c)
                     

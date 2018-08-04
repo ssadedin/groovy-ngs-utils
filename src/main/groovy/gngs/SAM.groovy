@@ -657,7 +657,7 @@ class SAM {
 
     @CompileStatic
     void eachPair(Map options=[:],String chr, int start, int end, Closure c) {
-        SAMRecordIterator<SAMRecord> iter
+        SAMRecordIterator iter
         
         SamReader reader = this.newReader()
         if(chr)

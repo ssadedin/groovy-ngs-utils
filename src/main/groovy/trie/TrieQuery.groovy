@@ -73,7 +73,7 @@ class TrieQuery<T> {
     
     @Memoized
     double cost(TrieMismatchCosts costs) {
-        double score = (double)(cigar.iterator().sum { String cigarValue ->
+        double score = (double)(cigar.iterator().sum { Object cigarValue ->
             switch(cigarValue) {
                 case '.':
                     return costs.match
