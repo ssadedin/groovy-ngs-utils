@@ -24,7 +24,7 @@ import java.text.NumberFormat
 import gngs.*
 import gngs.coverage.CoverageCombinerActor
 import gngs.coverage.CoveragePrinter
-import gngs.coverage.CoverageReaderActor
+import gngs.coverage.CoverageCalculatorActor
 import graxxia.IntegerStats
 import graxxia.Matrix
 import graxxia.Stats

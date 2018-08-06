@@ -103,8 +103,8 @@ class CoverageCombinerActor extends DefaultActor {
     void processBAM(SAM bam, Regions scanRegions) {
         
         String sample = bam.samples[0]
-        
-        CoverageReaderActor cra = new CoverageReaderActor(bam, scanRegions, this, sample) 
+         
+        CoverageCalculatorActor cra = new CoverageCalculatorActor(bam, scanRegions, this, sample) 
         cra.start()
         
         List<String> chrs = scanRegions*.chr.unique()

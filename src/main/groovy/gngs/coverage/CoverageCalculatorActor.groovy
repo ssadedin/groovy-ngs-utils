@@ -52,7 +52,7 @@ class SampleReadCount {
  * @author Simon Sadedin
  */
 @Log
-class CoverageReaderActor extends DefaultActor {
+class CoverageCalculatorActor extends DefaultActor {
     
     AtomicInteger pending = new AtomicInteger(0)
     
@@ -91,7 +91,7 @@ class CoverageReaderActor extends DefaultActor {
         lineInterval: 100
         )
     
-    public CoverageReaderActor(SAM bam, Regions targetRegions, Actor combiner, String sample) {
+    public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, String sample) {
         super();
         this.targetRegions = targetRegions
         this.regionIter = targetRegions.iterator();
