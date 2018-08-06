@@ -99,7 +99,7 @@ class CoveragePrinter extends DefaultActor {
                 if(msg == "stop")
                     terminate()
                 else
-                    writePosition(msg)
+                    processPosition(msg)
             }
         }
     }
@@ -122,7 +122,7 @@ class CoveragePrinter extends DefaultActor {
             orderedMeans = samples.collect { sampleMeans[it] } as double []
     }
     
-    void writePosition(Map countInfo) {
+    void processPosition(Map countInfo) {
         
         List<Double> values 
         if(relative) {
@@ -140,7 +140,7 @@ class CoveragePrinter extends DefaultActor {
             values = values.collect { it /(0.01 +  valueMean) }
         }
         
-        List coeffVColumn = []
+        Double coeffVColumn = null
         if(coeffV) {
             Stats stats = Stats.from(values)
             double coeffV = stats.standardDeviation / (1 + stats.mean)
@@ -148,8 +148,13 @@ class CoveragePrinter extends DefaultActor {
             coeffvStats.addValue((int)(100*coeffV))
         }
         
+        writePosition(countInfo, values, coeffVColumn)
+    }
+
+    void writePosition(Map countInfo, List values, Double coeffV) {
+        List coeffVColumn = coeffV == null ? [] :  [coeffV] 
         if(w != null)
-            w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
+            w.println(([countInfo.chr, countInfo.pos] + [coeffVColumn] + values.collect{numberFormat.format(it)}).join('\t'))
     }
     
     @CompileStatic
