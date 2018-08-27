@@ -262,14 +262,14 @@ class Utils {
         }
             
         // Now render the table
-        String header = headers.collect { hd -> hd.center(columnWidths[hd]) }.join(" | ")
+        String header = headers.collect { hd -> hd.padRight(columnWidths[hd]) }.join(" | ")
         
         if(options.topborder) {
             out.println indent + ("-" * header.size())
         }
         
         out.println indent + header
-        out.println indent + headers.collect { hd -> '-' *columnWidths[hd] }.join("-+-")
+        out.println indent + headers.collect { hd -> '-' *columnWidths[hd] }.join("-|-")
         
         rows.each { row ->
             int i=0
