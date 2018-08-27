@@ -184,7 +184,7 @@ class CoveragePrinter extends DefaultActor {
         if(coeffV) {
             Stats stats = Stats.from(values)
             double coeffV = stats.standardDeviation / (1 + stats.mean)
-            coeffVColumn = [numberFormat.format(coeffV)]
+            coeffVColumn = numberFormat.format(coeffV)
             coeffvStats.addValue((int)(100*coeffV))
         }
         
