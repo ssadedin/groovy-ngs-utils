@@ -616,30 +616,47 @@ class Regions implements Iterable<Region> {
         return result
     }
     
-    Object getAt(Object obj) {
+    @CompileStatic
+    Object getAtIndex(Object obj) {
         if(obj instanceof Integer) {
-            int index = obj
+            int index = (int)obj
             int total = 0
             def entry = allRanges.find {
                 total += it.value.size()
                 total >= index
             }
-            entry[index-total]
+            
+            Range result = entry.value[index-total]
+            if(result instanceof GRange && ((GRange)result).extra instanceof Region) {
+                return ((GRange)result).extra
+            }
+            else {
+                return new Region(entry.key, result)
+            }
         }
         else
         if(obj instanceof List) {
             List<Region> result = []
-            List<Integer> indices = obj
+            List<Integer> indices = (List<Integer>)obj
             int total = 0
             List offsets = [0] + allRanges.collect { rangeEntry -> total += rangeEntry.value.size();  }
             List keys = allRanges.collect { it.key }
             for(int index in indices) {
-                def offsetIndex = offsets.findLastIndexOf { offset -> offset <= index }
+                def offsetIndex = offsets.findLastIndexOf { Integer offset -> offset <= index }
                 def key = keys[offsetIndex]
-                result.add(allRanges[key][index-offsets[offsetIndex]])
+                Range r = allRanges[key][index-offsets[offsetIndex]]
+                if(r instanceof GRange && ((GRange)r).extra instanceof Region)
+                    result.add((Region)((GRange)r).extra)
+                else
+                    result.add(new Region(key, r))
             }
             return result
-        }
+        } 
+    }
+    
+    @CompileStatic
+    Object getAt(Object obj) {
+        this.getAtIndex(obj)
     }
     
     int getNumberOfRanges() {
