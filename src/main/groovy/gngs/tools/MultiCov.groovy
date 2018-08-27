@@ -21,6 +21,9 @@ package gngs.tools
 
 import java.text.NumberFormat
 
+import org.apache.commons.math3.analysis.interpolation.LoessInterpolator
+import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction
+
 import gngs.*
 import gngs.coverage.CoverageCombinerActor
 import gngs.coverage.CoveragePrinter
@@ -69,14 +72,21 @@ class MultiCov extends ToolBase {
             co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
             cvo 'Coefficient of variation output file: write coeffv in tab separated form to this file', args:1, required:false 
             cvj 'Coefficient of variation output file: write coeffv in javascript loadable form to this file', args:1, required:false 
+            gcref 'Reference to compute GC content against', args:1, required: false
             '2pass' 'use two phase analysis to get accurate estimates of means'
             o 'Output file to write results to', longOpt: 'output', args:1
+            gcprofile 'Write GC profile for each sample to this file in JSON format (requires gcprof)', args:1, required: false 
             covo 'Write statistics about coverage to the given file in js format', args:1
         }
     }
     
     @Override
     public void run() {
+        
+        if(opts.gcprofile) {
+            if(!opts.gcref)
+                throw new IllegalArgumentException('Please specify the -gcref option to use the -gcprofile option')
+        }
         
         fmt.maximumFractionDigits = 2
         
@@ -92,7 +102,12 @@ class MultiCov extends ToolBase {
         def output = opts.o ? new File(opts.o) : System.out
         output.withWriter { w ->
             
-            CoveragePrinter printer = new CoveragePrinter(w, samples)
+            
+            Map options = [:]
+            if(opts.gcref)
+                options.gcReference = new FASTA(opts.gcref)
+                
+            CoveragePrinter printer = new CoveragePrinter(options, w, samples)
             
             if(opts['2pass']) {
                 log.info " Executing Phase 1 / 2 to estimate sample means ".center(80,"=")
@@ -120,10 +135,8 @@ class MultiCov extends ToolBase {
                 printer.relative = true
             if(opts.std)
                 printer.std = true
-                
             if(opts.corr)
                 printer.correlationSamples = opts.corr == '.' ? samples : opts.corr.tokenize(',')
-                
             run(printer)
         }
     } 
@@ -247,6 +260,10 @@ class MultiCov extends ToolBase {
         if(opts.covo) {
             printCoverageJs(printer, opts.covo)
         }
+        
+        if(opts.gcprofile) {
+            writeGCProfile(printer)
+        }
     }
     
     private void printCoverageJs(CoveragePrinter printer, String fileName) {
@@ -328,6 +345,70 @@ class MultiCov extends ToolBase {
         finalCorrelationMatrix.@names = printer.samples
         finalCorrelationMatrix.sample = printer.correlationSamples
         System.err.println finalCorrelationMatrix.toString()
+    }
+    
+    private writeGCProfile(CoveragePrinter printer) {
+        
+        log.info "Writing GC profile to $opts.gcprofile ..."
+        
+        List sampleGCProfiles = printer.gcBins.collect { sample, List<Stats> bins ->
+            int binIndex = 0
+            [
+                sample: sample,
+
+                gc: bins.collect {
+                    Map info = [
+                        bin: [binIndex*0.05, (binIndex+1)*0.05],
+
+                        ratio: printer.gcBins[sample][binIndex].mean,
+
+                        sd: printer.gcBins[sample][binIndex].standardDeviation
+                    ]
+                    ++binIndex
+                    return info
+                }
+            ]
+        }
+
+        List interpolatedGC = sampleGCProfiles.collect { Map sampleGCInfo ->
+            List<Map> gc = sampleGCInfo.gc
+            return this.interpolateGCProfile(gc)
+        }
+        
+        new File(opts.gcprofile).withWriter { w ->
+            log.info "Computed GC profile: \n" + interpolatedGC
+            w.println(JsonOutput.toJson(interpolatedGC))
+        }            
+        
+    }
+    
+    List<Map> interpolateGCProfile(List<Map> gc) {
+        
+        log.info "Interpolating GC values: $gc"
+        
+        List<Map> usableBins = gc.grep {
+            !it.ratio.isNaN()
+        }
+        
+        log.info "Usable GC values are: $usableBins"
+        
+        // Treat the midpoint of each bin as the X coordinate for interpolation
+        double [] x = [0d] + usableBins*.bin.collect { (it[0] + it[1]) / 2 } + [1.0d]
+        double [] y = [0d] + usableBins*.ratio + [0d]
+        
+        LoessInterpolator interp = new LoessInterpolator()
+        PolynomialSplineFunction gcFn = interp.interpolate(x, y)
+        List<Map> result =  gc.collect { Map bin ->
+            [
+                bin: bin.bin,
+                mean: gcFn.value((bin.bin[0] + bin.bin[1])/2),
+                sd: bin.sd.isNaN() ? 0d : bin.sd
+            ]
+        }
+        
+        log.info "Interpolation result is $result"
+        
+        return result
     }
 
     private writeCorrelationTSV(BufferedWriter w, CoveragePrinter printer, Matrix finalCorrelationMatrix) {

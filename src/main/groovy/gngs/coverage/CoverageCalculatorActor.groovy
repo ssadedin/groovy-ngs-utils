@@ -32,6 +32,9 @@ import htsjdk.samtools.SAMRecord
 @CompileStatic
 @ToString
 class SampleReadCount {
+    
+    Region target
+    
     String chr
     
     int pos 
@@ -233,7 +236,7 @@ class CoverageCalculatorActor extends DefaultActor {
     void flushPosition() {
         dropNonOverlapping()
 //        log.info "Flush $currentRegion.chr:$pos - ${reads.size()}"
-        combiner << new SampleReadCount(chr: currentRegion.chr, pos: pos, reads: reads.reads.size(), sample: sample)
+        combiner << new SampleReadCount(target: currentRegion, chr: currentRegion.chr, pos: pos, reads: reads.reads.size(), sample: sample)
     }
     
     @CompileStatic

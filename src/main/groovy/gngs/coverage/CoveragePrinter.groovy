@@ -26,8 +26,10 @@ import graxxia.IntegerStats
 import graxxia.Matrix
 import graxxia.Stats
 import groovy.transform.CompileStatic
+import groovy.util.logging.Log
 import groovyx.gpars.actor.DefaultActor
 
+@Log
 class CoveragePrinter extends DefaultActor {
     
     Writer w
@@ -82,12 +84,28 @@ class CoveragePrinter extends DefaultActor {
     
     IntegerStats [] rawCoverageStats = null
     
+    FASTA gcReference = null
+    
+    Region currentTarget = null
+    
+    double currentGc = -1.0d
+    
     final NumberFormat numberFormat = NumberFormat.numberInstance
     
-    CoveragePrinter(Writer w, List<String> samples) {
+    CoveragePrinter(Map options=[:], Writer w, List<String> samples) {
         this.w = w
         this.samples = samples
         this.sampleStats = (1..samples.size()).collect { new Stats() } 
+        
+        if(options.gcReference) {
+            this.gcReference = options.gcReference
+            log.info "Initializing GC profile bins"
+            this.gcBins = this.samples.collectEntries {
+                [ it, 
+                  (1..20).collect { new Stats() }
+                ]
+            }
+        }
         this.rawCoverageStats = (1..samples.size()).collect { new IntegerStats(1000) } 
         numberFormat.maximumFractionDigits=3
         numberFormat.minimumFractionDigits=0
@@ -106,13 +124,19 @@ class CoveragePrinter extends DefaultActor {
     
     void setRelative(boolean value) {
         this.relative = value
-        if(this.sampleMeans != null)
+        if(this.sampleMeans != null && !this.sampleMeans.isEmpty())
             this.setSampleMeans(this.sampleMeans)
     }
     
     void setSampleMeans(Map<String, Double> means) {
         
         this.sampleMeans = Collections.synchronizedMap(means)
+        
+        List missingSamples = this.samples.grep { !means.containsKey(it) }
+        if(missingSamples) {
+            throw new IllegalArgumentException("The following samples were missing from the provided set of means: " + missingSamples.join(',') +
+                " (provided: ${means*.key.join(',')})")
+        }
         
         // For efficiency, it is helpful to have the means pre-ordered in the same order 
         // that we want to output them in
@@ -122,11 +146,27 @@ class CoveragePrinter extends DefaultActor {
             orderedMeans = samples.collect { sampleMeans[it] } as double []
     }
     
+    Map<String, List<Stats>> gcBins 
+    
+    Map<String, Stats> currentGCBins
+    
+    int currentGCBin = -1
+    
     void processPosition(Map countInfo) {
         
+        if(currentTarget != countInfo.region) {
+            currentTarget = countInfo.region
+            if(gcReference) {
+                currentGc = gcReference.gc(currentTarget)
+                currentGCBin = (int)(currentGc * 100 / 5)
+                log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
+            }
+        }
+            
         List<Double> values 
         if(relative) {
             values = samples.collect{countInfo.counts[it]/(1 + sampleMeans[it])}
+            updateGCProfile(values)
         }
         else {
             values = samples.collect{countInfo.counts[it]}
@@ -154,7 +194,7 @@ class CoveragePrinter extends DefaultActor {
     void writePosition(Map countInfo, List values, Double coeffV) {
         List coeffVColumn = coeffV == null ? [] :  [coeffV] 
         if(w != null)
-            w.println(([countInfo.chr, countInfo.pos] + [coeffVColumn] + values.collect{numberFormat.format(it)}).join('\t'))
+            w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
     }
     
     @CompileStatic
@@ -164,6 +204,16 @@ class CoveragePrinter extends DefaultActor {
             rawCoverageStats[i].addValue((int)values[i])
         }
     } 
+    
+    @CompileStatic
+    void updateGCProfile(List<Double> values) {
+        if(currentGCBin>=0) {
+            final int numSamples = values.size()
+            for(int i=0; i<numSamples; ++i) {
+                this.gcBins[samples[i]][currentGCBin].addValue(values[i])
+            }
+        }
+    }
     
     @CompileStatic
     void updateStats(List<Double> values) {

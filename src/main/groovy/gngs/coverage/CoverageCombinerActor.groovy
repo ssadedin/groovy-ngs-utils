@@ -88,7 +88,7 @@ class CoverageCombinerActor extends DefaultActor {
                     pos = counts.firstKey()
                 else
                     pos = -1
-                consumer << [ chr: count.chr, pos: count.pos, counts: positionCounts]
+                consumer << [ region: count.target, chr: count.chr, pos: count.pos, counts: positionCounts]
             }
         }
     }
