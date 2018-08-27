@@ -372,7 +372,7 @@ class MultiCov extends ToolBase {
 
         List interpolatedGC = sampleGCProfiles.collect { Map sampleGCInfo ->
             List<Map> gc = sampleGCInfo.gc
-            return this.interpolateGCProfile(gc)
+            return [ sample: sampleGCInfo.sample, gc: this.interpolateGCProfile(gc) ]
         }
         
         new File(opts.gcprofile).withWriter { w ->
@@ -401,7 +401,7 @@ class MultiCov extends ToolBase {
         List<Map> result =  gc.collect { Map bin ->
             [
                 bin: bin.bin,
-                mean: gcFn.value((bin.bin[0] + bin.bin[1])/2),
+                mean: Math.max(0,gcFn.value((bin.bin[0] + bin.bin[1])/2)),
                 sd: bin.sd.isNaN() ? 0d : bin.sd
             ]
         }
