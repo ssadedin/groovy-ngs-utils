@@ -21,6 +21,8 @@ package gngs.tools
 
 import java.text.NumberFormat
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
+
 import gngs.*
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -59,8 +61,8 @@ class Gaps {
         this.opts = opts
         this.targetRegions = null
         if(opts.L) {
-            this.targetRegions = new BED(opts.L).load().collect {
-                new Region(it.chr, it.from+1, it.to)
+            this.targetRegions = new BED(opts.L,withExtra:true).load(withExtra:true).collect {
+                new Region(it.chr, it.from+1, it.to, id: it.range.extra)
             } as Regions
         }
         if(opts.n)
@@ -117,10 +119,14 @@ class Gaps {
                     if(ix.from == ix.to) {
                         continue
                     }
+                    
+                    Region ixRegion = (Region)((GRange)ix).extra
                     filtered.addRegion(new Region(
                         r.chr, 
                         new GRange((int)ix.from, (int)ix.to, 
-                            new CoverageBlock(chr: r.chr, start: (int)ix.from, end: (int)ix.to)
+                            new CoverageBlock(chr: r.chr, start: (int)ix.from, end: (int)ix.to, 
+                                stats: ((DescriptiveStatistics)((CoverageBlock)((GRange)r.range).extra).stats), 
+                                id: (String)ixRegion.getProperty('id'))
                         )
                     ))
                 }
