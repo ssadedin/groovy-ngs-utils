@@ -197,7 +197,7 @@ class RangeIndex implements Iterable<IntRange> {
             // Add all the overlapping regions from the adjacent lower region to
             // our new breakpoint
             List<IntRange> lowerSplitRegion =  new ArrayList(lowerEntry.value.size())
-            for(IntRange lwrRange in lowerSplitRegion) {
+            for(IntRange lwrRange in lowerEntry.value) {
                 if(lwrRange.to > startPosition)
                     lowerSplitRegion.add(lwrRange)
             }

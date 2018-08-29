@@ -211,6 +211,11 @@ class Regions implements Iterable<Region> {
         return result
     }
     
+    @CompileStatic
+    Regions intersectRegions(Regions other) {
+        this.intersect(other)
+    }
+    
     /**
      * Returns a set of regions representing each region in this Regions
      * intersected with the Regions in the other regions.

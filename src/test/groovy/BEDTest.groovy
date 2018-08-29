@@ -29,6 +29,13 @@ import gngs.Regions
 
 class BEDTest {
     
+   String testBed2 = 
+    """
+    chr1\t100\t350
+    chr1\t110\t140
+    chr1\t120\t360
+    """.stripIndent().trim()
+    
     String testBed = 
     """
     chr1\t100\t150
@@ -77,13 +84,6 @@ class BEDTest {
         }
         assert count == 0 
     }
-    
-   String testBed2 = 
-    """
-    chr1\t100\t350
-    chr1\t110\t140
-    chr1\t120\t360
-    """.stripIndent().trim()
     
     @Test
     void testLongPrecedingRange() {
@@ -330,14 +330,14 @@ class BEDTest {
           """.stripIndent().trim().bytes
         )).load()
         
-      def b3 = b1.intersect(b2).reduce()
+      def b3 = b1.intersectRegions(b2).reduce() 
       
       b3.eachRange { println(it.toString()) }
       
       assert b3.iterator().size()>0
         
       // Identical regions intersected should just return the same result
-      assert b1.intersect(b2).reduce().size() == b1.reduce().size()
+      assert b1.intersectRegions(b2).reduce().size() == b1.reduce().size()
     }
     
     @Test
