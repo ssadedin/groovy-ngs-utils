@@ -348,7 +348,7 @@ class RangeIndex implements Iterable<IntRange> {
      * @param end   last position to look for overlaps (inclusive)
      * @return  List of ranges overlapping the specified start -> end range
      */
-    List<Range> getOverlaps(int start, int end) {
+    List<IntRange> getOverlaps(int start, int end) {
         getOverlaps(start,end,false)
     }
     
@@ -424,9 +424,16 @@ class RangeIndex implements Iterable<IntRange> {
      * @param end   end of range to find intersections for
      * @return  List of ranges that intersect the specified range.
      */
-    List<Range> intersect(int start, int end) {
+    @CompileStatic
+    List<IntRange> intersect(int start, int end) {
+       IntRange srcRange = start..end
        def result = getOverlaps(start,end)
-       return result.collect { Math.max(it.from, start)..Math.min(it.to, end)}
+       return (List<IntRange>)result.collect { IntRange r ->
+           if(r instanceof GRange) 
+               return (IntRange)((GRange)r).intersectRange(srcRange)
+           else 
+               return Math.max(r.from, start)..Math.min(r.to, end) 
+       }
     }    
     
     /**

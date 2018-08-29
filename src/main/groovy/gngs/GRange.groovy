@@ -319,11 +319,17 @@ class GRange extends IntRange implements Serializable {
         GRange.overlaps(this, other)
     }
     
-    GRange intersect(IntRange other) {
+    @CompileStatic
+    GRange intersectRange(IntRange other) {
         GRange r = new GRange(Math.max(this.fromInt, other.fromInt), Math.min(this.toInt, other.toInt), extra)
         if(r.to < r.from)
             return null
         return r
+    }
+  
+    @CompileStatic
+    GRange intersect(IntRange other) {
+        intersectRange(other)
     }
     
     static boolean overlaps(IntRange a, IntRange b) {

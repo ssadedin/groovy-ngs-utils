@@ -198,16 +198,17 @@ class Regions implements Iterable<Region> {
     }
     
     @CompileStatic
-    List<Range> intersect(IRegion region) {
+    List<IntRange> intersect(IRegion region) {
         intersect(region.chr, (int)region.range.from, (int)region.range.to)
     }
     
-    List<Range> intersect(String chr, int start, int end) {
+    @CompileStatic
+    List<IntRange> intersect(String chr, int start, int end) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return []
-        
-        return chrIndex.intersect(start,end)
+        List<IntRange> result = chrIndex.intersect(start,end)
+        return result
     }
     
     /**
