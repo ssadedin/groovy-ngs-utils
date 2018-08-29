@@ -184,7 +184,7 @@ class CoveragePrinter extends DefaultActor {
         if(coeffV) {
             Stats stats = Stats.from(values)
             double coeffV = stats.standardDeviation / (1 + stats.mean)
-            coeffVColumn = numberFormat.format(coeffV)
+            coeffVColumn = coeffV
             coeffvStats.addValue((int)(100*coeffV))
         }
         
@@ -192,7 +192,7 @@ class CoveragePrinter extends DefaultActor {
     }
 
     void writePosition(Map countInfo, List values, Double coeffV) {
-        List coeffVColumn = coeffV == null ? [] :  [coeffV] 
+        List coeffVColumn = coeffV == null ? [] :  [numberFormat.format(coeffV)] 
         if(w != null)
             w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
     }
