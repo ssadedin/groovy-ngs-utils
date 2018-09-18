@@ -522,15 +522,27 @@ class Variant implements IRegion {
               List field = (List)fieldObj
               String key = (String)field[0]
               String value = String.valueOf(field[1])
-              if(key in numericGTFields) 
-                  [key,value == "." ? null : value.toFloat()] 
-              else
-              if(key in numericListFields) {
-                  return [key,value.tokenize(",")*.replace(".","0")*.toFloat()]  // strange typecast exc under compilestatic
+              if(key in numericGTFields) { 
+                  return [key,convertNumericValue(value)] 
               }
               else
-                  field
+              if(key in numericListFields) {
+                  return [key,value.tokenize(",").collect { convertNumericValue(it) }]  // strange typecast exc under compilestatic
+              }
+              else
+                  return field
         } 
+    }
+    
+    @CompileStatic
+    Number convertNumericValue(String value, Number defaultValue=0I) {
+        if(value == '.')
+            return defaultValue
+            
+        if(value.isInteger())
+            return value.toInteger()
+        
+        return value.toFloat()
     }
     
     /**
@@ -624,7 +636,8 @@ class Variant implements IRegion {
         
         if(this.@genoTypes) {
             fields[9] = genoTypeFields.collect { fieldName -> 
-                genoTypes[fieldName] instanceof List ? genoTypes[fieldName].join(',') : genoTypes[fieldName]
+                def field = genoTypes[fieldName][0]
+                field instanceof List ? field.join(',') : field
             }.join(':')
         }
         

@@ -275,4 +275,25 @@ class VariantTest {
         assert v.line.contains(':10:')
         assert v.getTotalDepth('JOHNSMITH') == 10
     }
+    
+    @Test
+    void testUpdateMultisampleVariant() {
+        VCF vcf = VCF.parse("tests/data/test_multisample.vcf")
+        v = vcf[0]
+        
+        v.update("test") {
+            v.filter = "PASS"
+        }
+        
+        println v.line.tokenize('\t')[9]
+        
+        assert v.genoTypes.GT[0] == '1/1'
+        assert v.genoTypes.AD[0] == [0,10]
+        
+        v = vcf[1]
+        assert v.genoTypes.GT[0] == '0/0'
+        assert v.genoTypes.GT[1] == '0/1'
+        
+        
+    }
 }
