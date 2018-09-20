@@ -44,10 +44,21 @@ class CoverageCombinerActor extends DefaultActor {
     
     AtomicInteger countSize = new AtomicInteger()
     
+    AtomicInteger pending = new AtomicInteger()
+    
+    AtomicInteger processed = new AtomicInteger()
+    
+    Map<String,AtomicInteger> pendingCounts = Collections.synchronizedMap([:])
+    
     Actor consumer
     
     ProgressCounter progress = new ProgressCounter(withRate: true, timeInterval: 1000, lineInterval: 200, log:log, 
-        extra: { "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]}/$numSamples reported" })
+        extra: { "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos].size()}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})" })
+    
+    void add(SampleReadCount sampleCount) {
+        pending.incrementAndGet()
+        this << sampleCount
+    }
     
     @Override
     void act() {
@@ -67,6 +78,8 @@ class CoverageCombinerActor extends DefaultActor {
     @CompileStatic
     void processCount(SampleReadCount count) {
         
+        pending.decrementAndGet()
+        
         Long xpos = XPos.computePos(count.chr, count.pos)
         if(pos == -1)
             pos = xpos
@@ -74,38 +87,44 @@ class CoverageCombinerActor extends DefaultActor {
         Map<String,Integer> positionCounts = this.counts[xpos]
         if(positionCounts == null) {
             this.counts[xpos] = positionCounts = new HashMap()
+            countSize.incrementAndGet()
         }
         
         positionCounts[count.sample] = count.reads
         progress.count()
+        
+        pendingCounts.get(count.sample, new AtomicInteger(0)).getAndIncrement()
         
         if(pos == xpos) {
             if(positionCounts.size() == numSamples) {
                         
                 counts.pollFirstEntry()
                 
+                countSize.decrementAndGet()
+                
                 if(!counts.isEmpty())
                     pos = counts.firstKey()
                 else
                     pos = -1
-                consumer << [ region: count.target, chr: count.chr, pos: count.pos, counts: positionCounts]
+                    
+//                consumer << [ region: count.target, chr: count.chr, pos: count.pos, counts: positionCounts]
             }
         }
     }
      
-    /**
-     * Last time a warning was issued about throttled reading - only want to log this
-     * once per minute or so
-     */
-    long throttleWarningMs = 0
-    
     @CompileStatic
     void processBAM(SAM bam, Regions scanRegions) {
+        /**
+         * Last time a warning was issued about throttled reading - only want to log this
+         * once per minute or so
+         */
+        long throttleWarningMs = 0
+        
         
         String sample = bam.samples[0]
          
-        CoverageCalculatorActor cra = new CoverageCalculatorActor(bam, scanRegions, this, sample) 
-        cra.start()
+        CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, this, sample) 
+        calculator.start()
         
         List<String> chrs = scanRegions*.chr.unique()
         for(String chr in chrs) {
@@ -114,13 +133,13 @@ class CoverageCombinerActor extends DefaultActor {
             log.info "Scan $chr from $start to $end"
             bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
                 while(iter.hasNext()) {
-                    cra << iter.next()
-                    
-                    int pending = cra.pending.incrementAndGet()
-                    if(pending > 50000) {
+                    calculator << new ReadRange(iter.next())
+                    int pendingCalculations = calculator.pending.incrementAndGet()
+                    int pendingCombines = this.pendingCounts[sample]?.get()?:0 - this.processed
+                    if(pendingCalculations > 50000 || pendingCombines > 20000) {
                         long nowMs = System.currentTimeMillis()
-                        if(nowMs - throttleWarningMs > 60000) {
-                            log.info "Throttling reading due to downstream congestion"
+                        if(nowMs - throttleWarningMs > 30000) {
+                            log.info "Throttling $sample due to downstream congestion (pendingCalculations=$pendingCalculations, pendingCombines=$pendingCombines)"
                             throttleWarningMs = nowMs
                         }
                         Thread.sleep(50)
@@ -129,8 +148,8 @@ class CoverageCombinerActor extends DefaultActor {
             }
         }
         log.info "Sending stop message to CRA ${bam.samples[0]} ..."
-        cra << "stop"
-        cra.join()
+        calculator << "stop"
+        calculator.join()
     }
 }
 

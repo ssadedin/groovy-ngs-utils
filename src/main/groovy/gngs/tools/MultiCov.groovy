@@ -83,6 +83,8 @@ class MultiCov extends ToolBase {
     @Override
     public void run() {
         
+        long startTimeMs = System.currentTimeMillis()
+        
         if(opts.gcprofile) {
             if(!opts.gcref)
                 throw new IllegalArgumentException('Please specify the -gcref option to use the -gcprofile option')
@@ -97,7 +99,7 @@ class MultiCov extends ToolBase {
         this.bams = opts.arguments().collect { new SAM(it) }
         
         List<String> samples = bams*.samples*.getAt(0)
-        log.info "Analysing coverage over ${Utils.humanBp(scanRegions.size())} for ${samples.join(',')}"
+        log.info "Analysing coverage over ${Utils.humanBp(scanRegions.size())} for ${samples.size()} samples: ${samples.join(',')}"
         
         def output = opts.o ? new File(opts.o) : System.out
         output.withWriter { w ->
@@ -139,6 +141,10 @@ class MultiCov extends ToolBase {
                 printer.correlationSamples = opts.corr == '.' ? samples : opts.corr.tokenize(',')
             run(printer)
         }
+        
+        log.info "Finished in ${Utils.human((System.currentTimeMillis()-startTimeMs)/1000)} seconds"
+        
+        Thread.sleep(300000)
     } 
     
     /**

@@ -22,7 +22,9 @@ package gngs;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.TreeSet;
 
+import gngs.coverage.ReadRange;
 import htsjdk.samtools.SAMRecord;
 
 /**
@@ -40,6 +42,18 @@ public final class OverlapTracker {
     
     public final void add(SAMRecord record) {
         reads.add(new int[] { record.getAlignmentStart(), record.getAlignmentEnd()});
+    }
+    
+    public final void add(ReadRange r) {
+        reads.add(new int [] { r.alignmentStart, r.alignmentEnd });
+    }
+    
+    public int size() {
+        return this.reads.size();
+    }
+    
+    public void clear() {
+        this.reads.clear();
     }
     
     public void removeNonOverlaps(final int pos) {

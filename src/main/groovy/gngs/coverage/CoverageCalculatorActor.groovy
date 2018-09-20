@@ -63,7 +63,7 @@ class CoverageCalculatorActor extends DefaultActor {
     
 //    List<int[]> reads = new LinkedList()
     
-    final OverlapTracker reads = new OverlapTracker()
+    final gngs.OverlapTracker reads = new gngs.OverlapTracker()
     
     int pos
     
@@ -84,11 +84,11 @@ class CoverageCalculatorActor extends DefaultActor {
     List<String> bamContigs
     
     // for debug only
-    SAMRecord currentRead
+    ReadRange currentRead
     
     ProgressCounter progress = new ProgressCounter(
         withRate:true, 
-        extra:  {"region: $currentRegion, sample: $sample, readBuffer: ${reads.reads.size()}, pending: $pending"},
+        extra:  {"region: $currentRegion, sample: $sample, readBuffer: ${reads.size()}, pending: $pending"},
         log: log,
         timeInterval: 1000,
         lineInterval: 100
@@ -122,15 +122,14 @@ class CoverageCalculatorActor extends DefaultActor {
                 else {
                     pending.decrementAndGet()
                     this.progress.count()
-                    processRead((SAMRecord)msg)
+                    processRead((ReadRange)msg)
                 }
             }
         }
     }
     
     @CompileStatic
-    void processRead(SAMRecord r) {
-        
+    void processRead(ReadRange r) {
         
         if(r.referenceIndex < currentReferenceIndex)
             return
@@ -144,9 +143,6 @@ class CoverageCalculatorActor extends DefaultActor {
         assert r != null
         assert currentRegion != null
         
-//        if(true)
-//            return
-//        
         while(r.referenceName != currentRegion.chr) {
             
             if(!bedReferenceIndexes.contains(r.referenceIndex)) {
@@ -158,6 +154,7 @@ class CoverageCalculatorActor extends DefaultActor {
                 ++pos
                 flushPosition()
             }
+            
             if(regionIter.hasNext())
                 if(!nextRegion())
                     return
@@ -184,7 +181,7 @@ class CoverageCalculatorActor extends DefaultActor {
     }
     
     @CompileStatic
-    private flushToReadPosition(SAMRecord r) {
+    private flushToReadPosition(ReadRange r) {
         final int alignmentStart = r.alignmentStart
         int regionEnd = currentRegion.to
         while(pos < alignmentStart) {
@@ -206,6 +203,12 @@ class CoverageCalculatorActor extends DefaultActor {
         }
     }
     
+    /**
+     * Transition to the next target region, taking into account that it might 
+     * also cause transition to next reference sequence (chromosome).
+     * 
+     * @return  true iff a new region was set, false if regions are exhausted
+     */
     @CompileStatic
     boolean nextRegion() {
        Region oldRegion = currentRegion
@@ -224,7 +227,7 @@ class CoverageCalculatorActor extends DefaultActor {
        pos = currentRegion.from
        if((oldRegion != null) && currentRegion.chr != oldRegion.chr) {
            log.info "Processing $currentRegion.chr"
-           this.reads.reads.clear()
+           this.reads.clear()
        }
        else {
            dropNonOverlapping()
@@ -236,7 +239,8 @@ class CoverageCalculatorActor extends DefaultActor {
     void flushPosition() {
         dropNonOverlapping()
 //        log.info "Flush $currentRegion.chr:$pos - ${reads.size()}"
-        combiner << new SampleReadCount(target: currentRegion, chr: currentRegion.chr, pos: pos, reads: reads.reads.size(), sample: sample)
+        combiner << new SampleReadCount(target: currentRegion, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample)
+//        combiner << new SampleReadCount(target: (Region)null, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample)
     }
     
     @CompileStatic
