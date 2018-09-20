@@ -29,7 +29,7 @@ import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecordIterator
 
 @Log
-class CoverageCombinerActor extends DefaultActor {
+class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     
     /**
      * How many samples to expect
@@ -50,35 +50,27 @@ class CoverageCombinerActor extends DefaultActor {
     
     Map<String,AtomicInteger> pendingCounts = Collections.synchronizedMap([:])
     
-    Actor consumer
-    
     ProgressCounter progress = new ProgressCounter(withRate: true, timeInterval: 1000, lineInterval: 200, log:log, 
-        extra: { "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos].size()}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})" })
+        extra: { "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]?.size()?:0}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})" })
+    
+    
+    CoverageCombinerActor(RegulatingActor printer, int numSamples) {
+        super(printer, 20000, 200000)
+        this.progress = progress
+        this.numSamples = numSamples
+    }
     
     void add(SampleReadCount sampleCount) {
         pending.incrementAndGet()
         this << sampleCount
     }
     
-    @Override
-    void act() {
-        loop {
-            react { msg ->
-                if(msg == "stop") {
-                    this.progress.end()
-                    log.info "Combiner terminating"
-                    this.terminate()
-                }
-                else
-                    processCount(msg)
-            }
-        }
-    }
-    
     @CompileStatic
-    void processCount(SampleReadCount count) {
+    void process(SampleReadCount count) {
         
         pending.decrementAndGet()
+        
+        this.chr = count.chr
         
         Long xpos = XPos.computePos(count.chr, count.pos)
         if(pos == -1)
@@ -107,19 +99,15 @@ class CoverageCombinerActor extends DefaultActor {
                 else
                     pos = -1
                     
-//                consumer << [ region: count.target, chr: count.chr, pos: count.pos, counts: positionCounts]
-            }
+                sendDownstream([region: count.target, chr: count.chr, pos: count.pos, counts: positionCounts])
+           }
         }
     }
      
     @CompileStatic
     void processBAM(SAM bam, Regions scanRegions) {
-        /**
-         * Last time a warning was issued about throttled reading - only want to log this
-         * once per minute or so
-         */
-        long throttleWarningMs = 0
-        
+       
+        AtomicInteger downstreamCount = new AtomicInteger(0)
         
         String sample = bam.samples[0]
          
@@ -133,23 +121,17 @@ class CoverageCombinerActor extends DefaultActor {
             log.info "Scan $chr from $start to $end"
             bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
                 while(iter.hasNext()) {
-                    calculator << new ReadRange(iter.next())
-                    int pendingCalculations = calculator.pending.incrementAndGet()
-                    int pendingCombines = this.pendingCounts[sample]?.get()?:0 - this.processed
-                    if(pendingCalculations > 50000 || pendingCombines > 20000) {
-                        long nowMs = System.currentTimeMillis()
-                        if(nowMs - throttleWarningMs > 30000) {
-                            log.info "Throttling $sample due to downstream congestion (pendingCalculations=$pendingCalculations, pendingCombines=$pendingCombines)"
-                            throttleWarningMs = nowMs
-                        }
-                        Thread.sleep(50)
-                    }
+                    calculator.send( new AcknowledgeableMessage(new ReadRange(iter.next()), downstreamCount))
                 }
             }
         }
         log.info "Sending stop message to CRA ${bam.samples[0]} ..."
         calculator << "stop"
         calculator.join()
+    }
+    
+    String toString() {
+        "CoverageCombinerActor(${XPos.parsePos(pos).startString()})"
     }
 }
 

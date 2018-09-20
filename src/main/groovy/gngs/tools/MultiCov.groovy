@@ -181,7 +181,7 @@ class MultiCov extends ToolBase {
     void run(CoveragePrinter printer) {
         printer.start()
             
-        CoverageCombinerActor combiner = new CoverageCombinerActor(consumer: printer, numSamples: bams.size())
+        CoverageCombinerActor combiner = new CoverageCombinerActor(printer, bams.size())
         combiner.start()
             
         // By default, estimate mean coverage from the regions to be scanned

@@ -55,7 +55,7 @@ class SampleReadCount {
  * @author Simon Sadedin
  */
 @Log
-class CoverageCalculatorActor extends DefaultActor {
+class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
     AtomicInteger pending = new AtomicInteger(0)
     
@@ -90,12 +90,12 @@ class CoverageCalculatorActor extends DefaultActor {
         withRate:true, 
         extra:  {"region: $currentRegion, sample: $sample, readBuffer: ${reads.size()}, pending: $pending"},
         log: log,
-        timeInterval: 1000,
-        lineInterval: 100
+        timeInterval: 10000,
+        lineInterval: 500
         )
     
     public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, String sample) {
-        super();
+        super(combiner, 20000, 100000);
         this.targetRegions = targetRegions
         this.regionIter = targetRegions.iterator();
         this.combiner = combiner;
@@ -109,27 +109,14 @@ class CoverageCalculatorActor extends DefaultActor {
         nextRegion()
     }
 
-    @CompileStatic
-    @Override
-    void act() {
-        loop { 
-            react { msg ->
-                if(msg == "stop") {
-                    this.flushToEnd()
-                    this.progress.end()
-                    this.terminate()
-                }
-                else {
-                    pending.decrementAndGet()
-                    this.progress.count()
-                    processRead((ReadRange)msg)
-                }
-            }
-        }
+    void onEnd() {
+        this.flushToEnd()
     }
     
     @CompileStatic
-    void processRead(ReadRange r) {
+    void process(ReadRange r) {
+        
+//        Thread.sleep(1000)
         
         if(r.referenceIndex < currentReferenceIndex)
             return
@@ -239,7 +226,7 @@ class CoverageCalculatorActor extends DefaultActor {
     void flushPosition() {
         dropNonOverlapping()
 //        log.info "Flush $currentRegion.chr:$pos - ${reads.size()}"
-        combiner << new SampleReadCount(target: currentRegion, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample)
+        sendDownstream(new SampleReadCount(target: currentRegion, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample))
 //        combiner << new SampleReadCount(target: (Region)null, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample)
     }
     
@@ -251,5 +238,10 @@ class CoverageCalculatorActor extends DefaultActor {
     @CompileStatic
     void iteratorRemove(Iterator i) {
         i.remove()
+    }
+    
+    
+    String toString() {
+        "CoverageCalculator(sample=$sample, $currentRegion)"
     }
 }

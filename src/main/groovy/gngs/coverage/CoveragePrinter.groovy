@@ -30,7 +30,7 @@ import groovy.util.logging.Log
 import groovyx.gpars.actor.DefaultActor
 
 @Log
-class CoveragePrinter extends DefaultActor {
+class CoveragePrinter extends RegulatingActor<Map> {
     
     Writer w
     
@@ -93,6 +93,8 @@ class CoveragePrinter extends DefaultActor {
     final NumberFormat numberFormat = NumberFormat.numberInstance
     
     CoveragePrinter(Map options=[:], Writer w, List<String> samples) {
+        super(50000,100000)
+        this.progress = new ProgressCounter(withRate:true, log:log, withTime:true, extra: { "Computing stats on region: $currentTarget" })
         this.w = w
         this.samples = samples
         this.sampleStats = (1..samples.size()).collect { new Stats() } 
@@ -109,17 +111,6 @@ class CoveragePrinter extends DefaultActor {
         this.rawCoverageStats = (1..samples.size()).collect { new IntegerStats(1000) } 
         numberFormat.maximumFractionDigits=3
         numberFormat.minimumFractionDigits=0
-    }
-    
-    void act() {
-        loop {
-            react { msg ->
-                if(msg == "stop")
-                    terminate()
-                else
-                    processPosition(msg)
-            }
-        }
     }
     
     void setRelative(boolean value) {
@@ -152,7 +143,7 @@ class CoveragePrinter extends DefaultActor {
     
     int currentGCBin = -1
     
-    void processPosition(Map countInfo) {
+    void process(Map countInfo) {
         
         if(currentTarget != countInfo.region) {
             currentTarget = countInfo.region
