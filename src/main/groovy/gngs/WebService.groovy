@@ -171,7 +171,7 @@ class WebService {
        URL url = encodeURL(params, payload)
        
        try {
-           if(credentials) 
+           if(credentials || credentialsPath) 
                return this.executeOAuthRequest(params, url, method, payload)
            else {
                HttpURLConnection connection = configureConnection(url, method, data)
@@ -343,7 +343,7 @@ class WebService {
     
     URL encodeURL(Map params, String payload) {
         String url = "$endPoint/$api"
-        if(credentials) {
+        if(credentials || credentialsPath) {
             if(payload) {
                 if(params == null)
                     params = [:]
