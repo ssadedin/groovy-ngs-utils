@@ -10,9 +10,9 @@ class Hash {
     }
     
     @CompileStatic
-    static String sha1(String value) {
+    static String sha1(String value, String encoding=null) {
         def messageDigest = MessageDigest.getInstance("SHA1")
-        messageDigest.update( value.getBytes() );
+        messageDigest.update(encoding ? value.getBytes() : value.getBytes(encoding) );
         return new BigInteger(1, messageDigest.digest()).toString(16).padLeft( 40, '0' )
     }
 }
