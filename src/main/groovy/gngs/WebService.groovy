@@ -33,6 +33,7 @@ import com.github.scribejava.core.oauth.OAuth10aService
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.util.logging.Log
+import java.text.ParseException
 
 /**
  * With 2 legged OAuth there is no need for acquiring an access token or request token; these
@@ -233,14 +234,14 @@ class WebService {
     
     OAuth10aService buildOAuthService() {
         
-        loadAPICredentials()
+        loadCredentials()
 
         new ServiceBuilder(this.apiCredentials.apiKey)
             .apiSecret(this.apiCredentials.apiSecret)
             .build(new TwoLeggedOAuthAPI()) 
     }
 
-    public void loadAPICredentials() {
+    public void loadCredentials() {
         if(this.apiCredentials != null) 
             return 
             
@@ -254,8 +255,19 @@ class WebService {
             throw new IllegalStateException("API Credentials were not set explicitly and no credentials file could be found in ${credsFiles.join(', ')}")
 
         def yaml = new Yaml().load(credsFile.text)
+        
+        if(!(yaml instanceof Map)) 
+            throw new ParseException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
+        
         log.info "Loaded credentials from credentials file"
-        this.apiCredentials = new WSCredentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
+        
+        if(yaml.apiKey) {
+            this.apiCredentials = new WSCredentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
+        }
+        
+        if(yaml.accessToken) {
+            this.credentials = new OAuth1AccessToken(yaml.accessToken, yaml.accessSecret)
+        }
     }
     
     /**
