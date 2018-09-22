@@ -57,6 +57,7 @@ dependencies {
      compile 'org.apache.commons:commons-math3:3.0'
      compile group: 'com.google.guava', name: 'guava', version: '26.0-jre'
      compile group: 'com.github.scribejava', name: 'scribejava-core', version: '5.6.0'
+     compile group: 'org.yaml', name: 'snakeyaml', version: '1.23'
      compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
      
      // compile group: 'com.github.samtools', name: 'htsjdk', version: '1.141'
