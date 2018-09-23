@@ -168,7 +168,7 @@ class WebService {
         
        String payload = data != null ? JsonOutput.prettyPrint(JsonOutput.toJson(data)) : null
        
-       URL url = encodeURL(params, payload)
+       URL url = encodeURL(params, method, payload)
        
        try {
            if(credentials || credentialsPath) 
@@ -341,13 +341,12 @@ class WebService {
         }
     }
     
-    URL encodeURL(Map params, String payload) {
+    URL encodeURL(Map params, String method, String payload) {
         String url = "$endPoint/$api"
+        Map sigParams = [:]
         if(credentials || credentialsPath) {
             if(payload) {
-                if(params == null)
-                    params = [:]
-                params.sig = Hash.sha1(payload, 'UTF-8')
+                sigParams.sig = Hash.sha1(payload, 'UTF-8')
             } 
         }
         
@@ -358,8 +357,12 @@ class WebService {
             }
         }
         
-        if(params) {
-             url += "?" + params.collect { key, value ->
+        Map allParams = sigParams
+        if(method == "GET" && params)
+            allParams += params
+        
+        if(allParams) {
+             url += "?" + allParams.collect { key, value ->
                                URLEncoder.encode(key) + '=' + URLEncoder.encode(String.valueOf(value))
                           }.join('&')
         }
