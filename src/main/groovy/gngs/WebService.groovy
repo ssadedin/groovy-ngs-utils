@@ -333,7 +333,7 @@ class WebService {
                 return new JsonSlurper().parseText(responseText)
             }
             catch(Exception e) {
-                throw new WebServiceException("Failed to parse response as JSON: ${responseText?.take(80)}...", connection.responseCode, connection.responseMessage, responseText)
+                throw new WebServiceException("Failed to parse response as JSON: ${responseText?.take(80)}...", 200, e.getMessage(), responseText)
             }
         }
         else {
