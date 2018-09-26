@@ -21,6 +21,13 @@ class AcknowledgeableMessage {
     AtomicInteger acknowledgeCounter
 }
 
+/**
+ * An Actor that exerts back-pressure to regulate the rate of incoming messages.
+ * 
+ * @author Simon Sadedin
+ *
+ * @param <T>
+ */
 @Log
 abstract class RegulatingActor<T> extends DefaultActor {
     

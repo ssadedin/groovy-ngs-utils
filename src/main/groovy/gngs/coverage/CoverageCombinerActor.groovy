@@ -106,28 +106,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
      
     @CompileStatic
     void processBAM(SAM bam, Regions scanRegions) {
-       
-        AtomicInteger downstreamCount = new AtomicInteger(0)
-        
-        String sample = bam.samples[0]
-         
-        CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, this, sample) 
-        calculator.start()
-        
-        List<String> chrs = scanRegions*.chr.unique()
-        for(String chr in chrs) {
-            int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
-            int end = scanRegions.index[chr].ranges.lastKey() + 1000
-            log.info "Scan $chr from $start to $end"
-            bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
-                while(iter.hasNext()) {
-                    calculator.send( new AcknowledgeableMessage(new ReadRange(iter.next()), downstreamCount))
-                }
-            }
-        }
-        log.info "Sending stop message to CRA ${bam.samples[0]} ..."
-        calculator << "stop"
-        calculator.join()
+        CoverageCalculatorActor.processBAM(bam, scanRegions, this)
     }
     
     String toString() {

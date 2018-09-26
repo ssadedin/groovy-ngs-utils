@@ -22,6 +22,7 @@ package gngs.tools
 import gngs.*
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
+import groovyx.gpars.GParsPool
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.Actors
 
@@ -51,23 +52,62 @@ class Sex extends ToolBase {
         
         for(String vcf in opts.arguments().grep { it.endsWith('.vcf') }) {
             gngs.Sex sex = new VCF(vcf).guessSex()
-            println sex
+            
+            if(opts.filter) {
+                if(opts.filter == sex.toString())
+                    println vcf
+            }
+            else
+                println sex
         }
         
-        for(String bamPath in opts.arguments().grep { it.endsWith('.bam') }) {
-            if(!opts.t)
-                throw new IllegalArgumentException('Please provide a target region to ascertain sex from BAM files')
-                
-            Regions targetRegions = new BED(opts.t).load()
-            SexKaryotyper kt = new SexKaryotyper(new SAM(bamPath), targetRegions)
-            kt.run()
-            println kt.sex
+        List bamFiles = opts.arguments().grep { it.endsWith('.bam') }
+        if(opts.n) {
+            processParallelBAMs(bamFiles)
+        }
+        else
+        for(String bamPath in bamFiles) {
+            println(processBAM(bamPath))
         }        
         
         for(String fastqPath in opts.arguments().grep { it.endsWith('.fastq.gz') }) {
             gngs.Sex sex = guessFastqSex(fastqPath)
-            println sex
+            if(opts.filter) {
+                if(opts.filter == sex.toString())
+                    println fastqPath
+            }
+            else
+                println sex
         }
+    }
+    
+    void processParallelBAMs(List<String> bamFiles) {
+        
+        int concurrency = (opts.n?:1).toInteger()
+        log.info "Processing files with concurrency = $concurrency"
+        GParsPool.withPool(concurrency) {
+            List<String> results = bamFiles.collectParallel { bamFile ->
+                String result = processBAM(bamFile)
+                log.info "Caclulated result $result for $bamFile"
+                return result
+            }.grep { it != null }
+            println(results.join('\n'))
+        }
+    }
+    
+    
+    String processBAM(String bamPath) {
+       Regions targetRegions = new BED(opts.t).load()
+       SexKaryotyper kt = new SexKaryotyper(new SAM(bamPath), targetRegions)
+       kt.run()
+           
+       if(opts.filter) {
+           if(opts.filter == kt.sex.toString())
+               return bamPath
+       }
+       else {
+           return kt.sex                
+       } 
     }
     
     @CompileStatic
@@ -118,6 +158,8 @@ class Sex extends ToolBase {
         cli("Sex [-t <target region>] <vcf file | bam file | fastq> <vcf file | bam file | fastq> ...", args) {
             t 'Target regions to analyse (required for BAM files)', longOpt: 'target', args:1, required: false
             v 'Print verbose information about how sex is being determined'
+            filter 'Print out input if it matches sex of argument (MALE, FEMALE)', args:1, required: false
+            n 'Use <n> concurrent threads (only for certain operations)', args:1, required: false
         }
     }
 }

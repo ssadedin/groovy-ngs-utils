@@ -28,6 +28,7 @@ import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecord
+import htsjdk.samtools.SAMRecordIterator
 
 @CompileStatic
 @ToString
@@ -75,8 +76,6 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
     Iterator<Region> regionIter
     
-    Actor combiner
-    
     String sample
     
     Set<Integer> bedReferenceIndexes
@@ -98,7 +97,6 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         super(combiner, 20000, 100000);
         this.targetRegions = targetRegions
         this.regionIter = targetRegions.iterator();
-        this.combiner = combiner;
         this.sample = sample;
         
         this.bamContigs = bam.getContigList()
@@ -244,4 +242,33 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     String toString() {
         "CoverageCalculator(sample=$sample, $currentRegion)"
     }
+    
+    @CompileStatic
+    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream) {
+       
+        AtomicInteger downstreamCount = new AtomicInteger(0)
+        
+        String sample = bam.samples[0]
+         
+        CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, downstream, sample) 
+        calculator.start()
+        
+        List<String> chrs = scanRegions*.chr.unique()
+        for(String chr in chrs) {
+            int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
+            int end = scanRegions.index[chr].ranges.lastKey() + 1000
+            log.info "Scan $chr from $start to $end"
+            bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
+                while(iter.hasNext()) {
+                    SAMRecord r = iter.next()
+                    if(r.getMappingQuality()>0)
+                        calculator.send(new AcknowledgeableMessage(new ReadRange(r), downstreamCount))
+                }
+            }
+        }
+        log.info "Sending stop message to CRA ${bam.samples[0]} ..."
+        calculator << "stop"
+        calculator.join()
+    }
+   
 }
