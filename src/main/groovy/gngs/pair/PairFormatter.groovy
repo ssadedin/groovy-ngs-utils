@@ -98,6 +98,14 @@ class PairFormatter extends DefaultActor {
         }
     }
     
+//        if(r2.getReadNegativeStrandFlag() && r2.getMateNegativeStrandFlag()) // read is aligned complemented already!
+//        if(r2.getReadNegativeStrandFlag() && r2.getMateNegativeStrandFlag())  { // read is aligned reversed already! 
+//            final int bqLength = bq.length;
+//            for(int i=0; i<bqLength; ++i) {
+//                b2.append(SAMUtils.phredToFastq(bq[i]));
+//            }
+//        }    
+    
     void process(ReadPair pair, SAMRecord r2) {
         
         if(debugRead != null && (r2.readName == debugRead)) {

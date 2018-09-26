@@ -216,42 +216,16 @@ class PairScanner {
         }
     }
     
+    /**
+     * Scan all the reads in the given BAM file
+     */
     private void scanBAM(SAM bam) {
-        
-        // These are in the hope that we get some compiler
-        // optimisations - have not tested though
-        final int locatorSize = locatorIndex.size()
-        final int shardId = this.shardId
-        final int shardSize = this.shardSize
-        final int maxBufferedReads = this.maxWriteBufferSize
         
         final SamReader reader = bam.newReader(fast:true)
         try {
             final SAMRecordIterator i = reader.iterator()
-            try {
-                while(i.hasNext()) {
-                    SAMRecord read = i.next()
-                    lastRead = read
-                    progress.count()
-                    int hash = Math.abs(read.readName.hashCode())
-                    int locatorOffset = hash % locatorSize
-                    PairLocator locator = locatorIndex[locatorOffset]
-                    if(locator != null) {
-                        locator << read 
-                        if(pairWriter.pending.get() > maxBufferedReads) {
-                            if(!throttleWarning) {
-                                log.info "Throttling output due to slow downstream consumption of reads"
-                                throttleWarning = true
-                            }
-                            Thread.sleep(50)
-                        }
-                    }
-                    else {
-                        if(debugRead == read.readName)
-                            log.info "Read $debugRead not assigned to shard (hash=$hash, lcoffset=$locatorOffset/$locatorSize)"
-                    }
-                        
-                }
+            try{
+                scanBAMIterator(i)
             }
             finally {
                 i.close()
@@ -260,6 +234,44 @@ class PairScanner {
         finally {
             reader.close()
         }        
+    }
+
+    /**
+     * Process all reads yielded by the given iterator
+     * <p>
+     * Note: Caller must close iterator
+     */
+    private void scanBAMIterator(final SAMRecordIterator i) {
+        
+        // These are in the hope that we get some compiler
+        // optimisations - have not tested though
+        final int locatorSize = locatorIndex.size()
+        final int shardId = this.shardId
+        final int shardSize = this.shardSize
+        final int maxBufferedReads = this.maxWriteBufferSize
+
+        while(i.hasNext()) {
+            SAMRecord read = i.next()
+            lastRead = read
+            progress.count()
+            int hash = Math.abs(read.readName.hashCode())
+            int locatorOffset = hash % locatorSize
+            PairLocator locator = locatorIndex[locatorOffset]
+            if(locator != null) {
+                locator << read
+                if(pairWriter.pending.get() > maxBufferedReads) {
+                    if(!throttleWarning) {
+                        log.info "Throttling output due to slow downstream consumption of reads"
+                        throttleWarning = true
+                    }
+                    Thread.sleep(50)
+                }
+            }
+            else {
+                if(debugRead == read.readName)
+                log.info "Read $debugRead not assigned to shard (hash=$hash, lcoffset=$locatorOffset/$locatorSize)"
+            }
+        }
     }
     
     void stopActor(String name, Actor actor) {
