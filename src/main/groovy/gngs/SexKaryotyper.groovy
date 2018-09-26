@@ -19,6 +19,15 @@
  */
 package gngs
 
+import java.util.logging.Level
+
+import gngs.coverage.CoverageCalculatorActor
+import gngs.coverage.SampleReadCount
+import graxxia.IntegerStats
+import groovy.util.logging.Log
+import htsjdk.samtools.SAMRecord
+import static groovyx.gpars.actor.Actors.actor
+
 /**
  * An algorithm based on simple heuristics for estimating the sex of a sample from
  * sequencing coverage.
@@ -26,6 +35,7 @@ package gngs
  * 
  * @author simon
  */
+@Log
 class SexKaryotyper implements Runnable {
     
     SAM bam = null
@@ -34,11 +44,11 @@ class SexKaryotyper implements Runnable {
     
     boolean progress = true
     
-    CoverageStats yCoverage     
+    double yCoverage     
     
-    CoverageStats xCoverage 
+    double xCoverage 
     
-    CoverageStats autosomeCoverage 
+    double autosomeCoverage 
     
     List<String> autosomeChrs = ["chr1","chr22"]
     
@@ -78,27 +88,60 @@ class SexKaryotyper implements Runnable {
         
         bam.progress = progress
         
-        xCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrX" } as Regions)
-        yCoverage = bam.coverageStatistics(regions.grep { it.chr == "chrY" } as Regions)
-        autosomeCoverage = bam.coverageStatistics(regions.grep { autosomeChrs.contains(it.chr) } as Regions)
-//        autosomeCoverage = bam.coverageStatistics(regions.grep { it.chr != "chrX" && it.chr != "chrY" } as Regions)
+        String sample = bam.samples[0]
         
-        if(yCoverage.mean < 5 && xCoverage.mean > 30) {
+        Regions yRegions = (this.regions.grep { it.chr == 'chrY' } as Regions)
+        Regions xRegions = (this.regions.grep { it.chr == 'chrX' } as Regions)
+        Regions autoRegions = (this.regions.grep { it.chr == 'chr1' || it.chr == 'chr22' } as Regions)        
+        
+        IntegerStats xStats = calcCovStats(xRegions)
+        log.info "Coverage from X calc = $xStats.mean"
+        
+        IntegerStats yStats = calcCovStats(yRegions)
+        log.info "Coverage from Y calc = $yStats.mean"
+       
+        IntegerStats autoStats = calcCovStats(autoRegions)
+        log.info "Coverage from autosome calc = $yStats.mean"
+  
+        yCoverage = yStats.mean
+        xCoverage = xStats.mean
+        autosomeCoverage = autoStats.mean
+        
+        log.info "Means for $sample are: " + [chrX: xCoverage, chrY: yCoverage, autosomes: autosomeCoverage]
+        
+        if(yCoverage < 5 && xCoverage > 30) {
             sex = Sex.FEMALE
         }
         else
-        if(xCoverage.mean / autosomeCoverage.mean < 0.7) {
+        if(xCoverage / autosomeCoverage < 0.75) {
+            log.info "chrX / auto = " + (xCoverage / autosomeCoverage)
             sex = Sex.MALE
         }
         else
             sex = Sex.OTHER
     }
     
+    IntegerStats calcCovStats(Regions regions)  {
+        IntegerStats covStats = new IntegerStats(1000)
+        def coverageCounter = new RegulatingActor<SampleReadCount>(10000, 100000) { 
+            void process(SampleReadCount c) {
+                covStats.addValue(c.reads)
+            }
+        }
+        coverageCounter.start()
+        CoverageCalculatorActor.processBAM(bam, regions, coverageCounter)
+        coverageCounter << "stop"
+        return covStats
+    }
+    
+    
     static void main(String[] args) {
+        
         Cli cli = new Cli()
         cli.with {
             bam "Alignment of sample to karyotype", args:1, required:true
             bed "BED file of regions to base karyotype on (eg: the BED file of regions covered by sequencing, exome, etc)", args:1, required:true
+            v 'Enable logging'
         }
         
         def opts = cli.parse(args)
@@ -109,16 +152,23 @@ class SexKaryotyper implements Runnable {
         SAM sam = new SAM(opts.bam)
         BED bed = new BED(opts.bed).load()
         
+        if(opts.v) {
+            Utils.configureSimpleLogging()
+        }
+        else {
+            Utils.configureSimpleLogging(Level.SEVERE)
+        }
+        
         SexKaryotyper k = new SexKaryotyper(sam, bed)
         Utils.time("Running Karyotyper") {
             k.run()
         }
         
-        println "xCoverage stats = " + k.xCoverage
+        println "xCoverage mean = " + k.xCoverage
         println "=" * 80
-        println "yCoverage stats = " + k.yCoverage
+        println "yCoverage mean = " + k.yCoverage
         println "=" * 80
-        println "autoCoverage stats = " + k.autosomeCoverage
+        println "autoCoverage mean = " + k.autosomeCoverage
         println "=" * 80
         println "Karyotyping result: " + k.sex
     }
