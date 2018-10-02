@@ -90,12 +90,21 @@ class RangeIndex implements Iterable<IntRange> {
      */
     TreeMap<Integer,List<IntRange>> ranges = new TreeMap()
     
+    private int numRanges = 0
+    
+    @CompileStatic
+    public int getNumRanges() {
+        return this.@numRanges
+    }
+    
     void add(int startPosition, int endPosition, Object extra = null) {
         add(extra != null ? new GRange(startPosition, endPosition-1, extra) : new IntRange(startPosition, endPosition-1))
     }
         
     @CompileStatic
     void add(IntRange newRange) {
+        
+        ++numRanges
        
         // Any existing range over start position?
         final int startPosition = (int)newRange.from
