@@ -454,7 +454,7 @@ class Variant implements IRegion {
      */
     String line
     
-    String [] genoTypeFields
+    List genoTypeFields
 	
 	
 	IntRange getRange() {
@@ -504,7 +504,7 @@ class Variant implements IRegion {
         if(fields.size() > 8) {
             
           if(genoTypeFields == null)
-              genoTypeFields = COLON_SPLIT.split(fields[8])
+              genoTypeFields = fields[8].tokenize(':')
           
           // Split the genoTypes field into separate values and parse them out
           genoTypes = fields[9..-1].collect { String gt -> 
@@ -635,11 +635,10 @@ class Variant implements IRegion {
         fields[7] = getInfo().collect {k,v -> v != null?"$k=$v":k}.join(';')
         
         if(this.@genoTypes) {
-            fields[9] = genoTypeFields.collect { fieldName -> 
-                def field = genoTypes[fieldName][0]
-                field instanceof List ? field.join(',') : field
-            }.join(':')
+            rebuildGenotypes(fields)
         }
+        
+        fields[8] = genoTypeFields.join(':')
         
         line = fields.collect { it?:'' }.join('\t')
         
@@ -652,6 +651,22 @@ class Variant implements IRegion {
            }
         }
         this.@info = null
+    }
+
+    /**
+     * Update the per-sample genotype info fields by rebuilding them
+     * from the genoTypes map.
+     * 
+     * @param fields    the parsed fields of the VCF line
+     */
+    @CompileStatic
+    private void rebuildGenotypes(List fields) {
+        for(int i=0; i<this.header.samples.size(); ++i) {
+            fields[9+i] = genoTypeFields.collect { fieldName ->
+                def field = genoTypes[i][fieldName]
+                field instanceof List ? field.join(',') : field
+            }.join(':')
+        }
     }
     
     /**
