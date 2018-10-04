@@ -765,4 +765,31 @@ class Regions implements Iterable<Region> {
         }
         return result
     }
+    
+    /**
+     * Select the given number of ranges from these, approximately evenly spaced
+     * 
+     * @param desiredRanges
+     * @return
+     */
+    @CompileStatic
+    Regions thin(int desiredRanges, int minRanges) {
+        int currentTotalRanges = this.numberOfRanges
+        
+        double proportionRetained = ((double)desiredRanges) / currentTotalRanges
+        if(proportionRetained == 0) 
+            throw new IllegalArgumentException("Proportion of regions retained is too small: $proportionRetained ($desiredRanges / $currentTotalRanges")
+            
+        int keepOneEvery = (int)(1 / proportionRetained)
+        int i=0
+        
+        return this.grep { Region r -> 
+            
+            if(this.index[r.chr].numRanges*proportionRetained < minRanges) {
+                return true
+            }
+            
+            return (++i) % keepOneEvery == 0 
+        } as Regions
+    }
 }
