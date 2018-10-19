@@ -154,6 +154,7 @@ class FASTQ {
         }
     }
 
+
     /**
      * Filter R1 reads with from fileName1 and write them to 
      * the output in FASTQ format trimming the Chromium barcode off the front.
@@ -176,6 +177,41 @@ class FASTQ {
                 output.println(r1Rest.bases)
                 output.println("+")
                 output.println(r1Rest.quals)
+                ++passed
+            }
+        }
+    }
+
+
+    /**
+     * Filter paired reads with index from fileName{1,2,3} and write them to 
+     * the output in 10X (Chromium) Clariat compatible interleaved format.
+     * 
+     * @param fileName1
+     * @param fileName2
+     * @param fileName3
+     * @param output
+     * @param c
+     */
+    @CompileStatic
+    static void filter10X(String fileName1, String fileName2, String fileName3, Writer output, Closure c) {
+        int passed = 0
+        int processed = 0
+        FASTQ.eachPairWithIndex(fileName1,fileName2,fileName3) { FASTQRead r1, FASTQRead r2, FASTQRead i ->
+            ++processed
+            def barcode10X = r1.trimEnd(r1.bases.size() - 16)
+            def r1Rest = r1.trimEnd(0, 16)
+            def result = c(r1Rest,r2,barcode10X,i)
+            if(result == true) {
+                output.println(r1.header)
+                output.println(r1Rest.bases)
+                output.println(r1Rest.quals)
+                output.println(r2.bases)
+                output.println(r2.quals)
+                output.println(barcode10X.bases)
+                output.println(barcode10X.quals)
+                output.println(i.bases)
+                output.println(i.quals)
                 ++passed
             }
         }
@@ -224,6 +260,7 @@ class FASTQ {
         }
     }
   
+    
     @CompileStatic
     static void eachPair(String fileName1, String fileName2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
         
@@ -252,6 +289,39 @@ class FASTQ {
         }
     }
     
+    @CompileStatic
+    static void eachPairWithIndex(String fileName1, String fileName2, String fileName3, Closure c) {
+
+        Utils.reader(fileName1) { Reader reader1 ->
+          Utils.reader(fileName2) { Reader reader2 ->
+            Utils.reader(fileName3) { Reader reader3 ->
+              ProgressCounter counter = new ProgressCounter(withRate:true, withTime:true)
+              try {
+                  while(true) {
+                    FASTQRead read1 = consumeRead(reader1)
+                    FASTQRead read2 = consumeRead(reader2)
+                    FASTQRead index = consumeRead(reader3)
+                    if(read1 == null) // end of file
+                        break
+                    if(read2 == null)
+                        throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
+                    if(index == null)
+                        throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
+
+                    if((read1.name != read2.name) || (read1.name != index.name))
+                        throw new IllegalStateException("Read $read1.name from $fileName1 is not matched by read at same line in $fileName2 ($read2.name) and in $fileName3 ($index.name). Reads need to be in same order in all files.")
+                    c(read1,read2,index)
+                    counter.count()
+                  }
+              }
+              catch(Abort a) {
+                  // expected
+              }
+            }
+	  }
+        }
+    }
+
     @CompileStatic
     static FASTQRead consumeRead(Reader reader) {
           String name = reader.readLine()
