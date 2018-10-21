@@ -72,12 +72,20 @@ abstract class ToolBase {
         err.println ""
         
         specBuilder.delegate = cli
+        
+        if('-h' in args || '--help' in args) {
+            cli.usage()
+            err.println ""
+            err.println "This tool is built with Groovy NGS - the Groovy way to work with NGS data.\n" 
+            System.exit(0)
+        }
+        
         specBuilder()
         
         OptionAccessor opts = cli.parse(args) 
         if(!opts) {
             err.println ""
-            err.println "This tool is built with Groovy NGS - the Groovy way to work with NGS data. "
+            err.println "This tool is built with Groovy NGS - the Groovy way to work with NGS data.\n"
             System.exit(1)
         }
         
