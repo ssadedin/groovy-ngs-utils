@@ -930,6 +930,26 @@ class VCF implements Iterable<Variant> {
     }
     
     /**
+     * Add new INFO header fields to this VCF
+     * <p>
+     * Searches for the last position of the other INFO lines and inserts the new lines at that position.
+     * If there are no other INFO lines, inserts the new lines at the end of the headers
+     * 
+     * @param lines
+     */
+    void addInfoHeaders(List<String> linesToAdd) {
+        // Add format field
+        int lastInfoIndex = headerLines.findLastIndexOf { it.startsWith('##INFO') }
+        if(lastInfoIndex < 0)
+            lastInfoIndex = headerLines.size()-2
+        
+        this.headerLines = headerLines[0..lastInfoIndex] + 
+                linesToAdd + 
+                headerLines[(lastInfoIndex+1)..-1]
+    }
+  
+    
+    /**
      * Index of variants by affected gene
      * Note that a variant can affect more than one gene, so
      * will appear multiple times in the value side of the map
