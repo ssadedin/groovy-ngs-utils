@@ -61,9 +61,8 @@ class SplitFASTQ10X extends ToolBase {
         }
     }
 
-    public String[] parse10XWhitelist(String file) {
-        def barcodes = []
-        barcodes << ""
+    public Map parse10XWhitelist(String file) {
+        def barcodes = [:]
 
         if(file == "") {
             return barcodes
@@ -76,7 +75,7 @@ class SplitFASTQ10X extends ToolBase {
                     String allowedBarcode = reader.readLine()
                     if(allowedBarcode == null)
                         break
-                    barcodes << allowedBarcode
+                    barcodes.put(allowedBarcode, true)
                 }
             }
         }
@@ -90,13 +89,13 @@ class SplitFASTQ10X extends ToolBase {
     public run(int shardId, int shards, Writer output) {
         int numberWritten = 0
         int numberProcessed = 0
-        String[] allowedBarcodes = parse10XWhitelist((String)opts['b'])
+        Map allowedBarcodes = parse10XWhitelist((String)opts['b'])
         FASTQ.filter10X((String)opts['r1'], (String)opts['r2'], (String)opts['i1'], output) { FASTQRead r1Rest, FASTQRead r2, FASTQRead barcode10X, FASTQRead i1 ->
             int hash = r2.name.hashCode()
             int readShardId = Math.abs(hash % shards)
             ++numberProcessed
             if(readShardId == shardId) {
-                if (allowedBarcodes == [""] || barcode10X.bases in allowedBarcodes) {
+                if (allowedBarcodes.size() == 0 || allowedBarcodes.containsKey(barcode10X.bases)) {
                     ++numberWritten
                     return true
                 }
