@@ -20,6 +20,7 @@
 package gngs.tools
 
 import java.util.zip.GZIPOutputStream
+import java.util.zip.GZIPInputStream
 
 import gngs.*
 import groovy.transform.CompileStatic
@@ -34,11 +35,12 @@ import groovy.util.logging.Log
 class SplitFASTQ10X extends ToolBase {
 
     static void main(String [] args) {
-        cli('SplitFASTQ10X -s <Sharding Specification> -r1 <FASTQ R1> -r2 <FASTQ R2> -i1 <FASTQ I1>', args) {
+        cli('SplitFASTQ10X -s <Sharding Specification> -r1 <FASTQ R1> -r2 <FASTQ R2> -i1 <FASTQ I1> [-b <Allowed Barcodes gz file>]', args) {
             s 'Sharding specification in form n,m n=shard to output, n=total shards', args:1, required: true
             r1 'FASTQ file read 1', args: 1, required: true
             r2 'FASTQ file read 2', args: 1, required: true
-	    i1 'FASTQ file index 1', args: 1, required: true
+            i1 'FASTQ file index 1', args: 1, required: true
+            b 'Allowed barcodes gz file', args: 1, required: false
         }
     }
 
@@ -50,26 +52,54 @@ class SplitFASTQ10X extends ToolBase {
 
         log.info "Splitting ${opts.r1},${opts.r2} ${numberOfShards} ways and outputting shard ${shardId}"
 
-        Writer output = System.out.newWriter()
+        Writer gzOutput = new BufferedOutputStream(new GZIPOutputStream(System.out), 2048*1024).newWriter()
         try {
-            run(shardId, numberOfShards, output)
+            run(shardId, numberOfShards, gzOutput)
         }
         finally {
-            output.close()
+            gzOutput.close()
         }
+    }
+
+    public String[] parse10XWhitelist(String file) {
+        def barcodes = []
+        barcodes << ""
+
+        if(file == "") {
+            return barcodes
+        }
+
+        BufferedInputStream barcode10XWhitelistStream = new BufferedInputStream(new GZIPInputStream(new FileInputStream(file)))
+        try {
+            barcode10XWhitelistStream.withReader { Reader reader ->
+                while(true) {
+                    String allowedBarcode = reader.readLine()
+                    if(allowedBarcode == null)
+                        break
+                    barcodes << allowedBarcode
+                }
+            }
+        }
+        finally {
+            barcode10XWhitelistStream.close()
+        }
+        return barcodes
     }
 
     @CompileStatic
     public run(int shardId, int shards, Writer output) {
         int numberWritten = 0
         int numberProcessed = 0
+        String[] allowedBarcodes = parse10XWhitelist((String)opts['b'])
         FASTQ.filter10X((String)opts['r1'], (String)opts['r2'], (String)opts['i1'], output) { FASTQRead r1Rest, FASTQRead r2, FASTQRead barcode10X, FASTQRead i1 ->
             int hash = r2.name.hashCode()
             int readShardId = Math.abs(hash % shards)
             ++numberProcessed
             if(readShardId == shardId) {
-                ++numberWritten
-               return true
+                if (allowedBarcodes == [""] || barcode10X.bases in allowedBarcodes) {
+                    ++numberWritten
+                    return true
+                }
             }
             else {
                return false
