@@ -91,7 +91,7 @@ class SplitFASTQ10X extends ToolBase {
         int numberProcessed = 0
         Map allowedBarcodes = parse10XWhitelist((String)opts['b'])
         FASTQ.filter10X((String)opts['r1'], (String)opts['r2'], (String)opts['i1'], output) { FASTQRead r1Rest, FASTQRead r2, FASTQRead barcode10X, FASTQRead i1 ->
-            int hash = r2.name.hashCode()
+            int hash = barcode10X.bases.hashCode()
             int readShardId = Math.abs(hash % shards)
             ++numberProcessed
             if(readShardId == shardId) {
