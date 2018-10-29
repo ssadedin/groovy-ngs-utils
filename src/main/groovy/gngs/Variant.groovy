@@ -634,7 +634,7 @@ class Variant implements IRegion {
         
         fields[7] = getInfo().collect {k,v -> v != null?"$k=$v":k}.join(';')
         
-        if(this.@genoTypes) {
+        if(this.@genoTypes != null) {
             rebuildGenotypes(fields)
         }
         
