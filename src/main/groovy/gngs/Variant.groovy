@@ -661,10 +661,23 @@ class Variant implements IRegion {
      */
     @CompileStatic
     private void rebuildGenotypes(List fields) {
+        assert header != null
+        
+        if(header.samples == null) {
+            fields[9] = ''
+            return
+        }
+        
         for(int i=0; i<this.header.samples.size(); ++i) {
             fields[9+i] = genoTypeFields.collect { fieldName ->
                 def field = genoTypes[i][fieldName]
-                field instanceof List ? field.join(',') : field
+                if(field == null)
+                     return '.'
+                else
+                if(field instanceof List)
+                     return field.join(',') 
+                 else
+                     return field
             }.join(':')
         }
     }
