@@ -321,22 +321,29 @@ class VCF implements Iterable<Variant> {
     /**
      * Parse the given VCF file, returning a full VCF, optionally filtered
      * by the closure (only rows returning true from closure will be included)
+     * <p>
+     * Several optional parameters can be passed in the options map:
+     * <li>updateHeader - a closure that will be passed the final List<String> of header lines which can be
+     *                    mutated when filtering
+     * <li>fileName     - set or override the automatic fileName associated to the VCF
+     * <li>vcf          - associate variants to given VCF instead of creating a new, empty one
+     * <li>outputStream - when filtering, write to given output stream instead of stdout
      *
      * @param f file to parse
      * @param peds List of pedigree objects describing sample - family relationships
      * @param c filter closure
      */
-//    @CompileStatic
+    @CompileStatic
     private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
         
         boolean ignoreHomRef = !(options.includeHomRef ?: false)
         
-        VCF vcf = options.vcf ? options.vcf : new VCF(pedigrees:peds)
+        VCF vcf = options.vcf ? (VCF)options.vcf : new VCF(pedigrees:peds)
         
         PrintStream out
         if(filterMode) {
             if(options.outputStream) {
-                out = new PrintStream(options.outputStream)
+                out = new PrintStream((OutputStream)options.outputStream)
             }
             else {
                 out = System.out
@@ -381,15 +388,15 @@ class VCF implements Iterable<Variant> {
                 if(vcf.lastHeaderLine == null) {
                     // Modify the header to include only samples selected
                     if(samples) {
-                        def sampleHeader = vcf.headerLines[-1].split('[\t ]{1,}')
-                        keepColumns = (0..8) + sampleHeader.findIndexValues{it in samples}
+                        List sampleHeader = vcf.headerLines[-1].tokenize('\t')
+                        keepColumns = (0..8) + (List<Integer>)sampleHeader.findIndexValues{it in samples}
                         vcf.headerLines[-1] = sampleHeader[keepColumns].join("\t")
                     }
                     vcf.parseLastHeaderLine()
                 }
                 
                 if(keepColumns) {
-                    line = (line.split('[\t ]{1,}')[keepColumns]).join("\t")
+                    line = (line.tokenize('\t')[keepColumns]).join("\t")
                 }
                 
                 try {
@@ -403,6 +410,9 @@ class VCF implements Iterable<Variant> {
                       if(!c || !(c(v)==false)) {
                           if(filterMode) {
                               if(!flushedHeader)  {
+                                  if(options.updateHeader != null) {
+                                      vcf.headerLines = (List<String>)((Closure)options.updateHeader)(vcf.headerLines)
+                                  }
                                   vcf.printHeader(out)
                                   flushedHeader = true
                               }
