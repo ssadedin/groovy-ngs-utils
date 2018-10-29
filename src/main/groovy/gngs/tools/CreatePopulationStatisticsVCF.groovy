@@ -127,7 +127,8 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             lastVariant = v0
             int ac = computeAlleleCount(variants)
             int an = computeAlleleNumber(v0.contig)
-            printVCFSite(v0, ac, an)
+            int gtc = variants.size() // todo: check this is right
+            printVCFSite(v0, ac, an, gtc)
             progress.count()
         }
         progress.end()
@@ -147,7 +148,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      * @param an
      */
     @CompileStatic
-    private void printVCFSite(VariantContext v0, int ac, int an) {
+    private void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
         println([
             v0.contig,
             v0.start,
@@ -156,7 +157,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             v0.alternateAlleles[0],
             '.',
             '.',
-            "AC=$ac;AN=$an;GTC=${opts.arguments().size()}"
+            "AC=$ac;AN=$an;GTC=$gtc"
         ].join('\t'))
     }
     
