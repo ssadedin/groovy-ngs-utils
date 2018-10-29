@@ -1,7 +1,6 @@
 package gngs
-import org.apache.commons.cli.GnuParser
+import org.apache.commons.cli.GngsCliParser
 import org.apache.commons.cli.Option
-import org.apache.commons.cli.PosixParser
 
 /**
  * This class is a simple utility that configures a CliBuilder how I like it and adds a few
@@ -18,7 +17,9 @@ class Cli extends CliBuilder {
     public Cli() {
         this.stopAtNonOption=false
         this.writer = new PrintWriter(System.err)
+        this.parser = new GngsCliParser()
 //        this.parser = new PosixParser()
+//        this.parser = new GnuParser()
     }
     
 	void banner(String title) {
