@@ -22,8 +22,10 @@ package gngs
 import java.nio.file.Files
 
 import groovy.transform.CompileStatic
+import groovy.util.logging.Log
 
 @CompileStatic
+@Log
 class GenomeResource {
     
     File path
@@ -38,6 +40,7 @@ class GenomeResource {
  * @author Simon Sadedin
  * @param <T>   The class to the instantiated from the downloaded resource
  */
+@Log
 class ResourceDownloader {
     
     public ResourceDownloader(String urlPattern) {
@@ -64,12 +67,15 @@ class ResourceDownloader {
         String fileName = urlPattern.tokenize('/')[-1]
         
         File outputFile = new File(fileName)
+        List<File> tried = [outputFile]
         
         try {
             if(!outputFile.exists()) { // In local directory?
                 File homeRefGene = new File(System.properties['user.home']+'/' + '.' + fileName)
                 if(homeRefGene.exists()) // In home directory?
                     outputFile = homeRefGene
+                else
+                    tried << homeRefGene
             }
             
             if(!outputFile.exists()) {
@@ -83,6 +89,7 @@ class ResourceDownloader {
             return new GenomeResource(path: outputFile, stripChr:stripChr)
         }
         catch(Exception e) {
+            log.error("Unable to load downloadable resource after checking in these locations: " + tried.join(','))
             outputFile.delete()
             throw e
         }
