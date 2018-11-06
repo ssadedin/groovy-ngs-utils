@@ -163,6 +163,11 @@ class Region extends Expando implements IRegion, Serializable {
         "$chr:$to"
     } 
     
+    @CompileStatic
+    Region widen(int bp) {
+        return widen(bp,bp)
+    }
+    
     /**
      * @param bp    number of base pairs to widen by
      * 
@@ -170,16 +175,17 @@ class Region extends Expando implements IRegion, Serializable {
      *          with the lower boundary being limited to zero
      */
     @CompileStatic
-    Region widen(int bp) {
+    Region widen(int leftBp, int rightBp) {
         if(range instanceof GRange) {
             return new Region(this.chr, 
-                new GRange(Math.max(this.from-bp,0), this.to+bp, ((GRange)range).extra))
+                new GRange(Math.max(this.from-leftBp,0), this.to+rightBp, ((GRange)range).extra))
         }
         else {
             return new Region(this.chr, 
-                new IntRange(Math.max(this.from-bp,0), this.to+bp))            
+                new IntRange(Math.max(this.from-leftBp,0), this.to+rightBp))            
         }
     }
+    
     
     /**
      * Return true of this region overlaps the other.
