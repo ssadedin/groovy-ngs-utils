@@ -69,6 +69,7 @@ class MultiCov extends ToolBase {
             rel 'Output values relative to sample mean'
             std 'Standardise output values to mean at each bp'
             stats 'Print statistics about coverage values and variation'
+            targetmeans 'Output a mean coverage matrix for each sample x target region (XHMM compatible)', args:1, required:false
             minMQ 'Minimum mapping quality threshold for including reads (1)', args:1, required: false
             corr 'Determine corellation of other samples to specified samples (separated by comma)', args:1
             co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
@@ -275,6 +276,10 @@ class MultiCov extends ToolBase {
         if(opts.gcprofile) {
             writeGCProfile(printer)
         }
+        
+        if(opts.targetmeans) {
+            writeSampleRegionMeans(new File(opts.targetmeans).newWriter(), printer)
+        }
     }
     
     private void printCoverageJs(CoveragePrinter printer, String fileName) {
@@ -296,6 +301,19 @@ class MultiCov extends ToolBase {
     }
     
     final List cvThresholds = (0..100).step(5)
+    
+    private void writeSampleRegionMeans(Writer w, CoveragePrinter printer) {
+        w.withWriter { 
+            w.print('Mean\t')
+            w.println(scanRegions.join('\t'))
+            
+            for(sample in printer.samples) {
+                w.print(sample)
+                w.print('\t')
+                w.println(printer.sampleRegionMeans[sample].join('\t'))
+            }
+        }
+    }
     
     private void writeCVOutputJS(Writer w, IntegerStats coeffvStats) {
         w.println(

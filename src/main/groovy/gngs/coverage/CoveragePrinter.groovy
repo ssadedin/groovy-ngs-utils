@@ -82,7 +82,16 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     Stats [] sampleStats = null
     
+    Stats [] sampleRegionStats = null
+    
+    Writer sampleRegionMeansWriter = null
+    
     IntegerStats [] rawCoverageStats = null
+    
+    /**
+     * Indexed by sample, a list of statistics for each target region
+     */
+    Map<String,List<Short>> sampleRegionMeans = null
     
     FASTA gcReference = null
     
@@ -98,6 +107,10 @@ class CoveragePrinter extends RegulatingActor<Map> {
         this.w = w
         this.samples = samples
         this.sampleStats = (1..samples.size()).collect { new Stats() } 
+        this.sampleRegionMeans = samples.collectEntries { [ it, new ArrayList(1000)] }
+        
+        if(options.regionMeansWriter)
+            this.sampleRegionMeansWriter = options.regionMeansWriter
         
         if(options.gcReference) {
             this.gcReference = options.gcReference
@@ -146,12 +159,7 @@ class CoveragePrinter extends RegulatingActor<Map> {
     void process(Map countInfo) {
         
         if(currentTarget != countInfo.region) {
-            currentTarget = countInfo.region
-            if(gcReference) {
-                currentGc = gcReference.gc(currentTarget)
-                currentGCBin = (int)(currentGc * 100 / 5)
-                log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
-            }
+            newTargetRegion(countInfo.region)
         }
             
         List<Double> values 
@@ -181,6 +189,29 @@ class CoveragePrinter extends RegulatingActor<Map> {
         
         writePosition(countInfo, values, coeffVColumn)
     }
+    
+    @CompileStatic
+    void newTargetRegion(Region region) {
+        currentTarget = region
+        if(gcReference) {
+            currentGc = gcReference.gc(currentTarget)
+            currentGCBin = (int)(currentGc * 100 / 5)
+            log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
+        }
+        
+        updateRegionMeanCoverages()
+        
+        this.sampleRegionStats = new Stats[samples.size()].collect { new Stats() } as Stats[]
+    }
+    
+    @CompileStatic
+    void updateRegionMeanCoverages() {
+        if(sampleRegionStats != null) {
+            [samples,sampleRegionStats].transpose().each { String sample, Stats stats -> 
+                this.sampleRegionMeans[sample] << (Short)Math.round(stats.mean)
+            }
+        }
+    }
 
     void writePosition(Map countInfo, List values, Double coeffV) {
         List coeffVColumn = coeffV == null ? [] :  [numberFormat.format(coeffV)] 
@@ -192,7 +223,9 @@ class CoveragePrinter extends RegulatingActor<Map> {
     void updateRawCoverageStats(List<Double> values) {
         final int numValues = values.size()
         for(int i=0; i<numValues; ++i) {
-            rawCoverageStats[i].addValue((int)values[i])
+            int intVal = (int)values[i]
+            rawCoverageStats[i].addValue(intVal)
+            sampleRegionStats[i].addValue(intVal)
         }
     } 
     
@@ -242,6 +275,11 @@ class CoveragePrinter extends RegulatingActor<Map> {
                 }
             }
         }
+    }
+
+    @Override
+    public void onEnd() {
+        this.updateRegionMeanCoverages()
     }
 }
 
