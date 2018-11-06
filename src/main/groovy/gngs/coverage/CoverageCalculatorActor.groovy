@@ -244,7 +244,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     }
     
     @CompileStatic
-    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream) {
+    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream, final int minMQ) {
        
         AtomicInteger downstreamCount = new AtomicInteger(0)
         
@@ -261,7 +261,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
             bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
                 while(iter.hasNext()) {
                     SAMRecord r = iter.next()
-                    if(r.getMappingQuality()>0)
+                    if(r.getMappingQuality()>=minMQ)
                         calculator.send(new AcknowledgeableMessage(new ReadRange(r), downstreamCount))
                 }
             }

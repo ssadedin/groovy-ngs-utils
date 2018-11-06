@@ -105,8 +105,8 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     }
      
     @CompileStatic
-    void processBAM(SAM bam, Regions scanRegions) {
-        CoverageCalculatorActor.processBAM(bam, scanRegions, this)
+    void processBAM(SAM bam, Regions scanRegions, int minMQ) {
+        CoverageCalculatorActor.processBAM(bam, scanRegions, this, minMQ)
     }
     
     String toString() {

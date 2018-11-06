@@ -56,6 +56,7 @@ class MultiCov extends ToolBase {
     
     NumberFormat fmt = NumberFormat.numberInstance        
     
+    int minimumMapQ = 1
     
     boolean phase1 = false
     
@@ -68,6 +69,7 @@ class MultiCov extends ToolBase {
             rel 'Output values relative to sample mean'
             std 'Standardise output values to mean at each bp'
             stats 'Print statistics about coverage values and variation'
+            minMQ 'Minimum mapping quality threshold for including reads (1)', args:1, required: false
             corr 'Determine corellation of other samples to specified samples (separated by comma)', args:1
             co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
             cvo 'Coefficient of variation output file: write coeffv in tab separated form to this file', args:1, required:false 
@@ -139,6 +141,9 @@ class MultiCov extends ToolBase {
                 printer.std = true
             if(opts.corr)
                 printer.correlationSamples = opts.corr == '.' ? samples : opts.corr.tokenize(',')
+            if(opts.minMQ)
+                this.minimumMapQ = opts.minMQ.toInteger()
+                
             run(printer)
         }
         
@@ -216,7 +221,7 @@ class MultiCov extends ToolBase {
             log.info "Ordered Means: " + printer.orderedMeans.join(", ")
             
             bams.eachParallel { SAM bam ->
-                combiner.processBAM(bam, this.scanRegions)
+                combiner.processBAM(bam, this.scanRegions, this.minimumMapQ)
             } 
         }
             
