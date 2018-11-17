@@ -296,6 +296,32 @@ class RegionsTest {
       
     } 
     
+    @Test
+    void testForward() {
+        Regions regions = new Regions([
+            new Region("chr1",100..120),   
+            new Region("chr1",130..160),
+            new Region("chr1",190..210),
+            new Region("chr1",215..220),
+            new Region("chr1",230..260),
+            new Region("chr1",270..290)
+        ])
+        
+        
+        // One region
+        assert regions.forward("chr1", 212, 1) == 215..220
+        assert regions.backward("chr1", 212, 1) == 190..210
+        
+        // Two regions
+        assert regions.forward("chr1", 212, 2) == 230..260
+        assert regions.backward("chr1", 212, 2) == 130..160
+        
+        // From middle of region
+        assert regions.forward("chr1", 200, 1) == 215..220
+        assert regions.backward("chr1", 200, 1) == 190..210
+         
+    }
+    
 //    @Test
     void testWiden() {
         BED bed = new BED("/Users/simon.sadedin/work/stretch/chimerics/chimeric_regions.bed").load()
