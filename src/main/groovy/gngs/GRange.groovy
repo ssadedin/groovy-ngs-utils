@@ -276,6 +276,7 @@ class Region extends Expando implements IRegion, Serializable {
     
     private static Pattern ALTERNATE_HAPLOTYPE_PATTERN = ~'.*_hap[0-9]*$'
     
+    @CompileStatic
     boolean isMinorContig() {
         Region.isMinorContig(this.chr)
     }
