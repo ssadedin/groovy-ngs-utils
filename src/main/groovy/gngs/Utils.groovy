@@ -4,7 +4,10 @@ import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import java.text.NumberFormat
 import java.util.logging.*
+import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import java.nio.file.Files
+import java.nio.file.Path
 import java.text.*
 
 /**
@@ -341,6 +344,43 @@ class Utils {
              sleepTimeMs = Math.min(10000,sleepTimeMs*2)
          }
      }
+     
+    /**
+     * Creates a Reader from any object that can be reasonably interpreted to represent a file,
+     * allowing for the possibility that it might be gzipped
+     * 
+     * @param fileLike
+     * @return
+     */
+    static Reader reader(fileLike) {
+        
+        if(fileLike instanceof Reader)
+            return fileLike
+        
+        boolean gzip = false
+        if(fileLike instanceof String) {
+            fileLike = new File(fileLike)
+        }
+        
+        if(fileLike instanceof File) {
+            fileLike = fileLike.toPath()
+        }
+        
+        if(fileLike instanceof Path) {
+            Path path = fileLike
+            if(path.fileName.endsWith('.gz'))
+                gzip = true
+            fileLike = Files.newInputStream(fileLike)
+        }
+        
+        if(!(fileLike instanceof InputStream))
+            throw new IllegalArgumentException("Expected object of type String, File, Path or InputStream, but was passed " + fileLike.class.name)
+        
+        if(gzip) {
+            fileLike = new GZIPInputStream(fileLike)
+        }
+        return fileLike.newReader()
+    }
      
     static Writer outputWriter(String fileName) {
         int bufferSize = 1024*1024
