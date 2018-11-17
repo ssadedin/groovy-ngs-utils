@@ -293,6 +293,11 @@ class Region extends Expando implements IRegion, Serializable {
         chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
     }
     
+    @CompileStatic
+    int getMidpoint() {
+        return (int)((range.to + range.from)/2)
+    }
+    
     String toString() {
         "$chr:$range.from-$range.to"
     }
