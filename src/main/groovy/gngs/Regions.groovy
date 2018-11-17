@@ -411,6 +411,42 @@ class Regions implements Iterable<Region> {
         return chrIndex.nextRange(pos)
     }
     
+    
+    /**
+     * Returns the region that is count regions forward of the given position
+     */
+    groovy.lang.IntRange forward(String chr, int pos, int count = 1) {
+        RangeIndex chrIndex = this.index[chr]
+        if(chrIndex == null)
+            return null
+            
+        groovy.lang.IntRange result
+        Iterator<IntRange> iter = chrIndex.iteratorAt(pos)
+        while(iter.hasNext() && count > 0) {
+            result = iter.next()
+            --count
+        }
+        return result
+    }
+    
+    /**
+     * Returns the region that is count regions backwards from the given position
+     */
+    groovy.lang.IntRange backward(String chr, int pos, int count = 1) {
+        RangeIndex chrIndex = this.index[chr]
+        if(chrIndex == null)
+            return null
+            
+        groovy.lang.IntRange result
+        Iterator<IntRange> iter = chrIndex.reverseIteratorAt(pos)
+        while(iter.hasNext() && count > 0) {
+            result = iter.next()
+            --count
+        }
+        return result
+    }
+
+    
     /**
      * Return a window of n regions upstream and downstream of the 
      * given region
