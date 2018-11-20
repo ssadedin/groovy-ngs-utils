@@ -21,6 +21,8 @@ package gngs.coverage
 
 import java.text.NumberFormat
 
+import org.apache.commons.math3.stat.descriptive.SummaryStatistics
+
 import gngs.*
 import graxxia.IntegerStats
 import graxxia.Matrix
@@ -80,7 +82,7 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     double [] orderedMeans = null
     
-    Stats [] sampleStats = null
+    SummaryStatistics [] sampleStats = null
     
     Stats [] sampleRegionStats = null
     
@@ -106,7 +108,7 @@ class CoveragePrinter extends RegulatingActor<Map> {
         this.progress = new ProgressCounter(withRate:true, log:log, withTime:true, extra: { "Computing stats on region: $currentTarget" })
         this.w = w
         this.samples = samples
-        this.sampleStats = (1..samples.size()).collect { new Stats() } 
+        this.sampleStats = (1..samples.size()).collect { new SummaryStatistics() } 
         this.sampleRegionMeans = samples.collectEntries { [ it, new ArrayList(1000)] }
         
         if(options.regionMeansWriter)
