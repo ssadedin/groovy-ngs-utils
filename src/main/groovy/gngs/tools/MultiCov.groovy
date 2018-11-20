@@ -104,7 +104,7 @@ class MultiCov extends ToolBase {
         List<String> samples = bams*.samples*.getAt(0)
         log.info "Analysing coverage over ${Utils.humanBp(scanRegions.size())} for ${samples.size()} samples: ${samples.join(',')}"
         
-        def output = opts.o ? new File(opts.o) : System.out
+        def output = opts.o ? Utils.outputWriter(opts.o) : System.out
         output.withWriter { w ->
             
             

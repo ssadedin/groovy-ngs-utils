@@ -2,6 +2,8 @@ package gngs
 import groovy.lang.Closure;
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import htsjdk.samtools.util.BlockCompressedOutputStream
+
 import java.text.NumberFormat
 import java.util.logging.*
 import java.util.zip.GZIPInputStream
@@ -381,12 +383,26 @@ class Utils {
         }
         return fileLike.newReader()
     }
-     
+    
+    @CompileStatic
+    static Writer writer(File file) {
+        return outputWriter(file.path)
+    }
+  
+    @CompileStatic
+    static Writer writer(String fileName) {
+        return outputWriter(fileName)
+    }
+    
+    @CompileStatic
     static Writer outputWriter(String fileName) {
         int bufferSize = 1024*1024
+        if(fileName.endsWith(".bgz"))
+          new BufferedOutputStream(new BlockCompressedOutputStream(fileName), bufferSize).newWriter()
+        else
         if(fileName.endsWith(".gz"))
           new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(fileName)), bufferSize).newWriter()
         else
-          new BufferedOutputStream(new File(fileName).newInputStream(), bufferSize).newWriter()
+          new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize).newWriter()
     } 
 }
