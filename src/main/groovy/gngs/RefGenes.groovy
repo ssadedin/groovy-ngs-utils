@@ -198,12 +198,18 @@ class RefGenes {
      * @param hgncSymbol
      * @return
      */
+    @CompileStatic
     Region getGeneRegion(String hgncSymbol) {
        Regions exons = getExons(hgncSymbol, false) 
-       if(exons.numberOfRanges == 0)
+       
+       Collection<Region> noAltExons = exons.grep { Region r ->
+           !r.chr.endsWith('_alt')
+       }
+       
+       if(noAltExons.size() == 0)
            return null // unknown gene
        
-       new Region(exons[0].chr, exons*.from.min()..exons*.to.max())
+       new Region(exons[0].chr, noAltExons*.from.min()..noAltExons*.to.max(), gene: hgncSymbol)
     }
     
     List<String> getGenes(Region r) {
