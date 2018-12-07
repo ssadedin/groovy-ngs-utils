@@ -90,6 +90,21 @@ class FASTA {
     }
     
     /**
+     * Returns the sequence of bases over the given range
+     * <b>NOTE:</b>The range is <i>inclusive</i>.
+     * 
+     * @param contig    contig to query
+     * @param start     start position (inclusive)
+     * @param end       end position (inclusive)
+     * @return
+     */
+    @Memoized(maxCacheSize = 100)
+    String basesAt(IRegion region) {
+      return basesAt(region.chr, (long)region.range.from, (long)region.range.to)
+    }
+  
+    
+    /**
      * Return the fraction of bases that are 'G' or 'C' over the specified region
      */
     @CompileStatic

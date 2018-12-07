@@ -151,7 +151,24 @@ class FASTQ {
         }
     }
   
-    
+    /**
+     * Filter paired reads from fileName1 and fileName2 and write them to 
+     * uncompressed output files with extensions .filter.fastq based on the 
+     * input file names, only where true is returned from the given closure
+     * 
+     * @param fileName1
+     * @param fileName2
+     * @param c
+     */
+    @CompileStatic
+    static void filter(String fileName1, String fileName2, String output1, String output2, Closure c) {
+        Utils.outputWriter(output1).withWriter { w1 ->
+            Utils.outputWriter(output2).withWriter { w2 -> 
+                filter(fileName1, fileName2, w1, w2, c)
+            }
+        }
+    }
+     
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * uncompressed output files with extensions .filter.fastq based on the 

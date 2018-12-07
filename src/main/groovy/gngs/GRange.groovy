@@ -87,6 +87,12 @@ class Region extends Expando implements IRegion, Serializable {
     Region() {
     }
     
+    Region(IRegion other) {
+        this.chr = other.chr
+        GRange newRange = new GRange(other.range.from, other.range.to, this)
+        this.range = newRange
+    }
+    
     Region(Map props=null, String region) {
         parseRegion(region)
         this.range.extra = this
