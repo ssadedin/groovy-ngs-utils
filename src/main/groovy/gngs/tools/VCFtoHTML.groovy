@@ -573,7 +573,7 @@ class VCFtoHTML {
         ]
     }
     
-    void processVariant(Variant v,  Regions vcfRegions, Writer w) {
+    void processVariant(Variant v,  List<Regions> vcfRegions, Writer w) {
         
         ++stats.total
                     
