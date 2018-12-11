@@ -305,7 +305,7 @@ class VCFtoHTML {
             exportSamples = exportSamples.collect { id -> sampleMap[id] }
         }
         
-        log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples.join(",") }.join(" ")
+        log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples?.join(",") }.join(" ")
         log.info "Export samples are: " + exportSamples
         
         checkAnnotations(vcfs)
@@ -349,7 +349,7 @@ class VCFtoHTML {
             merged.each { v->
                 try {
                     current = v
-                    processVariant(v, w)
+                    processVariant(v, vcfRegions, w)
                 }
                 catch(Exception e) {
                     Exception e2 = new Exception("Failed to process variant " + current, e)
@@ -573,7 +573,7 @@ class VCFtoHTML {
         ]
     }
     
-    void processVariant(Variant v, Writer w) {
+    void processVariant(Variant v,  Regions vcfRegions, Writer w) {
         
         ++stats.total
                     
@@ -584,14 +584,14 @@ class VCFtoHTML {
                     
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
         List<Integer> dosages = exportSamples.collect { v.sampleDosage(it) }
-        if(dosages.every { it==0}) {
-            ++stats.excludeNotPresent
-            if(!opts.f) {
-                println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
-            }
-            return
-        }
-                        
+//        if(dosages.every { it==0}) {
+//            ++stats.excludeNotPresent
+//            if(!opts.f) {
+//                println "WARNING: variant at $v.chr:$v.pos $v.ref/$v.alt in VCF but not genotyped as present for any sample"
+//            }
+//            return
+//        }
+//                        
         if(opts.diff && dosages.clone().unique().size()==1)  {
             ++stats.excludeByDiff
             updateROC(v)
@@ -809,7 +809,7 @@ class VCFtoHTML {
      * @param pedigrees
      */
     private void renameSampleIds(List vcfs, List exportSamples, Pedigrees pedigrees) {
-        List accumulatedSamples = vcfs[0].samples.clone()
+        List accumulatedSamples = vcfs[0].samples?.clone()?:['NA']
         int n = 0
         if(vcfs.size() > 1) {
             for(VCF vcf in vcfs[1..-1]) {
