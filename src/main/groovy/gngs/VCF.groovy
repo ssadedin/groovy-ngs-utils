@@ -131,6 +131,8 @@ class VCF implements Iterable<Variant> {
     
     boolean lazyLoad = false
     
+    static final int FORMAT_COLUMN_INDEX = 8
+    
     static final int SAMPLE_COLUMN_INDEX = 9
     
     /**
@@ -386,17 +388,21 @@ class VCF implements Iterable<Variant> {
                 }
                 
                 if(vcf.lastHeaderLine == null) {
+                    
+                    vcf.parseLastHeaderLine()
+                    
                     // Modify the header to include only samples selected
                     if(samples) {
-                        List sampleHeader = vcf.headerLines[-1].tokenize('\t')
-                        keepColumns = (0..8) + (List<Integer>)sampleHeader.findIndexValues{it in samples}
-                        vcf.headerLines[-1] = sampleHeader[keepColumns].join("\t")
+                        List headerFields = vcf.headerLines[-1].tokenize('\t')
+//                        keepColumns = (0..8) + (List<Integer>)sampleHeader.findIndexValues{it in samples}
+                        keepColumns = (0..8) + (List<Integer>)vcf.samples.findIndexValues{it in samples}.collect {it + 9}
+                        vcf.headerLines[-1] = headerFields[keepColumns].join("\t")
+                        vcf.parseLastHeaderLine()
                     }
-                    vcf.parseLastHeaderLine()
                 }
                 
                 if(keepColumns) {
-                    line = (line.tokenize('\t')[keepColumns]).join("\t")
+                    line = line.tokenize('\t')[keepColumns].grep { it != null }.join("\t")
                 }
                 
                 try {
@@ -588,7 +594,10 @@ class VCF implements Iterable<Variant> {
             if(otherVariant) {
                 // The variant is in the other VCF - use the genotypes from there
                 // TODO: if different number of alleles in other sample, this will not work!
-                def gts = otherVariant.line.split("\t")[SAMPLE_COLUMN_INDEX..-1]
+                String [] otherSplit2 = otherVariant.line.split("\t")
+                if(otherSplit2.size()<=SAMPLE_COLUMN_INDEX)
+                    print "WTF?"
+                def gts = otherSplit2[SAMPLE_COLUMN_INDEX..-1]
                 newLine.addAll(gts.collect { gt ->
                     buildGtFieldValue(gt, otherGtFields, allGTFields)
                 }) 
@@ -677,13 +686,25 @@ class VCF implements Iterable<Variant> {
      * samples. The VCF header line will be modified so that any output will only 
      * include the given samples.
      */
+    @CompileStatic
     void parseLastHeaderLine() {
         this.lastHeaderLine = this.headerLines[-1].split('[\t ]{1,}')
         this.samples = []
+        if(this.lastHeaderLine.size()<=SAMPLE_COLUMN_INDEX) {
+            this.samples = ['NA']
+            if(this.lastHeaderLine.size()<=FORMAT_COLUMN_INDEX) {
+                this.lastHeaderLine = this.lastHeaderLine + ['FORMAT','NA']
+            }
+            else {
+                this.lastHeaderLine = this.lastHeaderLine + ['NA']
+            }
+            this.headerLines[-1] = this.lastHeaderLine.join('\t')
+        }
+        else
         for(int i=SAMPLE_COLUMN_INDEX; i<this.lastHeaderLine.size(); ++i) {
             this.samples.add(this.lastHeaderLine[i])
         }
-    }
+    } 
     
     
     @CompileStatic

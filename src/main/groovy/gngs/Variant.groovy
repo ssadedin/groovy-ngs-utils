@@ -466,8 +466,8 @@ class Variant implements IRegion {
 	}
     
     @CompileStatic
-    private boolean parseFields(String line) {
-        parseFields(line,true)   
+    private boolean parseFields() {
+        parseFields(true)   
     }
     
     /**
@@ -476,10 +476,10 @@ class Variant implements IRegion {
      * @param line
      */
     @CompileStatic
-    private boolean parseFields(String line, boolean ignoreHomRef) {
+    private boolean parseFields(boolean ignoreHomRef) {
         
 //        def fields = line.split('[\t ]{1,}')
-        List<String>  fields = line.tokenize('\t')
+        List<String>  fields = line.tokenize('\t').grep { it != null }
         if(ignoreHomRef && fields[4] == '<NON_REF>')
             return false
         
@@ -492,6 +492,23 @@ class Variant implements IRegion {
         filter = fields[6]
         info = fields[7]
         
+        // These lines are setting up default values to handle a "sites only" VCF without lots of special
+        // downstream handling for the case where there is no genotype / sample
+        boolean dirty = false
+        if(fields[8] == null) { 
+            fields[8] = 'GT'
+            dirty = true
+        }
+            
+        if(fields[9] == null)  {
+            fields[9] = '0/1'
+            dirty = true
+        }
+        
+        if(dirty) {
+            this.line = fields.join('\t')
+        }
+         
         pos = Integer.parseInt(fields[1])
         parseGenotypes(fields)
         
@@ -507,9 +524,20 @@ class Variant implements IRegion {
               genoTypeFields = fields[8].tokenize(':')
           
           // Split the genoTypes field into separate values and parse them out
-          genoTypes = fields[9..-1].collect { String gt -> 
-              parseGenoTypeFields(gt)
-          } 
+          if(fields.size()>9) {
+              genoTypes = fields[9..-1].collect { String gt -> 
+                  parseGenoTypeFields(gt)
+              } 
+          }
+          else {
+              genoTypes = []
+          }
+        }
+        else {
+            genoTypeFields = ['GT']
+            genoTypes = (List<Map<String,Object>>) [ 
+                [ GT: '0/1'] 
+            ]
         }
     }
     
@@ -784,6 +812,11 @@ class Variant implements IRegion {
         getDosages(0)
     }
     
+    /**
+     * Return the number of copies of the given alternate allele for each sample in the VCF
+     * 
+     * <i>Note</i>: the first alternate allele is 0.
+     */
     List<Integer> getDosages(int alleleIndex) {
         if(dosages != null && alleleIndex == 0)
             return dosages
@@ -804,7 +837,9 @@ class Variant implements IRegion {
         //    ./. : not called
         // So to find the dosage for allele 1, we need to split the genotype on slash
         // and then count the number of times the requested allele appears.
-        List<Integer> result = genoTypes*.GT.collect{PIPE_OR_SLASH_SPLIT.split(it)}*.count { 
+            
+        def gts = genoTypes*.GT
+        List<Integer> result = gts.collect{PIPE_OR_SLASH_SPLIT.split(it)}*.count { 
             if(!it.isInteger())
                 return 0
                 
@@ -825,11 +860,17 @@ class Variant implements IRegion {
         if(this.header == null)
             throw new IllegalStateException("Variant must have a header to query dosage by sample name")
             
+        // If there are no samples then we assume it's a site-only VCF and return 1 for the dosage
+        if(this.header.samples.isEmpty())
+            return 1
+            
         int sampleIndex = this.header.samples.indexOf(sampleName)
         if(sampleIndex < 0)
             throw new IllegalArgumentException("Sample $sampleName not found in VCF. Known samples are $header.samples")
             
         List<Integer> allDosages = getDosages()
+        if(allDosages.isEmpty()) // Another workaround for sites-only VCF
+            return 1
         
         return (int)allDosages[sampleIndex]
     }
@@ -1014,7 +1055,7 @@ class Variant implements IRegion {
     @CompileStatic
     static Variant parse(String line, boolean ignoreNonRef) {
         Variant parsed = new Variant(line:line)
-        if(!parsed.parseFields(line))
+        if(!parsed.parseFields())
             return null
         return parsed
     }
@@ -1157,7 +1198,7 @@ class Variant implements IRegion {
         List ad = (List)gt.AD
         if(!gt.AD) {
             if(alleleIndex==0 && (gt.GT=='0/0' || gt.GT=='0|0'))
-                return (int)gt.DP
+                return (int)(gt.DP?:0i)
             else
                 return 0i
         }
