@@ -405,14 +405,9 @@ class SAM {
      * Iterate over each record in the same file in the order they are in the file
      * @param c
      */
-    void eachRecord(Map options=[:], Closure c) {
-        SamReader reader = this.newReader()
-        if(options.fast) { 
-            reader.enableCrcChecking(false)
-            reader.enableIndexCaching(true)
-            reader.enableIndexMemoryMapping(true)
-        }
-        
+    @CompileStatic
+    void eachRecord(Map options=[:], @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMRecord']) Closure c) {
+        SamReader reader = this.newReader(options)
         try {
             SAMRecordIterator i = reader.iterator()
             try {
