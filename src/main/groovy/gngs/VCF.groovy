@@ -1121,9 +1121,13 @@ class VCF implements Iterable<Variant> {
                 
             // Consider only high quality variants that do not have a highly skewed 
             // allele balance    
-            if(v.genoTypes[sampleIndex].DP > 20 && v.qual > 20 && v.alleleBalance<0.1)
+            int dp = v.genoTypes[sampleIndex].DP ?: 20
+            if(dp  >=20 && v.qual > 20 && v.alleleBalance<0.1)
                 xVariants << v
         }
+        
+        if(xVariants.size() < 10)
+            throw new IllegalStateException("Too few variants available to use for estimation")
         
         Map<Integer, Integer> dosages = xVariants.countBy { it.dosages[0] }
         
