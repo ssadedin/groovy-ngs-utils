@@ -129,7 +129,7 @@ class SexKaryotyper implements Runnable {
             }
         }
         coverageCounter.start()
-        CoverageCalculatorActor.processBAM(bam, regions, coverageCounter)
+        CoverageCalculatorActor.processBAM(bam, regions, coverageCounter,0)
         coverageCounter << "stop"
         return covStats
     }
