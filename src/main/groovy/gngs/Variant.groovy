@@ -1094,6 +1094,15 @@ class Variant implements IRegion {
 	}
     
     @CompileStatic
+    Integer getTotalDepth() {
+           
+        if('DP' in this.header.formatMetaData) {
+            return this.genoTypes[0].DP as Integer
+        }
+        return (int) (0..alts.size()).collect { getAlleleDepths(it)[0] }.sum()
+    } 
+    
+    @CompileStatic
     Integer getTotalDepth(String sample) {
         int sampleIndex = this.header.samples.indexOf(sample)
         if(sampleIndex <0) // no genotype for sample?
