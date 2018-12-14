@@ -24,6 +24,9 @@ import java.util.concurrent.Executors;
 
 import groovy.stream.Stream;
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.FirstParam
+import groovy.transform.stc.SimpleType
 import htsjdk.samtools.BAMIndexer
 import htsjdk.samtools.BAMRecord;
 import htsjdk.samtools.SAMFileHeader;
@@ -436,7 +439,7 @@ class SAM {
      * @param c        Closure to call    
      */
     @CompileStatic
-    void eachPair(Closure c) {
+    void eachPair(@ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMRecord','htsjdk.samtools.SAMRecord']) Closure c) {
         eachPair([:],c)
     }
 
@@ -452,7 +455,7 @@ class SAM {
      * @param c        Closure to call
      */
     @CompileStatic
-    void eachPair(Map options, Closure c) {
+    void eachPair(Map options, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMRecord','htsjdk.samtools.SAMRecord']) Closure c) {
         SAMRecordIterator iter = samFileReader.iterator()
         eachPair(options, iter,c)
     }
@@ -472,7 +475,7 @@ class SAM {
      * @param c        Closure to call
      */
     @CompileStatic
-    void eachPair(Map options=[:], SAMRecordIterator iter, Closure c) {
+    void eachPair(Map options=[:], SAMRecordIterator iter, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMRecord','htsjdk.samtools.SAMRecord']) Closure c) {
         SamReader pairReader = newReader()
         SamReader randomLookupReader = newReader()
         Map<String,Integer> buffer = new HashMap()
@@ -735,6 +738,7 @@ class SAM {
     /**
      * @return Return the list of read groups present in the SAM file
      */
+    @CompileStatic
     List<SAMReadGroupRecord> getReadGroups() {
         samFileReader.getFileHeader().getReadGroups()
     }
