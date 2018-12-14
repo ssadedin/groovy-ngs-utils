@@ -24,13 +24,14 @@ import htsjdk.samtools.SAMRecord;
 public class ReadRange {
     
     public ReadRange(SAMRecord r) {
+        
         this.referenceIndex = r.getReferenceIndex();
         this.alignmentStart = r.getAlignmentStart();
         int alignmentEnd = r.getAlignmentEnd();
         final int mateStart = r.getMateAlignmentStart();
         
         // Avoid double counting if two reads from the same fragment will overlap
-        if(mateStart >= this.alignmentStart && mateStart <= alignmentEnd) {
+        if(r.getFirstOfPairFlag() && mateStart >= this.alignmentStart && mateStart <= alignmentEnd) {
             alignmentEnd = mateStart;
         }
         this.referenceName = r.getReferenceName();
@@ -44,4 +45,8 @@ public class ReadRange {
     final public int alignmentEnd;
     
     final public String referenceName;
+    
+    public String toString() {
+        return String.format("%s:%d-%d", referenceName, alignmentStart, alignmentEnd);
+    }
 }
