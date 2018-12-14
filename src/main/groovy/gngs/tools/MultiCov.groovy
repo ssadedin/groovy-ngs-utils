@@ -149,8 +149,6 @@ class MultiCov extends ToolBase {
         }
         
         log.info "Finished in ${Utils.human((System.currentTimeMillis()-startTimeMs)/1000)} seconds"
-        
-        Thread.sleep(300000)
     } 
     
     /**
