@@ -185,7 +185,7 @@ class FASTQ {
 
     /**
      * Filter paired reads with index from fileName{1,2,3} and write them to 
-     * the output in 10X (Chromium) Clariat compatible interleaved format.
+     * the output in 10X (Chromium) FASTH compatible interleaved format.
      * 
      * @param fileName1
      * @param fileName2
@@ -217,7 +217,16 @@ class FASTQ {
         }
     }
 
+    /**
+     * Sort 10X FASTH interleaved format by the barcode
+     *
+     * @param input
+     * @param output
+     */
+    @CompileStatic
+    static void sort10X(Reader input, Writer output) {
 
+    }
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * uncompressed output files with extensions .filter.fastq based on the 
@@ -259,8 +268,8 @@ class FASTQ {
             }
         }
     }
+
   
-    
     @CompileStatic
     static void eachPair(String fileName1, String fileName2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
         

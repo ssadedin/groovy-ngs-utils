@@ -91,14 +91,22 @@ class SplitFASTQ10X extends ToolBase {
         int numberProcessed = 0
         Map allowedBarcodes = parse10XWhitelist((String)opts['b'])
         FASTQ.filter10X((String)opts['r1'], (String)opts['r2'], (String)opts['i1'], output) { FASTQRead r1Rest, FASTQRead r2, FASTQRead barcode10X, FASTQRead i1 ->
-            int hash = barcode10X.bases.hashCode()
+            String barcode10Xcmp = barcode10X.bases.drop(1)
+            int hash = barcode10Xcmp.hashCode()
             int readShardId = Math.abs(hash % shards)
             ++numberProcessed
             if(readShardId == shardId) {
-                if (allowedBarcodes.size() == 0 || allowedBarcodes.containsKey(barcode10X.bases)) {
-                    ++numberWritten
-                    return true
+                if (allowedBarcodes.containsKey('A' + barcode10Xcmp)) {
+                    barcode10X.bases = barcode10X.bases + '-1,A' + barcode10Xcmp
+                } else if (allowedBarcodes.containsKey('C' + barcode10Xcmp)) {
+                    barcode10X.bases = barcode10X.bases + '-1,C' + barcode10Xcmp
+                } else if (allowedBarcodes.containsKey('G' + barcode10Xcmp)) {
+                    barcode10X.bases = barcode10X.bases + '-1,G' + barcode10Xcmp
+                } else if (allowedBarcodes.containsKey('T' + barcode10Xcmp)) {
+                    barcode10X.bases = barcode10X.bases + '-1,T' + barcode10Xcmp
                 }
+                ++numberWritten
+                return true
             }
             else {
                return false
