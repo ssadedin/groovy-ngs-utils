@@ -2,6 +2,8 @@ package gngs
 import groovy.lang.Closure;
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 import htsjdk.samtools.util.BlockCompressedOutputStream
 
 import java.text.NumberFormat
@@ -354,7 +356,18 @@ class Utils {
      * @param fileLike
      * @return
      */
-    static Reader reader(fileLike) {
+    @CompileStatic
+    static Reader reader(fileLike, @ClosureParams(value=SimpleType, options=['java.io.Reader']) Closure c = null) {
+        Reader r = createReader(fileLike)
+        if(c != null) {
+            r.withReader {
+                c(r)
+            }
+            return r
+        }
+    }
+    
+    static Reader createReader(fileLike) {
         
         if(fileLike instanceof Reader)
             return fileLike
@@ -370,7 +383,7 @@ class Utils {
         
         if(fileLike instanceof Path) {
             Path path = fileLike
-            if(path.fileName.endsWith('.gz'))
+            if(path.toString().endsWith('.gz'))
                 gzip = true
             fileLike = Files.newInputStream(fileLike)
         }
@@ -379,7 +392,7 @@ class Utils {
             throw new IllegalArgumentException("Expected object of type String, File, Path or InputStream, but was passed " + fileLike.class.name)
         
         if(gzip) {
-            fileLike = new GZIPInputStream(fileLike)
+            fileLike = new GZIPInputStream(fileLike, 128*1024)
         }
         return fileLike.newReader()
     }
@@ -401,7 +414,7 @@ class Utils {
           new BufferedOutputStream(new BlockCompressedOutputStream(fileName), bufferSize).newWriter()
         else
         if(fileName.endsWith(".gz"))
-          new BufferedOutputStream(new GZIPOutputStream(new FileOutputStream(fileName)), bufferSize).newWriter()
+          new GZIPOutputStream(new FileOutputStream(fileName), bufferSize).newWriter()
         else
           new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize).newWriter()
     } 
