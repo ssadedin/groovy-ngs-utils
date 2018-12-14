@@ -93,6 +93,10 @@ class MultiCov extends ToolBase {
                 throw new IllegalArgumentException('Please specify the -gcref option to use the -gcprofile option')
         }
         
+        if(opts.cos && !opts.corr) {
+                throw new IllegalArgumentException('The -co option can only be used if correlation calculation is enabled (-corr)')
+        }
+        
         fmt.maximumFractionDigits = 2
         
         resolveRegionsToScan()
