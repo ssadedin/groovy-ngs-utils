@@ -23,10 +23,18 @@ class AcknowledgeableMessage {
 
 /**
  * An Actor that exerts back-pressure to regulate the rate of incoming messages.
+ * <p>
+ * The regulating actor counts how many messages are pending vs how many it has processed.
+ * If the number of pending messages exceeds a soft threshold, it blocks for a short time
+ * before queueing the next message. If the number of messages exceeds a hard threshold,
+ * it blocks for a long time before queuing the message. This allows effective control over how
+ * much memory the actor is using in its queue.
+ * <p>
+ * A user of a RegulatingActor should send messages to it using the {@link #sendTo} method.
  * 
  * @author Simon Sadedin
  *
- * @param <T>
+ * @param <T> the type of the messages to be processed
  */
 @Log
 abstract class RegulatingActor<T> extends DefaultActor {
