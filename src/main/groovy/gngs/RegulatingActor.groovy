@@ -35,7 +35,12 @@ abstract class RegulatingActor<T> extends DefaultActor {
     
     private final int hardLimit
     
+    /**
+     * Count of messages that have been sent to this actor but not processed
+     */
     final AtomicInteger pendingMessages = new AtomicInteger(0)
+    
+    boolean stopped = false
     
     /**
      * Count of messages pending in downstream due to this actor
@@ -66,6 +71,7 @@ abstract class RegulatingActor<T> extends DefaultActor {
         loop {
             react { msg ->
                 if(msg == "stop") {
+                    this.stopped = true
                     this.onEnd()
                     if(this.progress != null)
                         this.progress.end()
