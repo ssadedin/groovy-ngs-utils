@@ -13,9 +13,12 @@
 #
 GNGS=$(dirname `dirname $0`)
 
-GROOVY_BIN=`which groovy`
-
-GROOVY_HOME=`dirname $(dirname $GROOVY_BIN)`
+if [ -z "$GROOVY_HOME" ];
+then
+    GROOVY_BIN=`which groovy` || { echo "Could not find groovy in your path and GROOVY_HOME is not set. Please install groovy or set GROOVY_HOME."; exit 1; }
+    
+    GROOVY_HOME=`dirname $(dirname $GROOVY_BIN)`
+fi
 
 GROOVY_ALL_JAR=`ls $GROOVY_HOME/embeddable/groovy-all* | grep -v indy | head -n 1`
 
@@ -32,4 +35,6 @@ then
     exit 1
 fi
 
-java -Xmx${GNGS_MEM} -cp $GROOVY_ALL_JAR:$GNGS/.eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar gngs.tools.${cmd} $@
+CP="$GROOVY_ALL_JAR:$GNGS/eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar"
+
+java -Xmx${GNGS_MEM} -cp $CP gngs.tools.${cmd} $@
