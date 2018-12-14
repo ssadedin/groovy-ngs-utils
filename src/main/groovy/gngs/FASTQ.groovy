@@ -19,11 +19,14 @@
  */
 package gngs
 
+import java.nio.file.Files
 import java.text.ParseException;
 
 import java.util.zip.GZIPInputStream;
 
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 
 /**
  * Models a single FASTQ read, including the header (with name), bases and 
@@ -104,7 +107,7 @@ class FASTQ {
     final static long PRINT_INTERVAL_MS = 15000
     
     @CompileStatic
-    static void eachRead(Closure c) {
+    static void eachRead(@ClosureParams(value=SimpleType,options=['gngs.FASTQRead']) Closure c) {
         // Cheat, fails on windows
         eachRead("/dev/stdin",c)
     }
@@ -137,7 +140,7 @@ class FASTQ {
      * @param c
      */
     @CompileStatic
-    static void filter(String fileName1, String fileName2, Writer output, Closure c) {
+    static void filter(String fileName1, String fileName2, Writer output, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead']) Closure<Boolean> c) {
         int passed = 0
         int processed = 0
         FASTQ.eachPair(fileName1,fileName2) { FASTQRead r1, FASTQRead r2 ->
@@ -161,7 +164,7 @@ class FASTQ {
      * @param c
      */
     @CompileStatic
-    static void filter(String fileName1, String fileName2, String output1, String output2, Closure c) {
+    static void filter(String fileName1, String fileName2, String output1, String output2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
         Utils.outputWriter(output1).withWriter { w1 ->
             Utils.outputWriter(output2).withWriter { w2 -> 
                 filter(fileName1, fileName2, w1, w2, c)
@@ -179,7 +182,7 @@ class FASTQ {
      * @param c
      */
     @CompileStatic
-    static void filter(String fileName1, String fileName2, Writer output1, Writer output2, Closure c) {
+    static void filter(String fileName1, String fileName2, Writer output1, Writer output2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
         int passed = 0
         int processed = 0
         FASTQ.eachPair(fileName1,fileName2) { FASTQRead r1, FASTQRead r2 ->
@@ -195,10 +198,10 @@ class FASTQ {
   
     
     @CompileStatic
-    static void eachPair(String fileName1, String fileName2, Closure c) {
+    static void eachPair(String fileName1, String fileName2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
         
-        openStream(fileName1).withReader { Reader reader1 ->
-          openStream(fileName2).withReader { Reader reader2 ->
+        Utils.reader(fileName1) { Reader reader1 ->
+          Utils.reader(fileName2) { Reader reader2 ->
             ProgressCounter counter = new ProgressCounter(withRate:true, withTime:true)
             try {
                 while(true) {
@@ -242,27 +245,22 @@ class FASTQ {
     }
     
     @CompileStatic
-    static void eachRead(String fileName, Closure c) {
-        
-        InputStream readIn = openStream(fileName)
-            
-        readIn.withReader { Reader reader ->
-            // Read the file 4 lines at a time
-            while(true) {
-              FASTQRead read = consumeRead(reader)
-              if(read == null)
-                  break
-                  
-              c(read)
-            }
+    static void eachRead(String fileName, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead']) Closure c) {
+        Utils.reader(fileName) { Reader reader ->
+            iterateReader(reader,c)
         }
     }
     
-    static InputStream openStream(String fileName) {
-        int bufferSize = 1024*1024
-        if(fileName.endsWith(".gz"))
-          new BufferedInputStream(new GZIPInputStream(new FileInputStream(fileName)), bufferSize)
-        else
-          new BufferedInputStream(new File(fileName).newInputStream(), bufferSize)
+    
+    @CompileStatic
+    private static void iterateReader(Reader reader, Closure c) {
+        // Read the file 4 lines at a time
+        while(true) {
+          final FASTQRead read = consumeRead(reader)
+          if(read == null)
+              return
+                  
+          c(read)
+        }
     }
 }
