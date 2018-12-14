@@ -91,8 +91,14 @@ abstract class RegulatingActor<T> extends DefaultActor {
     
     long throttleWarningMs = 0
     
+    @CompileStatic
     void sendDownstream(Object message) {
         this.downstream.send(new AcknowledgeableMessage(message, this.downstreamCounter))
+    }
+    
+    @CompileStatic
+    public MessageStream sendTo(Object o) {
+        this.send(new AcknowledgeableMessage(o, this.pendingMessages))
     }
     
     @CompileStatic
