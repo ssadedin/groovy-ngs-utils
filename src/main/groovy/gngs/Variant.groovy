@@ -1443,6 +1443,10 @@ class Variant implements IRegion {
         return vep?.Consequence?.split("&")?.max { VEPConsequences.severityOf(it)}
     }
     
+    long getXpos() {
+        XPos.computePos(this.chr, this.pos)
+    }
+    
     String getMaxVepImpact() {
         Map<String,Object> vep = getMaxVep()
         List maxCons = vep.Consequence?.tokenize('&')?.collect { VEPConsequences.VEP_IMPACTS[it]?:"UNKNOWN" }
