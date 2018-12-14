@@ -82,7 +82,13 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     double [] orderedMeans = null
     
+    /**
+     * Statistics for final computed coverage values - for example, these will be normalised
+     * to the mean coverage etc. depending on the options supplied.
+     */
     SummaryStatistics [] sampleStats = null
+   
+    List<String> sampleRegionStatsRegions = []
     
     Stats [] sampleRegionStats = null
     
@@ -204,11 +210,14 @@ class CoveragePrinter extends RegulatingActor<Map> {
         updateRegionMeanCoverages()
         
         this.sampleRegionStats = new Stats[samples.size()].collect { new Stats() } as Stats[]
+        
     }
     
     @CompileStatic
     void updateRegionMeanCoverages() {
         if(sampleRegionStats != null) {
+            String targetValue = currentTarget?.toString()
+            this.sampleRegionStatsRegions << targetValue
             [samples,sampleRegionStats].transpose().each { String sample, Stats stats -> 
                 this.sampleRegionMeans[sample] << (Short)Math.round(stats.mean)
             }

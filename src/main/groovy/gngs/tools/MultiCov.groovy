@@ -70,8 +70,9 @@ class MultiCov extends ToolBase {
             std 'Standardise output values to mean at each bp'
             stats 'Print statistics about coverage values and variation'
             targetmeans 'Output a mean coverage matrix for each sample x target region (XHMM compatible)', args:1, required:false
+            samplesummary 'Output a summary of mean, median, % bases above thresholds for corresponding sample', args:Cli.UNLIMITED, required: false
             minMQ 'Minimum mapping quality threshold for including reads (1)', args:1, required: false
-            corr 'Determine corellation of other samples to specified samples (separated by comma)', args:1
+            corr 'Determine corellation of other samples to specified samples (separated by comma), use "." to specify calculation of pairwise correlation for all samples', args:1
             co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
             cvo 'Coefficient of variation output file: write coeffv in tab separated form to this file', args:1, required:false 
             cvj 'Coefficient of variation output file: write coeffv in javascript loadable form to this file', args:1, required:false 
@@ -282,6 +283,10 @@ class MultiCov extends ToolBase {
         if(opts.targetmeans) {
             writeSampleRegionMeans(new File(opts.targetmeans).newWriter(), printer)
         }
+        
+        if(opts.samplesummary) {
+            writeSampleSummaries(printer)
+        }
     }
     
     private void printCoverageJs(CoveragePrinter printer, String fileName) {
@@ -304,10 +309,37 @@ class MultiCov extends ToolBase {
     
     final List cvThresholds = (0..100).step(5)
     
+    private void writeSampleSummaries(CoveragePrinter printer) {
+        
+        if(!opts.samplesummarys) {
+            return
+        }
+        
+        List<String> headers = ['Median Coverage', 'Mean Coverage', 'perc_bases_above_1', 'perc_bases_above_10', 'perc_bases_above_20', 'perc_bases_above_50']
+        int n = 0
+        [opts.samplesummarys, printer.rawCoverageStats].transpose().each { String outputFile, IntegerStats stats ->
+            // The user could provide less samplesummary options than BAM files
+            if(outputFile == null)
+                return
+            new File(outputFile).withWriter { w ->
+                w.println(headers.join("\t"))
+                w.println([
+                    stats.median,
+                    Utils.humanNumberFormat.format(stats.mean),
+                    Utils.humanNumberFormat.format(100*stats.fractionAbove(1)),
+                    Utils.humanNumberFormat.format(100*stats.fractionAbove(10)),
+                    Utils.humanNumberFormat.format(100*stats.fractionAbove(20)),
+                ].join('\t'))
+            }
+            log.info "Wrote sample summary for ${printer.samples[n]} to $outputFile"
+            ++n
+        }
+    }
+    
     private void writeSampleRegionMeans(Writer w, CoveragePrinter printer) {
         w.withWriter { 
             w.print('Mean\t')
-            w.println(scanRegions.join('\t'))
+            w.println(printer.sampleRegionStatsRegions.join('\t'))
             
             for(sample in printer.samples) {
                 w.print(sample)
@@ -354,7 +386,7 @@ class MultiCov extends ToolBase {
         
         finalCorrelationMatrix.@names = printer.samples
         
-        println "Raw correlation matrix = \n"  + finalCorrelationMatrix
+        log.info  "Raw correlation matrix = \n"  + finalCorrelationMatrix
         
         finalCorrelationMatrix = new Matrix(finalCorrelationMatrix.getColumns(printer.correlationSamples))
         
