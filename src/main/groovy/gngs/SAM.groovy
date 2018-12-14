@@ -768,15 +768,15 @@ class SAM {
      *                      included in the output BAM file
      */
     @CompileStatic
-    void filter(String outputFile, Closure c) {
+    void filter(Map options=[:], String outputFile, @ClosureParams(value=SimpleType, options=['htsjdk.samtools.SAMRecord']) Closure c) {
 
-        ProgressCounter progress = new ProgressCounter(withTime:true, withRate:true)
+        ProgressCounter progress = options.progress ? (ProgressCounter)options.progress : new ProgressCounter(withTime:true, withRate:true)
         
         this.withReader { SamReader reader ->
     
             SAMFileWriterFactory f = new SAMFileWriterFactory()
             SAMFileHeader header = reader.fileHeader
-            SAMFileWriter w = f.makeBAMWriter(header, false, new File(outputFile))
+            SAMFileWriter w = f.makeBAMWriter(header, !options.sort, new File(outputFile))
             SAMRecordIterator i = reader.iterator()
             long lastPrintMs = System.currentTimeMillis()
             try {
