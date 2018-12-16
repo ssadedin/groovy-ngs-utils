@@ -53,13 +53,23 @@ class VariantInjector {
     
     boolean debugMode = false
     
-    public VariantInjector(FASTA reference, Variant variant) {
+    int variantOffset = 0
+    
+    public VariantInjector(FASTA reference, Variant variant, int variantOffset=0) {
         super();
         this.reference = reference;
         this.variant = variant;
         
         this.variant = variant
-        Region variantRegion = new Region(variant).widen(10)
+        
+        
+        // variant is wider than that
+        if(variantOffset == 0)
+            this.variantOffset = Math.max(10,variant.ref.size()+1) // We only really want 10 bases of context, but we have to include more if the
+        else
+            this.variantOffset = variantOffset
+        
+        Region variantRegion = new Region(variant).widen(variantOffset)
         referenceBases = reference.basesAt(variantRegion)
         
         this.referenceBasesRC= FASTA.reverseComplement(referenceBases)
@@ -74,7 +84,7 @@ class VariantInjector {
      */
     @CompileStatic
     void computeReplacementBases() {
-        this.replacementBases = variant.applyTo(referenceBases,11)
+        this.replacementBases = variant.applyTo(referenceBases,this.variantOffset+1)
         this.replacementBasesRC= FASTA.reverseComplement(replacementBases)
     }
     
