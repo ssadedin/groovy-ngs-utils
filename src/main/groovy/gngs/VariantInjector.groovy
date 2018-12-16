@@ -64,8 +64,9 @@ class VariantInjector {
         
         
         // variant is wider than that
-        if(variantOffset == 0)
-            this.variantOffset = Math.max(10,variant.ref.size()+1) // We only really want 10 bases of context, but we have to include more if the
+        if(variantOffset == 0) {
+            variantOffset = this.variantOffset = Math.max(10,variant.ref.size()+1) // We only really want 10 bases of context, but we have to include more if the
+        }
         else
             this.variantOffset = variantOffset
         
