@@ -978,8 +978,16 @@ class Variant implements IRegion {
         if(this.type != "DEL")
             throw new IllegalStateException("Function can only be called for deletions")
             
-        // The actual position of the deletion is the base AFTER the pos field
-        sequence.substring(0,position) + sequence.substring(position + ref.size() - alt.size())
+        String prefix = sequence.substring(0,position-1)
+        String suffix = sequence.substring(position -1 + ref.size())
+        
+//        println "Ref   : " + ref
+//        println "Sequen: " + sequence
+//        println "Prefix: $prefix"
+//        println "Introd: $alt"
+//        println "Suffix: $suffix"
+//        
+        prefix + alt + suffix
     }
     
     /**
