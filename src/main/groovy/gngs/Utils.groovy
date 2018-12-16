@@ -357,13 +357,14 @@ class Utils {
      * @return
      */
     @CompileStatic
-    static Reader reader(fileLike, @ClosureParams(value=SimpleType, options=['java.io.Reader']) Closure c = null) {
+    static Object reader(fileLike, @ClosureParams(value=SimpleType, options=['java.io.Reader']) Closure c = null) {
         Reader r = createReader(fileLike)
         if(c != null) {
+            Object result
             r.withReader {
-                c(r)
+                result = c(r)
             }
-            return r
+            return result
         }
     }
     
