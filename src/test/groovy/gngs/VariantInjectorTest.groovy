@@ -53,6 +53,68 @@ class VariantInjectorTest {
         assert r1.bases == 'TATTAACCACTGCACGGGAGCTC'
     } 
     
+    @Test
+    public void testInjectRepeatIns() {
+        
+        // A/AAGAT
+        
+        FASTA ref = new FASTA() {
+            String basesAt(String chr, long start, long end) {
+                
+                return 'CTGTCCTGAAAGATAGATATTAATTTCA'
+//                return 'TGAAATTAATATCTATCTTTCAGGACAG'
+            }
+        }
+        
+        VariantInjector inj = new VariantInjector(ref, var(117188810, 'A','AAGAT'))
+        inj.alleleFraction = 1.0
+        
+//        print Align.global(inj.referenceBases, inj.replacementBases).profile
+        
+        assert inj.replacementBases == 'CTGTCCTGAAAAGATGATAGATATTAATTTCA'
+        
+//        String readBases = 'CAAGCATCTATTGAAAATATCTGACAAACTCATCTTTTATTTTTGATGTGTGTGTGTGTGTGTGTGTGTTTTTTTAACAGGGATTTGGGGAATTATTTGAGAAAGCAAAACAAAACACTAACAATAGAAAAACTTCTAATGGTGATGACAGCCTCTTCTTCAGTAATTGCTCACTTCTTGGTACTCCTGTCCTGAAAGATATTAATTTCAAGATAGAAAGAGGACAGTTGTTGGCGGTTGCTGGATCCACTGGAGCAGGCAAGGTAGTTCTTTTTG'
+//        FASTQRead r1 = new FASTQRead(readBases)
+//        FASTQRead r2 = new FASTQRead(FASTA.reverseComplement(r1.bases))
+//        inj.inject(r1, r2)
+//        
+//        println inj.referenceBases
+//        println r1.bases
+//        
+//        assert inj.total > 0
+    } 
+    
+    @Test
+    public void testDelIns() {
+        
+        FASTA ref = new FASTA() {
+            String basesAt(String chr, long start, long end) {
+//                return 'AGTGCAGAAAGAAGAAATTCAATCCT'
+                
+                return 'TAGTGCAGAAAGAAGAAATTCAATCCTAA'
+            }
+        }
+  
+        VariantInjector inj = new VariantInjector(ref, var(13, 'GAAATTCAATCCT','AGAAA'))
+        inj.alleleFraction = 1.0
+        
+        //                                         GAAATTCAATCCT
+        FASTQRead r1 = new FASTQRead("AGTGCAGAAAGAAGAAATTCAATCCTAACTGAGACCTTA")
+        inj.inject(r1, r1)
+        
+        print Align.global(inj.referenceBases, inj.replacementBases).profile
+//        println inj.referenceBases
+//        println r1.bases
+        
+        println inj.replacementBases
+        println '-------GAAAGAAAGAAAAA'
+        //       GAAAGAAAGAAAAACT
+        //       GAAAGAAAGAAAAA
+
+        assert inj.replacementBases.indexOf('GAAAGAAAGAAAA') >= 0
+    }
+    
+    
     FASTQRead fq(String bases) {
         new FASTQRead(bases)
     }
