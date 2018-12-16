@@ -200,6 +200,19 @@ class Utils {
     }
     
     /**
+     * Convenience version of {@link #table} to display data in the form of a list of
+     * Maps as a table, assuming all the Maps have the same keys which are to be the
+     * headers of the table.
+     * 
+     * @param rows  List of map objects representing data, keys of each Map must be identical
+     */
+    static void table(Map options = [:], List<Map> rows) {
+        List headers = rows[0]*.key
+        List data = rows.collect { it*.value }
+        table(options, headers, data)
+    }
+    
+    /**
      * A utility to print a table of values in a nice format for 
      * output on a terminal. Columns are aligned, padded, borders
      * drawn etc. The output format is compatible with markdown
