@@ -193,6 +193,7 @@ class VCFtoHTML {
             o 'Output HTML file', args:1, required:true
             f 'Comma separated list of families to export', args:1
             a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
+            id 'Include variant ids in output'
             target 'Exclude variants outside this region from comparison', args:1
             xtarget 'Exclude variants inside these target regions from the comparison', args:1
             genelist 'Add gene priorities based on two column, tab separated file', args:1
@@ -541,6 +542,15 @@ class VCFtoHTML {
     private initColumnMappings() {
         baseColumns += [
             'tags' : {''}, // reserved for tags
+        ]
+        
+        if(opts.id) {
+            baseColumns += [
+                'id' : {it.id}, // reserved for tags
+            ]
+        }
+        
+        baseColumns += [
             'chr' : {it.chr },
             'pos' : {it.pos },
             'ref': {it.ref },
@@ -707,6 +717,14 @@ class VCFtoHTML {
         w.println """
             <html>
                 <head>
+                <script type='text/javascript'>
+            """
+        
+            if(opts.id)
+                w.println "var showId = true;"
+            
+           w.println """
+                </script>
             """
         w.println css.collect{"<link rel='stylesheet' href='$it'/>"}.join("\n").stripIndent()
         w.println js.collect{"<script type='text/javascript' src='$it'></script>"}.join("\n").stripIndent()
@@ -722,6 +740,7 @@ class VCFtoHTML {
         w.println "<script type='text/javascript'>\n$vcfjs\n</script>"
 
         w.println "<script type='text/javascript'>"
+        
 
         w.println "var variants = ["
     }

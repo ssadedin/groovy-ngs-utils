@@ -345,17 +345,28 @@ var userAnnotations = {
         return index;
     }
     
-    var TAG_INDEX=0;
-    var CHR_INDEX=1;
-    var POS_INDEX=2;
-    var REF_INDEX=3;
-    var ALT_INDEX=4;
-    var QUAL_INDEX=5;
-    var DEPTH_INDEX=6;
-    var FAMILIES_INDEX=7;
-    var GENE_INDEX=8;
-    var CONS_INDEX=9;
-    var MAF_INDEX=10;
+    var indexCounter=0
+    
+    var TAG_INDEX=indexCounter;
+    
+    var ID_INDEX = -1
+    if(window.showId) {
+        ID_INDEX=++indexCounter
+    }
+    
+    var CHR_INDEX=++indexCounter;
+    var POS_INDEX=++indexCounter;
+    var REF_INDEX=++indexCounter;
+    var ALT_INDEX=++indexCounter;
+    var QUAL_INDEX=++indexCounter;
+    var DEPTH_INDEX=++indexCounter;
+    var FAMILIES_INDEX=++indexCounter;
+    var GENE_INDEX=++indexCounter;
+    var CONS_INDEX=++indexCounter;
+    var MAF_INDEX=++indexCounter;
+    
+    console.log('MAFINDEX=' + MAF_INDEX)
+    
     var nonSampleColumnCount = MAF_INDEX+1; // TODO - make this not hard coded!
     var AD_INDEX = -1; // set later because sampleCount is not known until initialised
 
@@ -702,8 +713,8 @@ var userAnnotations = {
     function createVariantRow(tableId, row, data, dataIndex ) {
 //        console.log("create row, table id = " + tableId);
         var tds = row.getElementsByTagName('td');
-        tds[2].innerHTML = "<a id='variant_"+dataIndex+"_detail' href='http://localhost:60151/goto?locus="+tds[1].innerHTML + ":" + tds[2].innerHTML + "'>"+ tds[2].innerHTML + "</a>";
-        $(tds[2]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
+        tds[POS_INDEX].innerHTML = "<a id='variant_"+dataIndex+"_detail' href='http://localhost:60151/goto?locus="+tds[CHR_INDEX].innerHTML + ":" + tds[POS_INDEX].innerHTML + "'>"+ tds[POS_INDEX].innerHTML + "</a>";
+        $(tds[POS_INDEX]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
         
         let ref = tds[REF_INDEX].innerHTML;
         if(ref.length>25)
