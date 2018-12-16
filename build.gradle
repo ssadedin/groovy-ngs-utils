@@ -113,6 +113,12 @@ groovydoc {
     overviewText = resources.text.fromFile('src/main/groovy/overview.html')
 }
 
+test {
+    filter {
+     includeTestsMatching "gngs.*"
+    }
+}
+
 task doc << {
     groovydoc {
         packageNames = ['']
