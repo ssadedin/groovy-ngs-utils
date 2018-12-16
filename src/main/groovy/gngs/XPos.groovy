@@ -89,11 +89,11 @@ class LXPos {
        (int)(chr.size()==1 ? (chr.charAt(0)-48i) : (chr.charAt(0)-48i)*10i + chr.charAt(1))
     }
     
-    static final String [] INT_CHRS = (
+    public static final String [] INT_CHRS = (
         (1..22).collect { String.valueOf(it) }.sort() + ["X","Y","M"]
         ) as String[]
     
-    static final int [] CHR_INTS = new int[71]
+    public static final int [] CHR_INTS = new int[71]
     
     static {
         int index=0
