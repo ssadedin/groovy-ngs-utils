@@ -240,4 +240,14 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
         assert v.vepInfo[0].EUR_MAF.tokenize(':')[1].toFloat() > 0.9
         
     }
+    
+    @Test
+    void 'empty VCF still has samples'() {
+        VCF vcf = VCF.parse("src/test/data/empty_vcf.vcf")
+        
+        assert vcf.samples != null
+        assert vcf.samples.size() > 0
+        assert vcf.samples[0] != null
+    }
+    
  }

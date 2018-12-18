@@ -372,7 +372,25 @@ class VCF implements Iterable<Variant> {
         
         List<String> samples = options.samples != null ? options.samples : null
         List<Integer> keepColumns = null
+        
+        Closure parseLastHeader =  {
+            if(vcf.lastHeaderLine == null) {
+                    
+                vcf.parseLastHeaderLine()
+                    
+                // Modify the header to include only samples selected
+                if(samples) {
+                    List headerFields = vcf.headerLines[-1].tokenize('\t')
+                    keepColumns = (0..8) + (List<Integer>)vcf.samples.findIndexValues{it in samples}.collect {it + 9}
+                    vcf.headerLines[-1] = headerFields[keepColumns].join("\t")
+                    vcf.parseLastHeaderLine()
+                }
+            }
+        }
+        
         try {
+            
+               
             f.eachLine { String line ->
                 
                 ++count
@@ -387,19 +405,7 @@ class VCF implements Iterable<Variant> {
                     return
                 }
                 
-                if(vcf.lastHeaderLine == null) {
-                    
-                    vcf.parseLastHeaderLine()
-                    
-                    // Modify the header to include only samples selected
-                    if(samples) {
-                        List headerFields = vcf.headerLines[-1].tokenize('\t')
-//                        keepColumns = (0..8) + (List<Integer>)sampleHeader.findIndexValues{it in samples}
-                        keepColumns = (0..8) + (List<Integer>)vcf.samples.findIndexValues{it in samples}.collect {it + 9}
-                        vcf.headerLines[-1] = headerFields[keepColumns].join("\t")
-                        vcf.parseLastHeaderLine()
-                    }
-                }
+                parseLastHeader()
                 
                 if(keepColumns) {
                     line = line.tokenize('\t')[keepColumns].grep { it != null }.join("\t")
@@ -442,6 +448,11 @@ class VCF implements Iterable<Variant> {
         catch(StopParsingVCFException stop) {
             // ignore
         }
+        finally {
+            if(parseLastHeader != null)
+                parseLastHeader()
+        }
+        
         
         if(filterMode && !flushedHeader)  {
             vcf.printHeader()
