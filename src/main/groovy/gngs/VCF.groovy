@@ -215,14 +215,14 @@ class VCF implements Iterable<Variant> {
     /**
      * Convenience method to accept string for parsing file
      */
-    static VCF parse(String fileName, List<Pedigree> peds = null, Closure c = null) {
+    static VCF parse(Map options=[:], String fileName, List<Pedigree> peds = null, Closure c = null) {
         if(fileName == "-")
           parse(System.in,peds,c)
         else {
             if(fileName.endsWith('.gz')) {
                 new File(fileName).withInputStream { vcfIs ->
                     vcfIs = new GZIPInputStream(vcfIs)
-                    parse([fileName:fileName], vcfIs,peds,c)
+                    parse(options + [fileName:fileName], vcfIs,peds,c)
                 }
             }
             else {
@@ -231,8 +231,8 @@ class VCF implements Iterable<Variant> {
         }
     }
     
-    static VCF parse(String fileName, Closure c) {
-        parse(fileName,null,c)
+    static VCF parse(Map options=[:], String fileName, Closure c) {
+        parse(options, fileName,null,c)
     }
     
     static VCF parse(File f, List<Pedigree> peds = null, Closure c = null) {
@@ -360,7 +360,15 @@ class VCF implements Iterable<Variant> {
         int count = 0
         boolean flushedHeader = false
         Map chrPosIndex = vcf.chrPosIndex
-        ProgressCounter progress = new ProgressCounter(withTime:true)
+        ProgressCounter progress 
+        if(options.containsKey('progress')) {
+            if(options['progress'])
+                progress = (ProgressCounter)options['progress']
+        }
+        else {
+            progress = new ProgressCounter(withTime:true)
+        } 
+            
         
         if(c != null) {
             c.delegate = new Object() {
@@ -395,7 +403,8 @@ class VCF implements Iterable<Variant> {
                 
                 ++count
                 
-                progress.count()
+                if(progress != null)
+                    progress.count()
                
                 if(line.startsWith('#')) {
                     // Only add the header if the user didn't already provde a VCF
