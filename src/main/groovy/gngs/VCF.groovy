@@ -717,6 +717,18 @@ class VCF implements Iterable<Variant> {
         }
     } 
     
+    @CompileStatic
+    List<String> getContigs() {
+    
+        // ##contig=<ID=chr17_gl000203_random,length=37498,assembly=hg19>
+        
+        headerLines.grep { String line -> line.startsWith('##contig=') }
+                   .collect { String line ->
+                       int idIndex = line.indexOf('ID=')
+                       int commaIndex = line.indexOf(',', idIndex)
+                       return line.substring(idIndex, commaIndex).tokenize('=')[1].trim()
+                   }.grep { it }
+    }
     
     @CompileStatic
     Map<String,Object> getInfoMetaData(String id) {
