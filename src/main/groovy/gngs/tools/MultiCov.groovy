@@ -329,6 +329,7 @@ class MultiCov extends ToolBase {
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(1)),
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(10)),
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(20)),
+                    Utils.humanNumberFormat.format(100*stats.fractionAbove(50)),
                 ].join('\t'))
             }
             log.info "Wrote sample summary for ${printer.samples[n]} to $outputFile"
