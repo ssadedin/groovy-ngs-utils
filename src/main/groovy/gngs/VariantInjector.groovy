@@ -71,12 +71,13 @@ class VariantInjector {
             this.variantOffset = variantOffset
         
         Region variantRegion = new Region(variant).widen(variantOffset)
-        referenceBases = reference.basesAt(variantRegion)
+        referenceBases = reference.basesAt(variantRegion).toUpperCase()
         
         this.referenceBasesRC= FASTA.reverseComplement(referenceBases)
         
         this.computeReplacementBases()
         
+        // log.info Align.global(referenceBases, replacementBases).profile.toString()
     }
     
     /**
