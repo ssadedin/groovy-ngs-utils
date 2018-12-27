@@ -713,7 +713,21 @@ var userAnnotations = {
     function createVariantRow(tableId, row, data, dataIndex ) {
 //        console.log("create row, table id = " + tableId);
         var tds = row.getElementsByTagName('td');
-        tds[POS_INDEX].innerHTML = "<a id='variant_"+dataIndex+"_detail' href='http://localhost:60151/goto?locus="+tds[CHR_INDEX].innerHTML + ":" + tds[POS_INDEX].innerHTML + "'>"+ tds[POS_INDEX].innerHTML + "</a>";
+        var igvLink 
+        
+        if(window.bams && window.bams.length>0) {
+            igvLink = "http://localhost:60151/load?locus="+tds[CHR_INDEX].innerHTML + ":" + tds[POS_INDEX].innerHTML;
+            igvLink += ('&' + bams.map(bam => {
+                return 'file=' + encodeURIComponent(bam)
+            }).join('&'));
+        }
+        else {
+            igvLink =  "http://localhost:60151/goto?locus="+tds[CHR_INDEX].innerHTML + ":" + tds[POS_INDEX].innerHTML
+        }
+        
+        tds[POS_INDEX].innerHTML = 
+            "<a id='variant_"+dataIndex+"_detail' href='"+igvLink + "'>"+ tds[POS_INDEX].innerHTML + "</a>";
+        
         $(tds[POS_INDEX]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
         
         let ref = tds[REF_INDEX].innerHTML;

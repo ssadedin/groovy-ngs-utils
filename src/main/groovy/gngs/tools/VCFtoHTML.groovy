@@ -32,6 +32,7 @@ import gngs.VCF
 import gngs.VCFSummaryStats
 import gngs.Variant
 import au.com.bytecode.opencsv.CSVWriter
+import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovy.xml.StreamingMarkupBuilder
@@ -54,6 +55,7 @@ class ROCPoint {
 
 @Log
 class VCFtoHTML {
+    private Map<String,String> sampleMap
     private String outputFileName
     private String rocSample
     private boolean hasSNPEFF
@@ -289,7 +291,10 @@ class VCFtoHTML {
         
         // -------- Handle Aliasing of Samples ----------------
         if(aliases) {
-            Map<String,String> sampleMap = [ vcfs*.samples.flatten(), aliases.flatten() ].transpose().collectEntries()
+            
+            log.info "Samples from VCFs are: " + vcfs*.samples.flatten()
+            
+            sampleMap = [ vcfs*.samples.flatten(), aliases.flatten() ].transpose().collectEntries()
             
             log.info "Sample map = " + sampleMap
             
@@ -304,6 +309,9 @@ class VCFtoHTML {
             }
             
             exportSamples = exportSamples.collect { id -> sampleMap[id] }
+        }
+        else {
+            sampleMap = vcfs*.samples.flatten().collectEntries { [it,it] }
         }
         
         log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples?.join(",") }.join(" ")
@@ -714,6 +722,8 @@ class VCFtoHTML {
     }
 
     private printHeadContent(BufferedWriter w) {
+        
+//        log.info "Sample map: " + Utils.table(sampleMap*.key, [sampleMap*.value])
         w.println """
             <html>
                 <head>
@@ -722,6 +732,9 @@ class VCFtoHTML {
         
             if(opts.id)
                 w.println "var showId = true;"
+                
+            if(opts.bams)
+                w.println "var bams = " + JsonOutput.toJson(opts.bams)  + ';'
             
            w.println """
                 </script>
