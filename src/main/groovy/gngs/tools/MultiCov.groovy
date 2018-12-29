@@ -203,26 +203,14 @@ class MultiCov extends ToolBase {
         
         GParsPool.withPool(bams.size()) {
             
-            // If no means were provided, compute them
-            if(printer.sampleMeans == null || printer.sampleMeans.isEmpty()) {
-                Map<String, Double> sampleMeans = [:]
-                bams.eachParallel { SAM bam ->
-                    
-                    MeanCoverageEstimator meanEstimator = new MeanCoverageEstimator(bam, estRegions)
-                    meanEstimator.sdThreshold = 0.5 // the default is slightly less accurate than wanted for this purpose
-                    meanEstimator.minRegions = 30
-                    double mean = meanEstimator.estimate()
-                    
-                    String sample = bam.samples[0]
-                    log.info "Mean of $sample = $mean"
-                    sampleMeans[sample] = mean
-                }
-                printer.setSampleMeans(sampleMeans)
+            // If no means were provided and the user specified -rel, compute them
+            if(opts.rel || opts.std || opts.co || opts.corr ) {
+                estimateMeans(estRegions, printer)
+                log.info "Ordered Means: " + printer.orderedMeans.join(", ")
             }
             else {
-                log.info "Sample Means: " + printer.sampleMeans.collect { s, m -> "${s}=$m"}.join(", ")
+                log.info "Skipping estimate of means because no options requiring prior estimation of mean are enabled"
             }
-            log.info "Ordered Means: " + printer.orderedMeans.join(", ")
             
             bams.eachParallel { SAM bam ->
                 combiner.processBAM(bam, this.scanRegions, this.minimumMapQ)
@@ -286,6 +274,27 @@ class MultiCov extends ToolBase {
         
         if(opts.samplesummary) {
             writeSampleSummaries(printer)
+        }
+    }
+
+    private estimateMeans(Regions estRegions, CoveragePrinter printer) {
+        if(printer.sampleMeans == null || printer.sampleMeans.isEmpty()) {
+            Map<String, Double> sampleMeans = [:]
+            bams.eachParallel { SAM bam ->
+
+                MeanCoverageEstimator meanEstimator = new MeanCoverageEstimator(bam, estRegions)
+                meanEstimator.sdThreshold = 0.5 // the default is slightly less accurate than wanted for this purpose
+                meanEstimator.minRegions = 30
+                double mean = meanEstimator.estimate()
+
+                String sample = bam.samples[0]
+                log.info "Mean of $sample = $mean"
+                sampleMeans[sample] = mean
+            }
+            printer.setSampleMeans(sampleMeans)
+        }
+        else {
+            log.info "Sample Means: " + printer.sampleMeans.collect { s, m -> "${s}=$m"}.join(", ")
         }
     }
     
