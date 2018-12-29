@@ -80,7 +80,7 @@ class CoverageGapsTest {
     
     CoverageGaps calc(List covs) {
         CoverageGaps gaps = new CoverageGaps("test.cov")
-        gaps.calculateFromStream(
+        gaps.calculateFromBEDTools(
             new ByteArrayInputStream(covs*.join('\t').join('\n').bytes)
         )
         return gaps

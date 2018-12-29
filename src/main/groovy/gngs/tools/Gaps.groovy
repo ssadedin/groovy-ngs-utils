@@ -29,8 +29,57 @@ import groovy.util.logging.Log
 import groovyx.gpars.GParsPool
 import groovyx.gpars.GParsPoolUtil
 
+@Log
+class GapAnnotator extends RegulatingActor<CoverageBlock> {
+    
+    RefGenes refgenes
+
+    public GapAnnotator(RefGenes refgenes) {
+        super(1000, 10000);
+        this.refgenes = refgenes
+    }
+    
+    final static List<String> ANNOTATION_COLUMNS = ['transcript', 'gene', 'exon', 'coding_intersect']
+
+    @Override
+    public void process(CoverageBlock block) {
+        
+        // Check for overlapping transcripts
+        List<GRange> transcripts = refgenes.refData.getOverlaps(block)
+        block.annotations = []
+        if(transcripts) {
+            for(Region info in transcripts*.extra) {
+                block.id = info.gene
+                
+                int cdsStart = info.cds_start.toInteger()
+                int cdsEnd = info.cds_end.toInteger()
+                Region cdsRegion = new Region(block.chr, cdsStart, cdsEnd)
+                Regions exons = refgenes.getTranscriptExons(info.tx)
+                Regions intersectedExons = exons.intersect(new Regions([block]))
+//                log.info "intersected Exon numbers: " + intersectedExons*.exon
+                for(Region exon in exons) {
+                    if(!exon.overlaps(block))
+                        continue
+                        
+                    int cdsIntersect = Math.max(exon.intersect(cdsRegion).intersect(block).size()-1,0)
+                    
+                    block.annotations << [ 
+                        transcript: info.tx, 
+                        gene: info.gene, 
+                        exon: info.strand == "+" ? exon.exon : (exons.numberOfRanges - exon.exon),
+                        coding_intersect: cdsIntersect,
+                    ]
+                }
+                
+            }
+//            log.info "Annotated gap: " + block
+        }
+        
+    }
+}
+
 /**
- * A tool that computes gaps in coverage based on BEDTools format output.
+ * A tool that computes gaps in coverage based on BEDTools or MultiCov format output.
  * <p>
  * Can compute simple gap calculations, but also diff gaps between two samples
  * and also between sets of samples.
@@ -173,6 +222,9 @@ class Gaps {
             diff 'Show only gaps not occurring in file(s)', args:1, required:false
             'L' 'Only output results for <bed file> regions', longOpt: 'regions', args:1, required:false
             n 'Concurrency to use', args:1, required:false
+            m 'Input file is multicov format, not BEDTools'
+            r 'Annotate with refgene for genome build <arg>', args:1
+            a 'Write annotated report to separate file <arg>', args:1
             h 'Output a human readable table'
         }
         
@@ -189,9 +241,20 @@ class Gaps {
     
     CoverageGaps calculateGaps(String coverageFile) {
         CoverageGaps gaps = new CoverageGaps(coverageFile)
+        if(opts.r) {
+            RefGenes refgenes = new File(opts.r).exists() ? new RefGenes(opts.r) : RefGenes.download(opts.r)
+            gaps.gapProcessor = new GapAnnotator(refgenes)
+            gaps.gapProcessor.start()
+        }
+        
         if(opts.t)
             gaps.threshold = opts.t.toInteger()
-        gaps.calculate()
+            
+        if(opts.m)
+            gaps.calculateMultiCov()
+        else
+            gaps.calculate()
+            
         logGapInfo(coverageFile,gaps)
         return gaps
     }
@@ -216,7 +279,7 @@ class Gaps {
                diffs.collect {  Region block ->
                    [block.chr, block.from, block.to, block.size(), block.type] 
                }
-            )        }
+        )}
         else {
             for(Region diff in diffs) {
                 println([diff.chr, diff.from, diff.to, diff.size(), diff.type].join('\t'))
@@ -235,9 +298,63 @@ class Gaps {
     }
     
     void writeGaps(Regions gaps) {
-        for(Region blockRegion in gaps) {
-            CoverageBlock block = blockRegion.extra
-            println([block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max].join('\t'))
+        
+        Writer annotationWriter
+        if(opts.a) {
+            annotationWriter = Utils.writer(opts.a)
+        }
+        
+        
+        try {
+            for(Region blockRegion in gaps) {
+                writeGap(blockRegion, annotationWriter)
+            }
+        }
+        finally {
+            if(annotationWriter != null)
+                annotationWriter.close()
+        }
+    }
+    
+    /**
+     * Write the given coverage gap to the output.
+     * <p>
+     * If the gap is annotated, and a separate annotationWriter is provided, the annotated
+     * form will be written to the annotationWriter. Otherwise, annotations (if they exist)
+     * are written to standard output along with the gaps.
+     * 
+     * @param blockRegion
+     * @param annotationWriter
+     */
+//    @CompileStatic
+    void writeGap(Region blockRegion, Writer annotationWriter) {
+        CoverageBlock block = blockRegion.extra
+        List fields = [block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max]
+        if(opts.r) {
+            if(block.annotations) {
+                for(Map annotation in block.annotations) {
+                    List rowFields = fields + GapAnnotator.ANNOTATION_COLUMNS.collect { annotation[it] }
+                    if(annotationWriter != null) {
+                        annotationWriter.println(rowFields.join('\t'))
+                        println(fields.join('\t'))
+                    }
+                    else
+                        println(rowFields.join('\t'))
+                }
+            }
+            else { // Add empty values for the annotations
+                String annotatedFields = (fields + (['']*GapAnnotator.ANNOTATION_COLUMNS.size())).join('\t')
+                if(annotationWriter != null) {
+                    annotationWriter.println(annotatedFields)
+                    println(fields.join('\t'))
+                }
+                else {
+                    println(annotatedFields)
+                }
+            }
+        }
+        else {
+            println(fields.join('\t'))
         }
     }
 

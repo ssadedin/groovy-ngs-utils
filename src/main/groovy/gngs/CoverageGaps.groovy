@@ -26,40 +26,6 @@ import groovy.util.logging.Log
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics
 
-/**
- * A run of contiguous bases within a band of coverage depth
- * (eg: a run of low coverage bases).
- * <p>
- * Note that the start and end values are <b>inclusive</b>. That is,
- * each base including both start and end values is below coverage 
- * threshold.
- * 
- * @author Simon Sadedin
- */
-@CompileStatic
-class CoverageBlock implements IRegion {
-    String region
-    String chr
-    int start
-    int end
-    String id
-    DescriptiveStatistics stats = new DescriptiveStatistics()
-    
-    Object asType(Class clazz) {
-        if(clazz == Region) {
-            return new Region(chr, new GRange(start,end, this))
-        }
-    }
-
-    @Override
-    public IntRange getRange() {
-        return start..end
-    }
-    
-    int size() {
-        return end - start + 1
-    }
-}
 
 /**
  * Discovers blocks of low coverage in a file output in BEDTools Coverage format.
@@ -101,31 +67,61 @@ class CoverageGaps {
     
     CoverageBlock block = null
     
+    Regions regions = null
+    
     int offset = 0
+    
+    RegulatingActor<CoverageBlock> gapProcessor = null
     
     CoverageGaps(String coverageFilePath) {
         this.coverageFilePath = coverageFilePath
     }
     
     void calculate() {
-		InputStream stream = new BufferedInputStream(new FileInputStream(coverageFilePath), BUFFER_SIZE_BYTES)
-		if(coverageFilePath.endsWith(".gz")) 
-			stream = new java.util.zip.GZIPInputStream(stream) 
-
-        calculateFromStream(stream)
+		Utils.reader(coverageFilePath) { 
+            calculateFromBEDTools(it)
+		}
+    }
+    
+    void calculateMultiCov() {
+		Utils.reader(coverageFilePath) { 
+            calculateFromMultiCov(it)
+        }
     }
     
     @CompileStatic
-    void calculateFromStream(InputStream stream) {
+    void calculateFromMultiCov(Reader reader) {
+        String chr = null
+        int start = -1
+        int end = -1
         
-        ProgressCounter progress = 
-            new ProgressCounter(withTime: true, withRate:true, timeInterval:10000, log:log, extra: {
-            "${blocks.size()} gaps after scanning ${totalBP} bp"
-        })
+        String line
+        int lastPos = -1
+        ProgressCounter progress = createProgress()
+        while((line = reader.readLine()) != null) {
+            progress.count()
+//            println "Line: $line"
+            List<String> fields = line.tokenize('\t')
+            chr = fields[0]
+            int pos = Integer.parseInt(fields[1])
+            int cov = Integer.parseInt(fields[2])
+            if(pos != lastPos + 1) {
+                start = pos
+            }
+            processLine(chr, start, pos, cov, null)
+            lastPos = pos
+        }
+        progress.end()
+    }
+    
+    @CompileStatic
+    void calculateFromBEDTools(Reader reader) {
         
+        ProgressCounter progress = createProgress()
+            
         int pos = 0
         
-        stream.eachLine { String line ->
+        reader.eachLine { String line ->
             
             progress.count()
             
@@ -137,38 +133,11 @@ class CoverageGaps {
             int end = fields[2].toInteger()
             int offset = fields[-2].toInteger()
             
-            coverageStats.addValue(cov)
-            coveragePercentiles.addValue(cov)
-            pos = start + offset
-            String region = "$chr:$start"
-            ++totalBP
-
-            if(block && block.region != region) { // end of region
-                if (block.end - block.start + 1 >= minRegionWidth) { // only write if long enough
-                    outputBlock()
-                }
-                else {
-                    block = null; // forget this (too short) block
-                }
-            }
-
-            if(cov < threshold) {
-                if(!block)  {
-                   block = new CoverageBlock(chr:chr, region:region, start:pos)
-                   if(fields.size()>5)
-                       block.id = fields[-3]
-                }
-                block.stats.addValue(cov)
-                block.end = pos // note that end is the last position that is a gap
-            }
-            else { // coverage is ok
-                if(block && (block.end - block.start + 1 >= minRegionWidth)) {
-                    outputBlock()
-                }
-                else { // forget any block as it's too short
-                    block = null;
-                }
-            }
+            String id = null
+            if(fields.size()>5)
+                id = fields[-3] 
+            
+            processLine(chr, start, start+offset, cov, id)
         }
         
         // we might still have a block
@@ -179,6 +148,52 @@ class CoverageGaps {
         }
         
         progress.end()
+    }
+
+    private ProgressCounter createProgress() {
+        ProgressCounter progress =
+                new ProgressCounter(withTime: true, withRate:true, timeInterval:10000, log:log, extra: {
+                    "Region $region, ${blocks.size()} gaps after scanning ${totalBP} bp"
+                })
+        return progress
+    }
+    
+    String region
+    
+    @CompileStatic
+    void processLine(String chr, int start, int pos, int cov, String id) {
+        coverageStats.addValue(cov)
+        coveragePercentiles.addValue(cov)
+        region = "$chr:$start"
+        ++totalBP
+
+        if(block && block.region != region) { // end of region
+            if (block.end - block.start + 1 >= minRegionWidth) { // only write if long enough
+                outputBlock()
+            }
+            else {
+                block = null; // forget this (too short) block
+            }
+        }
+
+        if(cov < threshold) {
+            if(!block)  {
+                block = new CoverageBlock(chr:chr, region:region, start:pos)
+//                log.info "New block: $block"
+                if(id != null)
+                    block.id = id
+            }
+            block.stats.addValue(cov)
+            block.end = pos // note that end is the last position that is a gap
+        }
+        else { // coverage is ok
+            if(block && (block.end - block.start + 1 >= minRegionWidth)) {
+                outputBlock()
+            }
+            else { // forget any block as it's too short
+                block = null;
+            }
+        }
     }
     
     @CompileStatic
@@ -191,6 +206,10 @@ class CoverageGaps {
             assert false
             
         blocks.add(block)
+        
+        if(this.gapProcessor != null)
+            this.gapProcessor.sendTo(block)
+            
         block = null
     }
     
