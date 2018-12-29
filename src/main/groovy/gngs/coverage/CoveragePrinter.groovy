@@ -109,11 +109,14 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     final NumberFormat numberFormat = NumberFormat.numberInstance
     
+    final int numSamples
+    
     CoveragePrinter(Map options=[:], Writer w, List<String> samples) {
         super(50000,100000)
         this.progress = new ProgressCounter(withRate:true, log:log, withTime:true, extra: { "Computing stats on region: $currentTarget" })
         this.w = w
         this.samples = samples
+        this.numSamples = samples.size()
         this.sampleStats = (1..samples.size()).collect { new SummaryStatistics() } 
         this.sampleRegionMeans = samples.collectEntries { [ it, new ArrayList(1000)] }
         
@@ -165,27 +168,35 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     int currentGCBin = -1
     
+    @CompileStatic
     void process(Map countInfo) {
+        Region region = (Region)countInfo['region']
         
-        if(currentTarget != countInfo.region) {
-            newTargetRegion(countInfo.region)
+        if(currentTarget != region) {
+            newTargetRegion(region)
+        }
+        
+        List<Double> rawCounts = new ArrayList(samples.size())
+        final Map<String,Double> counts = (Map<String,Double>)countInfo.counts
+        for(int i=0; i<numSamples; ++i) {
+            rawCounts[i] = counts[samples[i]]
         }
             
         List<Double> values 
         if(relative) {
-            values = samples.collect{countInfo.counts[it]/(1 + sampleMeans[it])}
+            values = divideByMeans((Map<String,Double>)countInfo.counts)
             updateGCProfile(values)
         }
         else {
-            values = samples.collect{countInfo.counts[it]}
+            values = rawCounts
         }
             
-        updateRawCoverageStats(samples.collect{countInfo.counts[it]})
+        updateRawCoverageStats(rawCounts)
         updateStats(values)
         
         if(std) {
             Double valueMean = Stats.mean(values)
-            values = values.collect { it /(0.01 +  valueMean) }
+            values = values.collect { it /(0.01d +  valueMean) }
         }
         
         Double coeffVColumn = null
@@ -197,6 +208,11 @@ class CoveragePrinter extends RegulatingActor<Map> {
         }
         
         writePosition(countInfo, values, coeffVColumn)
+    }
+    
+    @CompileStatic
+    List<Double> divideByMeans(Map<String,Double> counts) {
+       samples.collect{counts[it]/(1d + sampleMeans[it])} 
     }
     
     @CompileStatic
@@ -225,10 +241,29 @@ class CoveragePrinter extends RegulatingActor<Map> {
         }
     }
 
-    void writePosition(Map countInfo, List values, Double coeffV) {
-        List coeffVColumn = coeffV == null ? [] :  [numberFormat.format(coeffV)] 
-        if(w != null)
-            w.println(([countInfo.chr, countInfo.pos] + coeffVColumn + values.collect{numberFormat.format(it)}).join('\t'))
+    StringBuilder line = new StringBuilder(2048)
+    
+    @CompileStatic
+    void writePosition(final Map countInfo, final List<Double> values, final Double coeffV) {
+        if(w != null) {
+            line.setLength(0)
+            
+            w.write((String)countInfo['chr'])
+            w.write('\t')
+            w.write(countInfo['pos'].toString())
+            w.write('\t')
+            if(coeffV != null) {
+                w.write(numberFormat.format(coeffV))
+                w.write('\t')
+            }
+            final int numValues = values.size()-1
+            int i = 0;
+            for(;i<numValues; ++i) {
+                w.write(numberFormat.format(values[i]))
+                w.write('\t')                                
+            }
+            w.write(numberFormat.format(values[numValues]))
+        }
     }
     
     @CompileStatic
