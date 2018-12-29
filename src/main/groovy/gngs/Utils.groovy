@@ -4,12 +4,14 @@ import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
+import htsjdk.samtools.util.BlockCompressedInputStream
 import htsjdk.samtools.util.BlockCompressedOutputStream
 
 import java.text.NumberFormat
 import java.util.logging.*
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
 import java.text.*
@@ -387,6 +389,8 @@ class Utils {
             return fileLike
         
         boolean gzip = false
+        boolean bgzip = false
+        
         if(fileLike instanceof String) {
             fileLike = new File(fileLike)
         }
@@ -399,6 +403,9 @@ class Utils {
             Path path = fileLike
             if(path.toString().endsWith('.gz'))
                 gzip = true
+            else
+            if(path.toString().endsWith('.bgz'))
+                bgzip = true
             fileLike = Files.newInputStream(fileLike)
         }
         
@@ -407,6 +414,10 @@ class Utils {
         
         if(gzip) {
             fileLike = new GZIPInputStream(fileLike, 128*1024)
+        }
+        else
+        if(bgzip) {
+            fileLike = new BlockCompressedInputStream(fileLike)
         }
         return fileLike.newReader()
     }
@@ -425,11 +436,11 @@ class Utils {
     static Writer outputWriter(String fileName) {
         int bufferSize = 1024*1024
         if(fileName.endsWith(".bgz"))
-          new BufferedOutputStream(new BlockCompressedOutputStream(fileName), bufferSize).newWriter()
+          new PrintWriter(new BufferedOutputStream(new BlockCompressedOutputStream(fileName), bufferSize).newWriter())
         else
         if(fileName.endsWith(".gz"))
-          new GZIPOutputStream(new FileOutputStream(fileName), bufferSize).newWriter()
+          new PrintWriter(new GZIPOutputStream(new FileOutputStream(fileName), bufferSize).newWriter())
         else
-          new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize).newWriter()
+          new PrintWriter(new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize).newWriter())
     } 
 }
