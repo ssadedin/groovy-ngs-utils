@@ -161,9 +161,11 @@ class RefGenes {
     
     Regions getTranscriptExons(String transcriptId) {
         Region tx = this.transcriptIndex[transcriptId]
-        def result = new Regions()
-        [ tx.starts.split(","), tx.ends.split(",") ].transpose().each { 
-           result.addRegion(new Region(tx.chr, (it[0].toInteger()+1)..(it[1].toInteger()+1)))
+        Regions result = new Regions()
+        int exonNumber = 1
+        [ tx.starts.tokenize(","), tx.ends.tokenize(",") ].transpose().each { 
+           result.addRegion(new Region(tx.chr, (it[0].toInteger()+1)..(it[1].toInteger()+1), exon:exonNumber))
+           ++exonNumber
         }
         return result
     }
@@ -212,7 +214,7 @@ class RefGenes {
        new Region(exons[0].chr, noAltExons*.from.min()..noAltExons*.to.max(), gene: hgncSymbol)
     }
     
-    List<String> getGenes(Region r) {
+    List<String> getGenes(IRegion r) {
         refData.getOverlaps(r)*.extra*.gene.unique()
     }
 }
