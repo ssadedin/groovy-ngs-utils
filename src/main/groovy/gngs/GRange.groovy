@@ -254,11 +254,12 @@ class Region extends Expando implements IRegion, Serializable {
         (r.chr == this.chr) && (r.range.to <= this.to) && (r.range.from >= this.from)
     }
     
+    @CompileStatic
     Region intersect(IRegion other) {
         if(this.chr != other.chr)
             return EMPTY_REGION
             
-        Region r = new Region(this.chr, Math.max(this.from, other.from)..Math.min(this.to, other.to))
+        Region r = new Region(this.chr, Math.max(this.from, other.range.from)..Math.min(this.to, other.range.to))
         if(r.to < r.from)
             return Region.EMPTY_REGION
         return r
