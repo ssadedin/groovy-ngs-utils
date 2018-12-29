@@ -132,6 +132,7 @@ class CoveragePrinter extends RegulatingActor<Map> {
         this.rawCoverageStats = (1..samples.size()).collect { new IntegerStats(1000) } 
         numberFormat.maximumFractionDigits=3
         numberFormat.minimumFractionDigits=0
+        numberFormat.groupingUsed = false
     }
     
     void setRelative(boolean value) {
