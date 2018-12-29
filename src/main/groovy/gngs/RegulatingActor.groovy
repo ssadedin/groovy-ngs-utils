@@ -73,12 +73,14 @@ abstract class RegulatingActor<T> extends DefaultActor {
     
     ProgressCounter progress 
     
+    final static Object STOP = new Object()
+    
     @Override
     @CompileStatic
     void act() {
         loop {
             react { msg ->
-                if(msg == "stop") {
+                if(msg.is(STOP)) {
                     this.stopped = true
                     this.onEnd()
                     if(this.progress != null)
@@ -101,6 +103,11 @@ abstract class RegulatingActor<T> extends DefaultActor {
     void onEnd() {
     }
     
+    @CompileStatic
+    void sendStop() {
+        this << RegulatingActor.STOP
+    }
+    
     abstract void process(T message)
     
     long throttleWarningMs = 0
@@ -117,6 +124,11 @@ abstract class RegulatingActor<T> extends DefaultActor {
     
     @CompileStatic
     public MessageStream send(AcknowledgeableMessage message) {
+        sendLimited(message)
+    }
+    
+    @CompileStatic
+    public MessageStream sendLimited(AcknowledgeableMessage message) {
         
         if(message.acknowledgeCounter.get() > softLimit) {
             long nowMs = System.currentTimeMillis()

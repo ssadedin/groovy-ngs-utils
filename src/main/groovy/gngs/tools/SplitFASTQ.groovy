@@ -197,7 +197,7 @@ class SplitFASTQ extends ToolBase {
         }
         
         log.info "Stopping dedupers ...."
-        dedupers*.send("stop")
+        dedupers*.sendStop()
         dedupers*.join()
         log.info "Stopping output writer ...."
         out << "stop"

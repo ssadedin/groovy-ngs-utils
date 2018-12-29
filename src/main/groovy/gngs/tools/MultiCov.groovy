@@ -229,11 +229,11 @@ class MultiCov extends ToolBase {
             } 
         }
             
-        combiner << "stop"
+        combiner << RegulatingActor.STOP
         combiner.join()
             
         log.info "Stopping actor ..."
-        printer << "stop"
+        printer << RegulatingActor.STOP
         printer.join()
         log.info "Finished"
         

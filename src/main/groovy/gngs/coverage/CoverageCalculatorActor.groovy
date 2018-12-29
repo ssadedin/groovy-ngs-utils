@@ -267,7 +267,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
             }
         }
         log.info "Sending stop message to CRA ${bam.samples[0]} ..."
-        calculator << "stop"
+        calculator << RegulatingActor.STOP
         calculator.join()
     }
    
