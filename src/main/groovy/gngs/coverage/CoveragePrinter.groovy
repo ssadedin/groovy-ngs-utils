@@ -263,6 +263,7 @@ class CoveragePrinter extends RegulatingActor<Map> {
                 w.write('\t')                                
             }
             w.write(numberFormat.format(values[numValues]))
+            w.write('\n')
         }
     }
     
