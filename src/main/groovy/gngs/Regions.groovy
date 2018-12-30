@@ -232,9 +232,11 @@ class Regions implements Iterable<Region> {
         Regions result = new Regions()
         this.index.each { chr, chrIndex ->
             RangeIndex otherChrIndex = other.index[chr]
+            if(otherChrIndex.is(null))
+                return 
             for(IntRange r in chrIndex) {
-                if(otherChrIndex != null)
-                    otherChrIndex.intersect(r.from, r.to).each { Range xr -> result.addRegion(chr, (int)xr.from, ((int)xr.to)+1) }
+                List<IntRange> otherRanges = otherChrIndex.intersect(r.from, r.to)
+                for(IntRange xr : otherRanges) { result.addRegion(chr, (int)xr.from, ((int)xr.to)+1) }
             }
         }
         return result

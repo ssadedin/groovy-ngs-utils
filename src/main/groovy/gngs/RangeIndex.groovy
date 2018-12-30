@@ -373,6 +373,27 @@ class RangeIndex implements Iterable<IntRange> {
         !getOverlaps(start,end, true).isEmpty()
     }
     
+    final static Comparator<IntRange> INT_RANGE_COMPARATOR = new Comparator<IntRange>() {
+            @Override
+            @CompileStatic
+            int compare(IntRange a, IntRange b) {
+                if(a.is(b)) {
+                    return 0
+                }
+                else {
+                    int d = a.from - b.from; 
+                    if(d == 0) {
+                        d = a.to - b.to 
+                        if(d == 0) {
+                            d = System.identityHashCode(a).compareTo(System.identityHashCode(b))
+                        }
+                    }
+                    return d
+                }
+            }
+        } 
+ 
+    
     /**
      * Return a list of the ranges in this index that overlap the given range.
      * If there are multiple ranges that overlap, or multiple distinct occurrences
@@ -386,43 +407,32 @@ class RangeIndex implements Iterable<IntRange> {
      * @return List of ranges in the index that overlap the query
      */
     @CompileStatic
-    List<Range> getOverlaps(int start, int end, boolean returnFirst) {
+    List<Range> getOverlaps(final int start, final int end, final boolean returnFirst) {
         
-        TreeSet<IntRange> resultSet = new TreeSet<IntRange>({ IntRange a, IntRange b -> 
-            if(a.is(b)) {
-                return 0
-            }
-            else {
-                int d = a.from - b.from; 
-                if(d == 0) {
-                    d = a.to - b.to 
-                    if(d == 0) {
-                        d = System.identityHashCode(a).compareTo(System.identityHashCode(b))
-                    }
-                }
-                return d
-            }
-        } as Comparator<IntRange>)
+        TreeSet<IntRange> resultSet = new TreeSet<IntRange>(INT_RANGE_COMPARATOR)
             
-         IntRange interval = start..end-1
+        final IntRange interval = start..end-1
          
         List<Range> result = []
         Map.Entry<Integer,List<IntRange>> entry = ranges.lowerEntry(start+1)
-        if(!entry) 
+        if(entry.is(null))
             entry = ranges.higherEntry(start)
             
         // Iterate as long as we are in the range
-        while(entry != null && entry.key <= end) {
+        while(!entry.is(null) && entry.key <= end) {
             for(IntRange r in entry.value) {
                if(r.from<=end && r.to>=start) {
                    resultSet.add(r)
                    if(returnFirst)
-                       return resultSet as List
+                       return (List<Range>)Arrays.asList(resultSet.toArray())
                }
             }
             entry = ranges.higherEntry(entry.key)
         }
-        return resultSet as List
+        
+        return (List<Range>)Arrays.asList(resultSet.toArray())
+        
+//        return resultSet as List
     }
     
     /**
@@ -436,13 +446,17 @@ class RangeIndex implements Iterable<IntRange> {
     @CompileStatic
     List<IntRange> intersect(int start, int end) {
        IntRange srcRange = start..end
-       def result = getOverlaps(start,end)
-       return (List<IntRange>)result.collect { IntRange r ->
+       List<IntRange> result = getOverlaps(start,end)
+       
+       final int numResults = result.size()
+       for(int i=0; i<numResults; ++i) {
+           IntRange r = result[i]
            if(r instanceof GRange) 
-               return (IntRange)((GRange)r).intersectRange(srcRange)
+               result[i] = (IntRange)((GRange)r).intersectRange(srcRange)
            else 
-               return Math.max(r.from, start)..Math.min(r.to, end) 
+               result[i] = Math.max(r.from, start)..Math.min(r.to, end)            
        }
+       return result
     }    
     
     /**
@@ -615,16 +629,17 @@ class RangeIndex implements Iterable<IntRange> {
             List<IntRange> activeRanges = []
             IntRange nextRange = null
             
+            @CompileStatic
             boolean hasNext() {
                 if(nextRange)
                     return true
                     
                 // Note: pos becomes null when iteration through index exhausted
                 // nextRange is set null at each call of next()
-                while(pos != null && (nextRange==null || nextRange.from < pos)) {
+                while(!pos.is(null) && (nextRange.is(null) || nextRange.from < pos)) {
                   nextRange = findNext()
                 }
-                return nextRange != null
+                return !nextRange.is(null)
             }
             
             IntRange next() {
@@ -637,6 +652,7 @@ class RangeIndex implements Iterable<IntRange> {
                 return result
             }
             
+            @CompileStatic
             IntRange findNext() {
                 if(pos == -1) {
                     pos = ranges.firstKey()

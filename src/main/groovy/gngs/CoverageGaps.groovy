@@ -179,7 +179,6 @@ class CoverageGaps {
         if(cov < threshold) {
             if(!block)  {
                 block = new CoverageBlock(chr:chr, region:region, start:pos)
-//                log.info "New block: $block"
                 if(id != null)
                     block.id = id
             }

@@ -1,5 +1,6 @@
 
 
+import gngs.GATKIntervalSummary
 import org.junit.Test;
 
 class GATKIntervalSummaryTest {

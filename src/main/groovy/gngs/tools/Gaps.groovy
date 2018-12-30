@@ -25,6 +25,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics
 
 import gngs.*
 import groovy.transform.CompileStatic
+import groovy.transform.Memoized
 import groovy.util.logging.Log
 import groovyx.gpars.GParsPool
 import groovyx.gpars.GParsPoolUtil
@@ -39,42 +40,60 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
         this.refgenes = refgenes
     }
     
-    final static List<String> ANNOTATION_COLUMNS = ['transcript', 'gene', 'exon', 'coding_intersect']
+    final static List<String> ANNOTATION_COLUMNS = ['transcript', 'strand', 'gene', 'exon', 'coding_intersect']
 
+    @CompileStatic
     @Override
     public void process(CoverageBlock block) {
         
         // Check for overlapping transcripts
-        List<GRange> transcripts = refgenes.refData.getOverlaps(block)
+        List<GRange> transcripts = (List<GRange>)refgenes.refData.getOverlaps(block)
+        assert block.annotations == null || block.annotations.isEmpty()
         block.annotations = []
-        if(transcripts) {
-            for(Region info in transcripts*.extra) {
-                block.id = info.gene
+        
+        if(transcripts != null && !transcripts.isEmpty()) {
+            
+            List<Region> regions = new ArrayList(transcripts.size())
+            for(GRange gr in transcripts) {
+                regions.add((Region)gr.extra)
+            }
+            
+            for(Region region in regions) {
                 
-                int cdsStart = info.cds_start.toInteger()
-                int cdsEnd = info.cds_end.toInteger()
+                Map info = region.properties
+                block.id = info['gene']
+                
+                int cdsStart = info['cds_start'].toString().toInteger()
+                int cdsEnd = info.cds_end.toString().toInteger()
                 Region cdsRegion = new Region(block.chr, cdsStart, cdsEnd)
-                Regions exons = refgenes.getTranscriptExons(info.tx)
-                Regions intersectedExons = exons.intersect(new Regions([block]))
+                Regions exons = getExonsForTranscript((String)info.tx)
+                Regions intersectedExons = exons.intersect(new Regions([(IRegion)block]))
 //                log.info "intersected Exon numbers: " + intersectedExons*.exon
                 for(Region exon in exons) {
                     if(!exon.overlaps(block))
                         continue
                         
-                    int cdsIntersect = Math.max(exon.intersect(cdsRegion).intersect(block).size()-1,0)
-                    
+                    int cdsIntersect = Math.max((int)exon.intersect(cdsRegion).intersect(block).size()-1,0)
                     block.annotations << [ 
                         transcript: info.tx, 
+                        strand: info.strand,
                         gene: info.gene, 
-                        exon: info.strand == "+" ? exon.exon : (exons.numberOfRanges - exon.exon),
+                        exon: info.strand == "+" ? exon['exon'] : (exons.numberOfRanges - (Integer)exon['exon']),
                         coding_intersect: cdsIntersect,
                     ]
                 }
                 
             }
-//            log.info "Annotated gap: " + block
+//            log.info "Annotated gap (${block.hashCode()}): " + block
         }
         
+        
+    }
+    
+    @CompileStatic
+    @Memoized(maxCacheSize=500)
+    Regions getExonsForTranscript(String tx) {
+       refgenes.getTranscriptExons(tx) 
     }
 }
 
@@ -170,12 +189,14 @@ class Gaps {
                     }
                     
                     Region ixRegion = (Region)((GRange)ix).extra
+                    CoverageBlock block = (CoverageBlock)((GRange)r.range).extra
                     filtered.addRegion(new Region(
                         r.chr, 
                         new GRange((int)ix.from, (int)ix.to, 
                             new CoverageBlock(chr: r.chr, start: (int)ix.from, end: (int)ix.to, 
-                                stats: ((DescriptiveStatistics)((CoverageBlock)((GRange)r.range).extra).stats), 
-                                id: (String)ixRegion.getProperty('id'))
+                                stats: ((DescriptiveStatistics)block.stats), 
+                                id: (String)ixRegion.getProperty('id'),
+                                annotations: block.annotations)
                         )
                     ))
                 }
@@ -225,10 +246,14 @@ class Gaps {
             m 'Input file is multicov format, not BEDTools'
             r 'Annotate with refgene for genome build <arg>', args:1
             a 'Write annotated report to separate file <arg>', args:1
+            csv 'Write output comma separated instead of tab separated'
             h 'Output a human readable table'
         }
         
         OptionAccessor opts = cli.parse(args)
+        if(!opts) 
+            System.exit(1)
+        
         if(!opts.arguments()) {
             cli.usage()
             System.err.println "Please provide a BEDTools coverage file"
@@ -245,17 +270,25 @@ class Gaps {
             RefGenes refgenes = new File(opts.r).exists() ? new RefGenes(opts.r) : RefGenes.download(opts.r)
             gaps.gapProcessor = new GapAnnotator(refgenes)
             gaps.gapProcessor.start()
+            log.info "Annotating using gene definitions from $opts.r"
         }
         
         if(opts.t)
             gaps.threshold = opts.t.toInteger()
             
+        
         if(opts.m)
             gaps.calculateMultiCov()
         else
             gaps.calculate()
             
-        logGapInfo(coverageFile,gaps)
+//        logGapInfo(coverageFile,gaps)
+        
+        if(opts.r) {
+            gaps.gapProcessor.sendStop()
+            gaps.gapProcessor.join()
+        }
+            
         return gaps
     }
     
@@ -304,6 +337,13 @@ class Gaps {
             annotationWriter = Utils.writer(opts.a)
         }
         
+        if(opts.csv) {
+            List cols = ['Chr', 'Start', 'End', 'Gene', 'Width', 'Min Cov', 'Mean Cov', 'Max Cov']
+            if(opts.r && !opts.a)
+                cols += ['Tx Name', 'Strand', 'Gene', 'Exon Number', 'CDS Overlap']
+                
+            println(cols.join(','))
+        }
         
         try {
             for(Region blockRegion in gaps) {
@@ -330,23 +370,27 @@ class Gaps {
     void writeGap(Region blockRegion, Writer annotationWriter) {
         CoverageBlock block = blockRegion.extra
         List fields = [block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max]
+        
+        String sep = opts.csv ? ',' : '\t'
+        
         if(opts.r) {
+//            log.info "Write gap (${block.hashCode()}): " + block
             if(block.annotations) {
                 for(Map annotation in block.annotations) {
                     List rowFields = fields + GapAnnotator.ANNOTATION_COLUMNS.collect { annotation[it] }
                     if(annotationWriter != null) {
-                        annotationWriter.println(rowFields.join('\t'))
-                        println(fields.join('\t'))
+                        annotationWriter.println(rowFields.join(sep))
+                        println(fields.join(sep))
                     }
                     else
-                        println(rowFields.join('\t'))
+                        println(rowFields.join(sep))
                 }
             }
             else { // Add empty values for the annotations
-                String annotatedFields = (fields + (['']*GapAnnotator.ANNOTATION_COLUMNS.size())).join('\t')
+                String annotatedFields = (fields + (['']*GapAnnotator.ANNOTATION_COLUMNS.size())).join(sep)
                 if(annotationWriter != null) {
                     annotationWriter.println(annotatedFields)
-                    println(fields.join('\t'))
+                    println(fields.join(sep))
                 }
                 else {
                     println(annotatedFields)
@@ -354,7 +398,7 @@ class Gaps {
             }
         }
         else {
-            println(fields.join('\t'))
+            println(fields.join(sep))
         }
     }
 
