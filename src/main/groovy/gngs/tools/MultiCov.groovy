@@ -117,6 +117,9 @@ class MultiCov extends ToolBase {
             if(opts.gcref)
                 options.gcReference = new FASTA(opts.gcref)
                 
+            if(opts.targetmeans) 
+                options.collectRegionStatistics = true
+                
             CoveragePrinter printer = new CoveragePrinter(options, w, samples)
             
             if(opts['2pass']) {
@@ -188,6 +191,7 @@ class MultiCov extends ToolBase {
     }
     
     void run(CoveragePrinter printer) {
+        
         printer.start()
             
         CoverageCombinerActor combiner = new CoverageCombinerActor(printer, bams.size())
