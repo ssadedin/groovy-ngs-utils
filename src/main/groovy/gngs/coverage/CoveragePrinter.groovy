@@ -92,8 +92,6 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     Stats [] sampleRegionStats = null
     
-    Writer sampleRegionMeansWriter = null
-    
     IntegerStats [] rawCoverageStats = null
     
     /**
@@ -111,6 +109,8 @@ class CoveragePrinter extends RegulatingActor<Map> {
     
     final int numSamples
     
+    boolean collectRegionStatistics = false
+    
     CoveragePrinter(Map options=[:], Writer w, List<String> samples) {
         super(50000,100000)
         this.progress = new ProgressCounter(withRate:true, log:log, withTime:true, extra: { "Computing stats on region: $currentTarget" })
@@ -118,10 +118,11 @@ class CoveragePrinter extends RegulatingActor<Map> {
         this.samples = samples
         this.numSamples = samples.size()
         this.sampleStats = (1..samples.size()).collect { new SummaryStatistics() } 
-        this.sampleRegionMeans = samples.collectEntries { [ it, new ArrayList(1000)] }
         
-        if(options.regionMeansWriter)
-            this.sampleRegionMeansWriter = options.regionMeansWriter
+        if(options.collectRegionStatistics) {
+            this.collectRegionStatistics = true
+            this.sampleRegionMeans = samples.collectEntries { [ it, new ArrayList(1000)] }
+        }
         
         if(options.gcReference) {
             this.gcReference = options.gcReference
@@ -224,10 +225,11 @@ class CoveragePrinter extends RegulatingActor<Map> {
             log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
         }
         
-        updateRegionMeanCoverages()
-        
-        this.sampleRegionStats = new Stats[samples.size()].collect { new Stats() } as Stats[]
-        
+        if(this.collectRegionStatistics) {
+            updateRegionMeanCoverages()
+            
+            this.sampleRegionStats = new Stats[samples.size()].collect { new Stats() } as Stats[]
+        }
     }
     
     @CompileStatic
@@ -273,7 +275,8 @@ class CoveragePrinter extends RegulatingActor<Map> {
         for(int i=0; i<numValues; ++i) {
             int intVal = (int)values[i]
             rawCoverageStats[i].addValue(intVal)
-            sampleRegionStats[i].addValue(intVal)
+            if(collectRegionStatistics)
+                sampleRegionStats[i].addValue(intVal)
         }
     } 
     
