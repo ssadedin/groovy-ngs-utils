@@ -26,6 +26,7 @@ class Table {
             c 'Columns to show', longOpt: 'columns', args:1, required:false
             x 'Columns to exclude', longOpt: 'exclude', args:1, required:false
             filter 'Row filter: groovy expression to limit rows', args:Cli.UNLIMITED, required:false
+            sort 'Sort by given column (specify title)', args: 1, required:false
             gene 'Add a column with an HGNC gene symbol, based on interpreting the first 2 column BED style coordinates', required:false
             n 'Number of rows to show', args:1, required:false
             ofmt 'Output format: csv,tsv,txt default is text', args:1, required: false
@@ -95,6 +96,22 @@ class Table {
                 opts.filters.every { f ->
                     Eval.x(row, f)
                 }
+            }
+        }
+        
+        if(opts.sort) {
+            String sortField = opts.sort
+            Integer multiplier = null
+            if(sortField.startsWith('-')) {
+                multiplier = -1
+                sortField = sortField.substring(1)
+            }
+            data = data.sort { row ->
+                def x = row[sortField]
+                if(multiplier != null) {
+                    x = x * multiplier
+                }
+                return x
             }
         }
         
