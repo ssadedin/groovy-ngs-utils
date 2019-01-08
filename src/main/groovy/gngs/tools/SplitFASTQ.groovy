@@ -119,16 +119,29 @@ class SplitFASTQ extends ToolBase {
             s 'Sharding specification in form n,m n=shard to output, n=total shards', args:1, required: true
             r1 'FASTQ file read 1', args: 1, required: true
             r2 'FASTQ file read 2', args: 1, required: false
+            f 'Downsampling factor (1.0)', args: 1, required: false
             dedupe 'Only emit reads that are not duplicates of reads already seen'
             n 'Number of threads to use for deduping (4)', args:1, required: false
         }
     }
+    
+    boolean downsample
+    
+    double downsampleFactor = 1.0d
+    
+    Random downsampleRandomNumberGenerator
 
     @Override
     public void run() {
         List shardParts = opts.s.tokenize(',')
         int shardId = shardParts[0].toInteger()
         int numberOfShards = shardParts[1].toInteger()
+        
+        if(opts.f) {
+            this.downsample = true
+            this.downsampleFactor = opts.f.toDouble()
+            this.downsampleRandomNumberGenerator = new Random()
+        }
         
         log.info "Splitting ${opts.r1},${opts.r2} ${numberOfShards} ways and outputting shard ${shardId}"
         log.info "Deduplication enabled: $opts.dedupe"
@@ -159,6 +172,10 @@ class SplitFASTQ extends ToolBase {
                 int hash = r1.name.hashCode()
                 int readShardId = Math.abs(hash % shards)
                 ++numberProcessed 
+                if(this.downsample) {
+                    if(this.downsampleRandomNumberGenerator.nextDouble()>this.downsampleFactor)
+                        return
+                }
                 if(readShardId == shardId) {
                     ++numberWritten
                    return true 
@@ -173,6 +190,10 @@ class SplitFASTQ extends ToolBase {
                 int hash = r1.name.hashCode()
                 int readShardId = Math.abs(hash % shards)
                 ++numberProcessed 
+                if(this.downsample) {
+                    if(this.downsampleRandomNumberGenerator.nextDouble()>this.downsampleFactor)
+                        return
+                } 
                 if(readShardId == shardId) {
                     ++numberWritten
                     r1.write(output)
@@ -184,6 +205,10 @@ class SplitFASTQ extends ToolBase {
     
     @CompileStatic
     public runDeduped(int shardId, int shards, int numDedupers, Writer output) {
+        
+        if(this.downsample)
+            throw new IllegalStateException('Downsampling is not supported when deduping is enabled')
+        
         FASTQWriterActor out = new FASTQWriterActor(output, shardId, shards)
         List<FASTQDedupeActor> dedupers = (1..numDedupers).collect { new FASTQDedupeActor(out) }
         
