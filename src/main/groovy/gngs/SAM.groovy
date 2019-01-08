@@ -1232,14 +1232,14 @@ class SAM {
                    int pos = r.alignmentStart
                    
                    boolean verbose = false
-                   if(pos == 18057685) {
-                       println "Leading edge at debug position"
-                   }
-                   
-                   if(currentPosition == 18057685) {
-                       println "Window center at debug position"
-                   }
-     
+//                   if(pos == 18057685) {
+//                       println "Leading edge at debug position"
+//                   }
+//                   
+//                   if(currentPosition == 18057685) {
+//                       println "Window center at debug position"
+//                   }
+//     
                    
                    // Check if we already have reads at this position
                    List<SAMRecord> readsAtPos = window[pos]
@@ -1277,10 +1277,10 @@ class SAM {
                        window.pollFirstEntry()
                    }
                    
-                   if(currentPosition == 18057685) {
-                       println "Window center at debug position: reads are " + window[currentPosition]
-                   }
-      
+//                   if(currentPosition == 18057685) {
+//                       println "Window center at debug position: reads are " + window[currentPosition]
+//                   }
+//      
                    readWindow.pos = currentPosition
                    if(currentPosition>=start && currentPosition<end)
                        c(readWindow)
