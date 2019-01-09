@@ -70,7 +70,7 @@ class FASTQRead {
     FASTQRead trimEnd(int count, int countStart=0) {
         new FASTQRead(header, bases.substring(countStart,bases.size()-count), quals.substring(countStart,quals.size() - count))
     }
-    
+
     void write(Writer w) {
         w.println(header)
         w.println(bases)
@@ -153,7 +153,35 @@ class FASTQ {
             }
         }
     }
-  
+
+    /**
+     * Filter R1 reads with from fileName1 and write them to 
+     * the output in FASTQ format trimming the Chromium barcode off the front.
+     *
+     * @param fileName1
+     * @param output
+     * @param c
+     */
+    @CompileStatic
+    static void filter10Xnobarcode(String fileName1, Writer output, Closure c) {
+        int passed = 0
+        int processed = 0
+        FASTQ.eachRead(fileName1) { FASTQRead r1 ->
+            ++processed
+            def barcode10X = r1.trimEnd(r1.bases.size() - 16)
+            def r1Rest = r1.trimEnd(0, 16)
+            def result = c(r1Rest,barcode10X)
+            if(result == true) {
+                output.println(r1.header)
+                output.println(r1Rest.bases)
+                output.println("+")
+                output.println(r1Rest.quals)
+                ++passed
+            }
+        }
+    }
+
+
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * uncompressed output files with extensions .filter.fastq based on the 
@@ -196,7 +224,6 @@ class FASTQ {
         }
     }
   
-    
     @CompileStatic
     static void eachPair(String fileName1, String fileName2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
         
