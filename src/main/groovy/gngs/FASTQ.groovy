@@ -29,6 +29,85 @@ import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
 
 /**
+ * Models a single FASTH read, including the header (with name), barcodes, bases and 
+ * quality information.
+ */
+@CompileStatic
+class FASTHRead {
+    
+    /**
+     * This constructor is really just for testing purposes.
+     * However you can use it if you want to fake all the data except the bases.
+     * 
+     * @param bases
+     */
+    FASTHRead(String r1bases, String r2bases, String barcodebases, String ibases) {
+        this.name = Hash.sha1(r1bases)
+        this.r1bases = r1bases
+        this.r1quals = 'A' * r1bases.size()
+        this.r2bases = r2bases
+        this.r2quals = 'A' * r2bases.size()
+        this.barcodebases = barcodebases
+        this.barcodequals = 'A' * barcodebases.size()
+        this.ibases = ibases
+        this.iquals = 'A' * ibases.size()
+        this.header = this.name
+    }
+
+    FASTHRead(String header, String r1bases, String r2bases, String barcodebases, String ibases, String r1quals, String r2quals, String barcodequals, String iquals) {
+        this.header = header
+
+        int slashIndex = header.indexOf('/')
+        int spaceIndex = header.indexOf(' ')
+        if(spaceIndex<0) {
+            this.name = slashIndex>0?header.subSequence(0, slashIndex):header
+        }
+        else // There is a space, but if a slash comes before use that
+        if(slashIndex>=0) {
+            this.name = header.subSequence(0, Math.min(spaceIndex,slashIndex))
+        }
+        else
+          this.name = header.subSequence(0, spaceIndex)
+
+        this.r1bases = r1bases
+        this.r1quals = r1quals
+        this.r2bases = r2bases
+        this.r2quals = r2quals
+        this.barcodebases = barcodebases
+        this.barcodequals = barcodequals
+        this.ibases = ibases
+        this.iquals = iquals
+    }
+
+    void write(Writer w) {
+        w.println(header)
+        w.println(r1bases)
+	w.println(r1quals)
+	w.println(r2bases)
+	w.println(r2quals)
+	w.println(barcodebases)
+	w.println(barcodequals)
+	w.println(ibases)
+	w.println(iquals)
+    }
+
+    int size() {
+        r2bases.size()
+    }
+
+    String header
+    CharSequence name
+    String r1bases
+    String r1quals
+    String r2bases
+    String r2quals
+    String barcodebases
+    String barcodequals
+    String ibases
+    String iquals
+}
+
+/**
  * Models a single FASTQ read, including the header (with name), bases and 
  * quality information.
  */
@@ -112,6 +191,12 @@ class FASTQ {
         eachRead("/dev/stdin",c)
     }
     
+    @CompileStatic
+    static void eachFasthRecord(@ClosureParams(value=SimpleType,options=['gngs.FASTHRead']) Closure c) {
+        //Cheat, fails on windows
+	eachFasthRecord("/dev/stdin",c)
+    }
+
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * uncompressed output files with extensions .filter.fastq based on the 
@@ -218,14 +303,20 @@ class FASTQ {
     }
 
     /**
-     * Sort 10X FASTH interleaved format by the barcode
+     * Sort 10X FASTH interleaved format by the barcode (stdin)
      *
-     * @param input
      * @param output
      */
     @CompileStatic
-    static void sort10X(Reader input, Writer output) {
-
+    static void sort10X(Writer output) {
+        List<FASTHRead> fasth = []
+        int records = 0
+        FASTQ.eachFasthRecord { FASTHRead fh ->
+            fasth.add(fh)
+            ++records
+        }
+        fasth.sort { it.barcodebases }
+        fasth.each { it.write(output) }
     }
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
@@ -331,6 +422,7 @@ class FASTQ {
         }
     }
 
+
     @CompileStatic
     static FASTQRead consumeRead(Reader reader) {
           String name = reader.readLine()
@@ -366,6 +458,68 @@ class FASTQ {
           if(read == null)
               return
                   
+          c(read)
+        }
+    }
+
+
+    @CompileStatic
+    static FASTHRead consumeFasthRead(Reader reader) {
+          String name = reader.readLine()
+          if(name == null)
+              return
+          String r1bases = reader.readLine()
+          if(r1bases == null)
+              throw new ParseException("Incorrect FASTH format: no bases after read name $name", -1)
+
+          String r1quals = reader.readLine()
+          if(r1quals == null)
+              throw new ParseException("Incorrect FASTH format: no quality scores after read name $name", -1)
+
+          String r2bases = reader.readLine()
+          if(r2bases == null)
+              throw new ParseException("Incorrect FASTH format: no bases after read name $name", -1)
+
+          String r2quals = reader.readLine()
+          if(r2quals == null)
+              throw new ParseException("Incorrect FASTH format: no quality scores after read name $name", -1)
+
+          String barcodebases = reader.readLine()
+          if(barcodebases == null)
+              throw new ParseException("Incorrect FASTH format: no bases after read name $name", -1)
+
+          String barcodequals = reader.readLine()
+          if(barcodequals == null)
+              throw new ParseException("Incorrect FASTH format: no quality scores after read name $name", -1)
+
+          String ibases = reader.readLine()
+          if(ibases == null)
+              throw new ParseException("Incorrect FASTH format: no bases after read name $name", -1)
+
+          String iquals = reader.readLine()
+          if(iquals == null)
+              throw new ParseException("Incorrect FASTH format: no quality scores after read name $name", -1)
+
+          return new FASTHRead(name, r1bases, r2bases, barcodebases, ibases, r1quals, r2quals, barcodequals, iquals)
+    }
+
+
+    @CompileStatic
+    static void eachFasthRecord(String fileName, @ClosureParams(value=SimpleType,options=['gngs.FASTHRead']) Closure c) {
+        Utils.reader(fileName) { Reader reader ->
+            iterateFasthReader(reader,c)
+        }
+    }
+
+
+    @CompileStatic
+    private static void iterateFasthReader(Reader reader, Closure c) {
+        // Read the file 9 lines at a time
+        while(true) {
+          final FASTHRead read = consumeFasthRead(reader)
+          if(read == null)
+              return
+
           c(read)
         }
     }
