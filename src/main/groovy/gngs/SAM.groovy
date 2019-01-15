@@ -430,6 +430,39 @@ class SAM {
     }
     
     /**
+     * Iterate over each record in the same file in the order they are in the file
+     * @param c
+     */
+    @CompileStatic
+    void eachRecord(RegulatingActor<SAMRecord> actor) {
+        withIterator { i ->
+            while(i.hasNext()) {
+                actor.sendTo(i.next())
+            }
+        }
+    } 
+    
+    /**
+     * Iterate over each record in the same file in the order they are in the file
+     * @param c
+     */
+    @CompileStatic
+    void eachRecord(Region region, RegulatingActor<List<SAMRecord>> actor) {
+        withIterator(region) { i ->
+            List<SAMRecord> buffer = new ArrayList<SAMRecord>(500)
+            while(i.hasNext()) {
+                buffer.add(i.next())
+                if(buffer.size()>499) {
+                    actor.sendTo(buffer)
+                    buffer = new ArrayList<SAMRecord>(500)
+                }
+            }
+            if(!buffer.isEmpty())
+                actor.sendTo(buffer)
+        }
+    }  
+    
+    /**
      * Call the given closure for every pair of reads in a BAM file containing paired end reads.
      * <p>
      * Note: the algorithm works by keeping a running buffer of reads, and iterating through
