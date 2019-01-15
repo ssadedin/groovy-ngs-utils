@@ -239,9 +239,10 @@ class VCF implements Iterable<Variant> {
         parse([:], f, peds, c)
     }
     
+    @CompileStatic
     static VCF parse(Map options,File f, List<Pedigree> peds = null, Closure c = null) {
-        f.withInputStream { InputStream i ->
-            parse(options+[fileName:f.path], i, peds, c)
+        (VCF)Utils.reader(f.absolutePath) { r ->
+            parseImpl(options+[fileName:f.path],r, false, peds, c)
         }
     }
     
@@ -337,6 +338,17 @@ class VCF implements Iterable<Variant> {
      */
     @CompileStatic
     private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
+        Reader r = f.newReader()
+        try {
+            return parseImpl(options, r, filterMode, peds, c)
+        }
+        finally {
+            r.close()
+        }
+    }
+    
+    @CompileStatic
+    private static VCF parseImpl(Map options=[:], Reader r, boolean filterMode, List<Pedigree> peds, Closure c) {
         
         boolean ignoreHomRef = !(options.includeHomRef ?: false)
         
@@ -397,9 +409,8 @@ class VCF implements Iterable<Variant> {
         }
         
         try {
-            
                
-            f.eachLine { String line ->
+            r.eachLine { String line ->
                 
                 ++count
                 
