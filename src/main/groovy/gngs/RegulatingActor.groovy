@@ -1,8 +1,13 @@
 package gngs
 
 import groovy.transform.CompileStatic
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.FirstParam
+import groovy.transform.stc.FromAbstractTypeMethods
+import groovy.transform.stc.SimpleType
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
+import groovyx.gpars.actor.Actors
 import groovyx.gpars.actor.DefaultActor
 import groovyx.gpars.actor.impl.MessageStream
 
@@ -147,5 +152,15 @@ abstract class RegulatingActor<T> extends DefaultActor {
         message.acknowledgeCounter.incrementAndGet()
         this.pendingMessages.incrementAndGet()
         super.send(message)
+    }
+    
+    @CompileStatic
+    static RegulatingActor<T> actor(@ClosureParams(value=FromAbstractTypeMethods) Closure c) {
+        RegulatingActor<T> ds = new RegulatingActor<T>() {
+            void process(T value) {
+                c(value)
+            }
+        }
+        return ds
     }
 }
