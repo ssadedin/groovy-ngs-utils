@@ -469,7 +469,7 @@ class VCF implements Iterable<Variant> {
             // ignore
         }
         finally {
-            if(parseLastHeader != null)
+            if(vcf.lastHeaderLine == null)
                 parseLastHeader()
         }
         
