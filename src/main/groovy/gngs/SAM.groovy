@@ -244,7 +244,7 @@ class SAM {
             return samReaderFactory.open(SamInputResource.of(samStream))
     }
     
-    
+    @CompileStatic
     def withReader(Closure c) {
         SamReader r = newReader()
         try {
@@ -255,7 +255,8 @@ class SAM {
         }
     }
     
-    def withIterator(Region region, Closure c) {
+    @CompileStatic
+    def withIterator(Region region, @ClosureParams(value=SimpleType, options=['htsjdk.samtools.SAMRecordIterator']) Closure c) {
         withReader { SamReader r ->
             SAMRecordIterator i = r.query(region.chr, region.from, region.to, false) 
             try {
@@ -267,7 +268,8 @@ class SAM {
         }
     }
     
-    def withIterator(Closure c) {
+    @CompileStatic
+    def withIterator(@ClosureParams(value=SimpleType, options=['htsjdk.samtools.SAMRecordIterator']) Closure c) {
         withReader { SamReader r ->
             SAMRecordIterator i = r.iterator()
             try {
