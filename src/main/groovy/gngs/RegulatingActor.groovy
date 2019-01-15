@@ -118,7 +118,7 @@ abstract class RegulatingActor<T> extends DefaultActor {
     }
     
     @CompileStatic
-    public MessageStream sendTo(Object o) {
+    public MessageStream sendTo(T o) {
         this.send(new AcknowledgeableMessage(o, this.pendingMessages))
     }
     
