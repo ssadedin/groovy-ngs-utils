@@ -107,7 +107,7 @@ class Region extends Expando implements IRegion, Serializable {
     
     Region(Map props=null, String chr, int from, int to) {
         this.chr = chr
-        this.range = (from..to)
+        this.range = new GRange(from, to, this)
         setProps(props)
     }
     
@@ -118,7 +118,7 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     @CompileStatic
-    private void setProps(Map props) {
+    public void setProps(Map props) {
        if(props == null) 
            return
        for(Map.Entry e in props) {
@@ -187,7 +187,7 @@ class Region extends Expando implements IRegion, Serializable {
                 new GRange(Math.max(this.from-leftBp,0), this.to+rightBp, ((GRange)range).extra))
         }
         else {
-            return new Region(this.chr, 
+            Region result = new Region(this.chr, 
                 new IntRange(Math.max(this.from-leftBp,0), this.to+rightBp))            
         }
     }

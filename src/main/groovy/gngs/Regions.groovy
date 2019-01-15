@@ -131,7 +131,11 @@ class Regions implements Iterable<Region> {
     Regions widen(int bp) {
         Regions regions = new Regions()
         for(Region r in this) {
-            regions.addRegion(r.widen(bp))
+            Region widened = r.widen(bp)
+            if(!r.properties.is(null) && !r.properties.isEmpty()) {
+                widened.setProps(r.properties)
+            }
+            regions.addRegion(widened)
         }
         return regions
     }

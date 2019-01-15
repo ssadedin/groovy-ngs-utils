@@ -366,4 +366,24 @@ class RegionsTest {
         assert r.foo == 'bar'
         
     }
+    
+    @Test
+    void testWidenPreservesExtra() {
+        
+        Region r1 = new Region('chr1', 1, 100, foo: "hello")
+        Region r2 = new Region('chr1', 50, 120, foo: "world")
+        
+        Regions rr = [r1,r2] as Regions
+        
+        Regions w = rr.widen(10)
+        
+        assert w[0].extra.foo == "hello"
+        
+        Regions wr = rr.widen(10).reduce { x, y -> x.extra }
+        assert wr[0].extra.foo == "hello"
+        
+        
+    }
+    
+    
 }
