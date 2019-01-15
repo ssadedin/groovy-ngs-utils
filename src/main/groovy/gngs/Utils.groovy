@@ -422,6 +422,21 @@ class Utils {
         return fileLike.newReader()
     }
     
+    static withWriters(List<String> fileNames, Closure c) {
+        List<Writer> writers = []
+        try {
+            for(String fileName in fileNames) {
+                writers << outputWriter(fileName)
+            }
+            c(*writers)
+        }
+        finally {
+            for(Writer w : writers) {
+                closeQuietly(w)
+            }
+        }
+    }
+    
     @CompileStatic
     static Writer writer(File file) {
         return outputWriter(file.path)
