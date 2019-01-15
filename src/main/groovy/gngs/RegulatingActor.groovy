@@ -125,7 +125,8 @@ abstract class RegulatingActor<T> extends DefaultActor {
     
     @CompileStatic
     void sendDownstream(Object message) {
-        this.downstream.send(new AcknowledgeableMessage(message, this.downstreamCounter))
+        if(!this.downstream.is(null))
+            this.downstream.send(new AcknowledgeableMessage(message, this.downstreamCounter))
     }
     
     @CompileStatic
