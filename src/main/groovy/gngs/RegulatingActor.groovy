@@ -73,6 +73,12 @@ abstract class RegulatingActor<T> extends DefaultActor {
         this.hardLimit = hardLimit;
     }
 
+    /**
+     * Create a RegulatingActor with basic defaults for the queue sizes that suit many tasks
+     */
+    public RegulatingActor() {
+        this(1000,5000)
+    }
 
     final RegulatingActor downstream
     
