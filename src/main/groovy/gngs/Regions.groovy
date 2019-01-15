@@ -745,7 +745,21 @@ class Regions implements Iterable<Region> {
      * @param options
      * @param fileName
      */
+    @CompileStatic
     void save(Map options, String fileName) {
+        Utils.withWriters([fileName]) { Writer w ->
+            save(options,w)
+        }
+    }
+    
+    /**
+     * Save the regions in BED format. If an 'extra' option is provided, this is called
+     * as a closure to return an id field to use for each region.
+     * 
+     * @param options
+     * @param fileName
+     */ 
+    void save(Map options, Writer w) {
         
         def regionsToSave = this
         if(options?.sorted) {
@@ -758,14 +772,11 @@ class Regions implements Iterable<Region> {
         
         Closure c = options?.extra
         
-        new File(fileName).withWriter {  w -> 
-            
-            if(c != null) {
-                regionsToSave.each { w.println([it.chr, it.from, it.to+1, c(it)].join('\t')) }
-            }
-            else {
-                regionsToSave.each { w.println([it.chr, it.from, it.to+1].join('\t')) }
-            }
+        if(c != null) {
+            regionsToSave.each { w.println([it.chr, it.from, it.to+1, c(it)].join('\t')) }
+        }
+        else {
+            regionsToSave.each { w.println([it.chr, it.from, it.to+1].join('\t')) }
         }
     }
     
