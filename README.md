@@ -1,4 +1,4 @@
-# Groovy NGS Utils
+# Groovy NGS Utils [![travis](https://travis-ci.org/ssadedin/groovy-ngs-utils.svg?branch=master)](https://travis-ci.org/ssadedin/groovy-ngs-utils)
 
 A library for working with next generation (MPS) sequencing data in Groovy.
 
