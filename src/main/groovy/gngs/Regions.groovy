@@ -827,6 +827,23 @@ class Regions implements Iterable<Region> {
     }
     
     /**
+     * A convenience method to return the contained regions as a list of Map objects.
+     * <p>
+     * This is primarily aimed at interactive use in shell or notebook environments,
+     * it is not performant or memory efficient.
+     */
+    @CompileStatic
+    List<Map<String,Object>> toListMap() {
+        (List<Map>)this.collect { Region r ->
+            [
+                chr: r.chr,
+                start: r.from,
+                end: r.to
+            ] + r.properties.grep { Map.Entry e -> (e.value instanceof String) || (e.value instanceof Number) }.collectEntries()
+        }
+    }
+    
+    /**
      * Select the given number of ranges from these, approximately evenly spaced
      * 
      * @param desiredRanges
