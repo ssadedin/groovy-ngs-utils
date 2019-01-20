@@ -22,12 +22,8 @@ import java.sql.Timestamp;
 import com.xlson.groovycsv.PropertyMapper;
 
 import db.Schema;
-import gngs.Allele
-import gngs.Pedigree
-import gngs.Pedigrees
-import gngs.Subject
-import gngs.Utils
-import gngs.Variant
+import gngs.*
+
 import groovy.sql.Sql
 import groovy.util.logging.Log;
 
@@ -178,7 +174,7 @@ class VariantDB implements Closeable {
     /**
      * Find a variant in the database by its start position
      */
-    def findVariant(Variant variant, Allele allele) {
+    def findVariant(Variant variant, Variant.Allele allele) {
         db.firstRow("select * from variant where chr=$variant.chr and start=$allele.start and alt=$allele.alt")
     }
     
@@ -210,7 +206,7 @@ class VariantDB implements Closeable {
      *              so that new samples can be added to the database without changing the
      *              variant counts if queried for old samples.
      */
-    Map countObservations(Variant v, Allele allele, String batch=null) {
+    Map countObservations(Variant v, Variant.Allele allele, String batch=null) {
         
         def dateString = queryBatchDateTime(batch)
         
@@ -352,14 +348,14 @@ class VariantDB implements Closeable {
      * 
      * @return count of variants added
      */
-    int add(String batch, Pedigrees peds, Variant v, Allele alleleToAdd=null, String cohort=null, String sampleToAdd=null, def annotations=null) {
+    int add(String batch, Pedigrees peds, Variant v, Variant.Allele alleleToAdd=null, String cohort=null, String sampleToAdd=null, def annotations=null) {
         
         List addSamples = sampleToAdd ? [sampleToAdd] : v.header.samples
         Map sampleInfo = addCachedSampleInfo(addSamples, batch, cohort, peds)
         
         int countAdded = 0
         def alleles = alleleToAdd ? [alleleToAdd] : v.alleles
-        for(Allele allele in v.alleles) {
+        for(Variant.Allele allele in v.alleles) {
             def variant_row = findVariant(v, allele)
             if(!variant_row) {
                 
@@ -467,7 +463,7 @@ class VariantDB implements Closeable {
      * <li>in_target - total number of samples observed to have the variant within specified cohort
      * <li>other_target - total number of samples observed to have the variant outside of specified cohort
      */
-    Map queryVariantCounts(Map options=[:], Variant variant, Allele allele, String sampleId) {
+    Map queryVariantCounts(Map options=[:], Variant variant, Variant.Allele allele, String sampleId) {
         
         String dateString = queryBatchDateTime(options.batch)
         

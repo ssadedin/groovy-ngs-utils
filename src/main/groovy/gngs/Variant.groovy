@@ -237,43 +237,6 @@ class VEPConsequences {
        ]
 }
 
-/**
- * A specific allele in the context of a Variant in a VCF file
- * <p>
- * Each variant (line) in a VCF file may contain multiple alternate alleles.
- * This class represents one alternate allele in a VCF file.
- * 
- * @author simon.sadedin@mcri.edu.au
- */
-class Allele {
-    
-    int index
-    
-    /**
-     * Actual start position of genomic change for this Allele,
-     * relative to reference
-     */
-    int start
-    
-   /**
-    * Actual end position of genomic change for this Allele
-    * relative to reference
-    */
-    int end
-    
-    String alt
-    
-    /**
-     * INS, DEL or SNP, INV, DUP, DEL
-     */
-    String type
-    
-    int size(String ref) {
-        (this.alt.size() == ref.size()) ? 1 : Math.abs(this.alt.size() - ref.size())
-    }
-    
-    String toString() { start != end ? "$start-$end $alt ($type)" : "$start $alt ($type)" }
-}
 
 /**
  * Represents the genetic state at a specific locus in a genome
@@ -305,7 +268,7 @@ class Allele {
  * One of the most useful operations is to determine the dosage (ie: heterozygosity, number of copies)
  * of a variant in a particular sample. Eg:
  * <pre>
- * VCF vcf = new VCF.parse("test.vcf")
+ * VCF vcf = VCF.parse("test.vcf")
  * 
  * // Find all the variants that affect sample MYSAMPLE in any way
  * List<Variant> mySampleVariants = vcf.grep {  Variant v -> v.sampleDosage("MYSAMPLE")>0 }
@@ -340,6 +303,51 @@ class Allele {
  * @author simon.sadedin@mcri.edu.au
  */
 class Variant implements IRegion {
+    
+    /**
+     * A specific allele in the context of a Variant in a VCF file
+     * <p>
+     * Each variant (line) in a VCF file may contain multiple alternate alleles.
+     * This class represents one alternate allele in a VCF file.
+     * 
+     * @author simon.sadedin@mcri.edu.au
+     */
+    @CompileStatic
+    class Allele {
+        
+        int index
+        
+        /**
+         * Actual start position of genomic change for this Allele,
+         * relative to reference
+         */
+        int start
+        
+       /**
+        * Actual end position of genomic change for this Allele
+        * relative to reference
+        */
+        int end
+        
+        String alt
+        
+        /**
+         * INS, DEL or SNP, INV, DUP, DEL
+         */
+        String type
+        
+        int size(String ref) {
+            (this.alt.size() == ref.size()) ? 1 : Math.abs(this.alt.size() - ref.size())
+        }
+        
+        String igv() {
+            String url = "http://localhost:60151/load?locus=$chr:$start-$end"
+            return new URL(url).text
+        }
+        
+        String toString() { start != end ? "$start-$end $alt ($type)" : "$start $alt ($type)" }
+    }
+    
     
     ///
     /// Common / shared regexes used in parsing
@@ -457,17 +465,23 @@ class Variant implements IRegion {
     List genoTypeFields
 	
 	
+    @CompileStatic
 	IntRange getRange() {
         if(isSV()) {
             return pos..pos+this.size()
         }
         else
-    		return pos..(pos+alts.max { it.size() }.size())
+    		return pos..<(pos+alts.max { it.size() }.size())
 	}
     
     @CompileStatic
     private boolean parseFields() {
         parseFields(true)   
+    }
+    
+    @CompileStatic
+    Region asType(Region region) {
+        new Region(this) 
     }
     
     /**
@@ -541,11 +555,12 @@ class Variant implements IRegion {
         }
     }
     
+    final static Set numericGTFields = ["DP","GQ"] as Set
+    final static Set numericListFields = ["AD"] as Set
+    
     // Causes strange typecast error (Char => CharSequence at marked line below
 //    @CompileStatic
     Map<String,Object> parseGenoTypeFields(String gt) {
-        Set numericGTFields = ["DP","GQ"] as Set
-        Set numericListFields = ["AD"] as Set
         [genoTypeFields, gt.tokenize(':')].transpose().collectEntries { Object fieldObj ->
               List field = (List)fieldObj
               String key = (String)field[0]
@@ -680,6 +695,30 @@ class Variant implements IRegion {
         }
         this.@info = null
     }
+    
+    /**
+     * @return true if at least 1 allele is present with 1 copy
+     */
+    @CompileStatic
+    boolean isHet() {
+        for(int d : this.getDosages()) {
+            if(d == 1)
+                return true
+        }
+        return false
+    }
+    
+    /**
+     * @return true if at least 1 allele is present with 2 copies
+     */
+    @CompileStatic
+    boolean isHom() {
+        for(int d : this.getDosages()) {
+            if(d == 2)
+                return true
+        }
+        return false
+    } 
 
     /**
      * Update the per-sample genotype info fields by rebuilding them
@@ -808,6 +847,7 @@ class Variant implements IRegion {
      * each sample for the first alternate allele.
      * @return
      */
+    @CompileStatic
     List<Integer> getDosages() {
         getDosages(0)
     }
@@ -817,6 +857,7 @@ class Variant implements IRegion {
      * 
      * <i>Note</i>: the first alternate allele is 0.
      */
+    @CompileStatic
     List<Integer> getDosages(int alleleIndex) {
         if(dosages != null && alleleIndex == 0)
             return dosages
@@ -838,8 +879,8 @@ class Variant implements IRegion {
         // So to find the dosage for allele 1, we need to split the genotype on slash
         // and then count the number of times the requested allele appears.
             
-        def gts = genoTypes*.GT
-        List<Integer> result = gts.collect{PIPE_OR_SLASH_SPLIT.split(it)}*.count { 
+        List<String> gts = (List<String>)genoTypes*.GT
+        List<Integer> result = (List<Integer>)gts.collect{PIPE_OR_SLASH_SPLIT.split(it)}*.count { 
             if(!it.isInteger())
                 return 0
                 
@@ -1463,6 +1504,10 @@ class Variant implements IRegion {
                 return impact
         }
         return "UNKNOWN"
+    }
+    
+    String igv() {
+        alleles[0].igv()
     }
     
 }
