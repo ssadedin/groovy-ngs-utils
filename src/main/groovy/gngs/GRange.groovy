@@ -346,9 +346,38 @@ class GRange extends IntRange implements Serializable {
         return r
     }
   
+    /**
+     * @param  other
+     * @return a new GRange whose left position is the minimum of the overlap between this
+     *         GRange and the other, and whose right position is the maximum of the overlap between
+     *         this range and the other.
+     */
     @CompileStatic
     GRange intersect(IntRange other) {
         intersectRange(other)
+    }
+    
+    /**
+     * @param bp    number of base pairs to widen by
+     * 
+     * @return  a new GRange object representing an interval bp wider than this one,
+     *          with the lower boundary being limited to zero
+     */    
+    @CompileStatic
+    GRange widen(int bp) {
+        return widen(bp,bp)
+    }
+    
+    /**
+     * @param leftBp    number of base pairs to widen by on the "left" side
+     * @param rightBp    number of base pairs to widen by on the "right" side
+     * 
+     * @return  a new GRange object representing an interval bp wider than this one,
+     *          with the lower boundary being limited to zero
+     */
+    @CompileStatic
+    GRange widen(int leftBp, int rightBp) {
+        new GRange(Math.max(this.from-leftBp,0), this.to+rightBp, extra)
     }
     
     static boolean overlaps(IntRange a, IntRange b) {
