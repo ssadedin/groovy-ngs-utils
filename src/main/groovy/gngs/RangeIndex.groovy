@@ -470,10 +470,11 @@ class RangeIndex implements Iterable<IntRange> {
      * @return  List of ranges left after the ranges in this RangeIndex are removed from 
      *          the specified region.
      */
-    List<Range> subtractFrom(int start, int end) {
+    @CompileStatic
+    List<IntRange> subtractFrom(int start, int end) {
 
-        List<Range> result = []
-        List<Range> cutOut = intersect(start,end)       
+        List<IntRange> result = []
+        List<IntRange> cutOut = intersect(start,end)       
         
         // None of the regions in our bed file overlap the range specified,
         // so just return the whole range
@@ -487,7 +488,7 @@ class RangeIndex implements Iterable<IntRange> {
             lastRange = cutOut[0]
         }
             
-        for(Range r in cutOut) {
+        for(IntRange r in cutOut) {
             if(lastRange.is(r))
                 continue
             if(lastRange.to < r.from) {
@@ -776,7 +777,7 @@ class RangeIndex implements Iterable<IntRange> {
     
     /**
      * Merge all overlapping ranges together to make simplified regions
-     * representing all the ranges covered by any range in this RangeInde.
+     * representing all the ranges covered by any range in this RangeIndex.
      * 
      * @return
      */
@@ -801,7 +802,7 @@ class RangeIndex implements Iterable<IntRange> {
                         if(newExtra == null)
                             newExtra = ((GRange)r).getExtra()
                         else
-                        if(reducer != null) {
+                        if(reducer != null) { // Both are GRanges and both have extra values - they need to be merged
                             newExtra = reducer(currentRange, r)
                         }
                     }
@@ -817,16 +818,20 @@ class RangeIndex implements Iterable<IntRange> {
                     }
                     currentRange.extra = newExtra
                 }
-                else
-                    currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to),null)
+                else {
+                    Object newExtra = r instanceof GRange ? ((GRange)r).extra : null
+                    currentRange = new GRange(Math.min((int)r.from, currentRange.from),Math.max((int)r.to, currentRange.to),newExtra)
+                }
             }
             else {
                 reduced.add(currentRange)
                 currentRange = r
             }
         }
-        if(null != currentRange)
+        
+        if(null != currentRange) {
             reduced.add(currentRange)
+        }
             
         return reduced
     }

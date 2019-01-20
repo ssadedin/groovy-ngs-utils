@@ -332,6 +332,7 @@ class Regions implements Iterable<Region> {
      * @param end   end of interval to subtract from (exclusive)
      * @return
      */
+    @CompileStatic
     List<IntRange> subtractFrom(String chr, int start, int end) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
@@ -600,7 +601,12 @@ class Regions implements Iterable<Region> {
     }
         
     /**
-     * Simplify all overlapping regions down to a single region
+     * Simplify all overlapping regions down to a single region, with an optional
+     * closure as a callback to combine the attributes of combined regions
+     * <p>
+     * The closure is passed two IntRange / GRange objects to combine. The 
+     * callback shoud return the new {@link GRange#extra} object to 
+     * assign to the result region.
      *
      * @return a new Regions that consists of all the overlapping regions of
      *          this Regions merged together.
@@ -653,11 +659,12 @@ class Regions implements Iterable<Region> {
     
     @CompileStatic
     Regions subtract(Regions other) {
-        Regions result = new Regions()
-        allRanges.each { String chr, List<IntRange> ranges ->
-            ranges.each { IntRange range ->
-                other.subtractFrom(chr, (int)range.from, ((int)range.to)).each { IntRange r ->
-                    result.addRegion(chr, (int)r.from, ((int)r.to)+1)
+        final Regions result = new Regions()
+        allRanges.each { final String chr, final List<IntRange> ranges ->
+            for(final IntRange range : ranges) {
+                final List<IntRange> subtracted = other.subtractFrom(chr, range.from, range.to)
+                for(IntRange r : subtracted) {
+                    result.addRegion(chr, r.from, r.to+1)
                 }
             }
         }
