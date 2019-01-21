@@ -61,7 +61,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
         this.chromosomesWithReads = chromosomesWithReads
     }
     
-    void process(SAMRecord record) {
+    void process(final SAMRecord record) {
         
         ++received
         
@@ -69,8 +69,8 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
             return
         
         final String readName = record.readName
-        PairType pair = buffer[readName]
-        if(pair) {
+        final PairType pair = buffer.remove(readName)
+        if(!pair.is(null)) {
             if(debugRead != null && (readName == debugRead)) {
                 log.info "Paired: $record"
             }
@@ -107,7 +107,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
         if(pair.chimeric)
             ++this.chimeric
             
-        buffer[readName] = pair
+        buffer.put(readName,pair)
     }
     
     boolean notInRegion(PairType pair, boolean debug) {
