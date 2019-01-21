@@ -31,7 +31,7 @@ import htsjdk.samtools.SAMRecord
 
 @CompileStatic
 @Log
-class PairLocator<PairType extends ReadPair> extends DefaultActor {
+class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> {
     
     /**
      * Read pairs we are indexing, keyed on name
@@ -53,26 +53,12 @@ class PairLocator<PairType extends ReadPair> extends DefaultActor {
     boolean compact = true
     
     PairLocator(Actor consumer) {
+        super(50000,100000)
         this.consumer = consumer
         this.buffer = new HashMap(200000)
     }
     
-    void act() {
-        loop {
-            react { msg ->
-                assert msg != null
-                
-                if(msg == "stop") {
-                    terminate()
-                }
-                else {
-                    processRead((SAMRecord)msg)
-                }
-            }
-        }
-    }
-    
-    void processRead(SAMRecord record) {
+    void process(SAMRecord record) {
         
         ++received
         

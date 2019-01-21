@@ -20,7 +20,9 @@
 package gngs.pair
 
 import java.io.Writer
+import java.util.Map
 import java.util.concurrent.atomic.AtomicInteger
+import gngs.RegulatingActor
 import gngs.SAMRecordPair
 import groovy.transform.CompileStatic
 import groovyx.gpars.actor.DefaultActor
@@ -38,7 +40,7 @@ import groovyx.gpars.actor.DefaultActor
  * @author Simon Sadedin
  */
 @CompileStatic
-class PairWriter extends DefaultActor {
+class PairWriter extends RegulatingActor<Map<String,Object>> {
     
     Writer out
     
@@ -47,23 +49,17 @@ class PairWriter extends DefaultActor {
     public AtomicInteger pending = new AtomicInteger()
     
     PairWriter(Writer writer) {
+        super(10000,50000)
         this.out = writer
     }
     
-    void act() {
-        loop {
-            react { msg ->
-                if(msg == "stop")
-                    terminate()
-                else {
-                    Map msgMap = (Map)msg
-                    out.append((String)msg['content'])
-                    int readCount = (int)msg['reads']
-                    written = written + readCount
-                    pending.addAndGet(-readCount)
-                }
-            }
-        }
+    @Override
+    public void process(Map<String, Object> msg) {
+        String value = (String)msg['content']
+        out.write(value, 0, value.size())
+        int readCount = (int)msg['reads']
+        written = written + readCount
+        pending.addAndGet(-readCount)
     }
 }
 

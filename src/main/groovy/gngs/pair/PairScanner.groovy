@@ -219,6 +219,7 @@ class PairScanner {
     /**
      * Scan all the reads in the given BAM file
      */
+    @CompileStatic
     private void scanBAM(SAM bam) {
         
         final SamReader reader = bam.newReader(fast:true)
@@ -241,6 +242,7 @@ class PairScanner {
      * <p>
      * Note: Caller must close iterator
      */
+    @CompileStatic
     private void scanBAMIterator(final SAMRecordIterator i) {
         
         // These are in the hope that we get some compiler
@@ -258,7 +260,7 @@ class PairScanner {
             int locatorOffset = hash % locatorSize
             PairLocator locator = locatorIndex[locatorOffset]
             if(locator != null) {
-                locator << read
+                locator.sendTo(read)
                 if(pairWriter.pending.get() > maxBufferedReads) {
                     if(!throttleWarning) {
                         log.info "Throttling output due to slow downstream consumption of reads"
@@ -276,7 +278,12 @@ class PairScanner {
     
     void stopActor(String name, Actor actor) {
         log.info "Stopping $name"
-        actor << "stop"
+        if(actor instanceof RegulatingActor) {
+            actor.sendStop()
+        }
+        else {
+            actor << "stop"
+        }
         actor.join()
     }
 }

@@ -79,7 +79,6 @@ class PairFormatter extends DefaultActor {
             this.buffer2 = new StringBuilder(bufferSize+2000)
     }
 
-    @CompileDynamic
     void act() {
         
         loop {
@@ -139,7 +138,7 @@ class PairFormatter extends DefaultActor {
     }
     
     void flushBufferAndWriter(StringBuilder buffer, PairWriter writer) {
-        writer << [ content: buffer.toString(), reads: buffered ]
+        writer.sendTo((Map)[ content: buffer.toString(), reads: buffered ])
         writer.pending.addAndGet(buffered)
         buffer.setLength(0)
     }
