@@ -162,8 +162,8 @@ abstract class RegulatingActor<T> extends DefaultActor {
     }
     
     @CompileStatic
-    static RegulatingActor<T> actor(@ClosureParams(value=FromAbstractTypeMethods) Closure c) {
-        RegulatingActor<T> ds = new RegulatingActor<T>() {
+    static <T> RegulatingActor<T> actor(@ClosureParams(value=FromAbstractTypeMethods) Closure c) {
+        RegulatingActor ds = new RegulatingActor<T>() {
             void process(T value) {
                 c(value)
             }
