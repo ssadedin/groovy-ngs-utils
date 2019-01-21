@@ -30,11 +30,14 @@ import gngs.Abort
  * <p>
  * The code doing the 'work' must call 'count' on the progress counter.
  * This will print out a progress report at spaced repetitions (the
- * default is every 500 counts or 30 seconds, whichever happens first).
+ * default is every 500 counts or 30 seconds, whenever both of these are satisfied).
  * <p>
  * Optionally, the 'work' code can call "end()" when it is finished,
  * which will then print out some brief summary statistics for the whole
  * operation.
+ * <p>
+ * The <code>timeInterval</code> and <code>lineInterval</code> properties can be 
+ * set to control the frequency of output.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
