@@ -24,13 +24,18 @@ import gngs.*
 
 import static Utils.human
 
+import java.util.concurrent.ConcurrentHashMap
+
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SamReader
+import htsjdk.samtools.BAMIndex
+import htsjdk.samtools.BAMIndexMetaData
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
+import htsjdk.samtools.SAMSequenceRecord
 
 /**
  * Scans a BAM file and feeds reads encountered to a pool of {@link PairLocator}
@@ -71,8 +76,6 @@ class PairScanner {
     
     List<PairFilter> filters = []
     
-    PairLocator chimericLocator
-    
     PairFormatter formatter 
     
     Regions regions
@@ -97,13 +100,14 @@ class PairScanner {
      * If more than this number of reads are unwritten, assume that we are
      * limited by downstream ability to consume our reads and start backing off
      */
-    int maxWriteBufferSize = 3000000
+    int maxWriteBufferSize = 1000000
+    
+    Set<Integer> chromosomesWithReads = Collections.newSetFromMap(new ConcurrentHashMap(500))
     
     PairScanner(Writer writer1, Writer writer2, int numLocators, Regions regions = null, String filterExpr = null) {
         this.pairWriter = new PairWriter(writer1)
         this.pairWriter2 = new PairWriter(writer2)
         this.formatter = new PairFormatter(1000 * 1000, pairWriter, pairWriter2)
-        this.chimericLocator = new PairLocator(formatter)
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
@@ -114,20 +118,24 @@ class PairScanner {
     PairScanner(Writer writer, int numLocators, Regions regions = null, String filterExpr = null) {
         this.pairWriter = new PairWriter(writer)
         this.formatter = new PairFormatter(1000 * 1000, pairWriter)
-        this.chimericLocator = new PairLocator(formatter)
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
         progress.log = log
     }
   
-    void initLocators() {
+    void initLocators(SAM bam) {
         
         if(this.debugRead)
             formatter.debugRead = this.debugRead
         
+            
         int locatorsCreated = 0
         this.locators = []
+        
+        Set<Integer> sequencesWithReads = getContigsWithReads(bam)
+        
+        log.info "The following contigs have at least one read: " + sequencesWithReads.join(', ')
         
         // Note: since we may be running in sharded mode, certain locator positions
         // may never get used. We counter this by checking at each position
@@ -137,7 +145,7 @@ class PairScanner {
             if(shardId<0 || ((i%shardSize) == shardId)) {
                 ++locatorsCreated
                 
-                createLocator()
+                createLocator(bam, sequencesWithReads)
             }
             else {
                 this.locatorIndex.add(null)
@@ -153,7 +161,6 @@ class PairScanner {
         log.info "Created ${locatorsCreated} read pair locators"
         
         this.actors = locators + filters + [
-            chimericLocator,
             formatter,
             pairWriter,
         ]
@@ -165,16 +172,17 @@ class PairScanner {
     }
     
     @CompileStatic
-    void createLocator() {
+    void createLocator(SAM bam, Set<Integer> sequencesWithReads) {
+        
         PairLocator pl 
         if(filterExpr != null) {
             PairFilter filter = new PairFilter(formatter, filterExpr)
             this.filters << filter
-            pl = new PairLocator(filter)
+            pl = new PairLocator(filter, sequencesWithReads)
             pl.compact = false // pass full SAMRecordPair through
         }
         else {
-            pl = new PairLocator(formatter)
+            pl = new PairLocator(formatter, sequencesWithReads)
         }
                 
         if(this.regions)
@@ -187,6 +195,22 @@ class PairScanner {
         this.locatorIndex << pl
     }
     
+    Set<Integer> getContigsWithReads(SAM bam) {
+        Set<Integer> sequencesWithReads = Collections.newSetFromMap(new ConcurrentHashMap())
+        bam.withReader { SamReader r -> 
+            List<Integer> seqIndices = r.fileHeader.sequenceDictionary.sequences*.sequenceIndex
+            BAMIndex index = r.index
+            for(Integer ind : seqIndices) {
+                BAMIndexMetaData meta = index.getMetaData(ind)
+                if(meta.getAlignedRecordCount() +  meta.getUnalignedRecordCount() + meta.getNoCoordinateRecordCount()>0) {
+                    sequencesWithReads.add(ind)
+                }
+            }
+        }
+        
+        return sequencesWithReads
+    }
+    
     @CompileStatic
     void scan(SAM bam) {
         log.info "Beginning scan of $bam.samFile"
@@ -194,7 +218,7 @@ class PairScanner {
             log.info "Debugging read $debugRead"
             
         running = this
-        this.initLocators()
+        this.initLocators(bam)
         try {
             this.scanBAM(bam)
         }
@@ -205,7 +229,6 @@ class PairScanner {
             
             filters.eachWithIndex { a, i -> stopActor("Filter $i", a) }
             
-            stopActor "Chimeric Locator", chimericLocator
             stopActor "Formatter", formatter
             stopActor "Writer", pairWriter
             if(pairWriter2)

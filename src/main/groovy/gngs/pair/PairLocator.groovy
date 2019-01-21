@@ -20,7 +20,7 @@
 package gngs.pair
 
 import java.io.Writer
-
+import java.util.concurrent.ConcurrentHashMap
 import gngs.*
 
 import groovy.transform.CompileStatic
@@ -50,12 +50,15 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
     
     String debugRead = null // "SN7001291:342:HFMC7BCXX:2:1113:1980:38527"
     
+    Set<Integer> chromosomesWithReads
+    
     boolean compact = true
     
-    PairLocator(Actor consumer) {
+    PairLocator(Actor consumer, Set<Integer> chromosomesWithReads) {
         super(50000,100000)
         this.consumer = consumer
         this.buffer = new HashMap(200000)
+        this.chromosomesWithReads = chromosomesWithReads
     }
     
     void process(SAMRecord record) {
@@ -79,6 +82,10 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
             paired += 2
             return
         }
+        
+        // If we will never mate this read, let's not store it
+        if(!chromosomesWithReads.is(null) && !chromosomesWithReads.contains(record.mateReferenceIndex))
+            return
         
         // Pair not found - create a new one
         if(compact)
