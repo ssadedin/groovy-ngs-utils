@@ -366,10 +366,16 @@ class Utils {
      
     /**
      * Creates a Reader from any object that can be reasonably interpreted to represent a file,
-     * allowing for the possibility that it might be gzipped
+     * allowing for the possibility that it might be gzipped or bgzipped.
+     * <p>
+     * If a {@link groovy.lang.Closure} is provided, then the closure will be called, passing the
+     * reader as the first parameter. The return value of this function will be the result of 
+     * executing the closure. If, however, a Closure is not provided, the return value will be the
+     * created {@link java.io.Reader} object to be used.
      * 
      * @param fileLike
-     * @return
+     * @param c Optional {@link groovy.lang.Closure} to call back with the created {@link java.io.Reader}
+     * @return  result of evaluated closure if provided, or created {@link java.io.Reader}
      */
     @CompileStatic
     static Object reader(fileLike, @ClosureParams(value=SimpleType, options=['java.io.Reader']) Closure c = null) {
@@ -381,6 +387,8 @@ class Utils {
             }
             return result
         }
+        else
+            return r
     }
     
     static Reader createReader(fileLike) {
@@ -422,11 +430,21 @@ class Utils {
         return fileLike.newReader()
     }
     
+    /**
+     * Executes the given closure, passing as parameters all of the given filenames opened as 
+     * Writers using intelligent interpretation of the filenames - eg: if ending in .gz, use gzip, etc.
+     * <p>
+     * Note: if a file name is null, blank or false, a null will be returned for the corresponding writer.
+     * 
+     * @param fileNames file names to open
+     * @param c         Closure to call
+     * @return  result of closure
+     */
     static withWriters(List<String> fileNames, Closure c) {
         List<Writer> writers = []
         try {
-            for(String fileName in fileNames) {
-                writers << outputWriter(fileName)
+            for(fileName in fileNames) {
+                writers << (fileName ? outputWriter(fileName) : null)
             }
             c(*writers)
         }
