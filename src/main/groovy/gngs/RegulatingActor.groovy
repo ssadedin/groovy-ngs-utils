@@ -6,6 +6,7 @@ import groovy.transform.stc.FirstParam
 import groovy.transform.stc.FromAbstractTypeMethods
 import groovy.transform.stc.SimpleType
 import groovy.util.logging.Log
+import groovyx.gpars.MessagingRunnable
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.Actors
 import groovyx.gpars.actor.DefaultActor
@@ -56,7 +57,7 @@ class AcknowledgeableMessage {
  * @param <T> the type of the messages to be processed
  */
 @Log
-abstract class RegulatingActor<T> extends DefaultActor {
+abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     
     private final int softLimit
     
@@ -100,29 +101,40 @@ abstract class RegulatingActor<T> extends DefaultActor {
     
     final static Object STOP = new Object()
     
+    @CompileStatic
+    void doTerminate() {
+        terminate()
+    }
+    
+    @Override
+    public void run() {
+        react(new MessagingRunnable<Object>(this) {
+            @CompileStatic
+            @Override
+            final void doRun(final Object msg) {
+                if(msg.is(STOP)) {
+                    stopped = true
+                    this.onEnd()
+                    if(progress != null)
+                        progress.end()
+                    doTerminate()
+                }
+                else {
+                    if(progress != null)
+                        progress.count()
+                    AcknowledgeableMessage am = (AcknowledgeableMessage)msg
+                    RegulatingActor.this.process((T)am.payload)
+                    pendingMessages.decrementAndGet()
+                    am.acknowledgeCounter.decrementAndGet()
+                }                
+            }
+        })
+    }
+    
     @Override
     @CompileStatic
     void act() {
-        loop {
-            react { msg ->
-                if(msg.is(STOP)) {
-                    this.stopped = true
-                    this.onEnd()
-                    if(this.progress != null)
-                        this.progress.end()
-                    log.info "${this.class.name} terminating"
-                    this.terminate()
-                }
-                else {
-                    if(this.progress != null)
-                        this.progress.count()
-                    AcknowledgeableMessage am = (AcknowledgeableMessage)msg
-                    process((T)am.payload)
-                    this.pendingMessages.decrementAndGet()
-                    am.acknowledgeCounter.decrementAndGet()
-                }
-            }
-        }
+        loop(this)
     }
     
     void onEnd() {
