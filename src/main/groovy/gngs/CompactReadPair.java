@@ -127,10 +127,6 @@ public class CompactReadPair implements ReadPair {
     
     final static ReadCompressor compressor = initCompressor();
     
-//    final static ReadCompressor compressor = new SnappyReadCompressor();
-//    final static ReadCompressor compressor = new CompactorCompressor();
-//    final static ReadCompressor compressor = new SharedArrayCompressor();
-    
     public CompactReadPair(SAMRecord read) throws IOException {
         // Note that picard either uses a common string from the sequence dictionary for
         // all reads OR interns the string, so there isn't any point trying that here
@@ -142,13 +138,7 @@ public class CompactReadPair implements ReadPair {
         r2AlignmentStart = read.getMateAlignmentStart();
         
         readLength = (short)read.getReadLength();
-//        basesAndQuals = new byte[readLength*2];
-        
-//        System.arraycopy(read.getReadBases(),0,basesAndQuals,0,readLength);
-//        System.arraycopy(read.getBaseQualities(),0,basesAndQuals,readLength,readLength);
-        
-        // compressedBases = Snappy.compress(read.getReadBases());
-        
+       
         compressedBases = compressor.compress(read.getReadBases(), read.getBaseQualities());
         
         long mem = compressedBases[0].length;
@@ -158,9 +148,6 @@ public class CompactReadPair implements ReadPair {
         memoryStats.addValue(memoryUsage.addAndGet(mem));
         
         currentCount.incrementAndGet();
-        
-//        System.out.println("B: " + compressedBases.length);
-//        System.out.println("Q: " + compressedQuals.length);
    }
     
    public int getReadLength() {
