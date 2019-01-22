@@ -35,7 +35,21 @@ class AcknowledgeableMessage {
  * it blocks for a long time before queuing the message. This allows effective control over how
  * much memory the actor is using in its queue.
  * <p>
- * A user of a RegulatingActor should send messages to it using the {@link #sendTo} method.
+ * The RegulatingActor tracks how many messages are pending by incremenging a counter
+ * ({@link #pendingMessages}). A user of a RegulatingActor should therefore send messages to it 
+ * using the {@link #sendTo} method, so that this counter can be incremented.
+ * <p>
+ * Sometimes you may want a 'per-client' pending count; that is you don't want one over-zealous
+ * producer to block other producers. This can be especially important if there are dependencies 
+ * such that blocking some producers could result in a deadlock. This can be implemented
+ * by supplying your own pendingCount instead of using the shared one. To do that, 
+ * you can use the {@link #send(AcknowledgeableMessage message)} method, where you construct the
+ * {@link AcknowledgeableMessage} yourself and supply it with your own counter.
+ * <p>
+ * Since chaining together regulated actors is a common pattern, this class provides support for a
+ * default "downstream". If the downstream actor is supplied in the constructor, you can send 
+ * messages to it that are automatically per-client limited using the {@link #sendDownstream} 
+ * method.
  * 
  * @author Simon Sadedin
  *
