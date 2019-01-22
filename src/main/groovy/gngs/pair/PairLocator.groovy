@@ -38,7 +38,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
      */
     Map<String,PairType> buffer 
     
-    Actor consumer
+    RegulatingActor consumer
     
     int received = 0
     
@@ -54,7 +54,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
     
     boolean compact = true
     
-    PairLocator(Actor consumer, Set<Integer> chromosomesWithReads) {
+    PairLocator(RegulatingActor<List> consumer, Set<Integer> chromosomesWithReads) {
         super(50000,100000)
         this.consumer = consumer
         this.buffer = new HashMap(200000)
@@ -77,7 +77,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
 
             if(pair instanceof SAMRecordPair)
                 pair.r2 = record
-            consumer << [pair, record]
+            consumer.sendTo([pair, record])
             buffer.remove(readName)
             paired += 2
             return

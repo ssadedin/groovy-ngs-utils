@@ -1,12 +1,16 @@
 package gngs.pair
 
+import java.util.List
+
 import gngs.CompactReadPair
+import gngs.RegulatingActor
 import gngs.SAMRecordPair
 import groovy.transform.CompileStatic
 import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecord
 
-class PairFilter extends DefaultActor {
+@CompileStatic
+class PairFilter extends RegulatingActor<List> {
     
     String expr
     
@@ -17,34 +21,24 @@ class PairFilter extends DefaultActor {
     Closure filterClosure
     
     PairFilter(PairFormatter formatter, String script) {
+        super(formatter,5000,10000)
         this.formatter = formatter
         shell = new GroovyShell()
-        this.filterClosure = shell.evaluate("""{ pair -> 
+        this.filterClosure = (Closure)shell.evaluate("""{ pair -> 
             $script
        }""")
     }
 
-    @CompileStatic
-    void act() {
-        
-        loop {
-            react { Object msg ->
-                assert msg != null
-                if(msg == "stop") {
-                    terminate()
-                }
-                else {
-                    List msgList = (List)msg
-                    process((SAMRecordPair)msgList[0], (SAMRecord)msgList[1])
-                }
-            }
-        }
-    }
-    
+   
     void process(SAMRecordPair pair, SAMRecord r2) {
         Object result = filterClosure(pair)
         if(result == true) {
-            formatter << [pair,r2]
+            this.sendDownstream([pair,r2])
         }
+    }
+
+    @Override
+    public void process(List msgList) {
+        process((SAMRecordPair)msgList[0], (SAMRecord)msgList[1])
     }
 }

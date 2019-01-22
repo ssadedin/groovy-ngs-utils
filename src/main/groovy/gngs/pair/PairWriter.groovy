@@ -29,7 +29,15 @@ import groovyx.gpars.actor.DefaultActor
 
 /**
  * A simple class that whose purpose is purely to paralleise
- * writing output to a Writer.
+ * writing output to a Writer. 
+ * <p>
+ * Each message contains two attributes:
+ * <li>content - a String value representing the data to be written
+ * <li>reads   - the count of reads contained in the data
+ * Each message can contain many reads and therefore potentially represents a large 
+ * amount of data. Therfore the queuing on this queue should be constrained to be quite
+ * small. For example, if the buffer size is 1MB then 50 queued messages will represent
+ * 50MB of memory.
  * <p>
  * A {@link #pending} count is decremented with each batch of reads written.
  * This count needs to be incremented by the caller for it to be accurate. If 
@@ -48,8 +56,8 @@ class PairWriter extends RegulatingActor<Map<String,Object>> {
     
     public AtomicInteger pending = new AtomicInteger()
     
-    PairWriter(Writer writer) {
-        super(10000,50000)
+    PairWriter(Writer writer, int queueSize) {
+        super(queueSize,queueSize*2)
         this.out = writer
     }
     

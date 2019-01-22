@@ -59,11 +59,11 @@ class PairScanner {
     
     SAMRecord lastRead
     
-    ProgressCounter progress = new ProgressCounter(withRate:true, withTime:true, extra: { 
+    ProgressCounter progress = new ProgressCounter(withRate:true, withTime:true, timeInterval: 5000, extra: { 
         lastRead?.referenceName + ':' + lastRead?.alignmentStart + ", loc: " +  
         [locators*.received.sum(),locators*.paired.sum(),locators*.buffer*.size().sum()].collect {human(it)}.join(',') +
         " chimeric: ${human(locators*.chimeric.sum())}" + 
-        " formatted: ${human(formatter.formatted)}, written: " + human(pairWriter.written)
+        " formatted: ${human(formatters*.formatted.sum())}, written: " + human(pairWriter.written) + ", Buffered reads: ${CompactReadPair.currentCount}, Memory: ${Utils.human(CompactReadPair.memoryUsage).toUpperCase()}"
     })
     
     PairWriter pairWriter
@@ -76,7 +76,7 @@ class PairScanner {
     
     List<PairFilter> filters = []
     
-    PairFormatter formatter 
+    List<PairFormatter> formatters
     
     Regions regions
     
@@ -96,28 +96,38 @@ class PairScanner {
     
     String debugRead = null
     
-    /**
-     * If more than this number of reads are unwritten, assume that we are
-     * limited by downstream ability to consume our reads and start backing off
-     */
-    int maxWriteBufferSize = 1000000
-    
     Set<Integer> chromosomesWithReads = Collections.newSetFromMap(new ConcurrentHashMap(500))
     
-    PairScanner(Writer writer1, Writer writer2, int numLocators, Regions regions = null, String filterExpr = null) {
-        this.pairWriter = new PairWriter(writer1)
-        this.pairWriter2 = new PairWriter(writer2)
-        this.formatter = new PairFormatter(1000 * 1000, pairWriter, pairWriter2)
+    /**
+     * How many formatted blocks ready to write will be buffered for writing.
+     * <p>
+     * Each block is roughly the size of the {@link #FORMATTER_BUFFER_SIZE} parameter
+     */
+    final static int DEFAULT_WRITER_QUEUE_SIZE = 1000
+    
+    int numFormatters = 2
+    
+    /**
+     * The size of blocks to format before writing.
+     * <p>
+     * Each block is accumulated until it reaches thi size. This is essentially similar to 
+     * output file buffering, but occurs before the file system layer.
+     */
+    final static int FORMATTER_BUFFER_SIZE = 1000 * 1000
+    
+    PairScanner(Writer writer1, Writer writer2, int numLocators, Regions regions = null, String filterExpr = null, int writerQueueSize = DEFAULT_WRITER_QUEUE_SIZE) {
+        this.pairWriter = new PairWriter(writer1, writerQueueSize)
+        this.pairWriter2 = new PairWriter(writer2, writerQueueSize)
+        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter, pairWriter2) }
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
         progress.log = log
     }
   
-    
-    PairScanner(Writer writer, int numLocators, Regions regions = null, String filterExpr = null) {
-        this.pairWriter = new PairWriter(writer)
-        this.formatter = new PairFormatter(1000 * 1000, pairWriter)
+    PairScanner(Writer writer, int numLocators, Regions regions = null, String filterExpr = null, int writerQueueSize = DEFAULT_WRITER_QUEUE_SIZE) {
+        this.pairWriter = new PairWriter(writer, writerQueueSize)
+        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter) }
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
@@ -127,8 +137,7 @@ class PairScanner {
     void initLocators(SAM bam) {
         
         if(this.debugRead)
-            formatter.debugRead = this.debugRead
-        
+            formatters*.debugRead = this.debugRead
             
         int locatorsCreated = 0
         this.locators = []
@@ -145,7 +154,7 @@ class PairScanner {
             if(shardId<0 || ((i%shardSize) == shardId)) {
                 ++locatorsCreated
                 
-                createLocator(bam, sequencesWithReads)
+                createLocator(bam, sequencesWithReads, formatters[i%formatters.size()])
             }
             else {
                 this.locatorIndex.add(null)
@@ -160,8 +169,7 @@ class PairScanner {
         
         log.info "Created ${locatorsCreated} read pair locators"
         
-        this.actors = locators + filters + [
-            formatter,
+        this.actors = locators + filters + formatters + [
             pairWriter,
         ]
         
@@ -172,7 +180,7 @@ class PairScanner {
     }
     
     @CompileStatic
-    void createLocator(SAM bam, Set<Integer> sequencesWithReads) {
+    void createLocator(SAM bam, Set<Integer> sequencesWithReads, PairFormatter formatter) {
         
         PairLocator pl 
         if(filterExpr != null) {
@@ -195,6 +203,18 @@ class PairScanner {
         this.locatorIndex << pl
     }
     
+    /**
+     * Interrogate the BAM index to determine which contigs have reads.
+     * <p>
+     * This is done to help better cope with BAM files where selected contigs have been 
+     * included, leaving large numbers of mateless reads. By knowing up front that there
+     * are no reads for a given contig, and therefore a mate positioned in that contig will
+     * never be encountered, we can avoid storing those reads in memory.
+     * 
+     * @param bam   BAM file to check
+     * @return  set of the indices of the reference sequences (contigs / chromosomes) that have 
+     *          at least one read
+     */
     Set<Integer> getContigsWithReads(SAM bam) {
         Set<Integer> sequencesWithReads = Collections.newSetFromMap(new ConcurrentHashMap())
         bam.withReader { SamReader r -> 
@@ -229,7 +249,9 @@ class PairScanner {
             
             filters.eachWithIndex { a, i -> stopActor("Filter $i", a) }
             
-            stopActor "Formatter", formatter
+            formatters.eachWithIndex { f, i ->
+                stopActor "Formatter $i", f
+            }
             stopActor "Writer", pairWriter
             if(pairWriter2)
                 stopActor "Writer2", pairWriter2
@@ -273,7 +295,6 @@ class PairScanner {
         final int locatorSize = locatorIndex.size()
         final int shardId = this.shardId
         final int shardSize = this.shardSize
-        final int maxBufferedReads = this.maxWriteBufferSize
 
         while(i.hasNext()) {
             SAMRecord read = i.next()
@@ -284,17 +305,10 @@ class PairScanner {
             PairLocator locator = locatorIndex[locatorOffset]
             if(locator != null) {
                 locator.sendTo(read)
-                if(pairWriter.pending.get() > maxBufferedReads) {
-                    if(!throttleWarning) {
-                        log.info "Throttling output due to slow downstream consumption of reads"
-                        throttleWarning = true
-                    }
-                    Thread.sleep(50)
-                }
             }
             else {
-                if(debugRead == read.readName)
-                log.info "Read $debugRead not assigned to shard (hash=$hash, lcoffset=$locatorOffset/$locatorSize)"
+                if(!debugRead.is(null) && debugRead == read.readName)
+                    log.info "Read $debugRead not assigned to shard (hash=$hash, lcoffset=$locatorOffset/$locatorSize)"
             }
         }
     }

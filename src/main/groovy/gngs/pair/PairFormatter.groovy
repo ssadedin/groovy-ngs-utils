@@ -19,8 +19,11 @@
  */
 package gngs.pair
 
+import java.util.List
+
 import gngs.CompactReadPair
 import gngs.ReadPair
+import gngs.RegulatingActor
 import gngs.SAMRecordPair
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
@@ -44,7 +47,7 @@ import htsjdk.samtools.util.SequenceUtil
  */
 @CompileStatic
 @Log
-class PairFormatter extends DefaultActor {
+class PairFormatter extends RegulatingActor<List> {
     
     StringBuilder buffer
     
@@ -70,6 +73,7 @@ class PairFormatter extends DefaultActor {
     boolean addPosition = false
     
     PairFormatter(int bufferSize, PairWriter writer, PairWriter writer2=null) {
+        super(20000,50000)
         buffer = new StringBuilder(bufferSize+2000)
         this.maxBufferSize = bufferSize
         assert writer != null
@@ -79,33 +83,8 @@ class PairFormatter extends DefaultActor {
             this.buffer2 = new StringBuilder(bufferSize+2000)
     }
 
-    void act() {
-        
-        loop {
-            react { Object msg ->
-                assert msg != null
-                if(msg == "stop") {
-                    flushBuffer()
-                    terminate()
-                }
-                else {
-                    List msgList = (List)msg
-                    process((ReadPair)msgList[0], (SAMRecord)msgList[1])
-                }
-                
-            }
-        }
-    }
-    
-//        if(r2.getReadNegativeStrandFlag() && r2.getMateNegativeStrandFlag()) // read is aligned complemented already!
-//        if(r2.getReadNegativeStrandFlag() && r2.getMateNegativeStrandFlag())  { // read is aligned reversed already! 
-//            final int bqLength = bq.length;
-//            for(int i=0; i<bqLength; ++i) {
-//                b2.append(SAMUtils.phredToFastq(bq[i]));
-//            }
-//        }    
-    
-    void process(ReadPair pair, SAMRecord r2) {
+    @CompileStatic
+    final void process(final ReadPair pair, final SAMRecord r2) {
         
         if(debugRead != null && (r2.readName == debugRead)) {
             log.info "Format: $debugRead"
@@ -141,5 +120,11 @@ class PairFormatter extends DefaultActor {
         writer.sendTo((Map)[ content: buffer.toString(), reads: buffered ])
         writer.pending.addAndGet(buffered)
         buffer.setLength(0)
+    }
+
+    @Override
+    public void process(List msgList) {
+        process((ReadPair)msgList[0], (SAMRecord)msgList[1])
+        
     }
 }
