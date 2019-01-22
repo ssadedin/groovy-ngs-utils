@@ -59,11 +59,11 @@ class PairScanner {
     
     SAMRecord lastRead
     
-    ProgressCounter progress = new ProgressCounter(withRate:true, withTime:true, timeInterval: 5000, extra: { 
+    ProgressCounter progress = new ProgressCounter(withRate:true, withTime:true, timeInterval: 120000, extra: { 
         lastRead?.referenceName + ':' + lastRead?.alignmentStart + ", loc: " +  
         [locators*.received.sum(),locators*.paired.sum(),locators*.buffer*.size().sum()].collect {human(it)}.join(',') +
         " chimeric: ${human(locators*.chimeric.sum())}" + 
-        " formatted: ${human(formatters*.formatted.sum())}, written: " + human(pairWriter.written) + ", Buffered reads: ${CompactReadPair.currentCount}, Memory: ${Utils.human(CompactReadPair.memoryUsage).toUpperCase()}"
+        " fmt: ${human(formatters*.formatted.sum())}, wrote: " + human(pairWriter.written) + ", Mem: ${Utils.human(CompactReadPair.memoryUsage)}/${Utils.human(Runtime.runtime.freeMemory())}/${Utils.human(Runtime.runtime.totalMemory())}"
     })
     
     PairWriter pairWriter
