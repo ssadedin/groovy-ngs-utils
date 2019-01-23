@@ -40,6 +40,12 @@ class AcknowledgeableMessage {
  * ({@link #pendingMessages}). A user of a RegulatingActor should therefore send messages to it 
  * using the {@link #sendTo} method, so that this counter can be incremented.
  * <p>
+ * <b>Stopping a RegulatingActor</b>
+ * Although they can be terminated the usual way (the <code>terminate()</code> method), an 
+ * orderly shutdown that enqueues a stop message (poison pill) that is automatically 
+ * processed can be initiated by using the {@link #sendStop()} method
+ * 
+ * <p>
  * Sometimes you may want a 'per-client' pending count; that is you don't want one over-zealous
  * producer to block other producers. This can be especially important if there are dependencies 
  * such that blocking some producers could result in a deadlock. This can be implemented
@@ -99,6 +105,8 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     
     ProgressCounter progress 
     
+    boolean verbose = false
+    
     final static Object STOP = new Object()
     
     @CompileStatic
@@ -140,6 +148,13 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     void onEnd() {
     }
     
+    /**
+     * Send a pre-determined STOP message to the actor, which when receieved, will cause
+     * it to call terminate().
+     * <p>
+     * This method will return immediately. To wait for the stop to occur, call the
+     * <code>join()</code> method.
+     */
     @CompileStatic
     void sendStop() {
         this << RegulatingActor.STOP
@@ -171,14 +186,16 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
         if(message.acknowledgeCounter.get() > softLimit) {
             long nowMs = System.currentTimeMillis()
             if(nowMs - throttleWarningMs > 30000) {
-                log.info "Soft throttling $this due to congestion (pending=$message.acknowledgeCounter/$pendingMessages))"
+                if(verbose)
+                    log.info "Soft throttling $this due to congestion (pending=$message.acknowledgeCounter/$pendingMessages))"
                 throttleWarningMs = nowMs
             }
             Thread.sleep(50)
         }
             
         while(message.acknowledgeCounter.get() > hardLimit) {
-            log.info "Hard throttling $this due to congestion (pending=$message.acknowledgeCounter/$pendingMessages))"
+            if(verbose)
+                log.info "Hard throttling $this due to congestion (pending=$message.acknowledgeCounter/$pendingMessages))"
             Thread.sleep(3000)
         }
         
