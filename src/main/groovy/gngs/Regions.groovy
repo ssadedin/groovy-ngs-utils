@@ -246,7 +246,8 @@ class Regions implements Iterable<Region> {
         return result
     }
     
-    List<Range> getOverlaps(IRegion r) {
+    @CompileStatic
+    List<IntRange> getOverlaps(IRegion r) {
         getOverlaps(r.chr, r.range.from, r.range.to)
     }
     
@@ -306,7 +307,8 @@ class Regions implements Iterable<Region> {
      * @param end   last position to look for overlaps (inclusive)
      * @return  List of ranges overlapping the specified start -> end range
      */
-    List<Range> getOverlaps(String chr, int start, int end) {
+    @CompileStatic
+    List<IntRange> getOverlaps(String chr, int start, int end) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return []
@@ -357,7 +359,6 @@ class Regions implements Iterable<Region> {
     List<Region> regionsStartingAt(String chr, int pos) {
         return startingAt(chr, pos)*.extra
     }
-  
     
     List<Range> startingAt(String chr, int pos) {
         RangeIndex chrIndex = this.index[chr]
