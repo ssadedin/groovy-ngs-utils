@@ -24,6 +24,7 @@ import java.util.logging.Level
 import gngs.coverage.CoverageCalculatorActor
 import gngs.coverage.SampleReadCount
 import graxxia.IntegerStats
+import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import htsjdk.samtools.SAMRecord
 import static groovyx.gpars.actor.Actors.actor
@@ -101,7 +102,7 @@ class SexKaryotyper implements Runnable {
         log.info "Coverage from Y calc = $yStats.mean"
        
         IntegerStats autoStats = calcCovStats(autoRegions)
-        log.info "Coverage from autosome calc = $yStats.mean"
+        log.info "Coverage from autosome calc = $autoStats.mean"
   
         yCoverage = yStats.mean
         xCoverage = xStats.mean
@@ -121,6 +122,7 @@ class SexKaryotyper implements Runnable {
             sex = Sex.OTHER
     }
     
+    @CompileStatic
     IntegerStats calcCovStats(Regions regions)  {
         IntegerStats covStats = new IntegerStats(1000)
         def coverageCounter = new RegulatingActor<SampleReadCount>(10000, 100000) { 
@@ -129,8 +131,9 @@ class SexKaryotyper implements Runnable {
             }
         }
         coverageCounter.start()
-        CoverageCalculatorActor.processBAM(bam, regions, coverageCounter,0)
+        CoverageCalculatorActor.processBAM(bam, regions, coverageCounter,1)
         coverageCounter.sendStop()
+        coverageCounter.join()
         return covStats
     }
     
