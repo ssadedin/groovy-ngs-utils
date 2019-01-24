@@ -1087,12 +1087,20 @@ class SAM {
         }
     }
     
-    int countOf(chr, pos, String baseString) {
+    @CompileStatic
+    int countOf(String chr, int pos, String baseString) {
         return pileup(chr,pos).countOf(baseString)
     }
  
+    @CompileStatic
     PileupIterator.Pileup pileup(String chr, int pos) {
-        return pileup(chr,pos,pos).next()
+        PileupIterator i = pileup(chr,pos,pos)
+        try {
+            return i.next()
+        }
+        finally {
+            i.close()
+        }
     }
     
     /**
@@ -1104,6 +1112,7 @@ class SAM {
      * @param pos
      * @return
      */
+    @CompileStatic
     Map<String, Integer> basesAt(String chr, int pos) {
         return pileup(chr,pos).summaryAsMap
     }
