@@ -134,29 +134,36 @@ class RefGenes {
             
             strand = tx.getProperty('strand')
                 
-            [ ((String)tx['starts']).tokenize(","), ((String)tx['ends']).tokenize(",") ].transpose().collect { se ->
-                
-                List<String> exonStartEnd = (List<String>)(se);
-                int start = exonStartEnd[0].toInteger()
-                int end = exonStartEnd[1].toInteger()
-                if(codingOnly) {
-                    start = Math.max(((String)tx['cds_start']).toInteger(), start)
-                    end = Math.min(((String)tx['cds_end']).toInteger(), end)
-                }
-                if(start>end)
-                    (Region)null
-                else {
-                    new Region(tx.chr, new GRange(start+1,end+1, null))
-                }
-            }.each { Region r ->
+            exonsForTranscript(tx,codingOnly).each { Region r ->
                 if(r != null)
                     exons.addRegion(r)
-            }
+            } 
         }
         
         Regions results = exons.reduce().enhance()
         results.each { it.setProperty('strand', strand)}
         return results
+    }
+    
+    @CompileStatic
+    private List<Region> exonsForTranscript(Region tx, boolean codingOnly) {
+       [ ((String)tx['starts']).tokenize(","), ((String)tx['ends']).tokenize(",") ].transpose().collect { se ->
+            List<String> exonStartEnd = (List<String>)(se);
+            int start = exonStartEnd[0].toInteger()
+            int end = exonStartEnd[1].toInteger()
+            if(codingOnly) {
+                start = Math.max(((String)tx['cds_start']).toInteger(), start)
+                end = Math.min(((String)tx['cds_end']).toInteger(), end)
+            }
+            if(start>end)
+                (Region)null
+            else {
+                Region r = new Region(tx.chr, new GRange(start+1,end+1, null))
+                // Transfer properties from the transcript to the individual exon
+                r.setProps(tx.getProperties())
+                return r
+            }
+        }
     }
     
     Regions getTranscriptExons(String transcriptId) {
@@ -212,6 +219,15 @@ class RefGenes {
            return null // unknown gene
        
        new Region(exons[0].chr, noAltExons*.from.min()..noAltExons*.to.max(), gene: hgncSymbol)
+    }
+    
+    @CompileStatic
+    List<Region> getExons(IRegion region) {
+        return (List<Region>)refData.getOverlaps(region).collect { IntRange r ->
+            exonsForTranscript(((Region)((GRange)r).extra), true)
+        }.flatten().grep { Region r ->
+            (r != null) && r.overlaps(region)
+        }   
     }
     
     List<String> getGenes(IRegion r) {
