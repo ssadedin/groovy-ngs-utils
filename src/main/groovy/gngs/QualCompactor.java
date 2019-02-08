@@ -16,16 +16,16 @@ package gngs;
 public class QualCompactor {
     
     /**
-     * @param bases bases to compress
+     * @param quals bases to compress
      * @return  byte array of bases, compacted to fit two bases per byte
      */
-    final static byte [] compact(final byte [] bases) {
-        final byte [] buffer = new byte[bases.length*2]; // if every base has different qual, we'll take twice the space
-        int prev = bases[0];
+    final static byte [] compact(final byte [] quals) {
+        final byte [] buffer = new byte[quals.length*2]; // if every base has different qual, we'll take twice the space
+        int prev = quals[0];
         int count = -127;
         int bufferPos = 0;
-        for(int i=0; i<bases.length; ++i) {
-            final int b = bases[i];
+        for(int i=0; i<quals.length; ++i) {
+            final int b = quals[i];
             if(prev == b) {
                 ++count;
             }
@@ -46,7 +46,7 @@ public class QualCompactor {
         byte [] result = new byte[bufferPos+1];
         
         // Store the original length in the first 2 bytes
-        result[0] = (byte)(bases.length - 127);
+        result[0] = (byte)(quals.length - 127);
         
         System.arraycopy(buffer, 0, result, 1, bufferPos);
         return result;
@@ -54,7 +54,7 @@ public class QualCompactor {
     
     final static byte [] expand(final byte [] compacted) {
         final int resultLength = compacted[0] + 127;
-        byte [] result = new byte[resultLength];
+        final byte [] result = new byte[resultLength];
         final int compactedLength = compacted.length;
         int resultPos = 0;
         for(int i=1; i<compactedLength; ++i) {

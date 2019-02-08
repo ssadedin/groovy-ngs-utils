@@ -2,6 +2,7 @@ package gngs;
 
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.logging.Logger;
 
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.xerial.snappy.Snappy;
@@ -11,6 +12,8 @@ import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.SequenceUtil;
 
 public class CompactReadPair implements ReadPair {
+    
+    private static Logger log = Logger.getLogger("CompactReadPair");
     
     public String r1ReferenceName;
     
@@ -105,6 +108,7 @@ public class CompactReadPair implements ReadPair {
     
     static ReadCompressor initCompressor() {
         String compressorType = System.getProperty("bazam.compressor", "snappyhybrid");
+        log.info("Reads will be compressed using compression method: " + compressorType);
         if(compressorType.equals("snappyhybrid")) {
             return new SnappyCompactorHybridCompressor();
         }

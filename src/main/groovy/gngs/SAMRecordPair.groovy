@@ -27,6 +27,7 @@ import htsjdk.samtools.SAMTagUtil
 import htsjdk.samtools.SAMUtils
 import htsjdk.samtools.util.SequenceUtil
 
+@CompileStatic
 interface ReadPair {
     boolean isChimeric()
     boolean getUnmapped()
@@ -43,6 +44,7 @@ interface ReadPair {
  * 
  * @author Simon Sadedin
  */
+@CompileStatic
 class SAMRecordPair implements Comparable, ReadPair {
     
     public SAMRecord r1

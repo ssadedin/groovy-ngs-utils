@@ -34,20 +34,27 @@ public class BaseCompactor {
     }
     
     /**
+     * Bases are packed two-per-byte resulting in effectively a 4-bit representation.
+     * <p>
+     * The last byte could have either 2 bases or 1 base in it. This is recognisable
+     * because the zero value is not a valid base, so if the high 4 bits of the last byte
+     * are zero, then there was an odd number of bases to store.
+     * 
      * @param bases bases to compress
      * @return  byte array of bases, compacted to fit two bases per byte
      */
     final static byte [] compact(final byte [] bases) {
         
         final int blen = (bases.length>>1)<<1; // round down to even
-        final byte [] result = new byte[(bases.length>>1)+1];
+        final byte [] result = new byte[(bases.length>>1)+(bases.length%2)];
         int resultIndex = 0;
         for(int i=0; i<blen; ++i) {
            result[resultIndex] = (byte)(COMPACT_MAPPING[bases[i]] | (COMPACT_MAPPING[bases[++i]]<<4));
            ++resultIndex;
         }
-        if(bases.length>blen)
+        if(bases.length>blen) {
             result[resultIndex] = COMPACT_MAPPING[bases[bases.length-1]]; // odd number of bases
+        }
             
         return result;
     }
@@ -55,7 +62,8 @@ public class BaseCompactor {
     final static byte [] expand(final byte [] compacted) {
         final int compactedLength = compacted.length;
         final int safeCompactedLength = compactedLength-1; // there is special logic for the last byte, so don't do that in the loop
-        final int resultLength = (compacted[safeCompactedLength] & 0xF0)>0 ? compactedLength * 2 : safeCompactedLength * 2 + 1;
+        final byte lastByte = compacted[safeCompactedLength];
+        final int resultLength = (lastByte & 0xF0)>0 ? (compactedLength * 2) : (safeCompactedLength * 2 + 1);
         final byte [] result = new byte [resultLength];
         
         int resultIndex = 0;
@@ -64,9 +72,11 @@ public class BaseCompactor {
             result[resultIndex++] = COMPACT_UNMAPPING[encoded & 0x0F];
             result[resultIndex++] = COMPACT_UNMAPPING[encoded >> 4];
         }
-        if(safeCompactedLength<compactedLength) {
-            result[resultIndex] = COMPACT_UNMAPPING[compacted[compactedLength-1] & 0x0F];
+        result[resultIndex++] = COMPACT_UNMAPPING[lastByte & 0x0F];
+        if((lastByte & 0xF0) > 0) {
+            result[resultIndex] = COMPACT_UNMAPPING[(lastByte & 0xF0) >> 4];
         }
+        
         return result;
     } 
 }
