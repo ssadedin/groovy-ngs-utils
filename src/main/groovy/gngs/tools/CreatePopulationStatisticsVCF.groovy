@@ -95,6 +95,8 @@ class AlleleNumber {
 @Log
 class CreatePopulationStatisticsVCF extends ToolBase {
     
+    int numSamples
+    
     /**
      * The inferred sexes as a list
      */
@@ -131,7 +133,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         inferSexes()
         
         // Since we end up with a sex inferred for every sample ...
-        final int numSamples = sampleSexes.size()
+        numSamples = sampleSexes.size()
         
         VariantContext lastVariant = null
         ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
@@ -185,8 +187,16 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      */
     @CompileStatic
     int computeAlleleCount(List<VariantContext> variants) {
+        Set<String> samples = new HashSet(numSamples*2)
         int ac = (int)variants.sum { VariantContext vc -> // sum across VCFs
             vc.genotypes.collect { Genotype gt ->         // sum across samples within this vcf
+                
+                // Make us robust to samples being provided twice
+                if(samples.contains(gt.sampleName in samples))
+                    return 0
+                
+                samples.add(gt.sampleName)
+                
                 gngs.Sex sex = sampleSexes[gt.sampleName]
                 int sampleAN = AlleleNumber.getAlleleNumber(sex, vc.contig)
                 GenotypesContext ctx = vc.genotypes
@@ -242,8 +252,14 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             vcf.samples.collect { String sampleId ->
                 if(sampleId in providedSexes)
                     [sampleId, providedSexes[sampleId] ]
-                else
-                    [sampleId, vcf.guessSex(vcf.samples.indexOf(sampleId))]
+                else {
+                    try {
+                        [sampleId, vcf.guessSex(vcf.samples.indexOf(sampleId))]
+                    }
+                    catch(Exception e) {
+                        throw new RuntimeException("Unable to infer sex for sample ${sampleId}. Please provide sex for this sample manually using -sex", e)
+                    }
+                }
             }
         }.sum().collectEntries()
         sexes = sampleSexes*.value
