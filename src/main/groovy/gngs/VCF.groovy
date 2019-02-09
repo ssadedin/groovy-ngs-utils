@@ -1193,7 +1193,9 @@ class VCF implements Iterable<Variant> {
         if(xVariants.size() < 10)
             throw new IllegalStateException("Too few variants available to use for estimation")
         
-        Map<Integer, Integer> dosages = xVariants.countBy { it.dosages[0] }
+        Map<Integer, Integer> dosages = xVariants.countBy { it.getDosages(0)[sampleIndex] }
+        
+//        println "Sample ${samples[sampleIndex]} xcounts: $dosages"
         
         // No heterozygotes
         if(dosages[1] == null) {
