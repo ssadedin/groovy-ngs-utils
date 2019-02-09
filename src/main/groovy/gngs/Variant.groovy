@@ -313,8 +313,16 @@ class Variant implements IRegion {
      * @author simon.sadedin@mcri.edu.au
      */
     @CompileStatic
-    class Allele {
+    final class Allele {
         
+        public Allele(int index, int start, int end, String alt, String type) {
+            this.index = index;
+            this.start = start;
+            this.end = end;
+            this.alt = alt;
+            this.type = type;
+        }
+
         int index
         
         /**
@@ -1370,9 +1378,10 @@ class Variant implements IRegion {
      * Note: currently this computes the results on the fly and they are not cached, so
      *       use with caution in computationaly intensive situations
      */
+    @CompileStatic
     List<Allele> getAlleles() {
         int index=0
-        return alts.collect { obs ->
+        return alts.collect { String obs ->
             String t = convertType(ref,obs)
             
             int start = pos
@@ -1388,7 +1397,7 @@ class Variant implements IRegion {
                     break
             }
             
-            new Allele(index:index++, start: start, end: end, alt: obs, type: t)
+            new Allele(index, start, end, obs, t)
         }
     } 
     
