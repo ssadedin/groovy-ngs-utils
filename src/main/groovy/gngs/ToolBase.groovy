@@ -45,6 +45,14 @@ abstract class ToolBase {
     
     OptionAccessor opts
     
+    static ThreadLocal<ToolBase> test = new ThreadLocal<ToolBase>()
+    
+    void test(List<String> args, Closure c) {
+        test.set(this)
+        this.main(args as String[])
+        c()
+    }
+    
     /**
      * Create an instance of the enclosing class and call its {@link #run} method after 
      * parsing options with a {@link gngs.Cli} instance configured by 
@@ -91,10 +99,12 @@ abstract class ToolBase {
         
         setProxy()
             
-        ToolBase tool = originalDelegate.newInstance()
+        ToolBase tool = test.get()?: originalDelegate.newInstance()
         tool.parser = cli
         tool.opts = opts
-        tool.run()
+        
+        if(!test.get())
+            tool.run()
     }
     
     /**
