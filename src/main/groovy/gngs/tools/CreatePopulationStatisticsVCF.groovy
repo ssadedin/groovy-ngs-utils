@@ -104,6 +104,8 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      * The inferred sexes of the samples in the VCFs
      */
     Map<String,gngs.Sex> sampleSexes = [:]
+    
+    PrintWriter out = null
 
     @Override
     public void run() {
@@ -113,9 +115,23 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             System.exit(0)
         }
         
+        if(out != null) {
+            // Use it as is
+        }
+        else
+        if(opts.o) {
+            out = new PrintWriter(new File(opts.o))
+        }
+        else {
+            out = new PrintWriter(System.out)
+        }
+        
         printVCFHeader()
         
         inferSexes()
+        
+        // Since we end up with a sex inferred for every sample ...
+        final int numSamples = sampleSexes.size()
         
         VariantContext lastVariant = null
         ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
@@ -127,7 +143,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             lastVariant = v0
             int ac = computeAlleleCount(variants)
             int an = computeAlleleNumber(v0.contig)
-            int gtc = variants.size() // todo: check this is right
+            int gtc = variants.size()*numSamples // todo: check this is right
             printVCFSite(v0, ac, an, gtc)
             progress.count()
         }
@@ -148,8 +164,8 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      * @param an
      */
     @CompileStatic
-    private void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
-        println([
+    protected void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
+        out.println([
             v0.contig,
             v0.start,
             v0.getID(),
@@ -169,20 +185,28 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      */
     @CompileStatic
     int computeAlleleCount(List<VariantContext> variants) {
-        
-        int ac = (int)variants.sum { VariantContext vc ->
-                
-            gngs.Sex sex = sampleSexes[vc.genotypes[0].sampleName]
-            int sampleAN = AlleleNumber.getAlleleNumber(sex, vc.contig)
-                
-            GenotypesContext ctx = vc.genotypes
-            Genotype gt =ctx.get(0)
-            if(gt.het) {
-                return 1
-            }
-            else {
-                return sampleAN
-            }
+        int ac = (int)variants.sum { VariantContext vc -> // sum across VCFs
+            vc.genotypes.collect { Genotype gt ->         // sum across samples within this vcf
+                gngs.Sex sex = sampleSexes[gt.sampleName]
+                int sampleAN = AlleleNumber.getAlleleNumber(sex, vc.contig)
+                GenotypesContext ctx = vc.genotypes
+                if(gt.het) {
+                    return 1
+                }
+                else
+                if(gt.homVar) {
+                    return sampleAN
+                }
+                else 
+                if(gt.homRef) {
+                    return 0
+                }
+                else {
+//                    assert false : "Unexpected / invalid genotype at position $vc.start ($vc)"
+                    // This occurs if the genotype is './.' which means unascertained
+                    return 0
+                }
+            }.sum()
         } 
     }
 
@@ -199,24 +223,37 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             '##INFO=<ID=GTC,Number=G,Type=Integer,Description="GenoType Counts. For each ALT allele in the same order as listed = 0/0,0/1,1/1,0/2,1/2,2/2,0/3,1/3,2/3,3/3">'
         ])
         result.headerLines[-1] = result.headerLines[-1].tokenize('\t')[0..7].join('\t')
-        result.print()
+        result.print(out)
     }
 
     /**
      * Infer the sexes for the input VCFs
      */
     private void inferSexes() {
-        log.info "Computing sexes for ${opts.arguments().size()} samples ..."
-        sampleSexes = opts.arguments().collectEntries { String vcfPath ->
-            VCF vcf = new VCF(vcfPath)
-            [vcf.samples[0], vcf.guessSex()]
-        }
+        
+        Map<String,gngs.Sex> providedSexes = [:]
+        if(opts.sexs)
+             providedSexes = opts.sexs.collectEntries { def parts = it.tokenize(':'); [parts[0], gngs.Sex.decode(parts[1])] }
+        
+        List<VCF> vcfs = opts.arguments().collect { new VCF(it) }
+        
+        log.info "Computing sexes for ${vcfs*.samples*.size().sum()} samples ..."
+        sampleSexes = vcfs.collect { VCF vcf ->
+            vcf.samples.collect { String sampleId ->
+                if(sampleId in providedSexes)
+                    [sampleId, providedSexes[sampleId] ]
+                else
+                    [sampleId, vcf.guessSex(vcf.samples.indexOf(sampleId))]
+            }
+        }.sum().collectEntries()
         sexes = sampleSexes*.value
         log.info "Sample sexes: $sampleSexes"
     }
     
     static void main(String [] args) {
         cli('CreatePopulationStatisticsVCF <vcf1> <vcf2> <vcf3> ...', args) {
+            o 'Output file', args:1, required: false
+            sex 'Provide sex for a sample in the form <sampleid>:<MALE|FEMALE>', args: Cli.UNLIMITED
         }
     }
 
