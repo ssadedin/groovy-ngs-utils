@@ -1217,26 +1217,35 @@ class VCF implements Iterable<Variant> {
             return Sex.FEMALE
     }
     
-    void printHeader(PrintStream p) {
-        p.println(headerLines.join('\n'))
+    void printHeader(Appendable w) {
+        w.append(headerLines.join('\n'))
+        w.append('\n')
     }
-    
+  
     void printHeader() {
         printHeader(System.out)
     }
     
-   void print() {
+    void print() {
         this.print(System.out)
     }
     
-    void print(PrintStream p) {
+    @CompileStatic
+    void print(PrintWriter p) {
+        print((Appendable)p)
+    }
+    
+    @CompileStatic
+    void print(Appendable p) {
         printHeader(p)
         for(Variant v in variants) {
-            p.println(v.line)
+            p.append(v.line)
+            p.append('\n')
         }
     }
 
     @Override
+    @CompileStatic
     public Iterator<Variant> iterator() {
         return this.variants.iterator()
     }
