@@ -130,6 +130,8 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         
         printVCFHeader()
         
+        out.flush()
+        
         inferSexes()
         
         // Since we end up with a sex inferred for every sample ...
