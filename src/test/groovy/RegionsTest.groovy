@@ -83,6 +83,24 @@ class RegionsTest {
         assert result[0].size() == 1
     }  
     
+    @Test
+    void 'test that subtracting 1bp regions removes the regions'() {
+        Regions regions = new Regions([
+            new Region("chr1",5..5),
+            new Region("chr1",8..8)
+        ])
+        
+        Regions other = new Regions([
+            new Region("chr1",5..5),
+            new Region("chr1",8..8)
+        ])
+         
+        Regions result = regions.subtract(other)
+        assert result.size() == 0
+        assert result.numberOfRanges == 0
+    }  
+    
+    
 //    @Test
     void testInfiniteLoop() {
         
