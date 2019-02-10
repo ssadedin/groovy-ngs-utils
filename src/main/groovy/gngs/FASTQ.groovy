@@ -151,10 +151,14 @@ class FASTQRead {
     }
 
     void write(Writer w) {
-        w.println(header)
-        w.println(bases)
-        w.println("+")
-        w.println(quals)
+        w.write(header)
+        w.write('\n')
+        w.write(bases)
+        w.write('\n')
+        w.write("+")
+        w.write('\n')
+        w.write(quals)
+        w.write('\n')
     }
     
     int size() {
