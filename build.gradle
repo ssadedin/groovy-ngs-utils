@@ -74,11 +74,11 @@ dependencies {
 // Bundle all dependencies into output library
 jar {
     from configurations.compile.grep { !it.name.startsWith("cramtools") }.collect { 
-        println "Including $it"; 
+        // println "Including $it"; 
         it.isDirectory() ? it : zipTree(it) 
     }
     from configurations.compile.grep { it.name.startsWith("cramtools") }.collect { 
-        println "Including $it"; 
+        // println "Including $it"; 
         it.isDirectory() ? it : zipTree(it) 
     }
 
@@ -118,6 +118,12 @@ test {
     filter {
      includeTestsMatching "gngs.*"
     }
+
+/* Uncomment to see test output
+    testLogging {
+        events "passed", "skipped", "failed", "standardOut", "standardError"
+    }
+*/
 }
 
 task doc << {
