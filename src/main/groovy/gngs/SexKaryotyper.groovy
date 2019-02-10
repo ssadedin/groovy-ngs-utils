@@ -91,9 +91,11 @@ class SexKaryotyper implements Runnable {
         
         String sample = bam.samples[0]
         
-        Regions yRegions = (this.regions.grep { it.chr == 'chrY' } as Regions)
-        Regions xRegions = (this.regions.grep { it.chr == 'chrX' } as Regions)
-        Regions autoRegions = (this.regions.grep { it.chr == 'chr1' || it.chr == 'chr22' } as Regions)        
+        List autosomeChrs = ['chr1','chr22','1','22']
+        
+        Regions yRegions = (this.regions.grep { it.chr == 'chrY' || it.chr =='Y' } as Regions)
+        Regions xRegions = (this.regions.grep { it.chr == 'chrX' || it.chr == 'X' } as Regions)
+        Regions autoRegions = (this.regions.grep { autosomeChrs.contains(it.chr)  } as Regions)        
         
         IntegerStats xStats = calcCovStats(xRegions)
         log.info "Coverage from X calc = $xStats.mean"
