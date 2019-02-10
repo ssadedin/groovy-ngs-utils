@@ -37,13 +37,44 @@ class VCFWalkPosition {
     
     Iterator<VariantContext> iter
     
-    VariantContext variant
+    List<VariantContext> variant
+    
+    VariantContext pending = null
     
     void next() {
-        if(iter.hasNext())
-            variant = iter.next()
-        else
+        VariantContext v = nextImpl()
+        if(v.is(null)) {
             variant = null
+            return
+        }
+        variant = [v]
+        final long start = v.start
+        while(pending?.start == v.start) {
+            variant.add(nextImpl())
+        }
+    }
+    
+    /**
+     * Lets us peek at the next variant coming up
+     * @return  the next variant from the iterator or null if there is none
+     */
+    VariantContext nextImpl() {
+        if(pending == null) {
+            if(iter.hasNext())
+                pending = iter.next()
+        }
+        
+        if(pending == null)
+            return null
+        
+        VariantContext result = pending
+        if(iter.hasNext()) {
+            pending = iter.next()        
+        }
+        else {
+            pending = null
+        }
+        return result
     }
 }
 
@@ -99,23 +130,24 @@ class VCFSiteWalker {
         
         // Group by position, then order by those
         List<List<VCFWalkPosition>> nextVariants = vcfs.groupBy { VCFWalkPosition vcf ->
-            VariantContext v = vcf?.variant
+            List<VariantContext> v = vcf?.variant
             if(!v)
                 return Long.MAX_VALUE
                 
-            return XPos.computePos(v.contig, v.start)
+            VariantContext v0 = v[0]
+            return XPos.computePos(v0.contig, v0.start)
         }
         .sort {
             it.key
         }.collect { 
-            it.value
+            it.value // there is a list of variants from each VCF at each position: join them together
         }
             
         processPosition(nextVariants[0], callback)
     }
     
     private void processPosition(List<VCFWalkPosition> variants, Closure callback) {
-        callback(variants*.variant)
+        callback(variants*.variant.sum())
         variants*.next()
     }
 }

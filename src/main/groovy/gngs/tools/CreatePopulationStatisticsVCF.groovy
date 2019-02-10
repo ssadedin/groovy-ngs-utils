@@ -76,17 +76,15 @@ class AlleleNumber {
  * <p>
  * The current implementation infers the sexes of the samples so they do not need to be specified.
  * However this does rely on having sufficient coverage of the autosomes and X chromosome to determine
- * sex. If this is not true, an error will be reported.
+ * sex. If this is not true, the sex of the samples must be provided with `-sex` or an error will 
+ * be reported,
  * <p> 
  * <b>Limitations:</b>
  * The current implementation has a number of limitations:
  * 
- * <li>Only one entry is genererated for each unique site in the input VCFs. Therefore this will
- *      <i>incorrect</i> when there is more than one allele observed at a site (multi-allelic sites).
- * <li>If a site appears twice in one of the source VCFs it may be counted incorrectly (eg: multi-allelic sites that are 
- *     decomposed)
  * <li>Only VCF information is considered, not gVCF, which is to say, an allele is counted as 
- *     unobserved at a site even if there was no coverage and therefore was not ascertained at that site.
+ *     unobserved at a site even if there was no coverage and therefore was not ascertained at 
+ *     that site.
  * 
  * These limitations should be corrected to generate truly accurate counts.
  * 
@@ -143,15 +141,35 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         })
         VCFSiteWalker locusWalker = new VCFSiteWalker(opts.arguments())
         locusWalker.walk { List<VariantContext> variants ->
-            VariantContext v0 = variants[0]
-            lastVariant = v0
-            int ac = computeAlleleCount(variants)
-            int an = computeAlleleNumber(v0.contig)
-            int gtc = variants.size()*numSamples // todo: check this is right
-            printVCFSite(v0, ac, an, gtc)
+            lastVariant = variants[0]
+            processSite(variants)
             progress.count()
         }
         progress.end()
+        out.close()
+    }
+    
+    @CompileStatic
+    void processSite(List<VariantContext> variants) {
+        // TODO: in here we should group the variants by their alternate allele and output
+        // a different count for each allele (to deal with multi-allelic variants)
+        
+        Map<String, List<VariantContext>> alleles = 
+            variants.groupBy { VariantContext ctx -> 
+                ctx.getAlternateAllele(0).baseString
+            }
+            
+        if(alleles.size()>1) {
+            log.info "Site ${variants[0].contig}:${variants[0].start} is multiallelic"
+        }
+        
+        for(List<VariantContext> allele : alleles.values()) {
+            VariantContext v0 = allele[0]
+            int ac = computeAlleleCount(allele)
+            int an = computeAlleleNumber(v0.contig)
+            int gtc = numSamples // todo: check this is right
+            printVCFSite(v0, ac, an, gtc)
+        }
     }
     
     @CompileStatic
