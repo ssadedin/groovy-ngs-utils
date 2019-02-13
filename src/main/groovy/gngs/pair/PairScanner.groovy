@@ -30,6 +30,8 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
+import groovyx.gpars.group.DefaultPGroup
+import groovyx.gpars.group.PGroup
 import htsjdk.samtools.SamReader
 import htsjdk.samtools.BAMIndex
 import htsjdk.samtools.BAMIndexMetaData
@@ -59,11 +61,13 @@ class PairScanner {
     
     SAMRecord lastRead
     
-    ProgressCounter progress = new ProgressCounter(withRate:true, withTime:true, timeInterval: 120000, extra: { 
+    ProgressCounter progress = new ProgressCounter(withRate:true, withTime:true, timeInterval: 60000, extra: { 
         lastRead?.referenceName + ':' + lastRead?.alignmentStart + ", loc: " +  
         [locators*.received.sum(),locators*.paired.sum(),locators*.buffer*.size().sum()].collect {human(it)}.join(',') +
-        " chimeric: ${human(locators*.chimeric.sum())}" + 
-        " fmt: ${human(formatters*.formatted.sum())}, wrote: " + human(pairWriter.written) + ", Mem: ${Utils.human(CompactReadPair.memoryUsage)}/${Utils.human(Runtime.runtime.freeMemory())}/${Utils.human(Runtime.runtime.totalMemory())}"
+        " chm: ${human(locators*.chimeric.sum())}" + 
+        " shf: ${shufflers.collect{human(it.buffer.size)}.join(',')}" +
+        " fmt: ${human(formatters*.formatted.sum())}, wrote: " + human(pairWriter.written) + 
+        ", Mem: ${Utils.human(CompactReadPair.memoryUsage)}/${Utils.human(Runtime.runtime.freeMemory())}/${Utils.human(Runtime.runtime.totalMemory())}"
     })
     
     PairWriter pairWriter
@@ -115,10 +119,24 @@ class PairScanner {
      */
     final static int FORMATTER_BUFFER_SIZE = 1000 * 1000
     
+    /**
+     * The buffer within which to shuffle reads so as to randomise their output order
+     */
+    int shuffleBufferSize = 5000
+    
+    List<Shuffler> shufflers
+    
+    PGroup formatterGroup
+    PGroup shufflerPGroup
+    
     PairScanner(Writer writer1, Writer writer2, int numLocators, Regions regions = null, String filterExpr = null, int writerQueueSize = DEFAULT_WRITER_QUEUE_SIZE) {
         this.pairWriter = new PairWriter(writer1, writerQueueSize)
+        this.pairWriter.parallelGroup = new DefaultPGroup(1)
+        
         this.pairWriter2 = new PairWriter(writer2, writerQueueSize)
-        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter, pairWriter2) }
+        
+        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter, pairWriter2)  }
+        
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
@@ -142,6 +160,14 @@ class PairScanner {
         int locatorsCreated = 0
         this.locators = []
         
+        
+        this.formatterGroup = new DefaultPGroup(numFormatters+1)
+        this.formatters*.parallelGroup = this.formatterGroup
+        
+        this.shufflers = this.formatters.collect { new Shuffler(it, shuffleBufferSize) }
+        this.shufflerPGroup = new DefaultPGroup(this.shufflers.size()+1)
+        this.shufflers*.parallelGroup = this.shufflerPGroup
+        
         Set<Integer> sequencesWithReads = getContigsWithReads(bam)
         
         log.info "The following contigs have at least one read: " + sequencesWithReads.join(', ')
@@ -154,7 +180,7 @@ class PairScanner {
             if(shardId<0 || ((i%shardSize) == shardId)) {
                 ++locatorsCreated
                 
-                createLocator(bam, sequencesWithReads, formatters[i%formatters.size()])
+                createLocator(bam, sequencesWithReads, shufflers[i%shufflers.size()])
             }
             else {
                 this.locatorIndex.add(null)
@@ -169,7 +195,7 @@ class PairScanner {
         
         log.info "Created ${locatorsCreated} read pair locators"
         
-        this.actors = locators + filters + formatters + [
+        this.actors = locators + filters + shufflers + formatters + [
             pairWriter,
         ]
         
@@ -180,17 +206,17 @@ class PairScanner {
     }
     
     @CompileStatic
-    void createLocator(SAM bam, Set<Integer> sequencesWithReads, PairFormatter formatter) {
+    void createLocator(SAM bam, Set<Integer> sequencesWithReads, Shuffler shuffler) {
         
         PairLocator pl 
         if(filterExpr != null) {
-            PairFilter filter = new PairFilter(formatter, filterExpr)
+            PairFilter filter = new PairFilter(shuffler, filterExpr) 
             this.filters << filter
             pl = new PairLocator(filter, sequencesWithReads)
             pl.compact = false // pass full SAMRecordPair through
         }
         else {
-            pl = new PairLocator(formatter, sequencesWithReads)
+            pl = new PairLocator(shuffler, sequencesWithReads)
         }
                 
         if(this.regions)
@@ -249,6 +275,8 @@ class PairScanner {
             
             filters.eachWithIndex { a, i -> stopActor("Filter $i", a) }
             
+            shufflers.eachWithIndex { a, i -> stopActor("Shuffler $i", a) }
+            
             formatters.eachWithIndex { f, i ->
                 stopActor "Formatter $i", f
             }
@@ -297,14 +325,14 @@ class PairScanner {
         final int shardSize = this.shardSize
 
         while(i.hasNext()) {
-            SAMRecord read = i.next()
+            final SAMRecord read = i.next()
             lastRead = read
             progress.count()
-            int hash = Math.abs(read.readName.hashCode())
-            int locatorOffset = hash % locatorSize
+            final int hash = Math.abs(read.readName.hashCode())
+            final int locatorOffset = hash % locatorSize
             PairLocator locator = locatorIndex[locatorOffset]
             if(locator != null) {
-                locator.sendTo(read)
+                locator.assign(read)
             }
             else {
                 if(!debugRead.is(null) && debugRead == read.readName)

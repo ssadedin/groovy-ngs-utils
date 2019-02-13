@@ -14,6 +14,8 @@ import groovyx.gpars.actor.impl.MessageStream
 
 import java.util.concurrent.atomic.AtomicInteger
 
+import gngs.pair.Shuffler
+
 @CompileStatic
 class AcknowledgeableMessage {
     
@@ -180,23 +182,38 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
         sendLimited(message)
     }
     
+    boolean throttled = false
+    
     @CompileStatic
-    public MessageStream sendLimited(AcknowledgeableMessage message) {
+    public MessageStream sendLimited(AcknowledgeableMessage message, boolean throttle=true) {
         
         if(message.acknowledgeCounter.get() > softLimit) {
+            throttled = true
             long nowMs = System.currentTimeMillis()
             if(nowMs - throttleWarningMs > 30000) {
-                if(verbose)
-                    log.info "Soft throttling $this due to congestion (pending=$message.acknowledgeCounter/$pendingMessages))"
+                if(verbose && (this.downstream == null || !this.downstream.throttled))
+                    log.info "Soft throttling messages to $this (pending=$message.acknowledgeCounter/$softLimit))"
                 throttleWarningMs = nowMs
             }
-            Thread.sleep(50)
+            if(throttle)
+                Thread.sleep(50)
+        }
+        else {
+            throttled = false
         }
             
         while(message.acknowledgeCounter.get() > hardLimit) {
-            if(verbose)
-                log.info "Hard throttling $this due to congestion (pending=$message.acknowledgeCounter/$pendingMessages))"
-            Thread.sleep(3000)
+            long nowMs = System.currentTimeMillis()
+            throttled = true
+            if(verbose) {
+                if(nowMs - throttleWarningMs > 30000) {
+                    log.info "Hard throttling messages to $this due to congestion (pending=$message.acknowledgeCounter/$hardLimit))"
+                    throttleWarningMs = nowMs
+                }
+            }
+                
+            if(throttle)
+                Thread.sleep(3000)
         }
         
         message.acknowledgeCounter.incrementAndGet()

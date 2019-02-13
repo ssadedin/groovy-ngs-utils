@@ -10,19 +10,16 @@ import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecord
 
 @CompileStatic
-class PairFilter extends RegulatingActor<List> {
+class PairFilter extends RegulatingActor<Paired> {
     
     String expr
-    
-    PairFormatter formatter
     
     GroovyShell shell 
     
     Closure filterClosure
     
-    PairFilter(PairFormatter formatter, String script) {
+    PairFilter(RegulatingActor<Paired> formatter, String script) {
         super(formatter,5000,10000)
-        this.formatter = formatter
         shell = new GroovyShell()
         this.filterClosure = (Closure)shell.evaluate("""{ pair -> 
             $script
@@ -38,7 +35,7 @@ class PairFilter extends RegulatingActor<List> {
     }
 
     @Override
-    public void process(List msgList) {
-        process((SAMRecordPair)msgList[0], (SAMRecord)msgList[1])
+    public void process(Paired paired) {
+        process((SAMRecordPair)paired.r1, paired.r2)
     }
 }

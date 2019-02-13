@@ -30,8 +30,19 @@ import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecord
 
 @CompileStatic
+class Paired<PairType> {
+    PairType r1
+    SAMRecord r2
+    public Paired(PairType r1, SAMRecord r2) {
+        super();
+        this.r1 = r1;
+        this.r2 = r2;
+    }
+}
+
+@CompileStatic
 @Log
-class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> {
+class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRecord>> {
     
     /**
      * Read pairs we are indexing, keyed on name
@@ -54,14 +65,25 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
     
     boolean compact = true
     
-    PairLocator(RegulatingActor<List> consumer, Set<Integer> chromosomesWithReads) {
+    PairLocator(RegulatingActor<Paired> consumer, Set<Integer> chromosomesWithReads) {
         super(50000,100000)
         this.consumer = consumer
         this.buffer = new HashMap(200000)
         this.chromosomesWithReads = chromosomesWithReads
     }
     
-    void process(final SAMRecord record) {
+    void process(final List<SAMRecord> records) {
+        for(SAMRecord r : records) {
+            processRead(r)
+        }
+    }
+    
+    @Override
+    public void onEnd() {
+        process(assigned)
+    }
+
+    void processRead(final SAMRecord record) {
         
         ++received
         
@@ -71,15 +93,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
         final String readName = record.readName
         final PairType pair = buffer.remove(readName)
         if(!pair.is(null)) {
-            if(debugRead != null && (readName == debugRead)) {
-                log.info "Paired: $record"
-            }
-
-            if(pair instanceof SAMRecordPair)
-                pair.r2 = record
-            consumer.sendTo([pair, record])
-            buffer.remove(readName)
-            paired += 2
+            emitRead(pair, record)
             return
         }
         
@@ -87,16 +101,8 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
         if(!chromosomesWithReads.is(null) && !chromosomesWithReads.contains(record.mateReferenceIndex))
             return
         
-        // Pair not found - create a new one
-        if(compact)
-            pair = new CompactReadPair(record)
-        else
-            pair = new SAMRecordPair(r1:record)
-       
-        if(debugRead != null && (readName == debugRead)) {
-            log.info "Buffer: $record"
-        }
-            
+        pair = new SAMRecordPair(r1:record)
+        
         // Is it or its mate located in the desired regions?
         if(notInRegion(pair, readName == debugRead)) {
             if(readName == debugRead)
@@ -104,10 +110,35 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
             return
         }
         
+        if(debugRead != null && (readName == debugRead)) {
+            log.info "Buffer: $record"
+        }
+            
+        // Pair not found - create a new one
+        // Note: we avoid creating the compact read pair for reads we will not actually buffer because
+        //       the constructor may do expensive compression which is wasted if we then throw the read 
+        //       away 
+        if(compact)
+            pair = new CompactReadPair(record)
+       
         if(pair.chimeric)
             ++this.chimeric
             
         buffer.put(readName,pair)
+    }
+
+    private emitRead(final ReadPair pair, final SAMRecord record) {
+        final String readName = record.readName
+        if(!debugRead.is(null) && (readName == debugRead)) {
+            log.info "Paired: $record"
+        }
+
+        if(pair instanceof SAMRecordPair)
+            pair.r2 = record
+//        consumer.sendTo([pair, record])
+        consumer.sendTo(new Paired(pair, record))
+        buffer.remove(readName)
+        paired += 2
     }
     
     boolean notInRegion(PairType pair, boolean debug) {
@@ -116,13 +147,31 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<SAMRecord> 
             return false
         }
         
-        if(regions == null)
+        if(regions.is(null))
             return false
         
         return pair.notInRegions(regions)
     }
     
+    List<SAMRecord> assigned = []
+    
+    /**
+     * Assigns the given read to this locator to process.
+     * <p>
+     * The read will be buffered until there are 10 reads to process, and then passed to the
+     * actor thread.
+     * 
+     * @param read
+     */
+    void assign(SAMRecord read) {
+        assigned.add(read)
+        if(assigned.size()>20) {
+            this.send(new AcknowledgeableMessage(assigned, this.pendingMessages))
+            this.assigned = new ArrayList(20)
+        }
+    }
+    
     String toString() {
-        [received,paired,buffer.size()].collect { Utils.human(it) }.join(',')
+        'Locator: ' + [received,paired,buffer.size()].collect { Utils.human(it) }.join(',')
     }
 }

@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.xerial.snappy.Snappy;
 
+import graxxia.IntegerStats;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.SequenceUtil;
@@ -25,7 +26,7 @@ public class CompactReadPair implements ReadPair {
     
     public byte [][] compressedBases;
     
-    short readLength;
+    private final short readLength;
     
     public static interface ReadCompressor {
         byte [][] compress(byte[] bases, byte[] quals) throws IOException;
@@ -106,6 +107,9 @@ public class CompactReadPair implements ReadPair {
     
     public static SummaryStatistics memoryStats  = new SummaryStatistics();
     
+    public static IntegerStats baseCompressionStats = new IntegerStats(200);
+    public static IntegerStats qualCompressionStats = new IntegerStats(200);
+    
     static ReadCompressor initCompressor() {
         String compressorType = System.getProperty("bazam.compressor", "snappyhybrid");
         log.info("Reads will be compressed using compression method: " + compressorType);
@@ -143,13 +147,20 @@ public class CompactReadPair implements ReadPair {
         
         readLength = (short)read.getReadLength();
        
-        compressedBases = compressor.compress(read.getReadBases(), read.getBaseQualities());
+        final byte[] quals = read.getBaseQualities();
+        final byte[] bases = read.getReadBases();
+        compressedBases = compressor.compress(bases, quals);
         
         long mem = compressedBases[0].length;
         if(compressedBases.length>1)
             mem += compressedBases[1].length;
         
+        
         memoryStats.addValue(memoryUsage.addAndGet(mem));
+        
+        baseCompressionStats.addIntValue((int)(100d * compressedBases[0].length / (double)readLength));
+        if(compressedBases.length>1)
+            qualCompressionStats.addIntValue((int)(100d * compressedBases[1].length / (double)readLength));
         
         currentCount.incrementAndGet();
    }
@@ -260,8 +271,6 @@ public class CompactReadPair implements ReadPair {
         
         b1.append(new String(decompressedBases, 0, readLength));
         b1.append("\n+\n");
-        
-        final int twoRL = readLength*2;
         
         if(flipR1) { // read is aligned complemented, we have to turn it back
             for(int i=readLength-1; i>=0; --i) {
