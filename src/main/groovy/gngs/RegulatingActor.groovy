@@ -107,7 +107,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     
     ProgressCounter progress 
     
-    boolean verbose = false
+    boolean verbose = true
     
     final static Object STOP = new Object()
     
@@ -124,7 +124,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
             final void doRun(final Object msg) {
                 if(msg.is(STOP)) {
                     stopped = true
-                    this.onEnd()
+                    RegulatingActor.this.onEnd()
                     if(progress != null)
                         progress.end()
                     doTerminate()
