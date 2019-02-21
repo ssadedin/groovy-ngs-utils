@@ -65,9 +65,9 @@ class PairScanner {
         lastRead?.referenceName + ':' + lastRead?.alignmentStart + ", loc: " +  
         [locators*.received.sum(),locators*.paired.sum(),locators*.buffer*.size().sum()].collect {human(it)}.join(',') +
         " chm: ${human(locators*.chimeric.sum())}" + 
-        " shf: ${shufflers.collect{human(it.buffer.size)}.join(',')}" +
+        " shf: ${human(shufflers[0].currentBufferSize)}" +
         " fmt: ${human(formatters*.formatted.sum())}, wrote: " + human(pairWriter.written) + 
-        ", Mem: ${Utils.human(CompactReadPair.memoryUsage)}/${Utils.human(Runtime.runtime.freeMemory())}/${Utils.human(Runtime.runtime.totalMemory())}"
+        ", mem: ${Utils.human(CompactReadPair.memoryUsage)}/${Utils.human(Runtime.runtime.freeMemory())}/${Utils.human(Runtime.runtime.totalMemory())}"
     })
     
     PairWriter pairWriter
@@ -323,7 +323,7 @@ class PairScanner {
         final int locatorSize = locatorIndex.size()
         final int shardId = this.shardId
         final int shardSize = this.shardSize
-
+        int readCount = 0
         while(i.hasNext()) {
             final SAMRecord read = i.next()
             lastRead = read
@@ -338,7 +338,11 @@ class PairScanner {
                 if(!debugRead.is(null) && debugRead == read.readName)
                     log.info "Read $debugRead not assigned to shard (hash=$hash, lcoffset=$locatorOffset/$locatorSize)"
             }
+            ++readCount
         }
+        
+        log.info "Scanned ${readCount} reads"
+        
     }
     
     void stopActor(String name, Actor actor) {

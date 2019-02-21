@@ -31,13 +31,32 @@ import htsjdk.samtools.SAMRecord
 
 @CompileStatic
 class Paired<PairType> {
-    PairType r1
-    SAMRecord r2
-    public Paired(PairType r1, SAMRecord r2) {
+	
+	final static byte R1_READ_NEGATIVE_STRAND_FLAG = 0x1
+	final static byte R2_READ_NEGATIVE_STRAND_FLAG = 0x2
+	
+	public String key
+    public PairType r1
+    public PairType r2
+	int flags = 0
+
+    public Paired(String key, PairType r1, PairType r2, boolean r1NegStrand, boolean r2NegStrand, int rand) {
         super();
+		this.key = key
         this.r1 = r1;
         this.r2 = r2;
+		this.flags |= (r1NegStrand ? R1_READ_NEGATIVE_STRAND_FLAG : 0)
+		this.flags |= (r2NegStrand ? R2_READ_NEGATIVE_STRAND_FLAG : 0)
+        this.flags |= (rand & 0xFFFC)
     }
+	
+	boolean getR1NegativeStrandFlag() {
+		flags & R1_READ_NEGATIVE_STRAND_FLAG
+	}
+	
+	boolean getR2NegativeStrandFlag() {
+		flags & R2_READ_NEGATIVE_STRAND_FLAG
+	}
 }
 
 @CompileStatic
@@ -65,8 +84,13 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
     
     boolean compact = true
     
+    /**
+     * Random number generator used to randomize read output order
+     */
+    Random rand = new Random(0)
+        
     PairLocator(RegulatingActor<Paired> consumer, Set<Integer> chromosomesWithReads) {
-        super(50000,100000)
+        super(20000,50000)
         this.consumer = consumer
         this.buffer = new HashMap(200000)
         this.chromosomesWithReads = chromosomesWithReads
@@ -91,7 +115,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
             return
         
         final String readName = record.readName
-        final PairType pair = buffer.remove(readName)
+        PairType pair = buffer.remove(readName)
         if(!pair.is(null)) {
             emitRead(pair, record)
             return
@@ -132,11 +156,19 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
         if(!debugRead.is(null) && (readName == debugRead)) {
             log.info "Paired: $record"
         }
-
         if(pair instanceof SAMRecordPair)
             pair.r2 = record
-//        consumer.sendTo([pair, record])
-        consumer.sendTo(new Paired(pair, record))
+
+		Paired p =new Paired(
+    			record.readName, 
+    			pair, 
+    			new CompactReadPair(record), 
+    			record.mateNegativeStrandFlag, 
+    			record.readNegativeStrandFlag,
+                rand.nextInt()
+            )
+
+        consumer.sendTo(p)
         buffer.remove(readName)
         paired += 2
     }

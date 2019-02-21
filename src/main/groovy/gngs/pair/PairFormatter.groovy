@@ -47,7 +47,7 @@ import htsjdk.samtools.util.SequenceUtil
  */
 @CompileStatic
 @Log
-class PairFormatter extends RegulatingActor<List> {
+class PairFormatter extends RegulatingActor<Paired> {
     
     StringBuilder buffer
     
@@ -84,17 +84,24 @@ class PairFormatter extends RegulatingActor<List> {
     }
 
     @CompileStatic
-    final void process(final ReadPair pair, final SAMRecord r2) {
+    final void process(Paired paired) {
+		
+		final String readName = paired.key
         
-        if(debugRead != null && (r2.readName == debugRead)) {
+        if(debugRead != null && (readName == debugRead)) {
             log.info "Format: $debugRead"
         }
         
-        if(pair instanceof CompactReadPair) {
-            pair.appendTo(buffer, (StringBuilder) (buffer2 != null ? buffer2 : buffer), r2, this.addPosition)
+        if(paired.r1 instanceof CompactReadPair) {
+            ((CompactReadPair)paired.r1).appendTo(
+				paired.key, 
+				buffer, 
+				(StringBuilder) (buffer2 != null ? buffer2 : buffer), 
+				paired,
+				this.addPosition)
         }
         else {
-            ((SAMRecordPair)pair).appendTo(buffer, (buffer2 != null ? buffer2 : buffer), this.addPosition)
+            ((SAMRecordPair)paired.r1).appendTo(buffer, (buffer2 != null ? buffer2 : buffer), this.addPosition)
         }
         
         assert writer != null
@@ -120,11 +127,5 @@ class PairFormatter extends RegulatingActor<List> {
         writer.sendTo((Map)[ content: buffer.toString(), reads: buffered ])
         writer.pending.addAndGet(buffered)
         buffer.setLength(0)
-    }
-
-    @Override
-    public void process(List msgList) {
-        process((ReadPair)msgList[0], (SAMRecord)msgList[1])
-        
     }
 }

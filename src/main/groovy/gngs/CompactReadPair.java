@@ -7,6 +7,7 @@ import java.util.logging.Logger;
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics;
 import org.xerial.snappy.Snappy;
 
+import gngs.pair.Paired;
 import graxxia.IntegerStats;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMUtils;
@@ -174,7 +175,7 @@ public class CompactReadPair implements ReadPair {
    }
    
    public boolean getUnmapped() {
-       return (r1ReferenceName == "*") || (r2ReferenceName == "*");
+       return (r1ReferenceName.equals("*") || r2ReferenceName.equals("*"));
    }
    
    public boolean notInRegions(Regions regions) {
@@ -191,7 +192,7 @@ public class CompactReadPair implements ReadPair {
        return true;
    }
    
-   public void appendTo(StringBuilder r1Out, StringBuilder r2Out, SAMRecord r2, boolean addPosition) throws IOException {
+   public void appendTo(final String r1Name, final StringBuilder r1Out, final StringBuilder r2Out, Paired pairInfo, boolean addPosition) throws IOException {
        
        // The logic here is complex
        // Read bases are all passed in relative to the forward strand of the reference
@@ -223,7 +224,6 @@ public class CompactReadPair implements ReadPair {
        //
        // <-R2 <-R1
        
-        final String r1Name = r2.getReadName();
         
 //        StringBuilder b1 = r2.getFirstOfPairFlag() ? r1Out : r2Out;
 //        StringBuilder b2 = r2.getFirstOfPairFlag() ? r2Out : r1Out;
@@ -251,10 +251,12 @@ public class CompactReadPair implements ReadPair {
         // R1
         //////////////////////////////////////////////////////////////////////
         
+        CompactReadPair r2 = (CompactReadPair)pairInfo.r2;
+        
         // r1 could be R1 or R2
-        // If it's R1 and aligned to neg strand, then we shoudl flip back
+        // If it's R1 and aligned to neg strand, then we should flip back
         // if it's R2 and aligned to pos strand, then we sh
-        final boolean flipR1 = r2.getMateNegativeStrandFlag();
+        final boolean flipR1 = pairInfo.getR1NegativeStrandFlag(); // TODO: FIXME r2.getMateNegativeStrandFlag();
         
         byte [][] expanded = compressor.expand(this.compressedBases);
         byte [] decompressedBases = expanded[0];
@@ -292,34 +294,42 @@ public class CompactReadPair implements ReadPair {
             b2.append((CharSequence)nameSuffix);
         }        
         
-        b2.append(" 2:N:0:1\n");
-        
-        final boolean flipR2 = r2.getReadNegativeStrandFlag();
-        if(flipR2)
-            b2.append(SequenceUtil.reverseComplement(r2.getReadString()));
-        else
-            b2.append(r2.getReadString());
-        
-        b2.append("\n+\n");
-        
-        byte [] bq = r2.getBaseQualities();
-        if(flipR2) {
-            for(int i=bq.length-1; i>=0; --i) {
-                b2.append(SAMUtils.phredToFastq(bq[i]));
-            }
-        }
-        else {
-            for(int i=0; i<bq.length; ++i) {
-                b2.append(SAMUtils.phredToFastq(bq[i]));
-            }            
-        }
-        b2.append('\n');
+        appendR2(pairInfo, b2, r2);
         
         long mem = -compressedBases[0].length;
-        if(compressedBases.length>1)
+        mem -= r2.compressedBases[0].length;
+
+        if(compressedBases.length>1) {
             mem -= compressedBases[1].length;
-        
+            mem -= r2.compressedBases[1].length;
+        }
+
         memoryUsage.addAndGet(mem);
         currentCount.decrementAndGet();
    }
+
+	private void appendR2(final Paired pairInfo, final StringBuilder b2, final CompactReadPair r2) throws IOException {
+		b2.append(" 2:N:0:1\n");
+		final byte [][] expandedR2 = compressor.expand(r2.compressedBases);
+		final byte [] decompressedR2Bases = expandedR2[0];
+		final byte [] decompressedR2Quals = expandedR2[1];
+		final boolean flipR2 = pairInfo.getR2NegativeStrandFlag(); 
+		if(flipR2)
+			SequenceUtil.reverseComplement(decompressedR2Bases);
+		b2.append(new String(decompressedR2Bases,0,decompressedR2Bases.length));
+		
+		b2.append("\n+\n");
+		
+		if(flipR2) {
+			for(int i=decompressedR2Quals.length-1; i>=0; --i) {
+				b2.append(SAMUtils.phredToFastq(decompressedR2Quals[i]));
+			}
+		}
+		else {
+			for(int i=0; i<decompressedR2Quals.length; ++i) {
+				b2.append(SAMUtils.phredToFastq(decompressedR2Quals[i]));
+			}            
+		}
+		b2.append('\n');
+	}
 }

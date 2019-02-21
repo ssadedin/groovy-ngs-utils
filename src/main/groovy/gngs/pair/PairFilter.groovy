@@ -36,6 +36,6 @@ class PairFilter extends RegulatingActor<Paired> {
 
     @Override
     public void process(Paired paired) {
-        process((SAMRecordPair)paired.r1, paired.r2)
+        process((SAMRecordPair)paired.r1, ((SAMRecordPair)paired.r1).r2)
     }
 }

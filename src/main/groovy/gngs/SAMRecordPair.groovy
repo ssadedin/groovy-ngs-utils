@@ -44,7 +44,7 @@ interface ReadPair {
  * 
  * @author Simon Sadedin
  */
-@CompileStatic
+// Note: cannot static compile due to error in setReadGroup
 class SAMRecordPair implements Comparable, ReadPair {
     
     public SAMRecord r1
@@ -71,8 +71,8 @@ class SAMRecordPair implements Comparable, ReadPair {
     
     @CompileStatic
     void setTag(String name, String value) {
-        r1.setAttribute(name, value)
-        r2.setAttribute(name, value)
+        r1.setAttribute(name, (Object)value)
+        r2.setAttribute(name, (Object)value)
     }
     
     static short RG_TAG = SAMTagUtil.getSingleton().RG
