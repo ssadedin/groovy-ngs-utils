@@ -12,12 +12,12 @@ import htsjdk.samtools.SAMRecord
 class ShufflerTest {
 
     @Test
-    public void test() {
+    public void 'test randomised order'() {
         
         List received = []
         RegulatingActor a = RegulatingActor.actor { msg ->
-            println "Message: ${msg[1]}"
-            received << msg[1]
+            println "Message: ${msg.r1}"
+            received << msg.r1
         } 
         a.start()
         
@@ -32,12 +32,12 @@ class ShufflerTest {
         
         reads.each { e ->
             SAMRecord r = e.value[0]
-            Paired p = new Paired(new SAMRecordPair(r1:r), r)
+            Paired p = new Paired(r.readName, new SAMRecordPair(r1:r), new SAMRecordPair(r1:r), false, true, 0)
             s.process(p)
         }
         
-        // First read out  should be the smallest of the first 10
-        assert received[0].readName == reads*.key[0..10].min()
+        // the order should be randomised!
+        assert received[0..10]*.readName != rawReads[0..10]*.readName
         
         println reads*.key[0]
         
