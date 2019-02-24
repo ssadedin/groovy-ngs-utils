@@ -29,20 +29,30 @@ import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
+import htsjdk.tribble.readers.TabixReader
 
 @CompileStatic
 @ToString
 class SampleReadCount {
     
-    Region target
+    final Region target
     
-    String chr
+    final String chr
     
-    int pos 
+    final int pos 
     
-    int reads
+    final int reads
     
-    String sample
+    final String sample
+
+    public SampleReadCount(Region target, String chr, int pos, int reads, String sample) {
+        super();
+        this.target = target;
+        this.chr = chr;
+        this.pos = pos;
+        this.reads = reads;
+        this.sample = sample;
+    }    
 }
 
 
@@ -94,18 +104,25 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         )
     
     public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, String sample) {
+        this(bam.getContigList(), targetRegions, combiner, sample)
+    }
+    
+    public CoverageCalculatorActor(List<String> allContigs, Regions targetRegions, Actor combiner, String sample) {
         super(combiner, 20000, 100000);
         this.targetRegions = targetRegions
         this.regionIter = targetRegions.iterator();
         this.sample = sample;
         
-        this.bamContigs = bam.getContigList()
+        this.bamContigs = allContigs
         this.bedReferenceIndexes = targetRegions*.chr.unique().collect { String chr ->
             bamContigs.indexOf(chr)
         } as Set
         
+        log.info "Calculating coverage for ${targetRegions.numberOfRanges} regions"
+        
         nextRegion()
     }
+    
 
     void onEnd() {
         this.flushToEnd()
@@ -223,9 +240,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     @CompileStatic
     void flushPosition() {
         dropNonOverlapping()
-//        log.info "Flush $currentRegion.chr:$pos - ${reads.size()}"
-        sendDownstream(new SampleReadCount(target: currentRegion, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample))
-//        combiner << new SampleReadCount(target: (Region)null, chr: currentRegion.chr, pos: pos, reads: reads.size(), sample: sample)
+        sendDownstream(new SampleReadCount(currentRegion, currentRegion.chr, pos, reads.size(), sample))
     }
     
     @CompileStatic
@@ -263,12 +278,11 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
                     SAMRecord r = iter.next()
                     if(r.getMappingQuality()>=minMQ)
                         calculator.send(new AcknowledgeableMessage(new ReadRange(r), downstreamCount))
-                }
+                } 
             }
         }
         log.info "Sending stop message to CRA ${bam.samples[0]} ..."
         calculator << RegulatingActor.STOP
         calculator.join()
     }
-   
 }

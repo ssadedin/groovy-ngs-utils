@@ -12,22 +12,11 @@ import groovyx.gpars.actor.Actors
 import groovyx.gpars.actor.DefaultActor
 import groovyx.gpars.actor.impl.MessageStream
 
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.atomic.AtomicInteger
 
 import gngs.pair.Shuffler
 
-@CompileStatic
-class AcknowledgeableMessage {
-    
-    AcknowledgeableMessage(Object payload, AtomicInteger counter) {
-        this.payload = payload
-        this.acknowledgeCounter = counter
-    }
-    
-    Object payload
-    
-    AtomicInteger acknowledgeCounter
-}
 
 /**
  * An Actor that exerts back-pressure to regulate the rate of incoming messages.
@@ -123,22 +112,42 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
             @Override
             final void doRun(final Object msg) {
                 if(msg.is(STOP)) {
-                    stopped = true
-                    RegulatingActor.this.onEnd()
-                    if(progress != null)
-                        progress.end()
-                    doTerminate()
+                    RegulatingActor.this.doFinished()
                 }
                 else {
-                    if(progress != null)
-                        progress.count()
                     AcknowledgeableMessage am = (AcknowledgeableMessage)msg
-                    RegulatingActor.this.process((T)am.payload)
-                    pendingMessages.decrementAndGet()
-                    am.acknowledgeCounter.decrementAndGet()
+                    if(am instanceof BatchedAcknowledgeableMessage) {
+                        List<T> payloads = (List<T>)am.payload
+                        for(T payload : payloads) {
+                            RegulatingActor.this.processSingleMessage(am, payload)
+                        }
+                    }
+                    else {
+                        RegulatingActor.this.processSingleMessage(am, am.payload)
+                    }
                 }                
             }
         })
+    }
+    
+    @CompileStatic
+    private final void doFinished() {
+        stopped = true
+           
+        this.onEnd()
+        if(progress != null)
+            progress.end()
+        doTerminate()
+    }
+    
+    @CompileStatic
+    private final void processSingleMessage(AcknowledgeableMessage am, T payload) {
+        if(progress != null)
+            progress.count()
+        this.process(payload)
+        am.acknowledgeCounter.decrementAndGet() 
+        if(!am.acknowledgeCounter.is(this.pendingMessages))
+            pendingMessages.decrementAndGet()
     }
     
     @Override
@@ -174,7 +183,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     
     @CompileStatic
     public MessageStream sendTo(T o) {
-        this.send(new AcknowledgeableMessage(o, this.pendingMessages))
+        this.sendLimited(new AcknowledgeableMessage(o, this.pendingMessages))
     }
     
     @CompileStatic
@@ -217,7 +226,8 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
         }
         
         message.acknowledgeCounter.incrementAndGet()
-        this.pendingMessages.incrementAndGet()
+        if(!message.acknowledgeCounter.is(this.pendingMessages))
+            this.pendingMessages.incrementAndGet()
         super.send(message)
     }
     

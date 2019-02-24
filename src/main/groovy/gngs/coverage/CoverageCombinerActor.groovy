@@ -23,10 +23,29 @@ import java.util.concurrent.atomic.AtomicInteger
 
 import gngs.*
 import groovy.transform.CompileStatic
+import groovy.transform.ToString
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
 import htsjdk.samtools.SAMRecordIterator
+import htsjdk.tribble.readers.TabixReader
+
+@CompileStatic
+@ToString
+class PositionCounts {
+    final Region region
+    final String chr
+    final int pos
+    final Map<String,Integer> counts
+
+    public PositionCounts(final Region region, final int pos, final Map<String, Integer> counts) {
+        super();
+        this.region = region;
+        this.chr = region.chr;
+        this.pos = pos;
+        this.counts = counts;
+    }    
+}
 
 @Log
 class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
@@ -42,17 +61,20 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     
     TreeMap<Long,Map<String,Integer>> counts = new TreeMap()
     
-    AtomicInteger countSize = new AtomicInteger()
+    final AtomicInteger countSize = new AtomicInteger()
     
-    AtomicInteger pending = new AtomicInteger()
+    final AtomicInteger pending = new AtomicInteger()
     
-    AtomicInteger processed = new AtomicInteger()
+    final AtomicInteger processed = new AtomicInteger()
     
-    Map<String,AtomicInteger> pendingCounts = Collections.synchronizedMap([:])
+    final Map<String,AtomicInteger> pendingCounts = Collections.synchronizedMap([:])
     
     ProgressCounter progress = new ProgressCounter(withRate: true, timeInterval: 1000, lineInterval: 200, log:log, 
-        extra: { "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]?.size()?:0}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})" })
+        extra: this.&statusMessage)
     
+    String statusMessage() {
+        "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]?.size()?:0}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})"  
+    }
     
     CoverageCombinerActor(RegulatingActor printer, int numSamples) {
         super(printer, 20000, 200000)
@@ -66,24 +88,23 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     }
     
     @CompileStatic
-    void process(SampleReadCount count) {
+    void process(final SampleReadCount count) {
         
         pending.decrementAndGet()
         
         this.chr = count.chr
         
-        Long xpos = XPos.computePos(count.chr, count.pos)
+        final Long xpos = XPos.computePos(count.chr, count.pos)
         if(pos == -1)
             pos = xpos
         
-        Map<String,Integer> positionCounts = this.counts[xpos]
-        if(positionCounts == null) {
-            this.counts[xpos] = positionCounts = new HashMap()
-            countSize.incrementAndGet()
-        }
+        final Map<String,Integer> positionCounts = getOrInitCounts(xpos)
+        positionCounts.put(count.sample,count.reads)
         
-        positionCounts[count.sample] = count.reads
         progress.count()
+        
+//        if(count.pos == 237532844)
+//            log.info "Counts: " + count
         
         pendingCounts.get(count.sample, new AtomicInteger(0)).getAndIncrement()
         
@@ -99,14 +120,74 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
                 else
                     pos = -1
                     
-                sendDownstream([region: count.target, chr: count.chr, pos: count.pos, counts: positionCounts])
+                PositionCounts posCounts = new PositionCounts(count.target, count.pos, positionCounts)
+//                log.info "Send: $posCounts"
+                sendDownstream(posCounts)
            }
         }
+    }
+    
+    @Override
+    void onEnd() {
+        log.info "CoverageCombiner stopped at $pos"
+    }
+
+    @CompileStatic
+    private Map getOrInitCounts(long xpos) {
+        Map<String,Integer> positionCounts = this.counts[xpos]
+        if(positionCounts == null) {
+            this.counts[xpos] = positionCounts = new HashMap()
+            countSize.incrementAndGet()
+        }
+        return positionCounts
     }
      
     @CompileStatic
     void processBAM(SAM bam, Regions scanRegions, int minMQ) {
         CoverageCalculatorActor.processBAM(bam, scanRegions, this, minMQ)
+    }
+    
+    @CompileStatic
+    void processTabix(String sample, TabixReader reader, Regions scanRegions) {
+       
+        AtomicInteger downstreamCount = new AtomicInteger(0)
+        
+        List<String> chrs = scanRegions*.chr.unique()
+        int count = 0
+        BatchedAcknowledgeableMessage bam = new BatchedAcknowledgeableMessage(downstreamCount, 10)
+        for(String chr in chrs) {
+            int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
+            int end = scanRegions.index[chr].ranges.lastKey() + 1000
+            log.info "Scan $chr from $start to $end (overlapping ${scanRegions.numberOfRanges} regions)"
+            Region scanRegion = new Region(chr, start, end)
+            TabixReader.Iterator iter = reader.query(chr, start-2, end+2)
+            String line
+            
+            Regions overlapRegions = scanRegions.collect { it.widen(-1,0) } as Regions
+            boolean emitting = false
+            int lastPos = -1
+            int debugPos = 237551483
+            while((line = iter.next()) != null) {
+                List<String> fields = line.tokenize('\t')
+                
+                final int pos = Integer.parseInt(fields[1])
+                final int readCount = Integer.parseInt(fields[2])
+                
+                if(overlapRegions.overlaps(chr, pos, pos)) {
+                    SampleReadCount countInfo = new SampleReadCount(
+                        scanRegion,
+                        chr,
+                        pos,
+                        readCount,
+                        sample
+                    )
+                    bam.batchTo(countInfo, this)
+                    emitting = true
+                }
+                ++count
+            }
+//            bam.flush(this)
+        }
     }
     
     String toString() {

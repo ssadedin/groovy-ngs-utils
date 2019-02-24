@@ -32,7 +32,7 @@ import groovy.util.logging.Log
 import groovyx.gpars.actor.DefaultActor
 
 @Log
-class CoveragePrinter extends RegulatingActor<Map> {
+class CoveragePrinter extends RegulatingActor<PositionCounts> {
     
     Writer w
     
@@ -170,14 +170,13 @@ class CoveragePrinter extends RegulatingActor<Map> {
     int currentGCBin = -1
     
     @CompileStatic
-    void process(Map countInfo) {
-        Region region = (Region)countInfo['region']
-        
+    void process(PositionCounts countInfo) {
+        final Region region = countInfo.region
         if(currentTarget != region) {
             newTargetRegion(region)
         }
         
-        List<Double> rawCounts = new ArrayList(samples.size())
+        final List<Double> rawCounts = new ArrayList(samples.size())
         final Map<String,Double> counts = (Map<String,Double>)countInfo.counts
         for(int i=0; i<numSamples; ++i) {
             rawCounts[i] = counts[samples[i]]
@@ -196,14 +195,14 @@ class CoveragePrinter extends RegulatingActor<Map> {
         updateStats(values)
         
         if(std) {
-            Double valueMean = Stats.mean(values)
+            final Double valueMean = Stats.mean(values)
             values = values.collect { it /(0.01d +  valueMean) }
         }
         
         Double coeffVColumn = null
         if(coeffV) {
-            Stats stats = Stats.from(values)
-            double coeffV = stats.standardDeviation / (1 + stats.mean)
+            final Stats stats = Stats.from(values)
+            final double coeffV = stats.standardDeviation / (1 + stats.mean)
             coeffVColumn = coeffV
             coeffvStats.addValue((int)(100*coeffV))
         }
@@ -212,12 +211,12 @@ class CoveragePrinter extends RegulatingActor<Map> {
     }
     
     @CompileStatic
-    List<Double> divideByMeans(Map<String,Double> counts) {
+    List<Double> divideByMeans(final Map<String,Double> counts) {
        samples.collect{counts[it]/(1d + sampleMeans[it])} 
     }
     
     @CompileStatic
-    void newTargetRegion(Region region) {
+    void newTargetRegion(final Region region) {
         currentTarget = region
         if(gcReference) {
             currentGc = gcReference.gc(currentTarget)
@@ -246,13 +245,13 @@ class CoveragePrinter extends RegulatingActor<Map> {
     StringBuilder line = new StringBuilder(2048)
     
     @CompileStatic
-    void writePosition(final Map countInfo, final List<Double> values, final Double coeffV) {
+    void writePosition(final PositionCounts countInfo, final List<Double> values, final Double coeffV) {
         if(w != null) {
             line.setLength(0)
             
-            w.write((String)countInfo['chr'])
+            w.write(countInfo.chr)
             w.write('\t')
-            w.write(countInfo['pos'].toString())
+            w.write(countInfo.pos.toString())
             w.write('\t')
             if(coeffV != null) {
                 w.write(numberFormat.format(coeffV))
