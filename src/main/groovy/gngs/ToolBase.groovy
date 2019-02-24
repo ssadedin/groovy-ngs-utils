@@ -47,6 +47,8 @@ abstract class ToolBase {
     
     static ThreadLocal<ToolBase> test = new ThreadLocal<ToolBase>()
     
+    static String footer = "This tool is built with Groovy NGS - the Groovy way to work with NGS data.\n" 
+    
     void test(List<String> args, Closure c) {
         test.set(this)
         this.main(args as String[])
@@ -81,19 +83,19 @@ abstract class ToolBase {
         
         specBuilder.delegate = cli
         
+        specBuilder()
+        
         if('-h' in args || '--help' in args) {
             cli.usage()
             err.println ""
-            err.println "This tool is built with Groovy NGS - the Groovy way to work with NGS data.\n" 
+            err.println footer
             System.exit(0)
         }
-        
-        specBuilder()
         
         OptionAccessor opts = cli.parse(args) 
         if(!opts) {
             err.println ""
-            err.println "This tool is built with Groovy NGS - the Groovy way to work with NGS data.\n"
+            err.println footer
             System.exit(1)
         }
         
@@ -103,8 +105,18 @@ abstract class ToolBase {
         tool.parser = cli
         tool.opts = opts
         
-        if(!test.get())
+        if(test.get()) 
+            return
+            
+        try {
             tool.run()
+        }
+        catch(IllegalArgumentException e) {
+            System.err.println "One or more arguments were invalid or missing: " + e.message + "\n"
+            cli.usage()
+            err.println "\n" + footer 
+            System.exit(1)
+        }
     }
     
     /**

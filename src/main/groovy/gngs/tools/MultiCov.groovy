@@ -64,6 +64,7 @@ class MultiCov extends ToolBase {
         cli('-bed <bed file> <bam1> <bam2> ...', args) {
             bed 'BED file describing target regions to analyse coverage for', args:1
             'L' 'A specific region to process, or if a file, opened as a BED file', args:1
+            p 'Padding to apply to chosen regions (0)', args:1
             gene 'A specific gene to scan', args:1
             cv 'Output coefficient of variation for each position as column 2', required: false
             rel 'Output values relative to sample mean'
@@ -100,7 +101,11 @@ class MultiCov extends ToolBase {
         
         fmt.maximumFractionDigits = 2
         
-        resolveRegionsToScan()
+        this.scanRegions = resolveRegionsToScan()
+        
+        if(this.opts.p) {
+            this.scanRegions = this.scanRegions.widen(this.opts.p.toInteger())
+        }
         
         this.scanRegions = this.scanRegions.reduce().toSorted(new NumericRegionComparator())    
         
@@ -163,31 +168,28 @@ class MultiCov extends ToolBase {
      * Combine the various possible options for specifying which region to analyse
      * into a single regions object (see {@link #scanRegions}).
      */
-    void resolveRegionsToScan() {
+    Regions resolveRegionsToScan() {
         if(opts.gene) {
             SAM bam = new SAM(opts.arguments()[0])
             String build = bam.sniffGenomeBuild()
             RefGenes geneDb = RefGenes.download(build)
-            this.scanRegions = geneDb.getExons(opts.gene)
+            return geneDb.getExons(opts.gene)
             log.info "Gene $opts.gene resolved to $scanRegions"
         }
         else
         if(opts.L) {
             if(opts.L.endsWith('.bed') && new File(opts.L).exists())
-                this.scanRegions = new BED(opts.L).load()
+                return new BED(opts.L).load()
             else
-                this.scanRegions = new Regions([new Region(opts.L)])
+                return new Regions([new Region(opts.L)])
         }
         else
         if(opts.bed) {
             log.info "Reading bed file $opts.bed"
-            this.scanRegions = new BED(opts.bed).load()
+            return new BED(opts.bed).load()
         }
-        else {
-            System.err.println "Please specify either -L, -bed or -gene to define the regions to process"
-            parser.usage()
-            System.exit(1)
-        }
+        else 
+            throw new IllegalArgumentException("Please specify either -L, -bed or -gene to define the regions to process")
     }
     
     void run(CoveragePrinter printer) {
