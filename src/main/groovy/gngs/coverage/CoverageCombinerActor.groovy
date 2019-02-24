@@ -185,7 +185,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
             TabixReader.Iterator iter = reader.query(chr, start-2, end+2)
             String line
             
-            Regions overlapRegions = scanRegions.collect { it.widen(-1,0) } as Regions
+            Regions overlapRegions = scanRegions.collect { Region r -> r.widen(-1,0) } as Regions
             boolean emitting = false
             int lastPos = -1
             int debugPos = 237551483
