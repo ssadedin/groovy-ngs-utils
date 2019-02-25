@@ -48,7 +48,13 @@ import gngs.pair.Shuffler
  * default "downstream". If the downstream actor is supplied in the constructor, you can send 
  * messages to it that are automatically per-client limited using the {@link #sendDownstream} 
  * method.
- * 
+ * <p>
+ * If you are constructing a chain of actors with multiple layers, it can be important to 
+ * place these layers into separate thread pools. This can be done by setting the {@link DefaultActor#parallelGroup}
+ * property of the actor before starting it. This is because <code>RegulatingActor</code> instances
+ * can hard-block when downstream actors are overwhelmed, leading to starvation of threads from
+ * the downstream actors.
+* 
  * @author Simon Sadedin
  *
  * @param <T> the type of the messages to be processed
