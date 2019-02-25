@@ -143,12 +143,12 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     }
      
     @CompileStatic
-    void processBAM(SAM bam, Regions scanRegions, int minMQ, int downsampleWindow=0) {
+    void processBAM(SAM bam, Regions scanRegions, int minMQ, int downsampleWindow=0, int subsample=1) {
         
         RegulatingActor<SampleReadCount> coverageSink = this
         boolean stopSink = false
         if(downsampleWindow>1) {
-            coverageSink = new CoverageDownsampler(this, downsampleWindow)
+            coverageSink = new CoverageDownsampler(this, downsampleWindow, subsample)
             coverageSink.start()
             stopSink = true
         }
@@ -162,12 +162,12 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     }
     
     @CompileStatic
-    void processTabix(String sample, TabixReader reader, Regions scanRegions, int downsampleWindow=0) {
+    void processTabix(String sample, TabixReader reader, Regions scanRegions, int downsampleWindow=0, int subsampleBy) {
         
         RegulatingActor<SampleReadCount> coverageSink = this
         boolean stopSink = false
         if(downsampleWindow>1) {
-            coverageSink = new CoverageDownsampler(this, downsampleWindow)
+            coverageSink = new CoverageDownsampler(this, downsampleWindow, subsampleBy)
             coverageSink.start()
             stopSink = true
         }
