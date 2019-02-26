@@ -125,6 +125,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
 
     void onEnd() {
+        log.info "Flushing coverage actor"
         this.flushToEnd()
     }
     
@@ -223,6 +224,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
            
        currentRegion = regionIter.next() 
        currentReferenceIndex = this.bamContigs.indexOf(currentRegion.chr)
+       
        if(currentReferenceIndex < 0)
            throw new IllegalStateException("BED file sequence ${currentRegion.chr} is not found in BAM file sequences")
            
@@ -240,7 +242,8 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     @CompileStatic
     void flushPosition() {
         dropNonOverlapping()
-        sendDownstream(new SampleReadCount(currentRegion, currentRegion.chr, pos, reads.size(), sample))
+        SampleReadCount src = new SampleReadCount(currentRegion, currentRegion.chr, pos, reads.size(), sample)
+        sendDownstream(src)
     }
     
     @CompileStatic

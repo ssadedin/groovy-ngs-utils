@@ -72,6 +72,8 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     ProgressCounter progress = new ProgressCounter(withRate: true, timeInterval: 1000, lineInterval: 200, log:log, 
         extra: this.&statusMessage)
     
+    Map<String,Long> samplePositions = new HashMap()
+    
     String statusMessage() {
         "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]?.size()?:0}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})"  
     }
@@ -90,6 +92,8 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     @CompileStatic
     void process(final SampleReadCount count) {
         
+        final String sample = count.sample
+        
         pending.decrementAndGet()
         
         this.chr = count.chr
@@ -99,12 +103,9 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
             pos = xpos
         
         final Map<String,Integer> positionCounts = getOrInitCounts(xpos)
-        positionCounts.put(count.sample,count.reads)
+        positionCounts.put(sample,count.reads)
         
         progress.count()
-        
-//        if(count.pos == 237532844)
-//            log.info "Counts: " + count
         
         pendingCounts.get(count.sample, new AtomicInteger(0)).getAndIncrement()
         
@@ -124,7 +125,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
 //                log.info "Send: $posCounts"
                 sendDownstream(posCounts)
            }
-        }
+        } 
     }
     
     @Override
@@ -148,6 +149,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
         RegulatingActor<SampleReadCount> coverageSink = this
         boolean stopSink = false
         if(downsampleWindow>1) {
+            log.info "Adding coverage downsampler because downsampleWindow=$downsampleWindow, subsample=$subsample"
             coverageSink = new CoverageDownsampler(this, downsampleWindow, subsample)
             coverageSink.start()
             stopSink = true

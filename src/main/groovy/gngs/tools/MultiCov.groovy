@@ -69,6 +69,8 @@ class MultiCov extends ToolBase {
             cv 'Output coefficient of variation for each position as column 2', required: false
             rel 'Output values relative to sample mean'
             std 'Standardise output values to mean at each bp'
+            w 'Average statistics over moving window of size <arg>bp', longOpt: 'window', args:1
+            subs 'Subsample to emit 1 out of every <arg> positions', longOpt: 'subsample', args:1
             stats 'Print statistics about coverage values and variation'
             targetmeans 'Output a mean coverage matrix for each sample x target region (XHMM compatible)', args:1, required:false
             samplesummary 'Output a summary of mean, median, % bases above thresholds for corresponding sample', args:Cli.UNLIMITED, required: false
@@ -195,7 +197,7 @@ class MultiCov extends ToolBase {
     void run(CoveragePrinter printer) {
         
         printer.start()
-            
+        
         CoverageCombinerActor combiner = new CoverageCombinerActor(printer, bams.size())
         combiner.start()
             
@@ -219,7 +221,14 @@ class MultiCov extends ToolBase {
             }
             
             bams.eachParallel { SAM bam ->
-                combiner.processBAM(bam, this.scanRegions, this.minimumMapQ)
+                if(opts.w || opts.s) {
+                    int windowSize = opts.w ? opts.w.toInteger() : 0
+                    int subsampling = opts.sub ? opts.sub.toInteger() : 1
+                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, windowSize, subsampling)
+                }
+                else {
+                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ)
+                }
             } 
         }
             
