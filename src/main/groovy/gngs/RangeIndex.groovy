@@ -656,7 +656,10 @@ class RangeIndex implements Iterable<IntRange> {
             @CompileStatic
             IntRange findNext() {
                 if(pos == -1) {
-                    pos = ranges.firstKey()
+                    if(ranges.isEmpty())
+                        pos = null
+                    else
+                        pos = ranges.firstKey()
                 }
                 else
                 if(index > ranges[pos].size()-1) {
