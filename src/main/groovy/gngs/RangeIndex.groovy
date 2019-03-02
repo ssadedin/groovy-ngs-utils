@@ -643,6 +643,7 @@ class RangeIndex implements Iterable<IntRange> {
                 return !nextRange.is(null)
             }
             
+            @CompileStatic
             IntRange next() {
                 
                 if(!hasNext()) // Note: populates nextRange
