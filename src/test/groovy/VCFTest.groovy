@@ -250,4 +250,10 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
         assert vcf.samples[0] != null
     }
     
+    @Test
+    void 'parse VCFs containing SVs'() {
+        VCF vcf = VCF.parse("src/test/data/sv.vcf")
+        assert vcf[0].size() > 0
+        println vcf[0].type
+    }
  }

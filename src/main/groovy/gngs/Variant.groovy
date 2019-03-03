@@ -701,6 +701,7 @@ class Variant implements IRegion {
                 }
            }
         }
+        this.cachedSize = null
         this.@info = null
     }
     
@@ -1084,6 +1085,8 @@ class Variant implements IRegion {
         return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>" || alt == "INV" || alt == "<INV>") 
     }
     
+    Integer cachedSize = null
+    
     /**
      * Returns the change in size of the genome caused by this variant's default allele.
      * <p>
@@ -1093,12 +1096,24 @@ class Variant implements IRegion {
      */
     @CompileStatic
     int size() {
+        
+        if(!cachedSize.is(null))
+            return cachedSize
+        
         if(isSV()) {
            Object svLen = this.getInfo().SVLEN
-           if(!svLen)
-               throw new RuntimeException("VCF file contains structural variants but does not have SVLEN information in INFO field")
-           
-            return Math.abs(Integer.parseInt(String.valueOf(svLen)))
+           if(svLen) {
+                cachedSize = Math.abs(Integer.parseInt(String.valueOf(svLen)))
+                return cachedSize
+           }
+                   
+           String endValue = (String)this.getInfo().END
+           if(endValue) {
+               int end = Integer.parseInt(endValue)
+               cachedSize = end - pos
+               return cachedSize
+           }
+           throw new RuntimeException("Variant is a structural variant but does not have SVLEN or END information in INFO field")
         }
         else
             return Math.abs(ref.size() - alt.size())
