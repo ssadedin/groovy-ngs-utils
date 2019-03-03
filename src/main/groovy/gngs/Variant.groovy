@@ -701,6 +701,7 @@ class Variant implements IRegion {
                 }
            }
         }
+        this.cachedRegion = null
         this.cachedSize = null
         this.@info = null
     }
