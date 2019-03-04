@@ -40,28 +40,33 @@ class TargetedCNVAnnotatorTest {
          200..220
         ])
         
+        DGV dgv = new DGV(d)
+        
         TargetedCNVAnnotator a = new TargetedCNVAnnotator(target, d)
         Variant v = del(140,20)
         
-        def ranges = a.findCompatibleRanges(v)
+        def ranges = a.findCompatibleRanges(dgv, v)
         assert ranges.size() == 1
         
-        a = new TargetedCNVAnnotator(target, this.dgv([115..165]))
-        ranges = a.findCompatibleRanges(v)
+        d = this.dgv([115..165])
+        a = new TargetedCNVAnnotator(target, d)
+        ranges = a.findCompatibleRanges(new DGV(d), v)
         assert ranges.size() == 0
         
-        a = new TargetedCNVAnnotator(target, this.dgv([125..205]))
-        ranges = a.findCompatibleRanges(v)
+        d = this.dgv([125..205])
+        a = new TargetedCNVAnnotator(target, d)
+        ranges = a.findCompatibleRanges(new DGV(d), v)
         assert ranges.size() == 0
         
-        a = new TargetedCNVAnnotator(target, this.dgv([125..155]))
-        ranges = a.findCompatibleRanges(v)
+        d = this.dgv([125..155])
+        a = new TargetedCNVAnnotator(target, d)
+        ranges = a.findCompatibleRanges(new DGV(d), v)
         assert ranges.size() == 0
     }
     
     RangedData dgv(List<IntRange> ranges) {
         RangedData dgv = new RangedData()
-        ranges.each { dgv.addRegion("chr1", it.from, it.to) }
+        ranges.each { dgv.addRegion(new Region("chr1", it.from, it.to)) }
         return dgv
     }
     

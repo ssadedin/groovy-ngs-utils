@@ -689,7 +689,7 @@ class Variant implements IRegion {
             rebuildGenotypes(fields)
         }
         
-        fields[8] = genoTypeFields.join(':')
+        fields[8] = genoTypeFields?.join(':')?:''
         
         line = fields.collect { it?:'' }.join('\t')
         

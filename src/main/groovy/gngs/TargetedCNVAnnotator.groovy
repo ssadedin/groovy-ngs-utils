@@ -5,7 +5,7 @@ class TargetedCNVAnnotator {
     
     Regions target
     
-    Map<String, CNVDatabase> cnvDatabases
+    Map<String, CNVDatabase> cnvDatabases = [:]
     
     String omimFile
     
