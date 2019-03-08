@@ -1083,7 +1083,8 @@ class Variant implements IRegion {
     
     @CompileStatic
     boolean isSV() {
-        return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>" || alt == "INV" || alt == "<INV>") 
+//        return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>" || alt == "INV" || alt == "<INV>") 
+        return (alt == "DEL" || alt == "DUP" || alt == "INV" || (alt.startsWith('<') && alt.endsWith('>'))) 
     }
     
     Integer cachedSize = null
