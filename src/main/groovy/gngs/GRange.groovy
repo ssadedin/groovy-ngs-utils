@@ -82,7 +82,12 @@ class Region extends Expando implements IRegion, Serializable {
     
     public static final long serialVersionUID = 0L
     
-    final static Region EMPTY_REGION = new Region("empty", 0..0)
+    final static Region EMPTY_REGION = new Region("empty", 0..0) {
+        @CompileStatic
+        long size() {
+            return 0l
+        }
+    }
     
     Region() {
     }
@@ -210,6 +215,7 @@ class Region extends Expando implements IRegion, Serializable {
      * @param other
      * @return true iff this region overlaps the other
      */
+    @CompileStatic
     boolean isCase(IRegion other) {
         return overlaps(other)
     }
@@ -247,6 +253,37 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     /**
+     * Compute the fraction of mutual overlap of this region with the other.
+     * <p>
+     * This is defined as, the minimum fraction of either region's overlap
+     * with the other.
+     * 
+     *               |   20   |
+     * |----------------------|
+     *           60
+     *               |------------------------------|
+     *                               80
+     * mutual overlap = min(20/60, 20/80) = 0.25
+     *                               
+     * @param other
+     * @return
+     */
+    @CompileStatic
+    double mutualOverlap(IRegion other) {
+        
+        int ixSize = (int)intersect(other).size()
+        
+        if(ixSize == 0) 
+            return 0.0d
+        
+        // Since we know that they intersect, the union is just the max coord - min coord
+        // Jaccard
+//        return ixSize / (Math.max(to, other.range.to) - Math.min(from, other.range.from))
+        
+        return Math.min(ixSize / (double)size(), ixSize / (double)other.range.size())
+    }
+    
+    /**
      * @return  true iff this region fully encompasses the given region
      */
     @CompileStatic
@@ -259,10 +296,17 @@ class Region extends Expando implements IRegion, Serializable {
         if(this.chr != other.chr)
             return EMPTY_REGION
             
-        Region r = new Region(this.chr, Math.max(this.from, other.range.from)..Math.min(this.to, other.range.to))
-        if(r.to < r.from)
+        if(this.is(EMPTY_REGION))
+            return EMPTY_REGION
+           
+        if(other.is(EMPTY_REGION))
+            return EMPTY_REGION
+            
+        int ixFrom= Math.max(this.from, other.range.from)
+        int ixTo = Math.min(this.to, other.range.to)
+        if(ixTo<ixFrom)
             return Region.EMPTY_REGION
-        return r
+        return new Region(this.chr, ixFrom..ixTo)
     }
  
     Region copy() {
@@ -288,6 +332,11 @@ class Region extends Expando implements IRegion, Serializable {
         Region.isMinorContig(this.chr)
     }
     
+    /**
+     * A hueristic that returns true if this the given contig 
+     * represents a non-primary assembly contig or alternate haplotype 
+     * in commonly used human genome assemblies.
+     */
     @CompileStatic
     static boolean isMinorContig(String chr) {
         chr.startsWith('NC_') ||

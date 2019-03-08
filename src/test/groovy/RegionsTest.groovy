@@ -403,5 +403,69 @@ class RegionsTest {
         
     }
     
+    @Test
+    void testIntersect() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr1', 1, 120)        
+        Region ix = r1.intersect(r2)
+        assert ix.size() == 100
+    }
     
+    @Test
+    void testIntersectDifferentChrs() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr2', 1, 120)        
+        Region ix = r1.intersect(r2)
+        assert ix.size() == 0
+    }
+  
+    
+    @Test
+    void testIntersectNonIntersecting() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr1', 150, 220)        
+        Region ix = r1.intersect(r2)
+        assert ix.size() == 0
+    }
+    
+    @Test
+    void 'regions on different chrs have no mutual overlap'() {
+        Region r1 = new Region('chr2', 1, 100)
+        Region r2 = new Region('chr1', 1, 120)
+        approx(r1.mutualOverlap(r2),0d)
+     }
+     
+    @Test
+    void 'regions on same chr with no overlap have zero mut overlap'() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr1', 200, 220)
+        approx(r1.mutualOverlap(r2),0d)
+     }
+  
+    @Test
+    void 'regions that are identical have mutual overlap of one'() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr1', 1, 100)
+        approx(r1.mutualOverlap(r2),1.0d)
+     }
+     
+    @Test
+    void 'half overlapping regions have mutual overlap of 50'() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr1', 50, 150)
+        approx(r1.mutualOverlap(r2),0.5d)
+     } 
+     
+    @Test
+    void 'mutual overlap of small region overlapping large'() {
+        Region r1 = new Region('chr1', 1, 100)
+        Region r2 = new Region('chr1', 48, 50)
+        approx(r1.mutualOverlap(r2),0.02d)
+     } 
+  
+      
+     // Simplistic but easy to use approximate equals
+     void approx(double x1, double x2) {
+         assert Math.abs(x2 - x1) < 0.01
+     }
 }
