@@ -252,6 +252,19 @@ class Regions implements Iterable<Region> {
     }
     
     /**
+     * Returns the overlaps with with the given region as region objects.
+     * <p>
+     * Note: all the internal ranges must be stored as full Region objects,
+     * or this operation will throw an exception.
+     */
+    @CompileStatic
+    List<Region> getOverlapRegions(IRegion r) {
+        getOverlaps(r.chr, r.range.from, r.range.to).collect { IntRange overlap ->
+            (Region)((GRange)overlap).extra
+        }
+    }
+    
+    /**
      * Return true if the given region overlaps any range in this Regions
      * 
      * @param r Region to test for overlaps
