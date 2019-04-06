@@ -262,11 +262,12 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     }
     
     @CompileStatic
-    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream, final int minMQ) {
+    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream, final int minMQ, String sample=null) {
        
         AtomicInteger downstreamCount = new AtomicInteger(0)
         
-        String sample = bam.samples[0]
+        if(sample == null)
+            sample = bam.samples[0]
          
         CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, downstream, sample) 
         calculator.start()

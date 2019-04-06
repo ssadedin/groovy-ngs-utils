@@ -144,7 +144,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     }
      
     @CompileStatic
-    void processBAM(SAM bam, Regions scanRegions, int minMQ, int downsampleWindow=0, int subsample=1) {
+    void processBAM(SAM bam, Regions scanRegions, int minMQ, int downsampleWindow=0, int subsample=1, String sample = null) {
         
         RegulatingActor<SampleReadCount> coverageSink = this
         boolean stopSink = false
@@ -155,7 +155,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
             stopSink = true
         }
        
-        CoverageCalculatorActor.processBAM(bam, scanRegions, coverageSink, minMQ)
+        CoverageCalculatorActor.processBAM(bam, scanRegions, coverageSink, minMQ, sample)
 
         if(stopSink) {
             coverageSink.sendStop()
