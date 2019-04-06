@@ -32,6 +32,17 @@ package gngs
 abstract class CNVDatabase {
     
     /**
+     * Query for regions overlapping region {@link #r}
+     * 
+     * The returned regions are expected to have a number of properties added as expando properties:
+     * 
+     *   <li>deletion_frequency
+     *   <li>duplication_frequency
+     *   <li>observedGains
+     *   <li>observedLosses 
+     *   <li>sampleSize
+     *   <li>varType  - one of ["Loss","Gain+Loss","loss","gain+loss","deletion","Gain","gain","duplication"]
+     * 
      * @return list of CNVS overlapping the specified region
      */ 
     abstract List<Region> queryOverlapping(Region r) 

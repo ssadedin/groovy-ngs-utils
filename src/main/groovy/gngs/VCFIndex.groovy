@@ -1,4 +1,5 @@
 package gngs
+import groovy.transform.CompileDynamic
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -59,6 +60,7 @@ import org.codehaus.groovy.runtime.StackTraceUtils
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@CompileStatic
 class VCFIndex {
     
     /**
@@ -104,16 +106,16 @@ class VCFIndex {
          this.fileName = fileName
          
          if(!new File(fileName).exists()) 
-             throw new FileNotFoundException(new File(fileName).absolutePath, "The VCF file specified does not exist or could not be accessed")
+             throw new FileNotFoundException("The VCF file ${new File(fileName).absolutePath} specified does not exist or could not be accessed")
          
          File indexFile = new File(fileName + ".idx")
          if(!indexFile.exists()) 
              indexFile = new File(fileName + ".tbi")
          
          if(!indexFile.exists()) 
-             throw new FileNotFoundException(indexFile.absolutePath, 
+             throw new FileNotFoundException(
                  """
-                     The VCF file specified is not indexed. Please index the VCF file, for example, using: 
+                     The VCF file ${indexFile.absolutePath} is not indexed. Please index the VCF file, for example, using: 
                  
                      igvtools index $fileName
 
@@ -171,7 +173,7 @@ class VCFIndex {
      * @return  The variant iff this VCF contains the variant, null otherwise
      */
     Variant contains(Variant v) {
-        Variant found = this.find(v.chr, v.pos-10, v.pos + v.size()+10) { myv ->
+        Variant found = this.find(v.chr, v.pos-10, v.pos + v.size()+10) { Variant myv ->
             myv.pos == v.pos && myv.allelesAndTypes.any { it[0] == v.alt && it[1] == v.type }
         }
         
@@ -179,7 +181,7 @@ class VCFIndex {
     }
     
     void query(IRegion r, Closure c) {
-        query(r.chr, r.from, r.to, c)
+        query(r.chr, r.range.from, r.range.to, c)
     }
     
     void query(String chr, int start, int end, Closure c) {
@@ -190,43 +192,45 @@ class VCFIndex {
             queryIdx(chr,start,end,c)
     }
     
+    @CompileStatic
     Iterator<Variant> iterator(String chr, int start, int end) {
-        if(fileName.endsWith('.gz')) {
-            TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
-            return new Iterator<Variant>() {
+        if(!fileName.endsWith('.gz')) 
+            throw new IllegalStateException("Iterator queries are only supported for Tabix indexed VCFs")
+            
+        TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
+            
+        return new Iterator<Variant>() {
                 
-                String nextLine = null
+            String nextLine = null
                 
-                TabixReader.Iterator i = tbr.query(chr,start,end)
-                Variant next() {
-                    if(nextLine) {
-                        String result = nextLine
-                        nextLine = null
-                        return Variant.parse(result)
-                    }
-                    else {
-                        nextLine = null
-                        return Variant.parse(i.next())
-                    }
+            TabixReader.Iterator i = tbr.query(chr,start,end)
+            @CompileStatic
+            Variant next() {
+                if(nextLine) {
+                    String result = nextLine
+                    nextLine = null
+                    return Variant.parse(result)
                 }
-                
-                boolean hasNext() {
-                    
-                    if(nextLine)
-                        return true
-                    else {
-                        nextLine = i.next()
-                        return nextLine != null
-                    }
-                }
-                
-                void remove() {
-                    throw new UnsupportedOperationException()
+                else {
+                    nextLine = null
+                    return Variant.parse(i.next())
                 }
             }
-        }
-        else {
-            throw new IllegalStateException("Iterator queries are only supported for Tabix indexed VCFs")
+                
+            @CompileStatic
+            boolean hasNext() {
+                    
+                if(nextLine)
+                    return true
+                else {
+                    nextLine = i.next()
+                    return nextLine != null
+                }
+            }
+                
+            void remove() {
+                throw new UnsupportedOperationException()
+            }
         }
     }
     
@@ -408,6 +412,7 @@ class VCFIndex {
      *          the variant is the Variant object, while the allele is the zero-based index of 
      *          the allele within the  Variant that corresponds to the Annovar variant specified.
      */
+    @CompileDynamic
     Map findAnnovarVariant(String chr, def start, def end, String obs, int windowSize=15) {
         start = start.toInteger()
         end = end.toInteger()

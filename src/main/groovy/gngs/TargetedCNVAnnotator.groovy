@@ -1,6 +1,9 @@
 package gngs
-import gngs.*
 
+import groovy.transform.CompileStatic
+import groovy.util.logging.Log
+
+@Log
 class TargetedCNVAnnotator {
     
     Regions target
@@ -71,6 +74,7 @@ class TargetedCNVAnnotator {
     * @param type   One of DEL, LOSS, DUP, GAIN or ANY
     * @return       a map of frequencies, keyed on database id
     */
+   @CompileStatic
    Map<String, CNVFrequency> annotate(IRegion v, String type) {
        
        // Make the type compatible with how we tag CNVs (DEL,DUP)
@@ -83,30 +87,45 @@ class TargetedCNVAnnotator {
        if(!v.chr.startsWith('chr'))
            v = new Region('chr'+v.chr, v.range)
 	   
-       this.cnvDatabases.collectEntries { databaseId, CNVDatabase db ->
+       (Map<String,CNVFrequency>)this.cnvDatabases.collectEntries { databaseId, CNVDatabase db ->
            [ databaseId, annotateFromDatabase(db, v, type)]
        }
    }
    
+   double mutualOverlapThreshold = 0.5
+   
    CNVFrequency annotateFromDatabase(CNVDatabase db, IRegion v, String type) {
        
-       List<GRange> compatibleRanges = findCompatibleRanges(db, v)
-           
-       // These GRanges have Regions as extra's:
-       List<Region> dgvCnvs = compatibleRanges*.extra
-           
-       // They must be the same type
-       dgvCnvs = filterByType(type, dgvCnvs)
-       
+       boolean debug = false
+//       if(v.range.from == 20710747) {
+//           log.info "debug: $v"
+//           debug = true
+//       }
+//       
        // Look for "crossing" CNVs
        List<Region> spanning = db.queryOverlapping(v).grep { Region r ->
-           r.spans(v)  
-       }*.extra
+           boolean result = r.spans(v) || r.mutualOverlap(v) > mutualOverlapThreshold
+           if(debug && !result)
+               log.info "No span of $r of $v : mutal overlap: " + r.mutualOverlap(v)
+           return result
+       }
+       
+       if(debug) {
+           if(spanning.size() > 0) {
+               log.info "There were ${spanning.size()} cnvs spanning $v"
+           }
+           else {
+               log.info "No cnvs spanning $v"
+           }
+       }
            
-       if(type != "ANY")
-           spanning = filterByType(type, spanning)
+       List matchedSpanning = filterByType(type, spanning)
+
+       if(debug && (matchedSpanning.size()<spanning.size())) {
+           log.info "${spanning.size() -matchedSpanning.size()} CNVs removed by matching on type $type (types were: ${spanning*.varType.unique().join(',')})"
+       }
            
-       float spanningFreq = spanning.grep { it.sampleSize>5}.collect { cnv ->
+       float spanningFreq = matchedSpanning.grep {it.sampleSize>5}.collect { cnv ->
            int cnvCount = 0
            if(type == "GAIN")
                cnvCount = cnv.observedGains
@@ -120,20 +139,26 @@ class TargetedCNVAnnotator {
            (float)cnvCount / cnv.sampleSize.toFloat()
        }.max()?:0.0f
    
-       if(verbose)
-           System.err.println "Found ${dgvCnvs.size()} plausible known DGV variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
+//       if(verbose)
+//           System.err.println "Found ${matchedSpanning.size()} plausible known database variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
 		   
-	   return new CNVFrequency(spanning: spanning, spanningFreq: spanningFreq)
+	   return new CNVFrequency(spanning: matchedSpanning, spanningFreq: spanningFreq)
    }
    
    List<Region> filterByType(String type, List<Region> regions) {
-       if(type == "LOSS")
+       
+       if(type == "ANY") {
+           return regions
+       }
+       else
+       if(type == "LOSS") {
           return regions.grep { it.varType in ["Loss","Gain+Loss","loss","gain+loss","deletion"] }
+       }
        else
           return regions.grep { it.varType in ["Gain","Gain+Loss","gain","gain+loss","duplication"] }
    }
    
-   List<GRange> findCompatibleRanges(CNVDatabase db, IRegion v) {
+   List<Region> findCompatibleRanges(CNVDatabase db, IRegion v) {
        
        // First determine the true possible range of the CNV
        // That means, from the first upstream unaffected target region 
@@ -147,7 +172,7 @@ class TargetedCNVAnnotator {
        Region minRange = new Region(v.chr, v.range)
            
        // Find in DGV any CNVs that *start* inside the required region
-       def compatibleRanges = db.queryOverlapping(minRange).grep { Region r ->
+       List<Region> compatibleRanges = db.queryOverlapping(minRange).grep { Region r ->
            boolean result = (r.from > maxRange.from) && (r.from < minRange.from) &&
                (r.to > minRange.to) && (r.to < maxRange.to)
            return result

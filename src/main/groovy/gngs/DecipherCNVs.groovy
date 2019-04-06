@@ -55,7 +55,7 @@ class DecipherCNVs extends CNVDatabase {
     DecipherCNVs(RangedData ddd) {
         this.ddd = ddd
     } 
-     
+    
     DecipherCNVs parse() {
         this.ddd = new RangedData(dddFile, 1,2,3).load(readFirstLine: false, columnNames:DECIPHER_COLUMNS) { Region r ->
             r.setChr('chr' + r.chr)
@@ -68,6 +68,13 @@ class DecipherCNVs extends CNVDatabase {
             r.observedGains = r.duplication_observations
             r.observedLosses = r.deletion_observations
             r.sampleSize = r.sample_size
+            if(r.type > 0)
+                r.varType = 'Gain'
+            else
+            if(r.type < 0)
+                r.varType = 'Loss'
+            else
+                r.varType = 'Gain+Loss'
         }
         return this
     }

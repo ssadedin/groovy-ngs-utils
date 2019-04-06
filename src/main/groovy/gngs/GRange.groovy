@@ -24,6 +24,7 @@ import groovy.transform.CompileStatic;
 import htsjdk.samtools.SAMRecord
 import java.util.regex.Pattern
 
+@CompileStatic
 interface IRegion {
 	
 	String getChr()
@@ -253,6 +254,17 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     /**
+     * @return true iff the specified region partially or fully overlaps this one
+     */
+    @CompileStatic
+    static boolean overlaps(final IRegion r1, final IRegion r2) {
+        if(r1.chr != r2.chr)
+            return false
+        return GRange.overlaps(r1.range,r2.range)
+    }
+     
+    
+    /**
      * Compute the fraction of mutual overlap of this region with the other.
      * <p>
      * This is defined as, the minimum fraction of either region's overlap
@@ -308,6 +320,11 @@ class Region extends Expando implements IRegion, Serializable {
             return Region.EMPTY_REGION
         return new Region(this.chr, ixFrom..ixTo)
     }
+    
+    @CompileStatic
+    Region union(IRegion other) {
+        union(this, other)
+    }
  
     Region copy() {
         new Region(chr, range.from..range.to)
@@ -355,8 +372,30 @@ class Region extends Expando implements IRegion, Serializable {
         return (int)((range.to + range.from)/2)
     }
     
+    /**
+     * There is a design flaw in that because the range is inclusive of both start
+     * and end, we cannot represent an empty region. Some functions 
+     * therefore return a special designated reigon that signifies "empty".
+     * 
+     * @return
+     */
+    boolean isEmpty() {
+        this.is(EMPTY_REGION)
+    }
+    
+    String igv() {
+        String url = "http://localhost:60151/load?locus=$chr:$from-$to"
+        return new URL(url).text
+    }
+    
     String toString() {
         "$chr:$range.from-$range.to"
+    }
+    
+    @CompileStatic
+    static Region union(IRegion r1, IRegion r2) {
+        assert overlaps(r1,r2)
+        new Region(r1.chr, Math.min(r1.range.from, r2.range.from), Math.max(r1.range.to, r2.range.to))
     }
 }
 
@@ -379,6 +418,7 @@ class GRange extends IntRange implements Serializable {
         this.extra = extra
     }
     
+    @CompileStatic
     boolean spans(IntRange r) {
         return (r.to <= this.to) && (r.from >= this.from)
     }

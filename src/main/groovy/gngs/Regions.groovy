@@ -883,4 +883,19 @@ class Regions implements Iterable<Region> {
             return (++i) % keepOneEvery == 0 
         } as Regions
     }
+    
+    /**
+     * Returns the total span from the beginning of the first region to the end of 
+     * the last region on the given contig (chromosome).
+     * 
+     * @return
+     */
+    @CompileStatic
+    Region getSpan(String contig) {
+        RangeIndex index = this.index.get(contig)
+        if(index.is(null)) 
+            return null;
+        
+        return new Region(contig, index.first().from..index.last().to)
+    }
 }
