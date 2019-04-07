@@ -87,6 +87,7 @@ class GnomADCNVDatabase extends CNVDatabase {
            deletion_frequency: isDel ?  ac/an : 0,
            observedGains: isDup ?  ac : 0,
            observedLosses: isDel ?  ac : 0,
+           qual: v.qual,
            varType: isDup ? 'Gain' : 'Loss' // only handle gains and losses for now
        )
     }
