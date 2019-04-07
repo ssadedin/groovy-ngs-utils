@@ -36,6 +36,8 @@ class ShufflerTest {
             s.process(p)
         }
         
+        Thread.sleep(500)
+        
         // the order should be randomised!
         assert received[0..10]*.readName != rawReads[0..10]*.readName
         
