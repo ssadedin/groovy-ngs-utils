@@ -149,6 +149,7 @@ class Regions implements Iterable<Region> {
         return sizeCount
     }
     
+    @CompileStatic
     void eachRange(Closure c) {
        eachRange(unique:false, c)
     }
@@ -246,6 +247,19 @@ class Regions implements Iterable<Region> {
         return result
     }
     
+    /**
+     * Find the ranges that have at least 1bp overlap with the given region
+     * <p>
+     * Note that this method returns a list of {@link groovy.lang.IntRange} objects.
+     * Where these belong to Region objects they will be instances of GRange objects
+     * with the Region set as the {@link gngs.Region#extra} field.
+     * <p>
+     * If you want to get the {@link gngs.Region} objects back directly, use
+     * {@link gngs.Region#getOverlapRegions()}.
+     * 
+     * @see         gngs.Region#getOverlapRegions()
+     * @param       the region to locate overlaps for0
+     */
     @CompileStatic
     List<IntRange> getOverlaps(IRegion r) {
         getOverlaps(r.chr, r.range.from, r.range.to)
@@ -306,7 +320,22 @@ class Regions implements Iterable<Region> {
         return false
     }
     
-    
+    /**
+     * Returns true if at least one region in r overlaps at least one
+     * region in this Regions object
+     * 
+     * @param r
+     * @return
+     */
+    @CompileStatic
+    boolean overlaps(Iterable<IRegion> other) {
+        for(IRegion r : other) {
+            if(this.overlaps(r))
+                return true
+        }
+        return false
+    }
+     
     /**
      * Return a list of ranges that overlap the specified range. 
      * <em>Note</em>: both ends of the range are *inclusive*.
@@ -369,10 +398,12 @@ class Regions implements Iterable<Region> {
         }
     }
     
+    @CompileStatic
     List<Region> regionsStartingAt(String chr, int pos) {
-        return startingAt(chr, pos)*.extra
+        return (List<Region>)((List<GRange>)startingAt(chr, pos))*.extra
     }
     
+    @CompileStatic
     List<Range> startingAt(String chr, int pos) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
@@ -425,13 +456,13 @@ class Regions implements Iterable<Region> {
      * Returns the next range that has its beginning
      * closest to the given position.
      */
+    @CompileStatic
     groovy.lang.IntRange nextRange(String chr, int pos) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return null
-        return chrIndex.nextRange(pos)
+        return (IntRange)chrIndex.nextRange(pos)
     }
-    
     
     /**
      * Returns the region that is count regions forward of the given position
@@ -642,6 +673,7 @@ class Regions implements Iterable<Region> {
      * Return true iff the given chromosome and position fall into
      * a range covered by this BED file
      */
+    @CompileStatic
     boolean contains(String chr, int position) {
         RangeIndex chrIndex = index[chr]
         return chrIndex != null && (position in chrIndex)
@@ -690,7 +722,7 @@ class Regions implements Iterable<Region> {
         if(obj instanceof Integer) {
             int index = (int)obj
             int total = 0
-            def entry = allRanges.find {
+            Map.Entry<String,List<IntRange>> entry = allRanges.find {
                 total += it.value.size()
                 total >= index
             }
