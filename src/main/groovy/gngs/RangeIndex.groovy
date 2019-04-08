@@ -138,8 +138,6 @@ class RangeIndex implements Iterable<IntRange> {
         }
                 
         Map.Entry containedEntry = ranges.higherEntry(startPosition)
-        List<Integer> rangesToAddTo = []
-        
         while(containedEntry && containedEntry.key < endPosition) {
             Map.Entry higherEntry = ranges.higherEntry(containedEntry.key)   
             addContainedEntry(containedEntry, higherEntry, newRange)
