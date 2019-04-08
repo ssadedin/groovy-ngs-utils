@@ -22,9 +22,6 @@ package gngs
 
 import java.util.Iterator;
 
-import com.sun.istack.internal.NotNull
-import com.sun.istack.internal.Nullable
-
 import groovy.transform.CompileStatic;
 
 /**
@@ -168,8 +165,8 @@ class RangeIndex implements Iterable<IntRange> {
      * @param newRange          the range to add to the breakpoint entry
      */
     @CompileStatic
-    void addContainedEntry(@NotNull final Map.Entry<Integer,List<IntRange>> containedEntry, @Nullable final Map.Entry<Integer,List<IntRange>> higherEntry, final IntRange newRange) {
-        
+    void addContainedEntry(final Map.Entry<Integer,List<IntRange>> containedEntry, final Map.Entry<Integer,List<IntRange>> higherEntry, final IntRange newRange) {
+       
         final int endPosition = newRange.to
         
         final IntRange firstContainedRange = containedEntry.value[0]
