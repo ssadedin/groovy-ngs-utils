@@ -22,6 +22,9 @@ package gngs
 
 import java.util.Iterator;
 
+import com.sun.istack.internal.NotNull
+import com.sun.istack.internal.Nullable
+
 import groovy.transform.CompileStatic;
 
 /**
@@ -64,10 +67,10 @@ import groovy.transform.CompileStatic;
  * assert index.grep { it.from > 15 } == 2
  * </code>
  * <p>
- * Design notes: RangeIndex stores intervals in TreeMap (a balanced tree), indexed
- * by both start position and end position. Thus there is an entry in the index for
- * every "breakpoint" (start and end) of every range in the index. The value at each 
- * breakpoint is a list of the ranges that overlap the breakpoint. For example, if a range 
+ * Design notes: RangeIndex stores intervals as a TreeMap (a balanced tree), indexed
+ * by breakpoints. Thus there is an entry in the index for every "breakpoint" (start 
+ * and end) of every range in the index. The value at each breakpoint is a list of the 
+ * ranges that overlap the breakpoint. For example, if a range 
  * a..b is added (inclusive of both a and b), an entry at <code>a</code> is created and
  * the list at index <code>a</code> will contain the range <code>a..b</code>. Another
  * entry at <code>b+1</code> will be created, which does not contain <code>a</code>. 
@@ -97,6 +100,13 @@ class RangeIndex implements Iterable<IntRange> {
         return this.@numRanges
     }
     
+    /**
+     * Add the given range to this index
+     * <p>
+     * If the 'extra' argument is specified then a GRange will be added with the <code>extra</code>
+     * as its extra data argument. Otherwise, a plain IntRange will be added.
+     */
+    @CompileStatic
     void add(int startPosition, int endPosition, Object extra = null) {
         add(extra != null ? new GRange(startPosition, endPosition-1, extra) : new IntRange(startPosition, endPosition-1))
     }
@@ -133,45 +143,14 @@ class RangeIndex implements Iterable<IntRange> {
         Map.Entry containedEntry = ranges.higherEntry(startPosition)
         List<Integer> rangesToAddTo = []
         
-        boolean fullyContained = containedEntry && containedEntry.key >= endPosition
         while(containedEntry && containedEntry.key < endPosition) {
-                
             Map.Entry higherEntry = ranges.higherEntry(containedEntry.key)   
-                
-            // Note: boundaryPoint is -1 when the ranged overlapped is an "ending" range - one at the 
-            // border of a gap with no overlapping ranges. In that case we need to add ourselves to the 
-            // boundary breakpoint and break
-            int boundaryPoint = (higherEntry!=null) ? higherEntry.key : ((Integer)containedEntry.value[0]?.to?:-1)
-                
-            // If existing range is entirely contained within the one we are adding
-            // then just add our new range to the list of ranges covered
-            if(endPosition > boundaryPoint) { // Entirely contained
-                    
-                // If there's no higher entry at all, then we can just add a new boundary
-                // and a region with only our range and break
-                if(higherEntry == null) { 
-                    if(boundaryPoint>=0) {
-                        ranges[boundaryPoint] = [newRange]
-                        checkRanges(boundaryPoint)
-                    }
-                }
-            }
-            else { // The start is contained, but the end is not : split the upper range
-                this.splitEndRange(newRange, containedEntry)
-            }
-            assert containedEntry.key < endPosition
-            
-            rangesToAddTo << containedEntry.key
-                
+            addContainedEntry(containedEntry, higherEntry, newRange)
             containedEntry = higherEntry
         }
-        
-        for(int startPos in rangesToAddTo) {
-            ranges[startPos] << newRange 
-            checkRanges(startPos)
-        }
-        
+       
         if(!ranges.containsKey(endPosition+1)) {
+            boolean fullyContained = containedEntry && containedEntry.key >= endPosition
             if(fullyContained && lowerEntry) {
                 ranges[endPosition+1] = lowerEntry.value.grep { IntRange range -> endPosition < range.to }
             }
@@ -179,6 +158,53 @@ class RangeIndex implements Iterable<IntRange> {
                 ranges[endPosition+1] = []
             }
         }
+    }
+    
+    /**
+     * Add a reference to a range to a breakpoint that falls in the middle of the range
+     * 
+     * @param containedEntry    the entry for the breakpoint that is contained by the range
+     * @param higherEntry       the entry for the next breakpoint. <code>null</code> if there is no higher entry.
+     * @param newRange          the range to add to the breakpoint entry
+     */
+    @CompileStatic
+    void addContainedEntry(@NotNull final Map.Entry<Integer,List<IntRange>> containedEntry, @Nullable final Map.Entry<Integer,List<IntRange>> higherEntry, final IntRange newRange) {
+        
+        final int endPosition = newRange.to
+        
+        final IntRange firstContainedRange = containedEntry.value[0]
+        
+        // Note: boundaryPoint is -1 when the ranged overlapped is an "ending" range - one at the
+        // border of a gap with no overlapping ranges. In that case we need to add ourselves to the
+        // boundary breakpoint and break
+        // TODO: why is only the first range considered for this test?
+        final int boundaryPoint = (higherEntry!=null) ? higherEntry.key : (firstContainedRange?.to?:-1)
+
+        // If existing range is entirely contained within the one we are adding
+        // then just add our new range to the list of ranges covered
+        // 
+        //   |-------------------------|  # Range to add
+        //           |------|             # Other range whose boundary is inside this one
+        if(endPosition > boundaryPoint) { // Entirely contained
+
+            // If there's no higher entry at all, then we can just add a new boundary
+            // and a region with only our range and break
+            if(higherEntry == null) {
+                if(boundaryPoint>=0) {
+                    ranges[boundaryPoint] = [newRange]
+                    // checkRanges(boundaryPoint)
+                }
+            }
+        }
+        else { // The start is contained, but the end is not : split the upper range
+            
+            //   |-------------------|         # Range to add
+            //           |------------------|  # Other range whose boundary lies past the end of this one
+            this.splitEndRange(newRange, containedEntry)
+        }
+        assert containedEntry.key < endPosition
+
+        containedEntry.value.add(newRange)
     }
     
     @CompileStatic
@@ -218,14 +244,15 @@ class RangeIndex implements Iterable<IntRange> {
         
     }
     
-//    @CompileStatic
+    @CompileStatic
     private void addLowestRange(IntRange newRange) {
         
-        int startPosition = newRange.from
-        int endPosition = newRange.to
+        final int startPosition = newRange.from
+        final int endPosition = newRange.to
+        final int positionAfterEnd = endPosition+1
         
         ranges.put(startPosition,[newRange])
-//        checkRanges(startPosition)
+        // checkRanges(startPosition)
         
         // If there are any ranges that start before the end of this new range,
         // add a breakpoint, and add this range to the intervening ranges
@@ -234,32 +261,41 @@ class RangeIndex implements Iterable<IntRange> {
         Map.Entry<Integer, List<IntRange>> lastEntry = null
         while(higherEntry && higherEntry.key <= endPosition) {
             higherEntry.value.add(newRange)
-//            checkRanges(higherEntry.key)
+            // checkRanges(higherEntry.key)
             lastEntry = higherEntry
             higherEntry = ranges.higherEntry(higherEntry.key)
         }
         
         // The last region needs to be split into two
         if(lastEntry) {
-            if(!ranges.containsKey(endPosition+1)) {
-              List newRanges = lastEntry.value.grep { endPosition+1 in it }
-              ranges[endPosition+1] = newRanges
-//              checkRanges(endPosition+1)
+            if(!ranges.containsKey(positionAfterEnd)) {
+              List<IntRange> newRanges = new ArrayList(lastEntry.value.size())
+              for(IntRange r : lastEntry.value) {
+                  if(positionAfterEnd>=r.from && positionAfterEnd<=r.to)
+                      newRanges.add(r)
+              }
+              ranges[positionAfterEnd] = newRanges
+              // checkRanges(endPosition+1)
             }
         }
         else {
             // Need to mark the ending of the range so that future adds will
             // look up the right point for adding new overlapping ranges
-            if(!ranges.containsKey(endPosition+1)) {
+            if(!ranges.containsKey(positionAfterEnd)) {
                 // println "Adding ${endPosition+1} to index ..."
-                ranges[endPosition + 1] = []
+                ranges[positionAfterEnd] = []
             }
         }
     }
     
+    /**
+     * Check that all the ranges added at a position span that position
+     * 
+     * @param position
+     */
     @CompileStatic
     void checkRanges(int position) {
-        return;
+        return; // disabled!
         
         List<IntRange> rangesAtPosition = ranges.get(position)
         
