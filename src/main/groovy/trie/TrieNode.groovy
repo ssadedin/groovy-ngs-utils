@@ -107,9 +107,9 @@ class TrieNode<T> {
             // Deletions
             List grandChildResults = null
             if(query.deletions>0) {
-                grandChildResults = node.children.collect { grandChildPivot, grandChild -> 
+                grandChildResults = node.children.iterator().collect { grandChildPivot, TrieNode grandChild -> 
                     int gcMismatchValue = query.mismatches
-                    if(grandChildPivot != pivot)
+                    if(grandChildPivot != pivot) 
                         gcMismatchValue -= 1
                     
                     if(gcMismatchValue>=0)
