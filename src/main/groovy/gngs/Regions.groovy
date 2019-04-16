@@ -74,7 +74,7 @@ import groovy.transform.CompileStatic;
  */
 class Regions implements Iterable<Region> {
         
-    /** 
+    /**
      * Index for looking up overlaps
      */
     Map<String, RangeIndex> index = [:]
@@ -233,15 +233,13 @@ class Regions implements Iterable<Region> {
      * flatten the source and target first before calling this method.
      */
     @CompileStatic
-    Regions intersect(final Regions other) {
+    Regions intersect(Regions other) {
         Regions result = new Regions()
-        ((Map<String,Object>)this).index.each { chrObj, chrIndex ->
-            String chr = (String)chrObj
-            RangeIndex otherChrIndex = (RangeIndex)other.index[chr]
+        this.index.each { chr, chrIndex ->
+            RangeIndex otherChrIndex = other.index[chr]
             if(otherChrIndex.is(null))
                 return 
-            for(Object rObj in chrIndex) {
-                IntRange r = (IntRange) rObj
+            for(IntRange r in chrIndex) {
                 List<IntRange> otherRanges = otherChrIndex.intersect(r.from, r.to)
                 for(IntRange xr : otherRanges) { result.addRegion(chr, (int)xr.from, ((int)xr.to)+1) }
             }
@@ -661,9 +659,9 @@ class Regions implements Iterable<Region> {
     @CompileStatic
     Regions reduce(Closure reducer=null) {
         Regions result = new Regions()
-        ((Map<String,Object>)this.index).each { String chr, Object ranges -> // weird cast needed by groovy-eclipse - grrr
+        this.index.each { String chr, RangeIndex ranges ->
             result.allRanges[chr] = []
-            result.index[chr] = ((RangeIndex)ranges).reduce(reducer)
+            result.index[chr] = ranges.reduce(reducer)
             result.index[chr].each { IntRange r ->
                 result.allRanges[chr].add(r)
             }
@@ -708,8 +706,7 @@ class Regions implements Iterable<Region> {
     @CompileStatic
     Regions subtract(Regions other) {
         final Regions result = new Regions()
-        ((Map<String,Object>)this.allRanges).each { final String chr, final Object rangesObj ->
-            final List<IntRange> ranges = (List<IntRange>) rangesObj
+        allRanges.each { final String chr, final List<IntRange> ranges ->
             for(final IntRange range : ranges) {
                 final List<IntRange> subtracted = other.subtractFrom(chr, range.from, range.to)
                 for(IntRange r : subtracted) {
