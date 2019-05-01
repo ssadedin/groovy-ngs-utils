@@ -73,7 +73,6 @@ public class CompactReadPair implements ReadPair {
         byte [][] expand(byte[][] basesAndQuals) throws IOException;
     }
     
-    
     static class SnappyReadCompressor implements ReadCompressor {
 
         @Override
@@ -175,19 +174,42 @@ public class CompactReadPair implements ReadPair {
     
     final static ReadCompressor compressor = initCompressor();
     
-    public CompactReadPair(SAMRecord read) throws IOException {
+    /**
+     * Create a compact read pair that encodes the default base qualities
+     * <p>
+     * Note: the first read is initialised by this constructor. The second read is not stored itself, rather details
+     * are extracted from the metadata of the first read about its position. Usage of this class as a "pair" requires
+     * provision of the second read explicitly.
+     * 
+     * @param read  the first read to encode
+     * @throws IOException
+     */
+    public CompactReadPair(final SAMRecord read) throws IOException {
+        this(read, null);
+    }
+    
+    /**
+     * Create a compact read pair that encodes base qualities extracted from the given tag.
+     * 
+     * @param read
+     * @param baseQualityTag
+     * @throws IOException
+     */
+    public CompactReadPair(final SAMRecord read, final String baseQualityTag) throws IOException {
         // Note that picard either uses a common string from the sequence dictionary for
         // all reads OR interns the string, so there isn't any point trying that here
         r1ReferenceName = read.getReferenceName();
         r2ReferenceName = read.getMateReferenceName();
         if(r1ReferenceName.equals(r2ReferenceName))
             r2ReferenceName = null;
+        
         r1AlignmentStart = read.getAlignmentStart();
         r2AlignmentStart = read.getMateAlignmentStart();
         
         readLength = (short)read.getReadLength();
        
-        final byte[] quals = read.getBaseQualities();
+        final byte[] quals = (baseQualityTag != null) ? SAMUtils.fastqToPhred(read.getStringAttribute(baseQualityTag)) : read.getBaseQualities();
+        
         final byte[] bases = read.getReadBases();
         compressedBases = compressor.compress(bases, quals);
         

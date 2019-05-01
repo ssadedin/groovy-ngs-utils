@@ -85,6 +85,11 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
     boolean compact = true
     
     /**
+     * The tag from which to extract base quality scores (use actual base qualities if null)
+     */
+    String baseQualityTag = null
+
+    /**
      * Random number generator used to randomize read output order
      */
     Random rand = new Random(0)
@@ -143,7 +148,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
         //       the constructor may do expensive compression which is wasted if we then throw the read 
         //       away 
         if(compact)
-            pair = new CompactReadPair(record)
+            pair = new CompactReadPair(record, this.baseQualityTag)
        
         if(pair.chimeric)
             ++this.chimeric
@@ -162,7 +167,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
 		Paired p =new Paired(
     			record.readName, 
     			pair, 
-    			new CompactReadPair(record), 
+    			new CompactReadPair(record, this.baseQualityTag), 
     			record.mateNegativeStrandFlag, 
     			record.readNegativeStrandFlag,
                 rand.nextInt()

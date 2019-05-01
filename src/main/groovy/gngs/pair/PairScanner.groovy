@@ -124,6 +124,11 @@ class PairScanner {
      */
     int shuffleBufferSize = 5000
     
+    /**
+     * The tag from which to extract base quality scores (use actual base qualities if null)
+     */
+    String baseQualityTag = null
+    
     List<Shuffler> shufflers
     
     PGroup formatterGroup
@@ -218,6 +223,7 @@ class PairScanner {
         else {
             pl = new PairLocator(shuffler, sequencesWithReads)
         }
+        pl.baseQualityTag = this.baseQualityTag
                 
         if(this.regions)
             pl.regions = new Regions((Iterable)this.regions)        

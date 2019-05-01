@@ -115,6 +115,11 @@ class PairFormatter extends RegulatingActor<Paired> {
         }
     }
     
+    @Override
+    public void onEnd() {
+        this.flushBuffer()
+    }
+
     void flushBuffer() {
         flushBufferAndWriter(buffer, writer)
         if(writer2 != null)
