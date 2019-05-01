@@ -1,3 +1,22 @@
+/*
+ *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
+ *
+ *  Copyright (C) Simon Sadedin, ssadedin<at>gmail.com
+ *
+ *  This library is free software; you can redistribute it and/or
+ *  modify it under the terms of the GNU Lesser General Public
+ *  License as published by the Free Software Foundation; either
+ *  version 2.1 of the License, or (at your option) any later version.
+ *
+ *  This library is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ *  Lesser General Public License for more details.
+ *
+ *  You should have received a copy of the GNU Lesser General Public
+ *  License along with this library; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+ */
 package gngs;
 
 import java.io.IOException;
@@ -13,6 +32,26 @@ import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMUtils;
 import htsjdk.samtools.util.SequenceUtil;
 
+/**
+ * Stores one read of a pair and links to the second read in a way that offers
+ * a useful amount of compression for applications that need to store many
+ * reads in memory.
+ * <p>
+ * By default, reads are compressed using a combination of two compression methods:
+ * <p>
+ * <li>The snappy compression for base qualities
+ * <li>Packing of bases to two-per-byte for bases
+ * <p>
+ * Alternative methods for compression are configurable, however for most use cases, these
+ * methods empirically outperform others in my experience. In particular, snappy compression 
+ * of raw bases does not outperform simply packing them two-per-byte.
+ * <p>
+ * Note: 2-bit (4-per-byte) representation is not possible because we have to encode N bases.
+ * Theoretically, if alignment to byte boundaries is sacrificed then 3-bit representation could
+ * be achieved, but this has not been tested.
+ * 
+ * @author Simon Sadedin
+ */
 public class CompactReadPair implements ReadPair {
     
     private static Logger log = Logger.getLogger("CompactReadPair");
