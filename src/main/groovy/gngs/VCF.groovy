@@ -156,40 +156,33 @@ class VCF implements Iterable<Variant> {
     
     /**
      * Creates an empty VCF file based on the header of the given VCF file
-     * 
+     * <p>
+     * The VCF is set to lazy mode which auto-loads the variants when some methods are called.
      * @param fileName
      */
     VCF(String fileName) {
          this.fileName = fileName
-         File vcfFile = new File(fileName)
-         vcfFile.withInputStream { vcfIs ->
-            if(fileName.endsWith('.gz')) {
-                vcfIs = new GZIPInputStream(vcfIs)
-            }
-            vcfIs.withReader { Reader r ->
-                String line = r.readLine();
-                while(line != null) {
-                    if(line.startsWith('#')) {
-                        this.headerLines.add(line)
-                    }
-                    else
-                        break
-
-                    line = r.readLine()
-                }
-            }
-            parseLastHeaderLine()
-        }
+         readHeadersOnly(fileName)
         lazyLoad = true
     }
-    
+
+    /**
+     * Creates a VCF containing all the VCFs, and initialised with the header
+     * from the first variant
+     * 
+     * @param variants
+     */
     VCF(Iterable<Variant> variants) {
         if(variants.iterator().hasNext()) {
             Variant v = variants.first()
             if(v.header != null)
                 this.headerLines.addAll(v.header.headerLines)
         }
-            
+        addAll(variants)
+    }
+
+    @CompileStatic
+    private addAll(Iterable variants) {
         for(Variant v in variants) {
             this.add(v)
         }
@@ -207,6 +200,26 @@ class VCF implements Iterable<Variant> {
         chrPosIndex[chr+":"+pos]
     }
     
+    /*
+     * Read only the headers to discover metadata about the VCF
+     * 
+     * @param fileName  path to VCF file
+     */
+    private void readHeadersOnly(String fileName) {
+        Utils.reader(fileName) { Reader r ->
+            String line = r.readLine();
+            while(line != null) {
+                if(line.startsWith('#')) {
+                    this.headerLines.add(line)
+                }
+                else
+                    break
+
+                line = r.readLine()
+            }
+            parseLastHeaderLine()
+        }
+    }
     
     static VCF parse(String fileName, Pedigrees peds, Closure c = null) {
         parse(fileName,peds.families.values() as List, c)
@@ -300,6 +313,7 @@ class VCF implements Iterable<Variant> {
         parseImpl(options,f,true,peds,c)
     }
     
+    @CompileStatic
     void each(Closure c) {
         if(lazyLoad) {
             load { v ->
@@ -354,15 +368,7 @@ class VCF implements Iterable<Variant> {
         
         VCF vcf = options.vcf ? (VCF)options.vcf : new VCF(pedigrees:peds)
         
-        PrintStream out
-        if(filterMode) {
-            if(options.outputStream) {
-                out = new PrintStream((OutputStream)options.outputStream)
-            }
-            else {
-                out = System.out
-            }
-        }
+        Writer out = createOutputWriter(options, filterMode)
         
         if(options.fileName)
             vcf.fileName = options.fileName
@@ -380,15 +386,8 @@ class VCF implements Iterable<Variant> {
         else {
             progress = new ProgressCounter(withTime:true)
         } 
-            
         
-        if(c != null) {
-            c.delegate = new Object() {
-                def stop() { throw new StopParsingVCFException() }
-                
-                Object getStop() {throw new StopParsingVCFException() }
-            }
-        }
+        setParsingDelegate(c)
         
         List<String> samples = options.samples != null ? options.samples : null
         List<Integer> keepColumns = null
@@ -439,21 +438,7 @@ class VCF implements Iterable<Variant> {
                   v.header = vcf
                         
                   if((samples==null) || samples.any {v.sampleDosage(it)}) {
-                      if(!c || !(c(v)==false)) {
-                          if(filterMode) {
-                              if(!flushedHeader)  {
-                                  if(options.updateHeader != null) {
-                                      vcf.headerLines = (List<String>)((Closure)options.updateHeader)(vcf.headerLines)
-                                  }
-                                  vcf.printHeader(out)
-                                  flushedHeader = true
-                              }
-                              out.println v.line
-                          }
-                          else {
-                              vcf.add(v)
-                          }
-                    }
+                      flushedHeader = processParsedVariant(vcf, v, c, flushedHeader, options, out)
                   }
                 }
                 catch(StopParsingVCFException stop) {
@@ -473,17 +458,69 @@ class VCF implements Iterable<Variant> {
                 parseLastHeader()
         }
         
-        
         if(filterMode && !flushedHeader)  {
             vcf.printHeader()
             flushedHeader = true
         }
         return vcf
     }
+
+    /**
+     * Set a delegate on the given closure that adds a <code>stop</code> method
+     * to break parsing.
+     */
+    @CompileStatic
+    private static setParsingDelegate(Closure c) {
+        if(c != null) {
+            c.delegate = new Object() {
+                def stop() { throw new StopParsingVCFException() }
+
+                Object getStop() {throw new StopParsingVCFException() }
+            }
+        }
+    }
+
+    /*
+     * Creats an output writer depending on the filter mode and options
+     */
+    @CompileStatic
+    private static Writer createOutputWriter(Map options, boolean filterMode) {
+        Writer out
+        if(filterMode) {
+            if(options.outputStream) {
+                return ((OutputStream)options.outputStream).newWriter()
+            }
+            else {
+                out = System.out.newWriter()
+            }
+        }
+        return null
+    }
+    
+    @CompileStatic
+    static boolean processParsedVariant(VCF vcf, Variant v, Closure c, boolean flushedHeader, Map options, Writer out) {
+        if(!c || !(c(v)==false)) {
+            if(!out.is(null)) {
+                if(!flushedHeader)  {
+                    if(options.updateHeader != null) {
+                        vcf.headerLines = (List<String>)((Closure)options.updateHeader)(vcf.headerLines)
+                    }
+                    vcf.printHeader(out)
+                    flushedHeader = true
+                }
+                out.write(v.line)
+                out.write('\n')
+            }
+            else {
+                vcf.add(v)
+            }
+        }
+    }
     
     /**
      * Add the given variant to this VCF
      */
+    @CompileStatic
     VCF add(Variant v) {
         v.header = this
         variants << v
