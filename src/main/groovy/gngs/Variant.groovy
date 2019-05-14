@@ -1210,7 +1210,6 @@ class Variant implements IRegion {
     
     @CompileStatic
     Integer getTotalDepth() {
-           
         if('DP' in this.header.formatMetaData) {
             return this.genoTypes[0].DP as Integer
         }
@@ -1223,6 +1222,11 @@ class Variant implements IRegion {
         if(sampleIndex <0) // no genotype for sample?
             return 0
             
+        return this.getTotalDepth(sampleIndex)
+    }
+    
+    @CompileStatic
+    Integer getTotalDepth(final int sampleIndex) {
         if('DP' in this.header.formatMetaData) {
             return this.genoTypes[sampleIndex].DP as Integer
         }
@@ -1235,6 +1239,7 @@ class Variant implements IRegion {
      * 
      * @param alleleIndex   index of allele, reference = 0
      */
+    @CompileStatic
     List<Integer> getAlleleDepths(int alleleIndex) {
         
         if('AD' in this.header.formatMetaData) {
@@ -1245,14 +1250,14 @@ class Variant implements IRegion {
         else
         // For a single sample VCF and a single alternate allele, we can use DP4 from samtools
         if(this.header.hasInfo('DP4') && alleleIndex<2 && this.header.samples.size() == 1) {
-            List<Integer> dps = this.getInfo().DP4.tokenize(',')*.toInteger()
+            List<Integer> dps = ((String)this.getInfo()['DP4']).tokenize(',')*.toInteger()
             
             assert dps.size() == 4 : "DP4 should always be list of 4 integers"
             
             int altDepth = dps[2] + dps[3]
             if(alleleIndex == 0) {
-                return  [getInfo().DP.toInteger() - altDepth ] // arguably we should use the 1st and 2nd elements of DP4, but this
-                                                          // seems to produce an unreliable result
+                return  [((String)getInfo()['DP']).toInteger() - altDepth ] // arguably we should use the 1st and 2nd elements of DP4, but this
+                                                                            // seems to produce an unreliable result
             }
             else
             if(alleleIndex == 1) {
@@ -1289,6 +1294,7 @@ class Variant implements IRegion {
      * 
      * @return
      */
+    @CompileStatic
     float getAlleleBalance() {
         return getAlleleBalance(1,0,0)
     }
@@ -1299,6 +1305,7 @@ class Variant implements IRegion {
      * 
      * @return
      */
+    @CompileStatic
     float getMaxAlleleBalance() {
         (0..<header.samples.size()).collect { getAlleleBalance(1,0,it) }.max()
     }
@@ -1309,6 +1316,7 @@ class Variant implements IRegion {
      * 
      * @return
      */
+    @CompileStatic
     float getAlleleBalance(int allele1, int allele2, int sampleIndex=0) {
         
         // Allele balance only make sense for  heterozygous mutations: return 0
@@ -1325,7 +1333,24 @@ class Variant implements IRegion {
         if(ads2[sampleIndex] == 0)
             return 0
             
-        return Math.abs(0.5 - ((float)ads1[sampleIndex] / (ads2[sampleIndex] + ads1[sampleIndex])))
+        return Math.abs(0.5f - ((float)ads1[sampleIndex] / (ads2[sampleIndex] + ads1[sampleIndex])))
+    }
+    
+    @CompileStatic
+    float getVaf() {
+        return this.getVaf(1)
+    }
+   
+    @CompileStatic
+    float getVaf(int alleleIndex, int sampleIndex=0) {
+        if(this.isHom())
+            return 1.0f
+        
+        List<Integer> ads = getAlleleDepths(alleleIndex)
+        final int totalDepth = this.getTotalDepth()
+        if(totalDepth == 0)
+            return 0f
+        return ads[sampleIndex] / totalDepth
     }
      
     /**
@@ -1383,10 +1408,11 @@ class Variant implements IRegion {
      * @param other
      * @return
      */
+    @CompileStatic
     int findAlleleIndex(Allele other) {
-        alleles.findIndexValues { me ->
+        return this.alleles.findIndexOf { me ->
             other.alt == me.alt && other.start == me.start && other.end == me.end && other.type == me.type
-        }[0]
+        }
     }
     
     /**
