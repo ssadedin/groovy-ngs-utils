@@ -97,10 +97,10 @@ class VariantTest {
         assert v1.findAlleleIndex(v2.alleles[0]) == 1
     }
     
-    Variant var(String line) {
+    Variant var(String line, Closure headerFilter = null) {
         VCF vcf = new VCF()
         vcf.lastHeaderLine = ['CHROM','POS','REF','ALT','QUAL','FILTER','INFO','FORMAT','JOHNSMITH'] as String[]
-        vcf.headerLines = [
+        List hdrs = [
             '##fileformat=VCFv4.2', 
             '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
             '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">',
@@ -108,6 +108,10 @@ class VariantTest {
             '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">',
             vcf.lastHeaderLine.join('\t')
         ]
+        if(headerFilter != null) {
+            hdrs = hdrs.grep(headerFilter)
+        }
+        vcf.headerLines = hdrs
         vcf.samples = ['JOHNSMITH']
         Variant v = Variant.parse(line.replaceAll(' {1,}','\t'))
         v.header = vcf
@@ -293,7 +297,17 @@ class VariantTest {
         v = vcf[1]
         assert v.genoTypes.GT[0] == '0/0'
         assert v.genoTypes.GT[1] == '0/1'
-        
-        
     }
+    
+    @Test
+    void testVaf() {
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   MQ=49.90    GT:AD:DP:GQ:PL  1/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert Math.abs(v.vaf - 83 / 213) < 0.01
+
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   MQ=49.90    GT:AD:GQ:PL  1/2:4,83,93:99:7597,4181,5801,3074,0,3833") {
+            !it.contains('ID=DP')
+        }
+        assert Math.abs(v.vaf - 83 / (4+83+93)) < 0.01
+    }
+    
 }
