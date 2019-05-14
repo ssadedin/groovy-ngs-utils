@@ -251,12 +251,13 @@ class VEPConsequences {
  * information.
  * <p>
  * <b>Important:</b>The {@link Variant} class represents a line in a VCF file and therefore
- * potentially multiple alleles and corresponding annotations, genotypes, etc. However it is 
- * very common to work with normalised VCFs that guarantee only a single allele per site.
- * To make operations on variants more convenient, some methods have both an allele specific
+ * potentially multiple alleles and samples and corresponding annotations, genotypes, etc. 
+ * However it is very common to work with normalised single-sample VCFs that guarantee only 
+ * a single allele per site and represent just one sample.
+ * To make operations on variants more convenient, some methods have both a sample/allele specific
  * and 'default allele' version. The default allele version will operate on the first allele
- * listed in the alleles. These are convenient to use, but you should always keep in mind they
- * ignore any other alleles and could be unsafe to use on non-normalised VCFs.
+ * listed in the alleles for the first sample. These are convenient to use, but you should always keep in mind they
+ * ignore any other alleles and samples and could be unsafe to use on non-normalised VCFs.
  * <p>
  * Although {@link Variant} instances can be constructed manually, typically
  * you will query them from {@link VCF} or {@link VCFIndex} classes, and this
@@ -858,6 +859,16 @@ class Variant implements IRegion {
      * @return
      */
     @CompileStatic
+    int getDosage() {
+        getDosages(0)[0]
+    }
+    
+    /**
+     * Return list of dosages (number of copies of allele) for 
+     * each sample for the first alternate allele.
+     * @return
+     */
+    @CompileStatic
     List<Integer> getDosages() {
         getDosages(0)
     }
@@ -1336,11 +1347,26 @@ class Variant implements IRegion {
         return Math.abs(0.5f - ((float)ads1[sampleIndex] / (ads2[sampleIndex] + ads1[sampleIndex])))
     }
     
+    /**
+     * Return the fraction of reads supporting the first alternate alelle for the
+     * first sample in the VCF
+     */
     @CompileStatic
     float getVaf() {
         return this.getVaf(1)
     }
    
+    /**
+     * Return the fraction of reads supporting the given allele for the specified 
+     * sample
+     * <p>
+     * The 0th allele is the reference, so typically you would want to use
+     * 1 or more.
+     * 
+     * @param alleleIndex   index of the allele to return the frac
+     * @param sampleIndex   index of sample (in order of VCF header)
+     * @return  value between zero and 1 indicating fraction of reads supporting allele
+     */
     @CompileStatic
     float getVaf(int alleleIndex, int sampleIndex=0) {
         if(this.isHom())
