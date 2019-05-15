@@ -1436,7 +1436,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     int findAlleleIndex(Allele other) {
-        return this.alleles.findIndexOf { me ->
+        return this.alleles.findIndexOf { Allele me ->
             other.alt == me.alt && other.start == me.start && other.end == me.end && other.type == me.type
         }
     }
