@@ -310,4 +310,12 @@ class VariantTest {
         assert Math.abs(v.vaf - 83 / (4+83+93)) < 0.01
     }
     
+    @Test
+    void 'test that homozygous variant has correct VAF'() {
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   MQ=49.90    GT:AD:DP:GQ:PL  1/1:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert Math.abs(v.vaf - 83 / 213) < 0.01
+
+
+    }
+    
 }
