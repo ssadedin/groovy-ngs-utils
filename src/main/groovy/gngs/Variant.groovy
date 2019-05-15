@@ -1369,9 +1369,6 @@ class Variant implements IRegion {
      */
     @CompileStatic
     float getVaf(int alleleIndex, int sampleIndex=0) {
-        if(this.isHom())
-            return 1.0f
-        
         List<Integer> ads = getAlleleDepths(alleleIndex)
         final int totalDepth = this.getTotalDepth()
         if(totalDepth == 0)
