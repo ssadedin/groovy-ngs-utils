@@ -708,6 +708,10 @@ class Variant implements IRegion {
     }
     
     /**
+     * Note: this returns true if any sample in the VCF is het,
+     * for multisample VCFs check the dosage of the specific sample 
+     * directly.
+     * 
      * @return true if at least 1 allele is present with 1 copy
      */
     @CompileStatic
