@@ -23,6 +23,7 @@ import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import gngs.BED
 import gngs.Cli
+import gngs.CliOptions
 import gngs.Pedigrees
 import gngs.ProgressCounter
 import gngs.Regions
@@ -30,6 +31,7 @@ import gngs.SAM
 import gngs.Utils
 import gngs.VCF
 import gngs.VCFSummaryStats
+import gngs.VEPConsequences
 import gngs.Variant
 import au.com.bytecode.opencsv.CSVWriter
 import groovy.json.JsonOutput
@@ -73,7 +75,7 @@ class VCFtoHTML {
     
     final static Pattern LOWER_CASE_BASE_PATTERN = ~/[agct]/
     
-    OptionAccessor opts
+    CliOptions opts
     
     /**
      * Count of variants processed at any given time
@@ -115,7 +117,7 @@ class VCFtoHTML {
      */
     CSVWriter tsvWriter = null
         
-    VCFtoHTML(OptionAccessor opts) {
+    VCFtoHTML(CliOptions opts) {
         this.opts = opts
         filters = []
         if(opts.filters) {
@@ -146,44 +148,6 @@ class VCFtoHTML {
         
     def EXCLUDE_VEP = ["synonymous_variant","intron_variant","intergenic_variant","upstream_gene_variant","downstream_gene_variant","5_prime_UTR_variant"]
         
-    def VEP_PRIORITY = [
-            "transcript_ablation",
-            "splice_donor_variant",
-            "splice_acceptor_variant",
-            "stop_gained",
-            "frameshift_variant",
-            "stop_lost",
-            "initiator_codon_variant",
-            "inframe_insertion",
-            "inframe_deletion",
-            "missense_variant",
-            "transcript_amplification",
-            "splice_region_variant",
-            "incomplete_terminal_codon_variant",
-            "synonymous_variant",
-            "stop_retained_variant",
-            "coding_sequence_variant",
-            "mature_miRNA_variant",
-            "5_prime_UTR_variant",
-            "3_prime_UTR_variant",
-            "non_coding_exon_variant",
-            "nc_transcript_variant",
-            "intron_variant",
-            "NMD_transcript_variant",
-            "upstream_gene_variant",
-            "downstream_gene_variant",
-            "TFBS_ablation",
-            "TFBS_amplification",
-            "TF_binding_site_variant",
-            "regulatory_region_variant",
-            "regulatory_region_ablation",
-            "regulatory_region_amplification",
-            "feature_elongation",
-            "feature_truncation",
-            "intergenic_variant"
-    ]
-    
-
     static void main(String [] args) {
         
         Utils.configureSimpleLogging()
@@ -265,28 +229,12 @@ class VCFtoHTML {
         renameSampleIds(vcfs, exportSamples, pedigrees)
         
         log.info "Pedigree subjects are " + pedigrees.subjects.keySet()
-        
-        
         List aliases = []
         if(opts.as)
             aliases = opts['as'].collect { it.split "," }
         else
         if(opts.mask) {
-            aliases = vcfs*.samples.flatten().collect { s ->
-                def matches = (s =~ opts.mask)
-                if(matches) {
-                    // if starts with number, prefix with 'S' (required for javascript filtering)
-                    def newSampleId = matches[0][1]
-                    if(newSampleId ==~ /^[0-9].*/) {
-                        'S' + newSampleId
-                    }
-                    else
-                        newSampleId
-                }
-                else {
-                    s // leave unchanged
-                }
-            }
+            aliases = applySampleMask(aliases, vcfs)
         }
         
         // -------- Handle Aliasing of Samples ----------------
@@ -462,6 +410,25 @@ class VCFtoHTML {
         
         printROC()
     }
+
+    private List applySampleMask(List aliases, List vcfs) {
+        aliases = vcfs*.samples.flatten().collect { s ->
+            def matches = (s =~ opts.mask)
+            if(matches) {
+                // if starts with number, prefix with 'S' (required for javascript filtering)
+                def newSampleId = matches[0][1]
+                if(newSampleId ==~ /^[0-9].*/) {
+                    'S' + newSampleId
+                }
+                else
+                    newSampleId
+            }
+            else {
+                s // leave unchanged
+            }
+        }
+        return aliases
+    }
     
     /**
      * Calculate
@@ -529,6 +496,7 @@ class VCFtoHTML {
             [
                 bin: binEntry.key,
                 total: bin.size(), 
+                binPrecision: bin.count { it.truePositive } / bin.size(),
                 sensitivity: sensitivityEstimate,
                 precision: precisionEstimate
             ]
@@ -586,7 +554,7 @@ class VCFtoHTML {
 
         consColumns = [
             'gene' : {it['SYMBOL']},
-            'cons' : {vep -> vep['Consequence'].split('&').min { VEP_PRIORITY.indexOf(it) } },
+            'cons' : {vep -> vep['Consequence'].split('&').min { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) } },
             'maf'  : this.&findMaxMaf
         ]
     }
