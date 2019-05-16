@@ -35,6 +35,23 @@ import groovy.util.logging.Log
  *     which will run the context of a {@link gngs.Cli} class to allow you
  *     to configure the command line behavior
  * <li>
+ * <p>
+ * A simple example:
+ * 
+ * <pre>
+ * @Log
+ * class FooTool extends ToolBase {
+ *     void run() {
+ *         // ... do stuff ...
+ *     }
+ * 
+ *     static void main(String [] args) {
+ *         cli('Does some foo stuff', args) {
+ *            i 'Input to the foo', longOpt: 'input', args:1
+ *         }
+ *     }
+ * }
+ * </pre>
  * 
  * @author Simon Sadedin
  */
