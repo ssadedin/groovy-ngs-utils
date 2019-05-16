@@ -60,12 +60,24 @@ abstract class ToolBase {
     
     Cli parser
     
-    OptionAccessor opts
+    /**
+     * The options parsed for the tool
+     */
+    CliOptions opts
     
     static ThreadLocal<ToolBase> test = new ThreadLocal<ToolBase>()
     
     static String footer = "This tool is built with Groovy NGS - the Groovy way to work with NGS data.\n" 
     
+    /**
+     * A utility method to facilitate testing of tools that extend this class.
+     * <p>
+     * To use this method, create an instance of the tools, then invoke the test method with the 
+     * command line arguments to pass, and then execute actual functions within the closure callback.
+     * 
+     * @param args  the command line args
+     * @param c
+     */
     void test(List<String> args, Closure c) {
         test.set(this)
         this.main(args as String[])
@@ -99,17 +111,14 @@ abstract class ToolBase {
         err.println ""
         
         specBuilder.delegate = cli
-        
         specBuilder()
         
         if('-h' in args || '--help' in args) {
-            cli.usage()
-            err.println ""
-            err.println footer
-            System.exit(0)
+            printHelpAndExit(cli, err)
         }
         
-        OptionAccessor opts = cli.parse(args) 
+        OptionAccessor rawOpts = cli.parse(args) 
+        CliOptions opts = new CliOptions(opts:rawOpts)
         if(!opts) {
             err.println ""
             err.println footer
@@ -134,6 +143,13 @@ abstract class ToolBase {
             err.println "\n" + footer 
             System.exit(1)
         }
+    }
+
+    private static printHelpAndExit(Cli cli, PrintStream err) {
+        cli.usage()
+        err.println ""
+        err.println footer
+        System.exit(0)
     }
     
     /**
