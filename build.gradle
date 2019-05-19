@@ -63,7 +63,7 @@ dependencies {
      // compile group: 'com.github.samtools', name: 'htsjdk', version: '1.141'
      // compile 'org.utgenome.thirdparty:picard:1.102.0'
      compile 'com.xlson.groovycsv:groovycsv:1.0'
-     compile group: 'de.erichseifert.gral', name: 'gral-core', version: '0.10'
+     compile group: 'de.erichseifert.gral', name: 'gral-core', version: '0.11'
      compile 'log4j:log4j:1.2.17'
      compile 'org.xerial:sqlite-jdbc:3.8.6'
      compile files(fileTree(dir:'lib', includes:['*.jar']))
