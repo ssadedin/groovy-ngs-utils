@@ -458,9 +458,13 @@ class VCF implements Iterable<Variant> {
                 parseLastHeader()
         }
         
-        if(filterMode && !flushedHeader)  {
-            vcf.printHeader()
-            flushedHeader = true
+        if(filterMode) {
+            if(!flushedHeader)  {
+                vcf.printHeader()
+                flushedHeader = true
+            }
+            out.flush()
+            out.close()
         }
         return vcf
     }
@@ -491,7 +495,7 @@ class VCF implements Iterable<Variant> {
                 return ((OutputStream)options.outputStream).newWriter()
             }
             else {
-                out = System.out.newWriter()
+                return System.out.newWriter()
             }
         }
         return null
@@ -515,6 +519,7 @@ class VCF implements Iterable<Variant> {
                 vcf.add(v)
             }
         }
+        return flushedHeader
     }
     
     /**
