@@ -118,12 +118,12 @@ abstract class ToolBase {
         }
         
         OptionAccessor rawOpts = cli.parse(args) 
-        CliOptions opts = new CliOptions(opts:rawOpts)
-        if(!opts) {
+        if(!rawOpts) {
             err.println ""
             err.println footer
             System.exit(1)
         }
+        CliOptions opts = new CliOptions(opts:rawOpts)
         
         setProxy()
             
