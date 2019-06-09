@@ -364,6 +364,10 @@ class Region extends Expando implements IRegion, Serializable {
         chr.startsWith('chrM') ||
         chr.startsWith('hs3') ||
         chr.endsWith('_random') || 
+        chr.endsWith('_alt') ||
+        chr.endsWith('_fix') ||
+        chr.endsWith('EBV') ||
+        chr.startsWith('HLA-') ||
         chr.matches(ALTERNATE_HAPLOTYPE_PATTERN)
     }
     
