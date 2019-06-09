@@ -89,7 +89,7 @@ class ResourceDownloader {
             return new GenomeResource(path: outputFile, stripChr:stripChr)
         }
         catch(Exception e) {
-            log.error("Unable to load downloadable resource after checking in these locations: " + tried.join(','))
+//            log.severe("Unable to load downloadable resource after checking in these locations: " + tried.join(','))
             outputFile.delete()
             throw e
         }
