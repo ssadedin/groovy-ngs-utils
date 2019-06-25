@@ -31,6 +31,11 @@ import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
 import htsjdk.tribble.readers.TabixReader
 
+/**
+ * The count of reads overlapping a base at a position for a sample
+ * 
+ * @author Simon Sadedin
+ */
 @CompileStatic
 @ToString
 class SampleReadCount {
@@ -272,7 +277,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, downstream, sample) 
         calculator.start()
         
-        List<String> chrs = scanRegions*.chr.unique()
+        List<String> chrs = (List<String>)scanRegions.collect { Region r -> r.chr }.unique()
         for(String chr in chrs) {
             int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
             int end = scanRegions.index[chr].ranges.lastKey() + 1000
