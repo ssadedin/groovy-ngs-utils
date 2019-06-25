@@ -16,6 +16,13 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.text.*
 
+@CompileStatic
+class ExecutedProcess {
+    Appendable err
+    Appendable out
+    int exitValue
+}
+
 /**
  * The default Java log former uses a format that is too verbose, so
  * replace it with something more compact.
@@ -476,4 +483,73 @@ class Utils {
         else
           new PrintWriter(new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize).newWriter())
     } 
+    
+    /**
+     * Close all the streams associated with the given process
+     * ignoring all exceptions.
+     * <p>
+     * Note: this is necessary because if the streams are not closed
+     * this way it seems they can take a while to be closed, even though
+     * the process may have ended. If many processes are executed consecutively
+     * the file handle limit can be exhausted even though processes are not
+     * executed concurrently.
+     */
+    public static withProcessStreams(Process p, Closure c) {
+        try {
+            return c()
+        }
+        finally {
+          try { p.inputStream.close() } catch(Throwable t) { }
+          try { p.outputStream.close() } catch(Throwable t) { }
+          try { p.errorStream.close() } catch(Throwable t) { }
+        }
+    }
+
+    @CompileStatic
+    static ExecutedProcess exec(Map options = [:], String cmd) {
+        exec(options, cmd.tokenize() as List, null)
+    }
+    
+    /**
+     * Execute the given command and return back a map with the exit code,
+     * the standard output, and std err
+     * <p>
+     * An optional closure will be executed as a delegate of the ProcessBuilder created
+     * to allow configuration.
+     *
+     * @param startCmd  List of objects (will be converted to strings) as args to command
+     * @return Map with exitValue, err and out keys
+     */
+    @CompileStatic
+    static ExecutedProcess exec(Map options = [:], List<Object> startCmd, Closure builder = null) {
+        
+        List<String> stringified = startCmd*.toString()
+        
+        ProcessBuilder pb = new ProcessBuilder(stringified)
+        if(builder != null) {
+            builder.delegate = pb
+            builder()
+        }
+        
+        Process p = pb.start()
+        ExecutedProcess result = new ExecutedProcess()
+        withProcessStreams(p) {
+            StringBuilder defaultOut = new StringBuilder()
+            Appendable out = (Appendable)options.out ?: defaultOut
+            Appendable err = (Appendable)options.err ?: defaultOut
+            
+            // Note: observed issue with hang here on Broad cluster
+            // seems to be related to hang inside OS / NFS call. Maybe use forwarder for this?
+            p.waitForProcessOutput(out, err)
+            
+            result.exitValue = p.waitFor()
+            result.err = err
+            result.out = out
+        }
+        
+        if((options.throwOnError != false) && (result.exitValue != 0))
+            throw new Exception("Command returned exit code ${result.exitValue}: " + stringified.join(" ") + "\n\nOutput: $result.out\n\nStd Err:\n\n$result.err")
+            
+        return result
+    }
 }
