@@ -343,24 +343,26 @@ class RangeIndex implements Iterable<IntRange> {
         }
     }
     
-    List<Range> startingAt(int pos) {
+    @CompileStatic
+    List<IntRange> startingAt(int pos) {
         
         List<IntRange> result = this.ranges[pos]
         if(!result)
             return []
         
         // The given ranges could be starting at OR ending at the given position
-        result.grep { it.from == pos }
+        result.grep { IntRange r -> r.from == pos }
     }
     
-    List<Range> endingAt(int pos) {
+    @CompileStatic
+    List<IntRange> endingAt(int pos) {
         Map.Entry entry = this.ranges.lowerEntry(pos)
         if(!entry)
             return []
         List<IntRange> result = entry.value
         if(!result)
             return []
-         result.grep { it.to == pos }
+         result.grep { IntRange r -> r.to == pos }
     }
     
     /**
