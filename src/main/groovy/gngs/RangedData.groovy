@@ -142,7 +142,7 @@ class RangedData extends Regions {
         catch(Exception e) {
             def exceptionTrace = new StringWriter()
             StackTraceUtils.sanitize(e).printStackTrace(new PrintWriter(exceptionTrace))
-            throw new RuntimeException("Failed to parse line $lineNumber: \n\n" + currentLine.values + "\n\n" + exceptionTrace)
+            throw new RuntimeException("Failed to parse line $lineNumber: \n\n" + currentLine?.values + "\n\n" + exceptionTrace)
         }
     }
     
