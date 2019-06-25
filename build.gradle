@@ -45,6 +45,9 @@ dependencies {
      compile group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
      compile group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
      compile group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
+     if(!GROOVY_VERSION.startsWith('2.4')) {
+         compile group: 'org.codehaus.groovy', name: 'groovy-cli-commons', version: "$GROOVY_VERSION"
+     }
      compile group: 'org.codehaus.gpars', name: 'gpars', version: '1.2.1'
 
      compile group: 'org.apache.ivy', name:'ivy', version:'2.2.0' 
