@@ -69,6 +69,49 @@ class VCFtoHTML {
     private BED target
     private BED excludeRegions
     private Pedigrees pedigrees
+    
+    static final String DEFAULT_STYLES = """
+        <style type='text/css'>
+            h1 {
+                font-size: 16px;
+            }
+            #filterHelp {
+                font-size: 9px;
+            }
+            label, .dataTables_info, .paginate_button, table#variantTable {
+                font-size: 10px;
+                font-family: verdana;
+            }
+        
+            td.vcfcol { text-align: center; }
+            tr.highlight, tr.highlighted, tr.highlight td.sorting_1 {
+                background-color: #ffeeee !important;
+            }
+        
+            #tags { float: right; }
+                    
+            .assignedTag, .rowTagDiv {
+                background-color: red;
+                border-radius: 5px;
+                color: white;
+                display: inline;
+                padding: 3px 5px;
+                font-size: 75%;
+                margin: 3px;
+            }
+            .rowTagDiv { font-size: 55%; }
+            .tag0 { background-color: #33aa33; }
+            .tag1 { background-color: #3333ff; }
+            .tag2 { background-color: #aa33aa; }
+            .tag3 { background-color: #ff6600; }
+            .unassignedTag { display: none; }
+
+            td.priority-1  { font-weight: bold; color: #ffaa00 !important; }
+            td.priority-2  { font-weight: bold; color: #ffaa00 !important; }
+            td.priority-3  { font-weight: bold; color: #ff6600 !important; }
+            td.priority-4  { font-weight: bold; color: #ff0000 !important; }
+        </style>
+    """.stripIndent()
 
     String banner = """
     """
@@ -97,7 +140,7 @@ class VCFtoHTML {
     
     Map<String,SAM> bams = [:]
     
-    float MAF_THRESHOLD=0.05
+    float maxMaf=0.05
     
     List<ROCPoint> rocPoints = []
     
@@ -112,6 +155,8 @@ class VCFtoHTML {
      */
     String referenceSample
     
+    boolean allCons = false
+    
     /**
      * If enabled, a writer that outputs differences as tab separated format
      */
@@ -125,7 +170,7 @@ class VCFtoHTML {
         }
         
         if(opts.maxMaf)
-            MAF_THRESHOLD=opts.maxMaf.toFloat()
+            maxMaf=opts.maxMaf.toFloat()
     }
     
     def js = [
@@ -146,7 +191,7 @@ class VCFtoHTML {
     //     "http://igv.org/web/beta/igv-beta.css"
     ]
         
-    def EXCLUDE_VEP = ["synonymous_variant","intron_variant","intergenic_variant","upstream_gene_variant","downstream_gene_variant","5_prime_UTR_variant"]
+    List<String> excludedVEPConsequences = ["synonymous_variant","intron_variant","intergenic_variant","upstream_gene_variant","downstream_gene_variant","5_prime_UTR_variant"]
         
     static void main(String [] args) {
         
@@ -167,6 +212,7 @@ class VCFtoHTML {
             diff 'Only output variants that are different between the samples'
             maxMaf 'Filter out variants above this MAF', args:1
             maxVep 'Only write a single line for each variant, containing the most severe consequence'
+            allCons 'Do not filter by consequence (default: only variants with significant consequence included)'
             tsv 'Output TSV format with the same variants', args:1
             filter 'A groovy expression to be used as a filter on variants before inclusion', args: Cli.UNLIMITED
             prefilter 'A groovy expression to be used as a pre-filter before any other steps', args: Cli.UNLIMITED
@@ -178,7 +224,7 @@ class VCFtoHTML {
             roc 'Save a table of sensitivity and precision with sample <arg> as reference', args: 1, required:false
         }
         
-        OptionAccessor opts = cli.parse(args)
+        CliOptions opts = new CliOptions(opts:cli.parse(args))
         if(!opts)
             System.exit(1)
             
@@ -237,6 +283,10 @@ class VCFtoHTML {
             aliases = applySampleMask(aliases, vcfs)
         }
         
+        if(opts.allCons) {
+            this.excludedVEPConsequences = []
+        }
+        
         // -------- Handle Aliasing of Samples ----------------
         if(aliases) {
             
@@ -278,56 +328,68 @@ class VCFtoHTML {
             
         new File(outputFileName).withWriter { w ->
            
-            // Merge all the VCFs together
-            VCF merged = vcfs[0]
-            
-            if(vcfs.size()>1) {
-                vcfs[1..-1].eachWithIndex { vcf, vcfIndex ->
-                    Utils.time("Merge VCF $vcfIndex") {
-                         merged = merged.merge(vcf)
-                    }
+            processVariantsAndWriteOutput(vcfs, vcfRegions, w)
+        }
+        
+        if(tsvWriter != null)
+            tsvWriter.close()
+        
+        printStats(stats)
+        
+        printROC()
+    }
+
+    private processVariantsAndWriteOutput(List vcfs, List vcfRegions, BufferedWriter w) {
+        // Merge all the VCFs together
+        VCF merged = vcfs[0]
+
+        if(vcfs.size()>1) {
+            vcfs[1..-1].eachWithIndex { vcf, vcfIndex ->
+                Utils.time("Merge VCF $vcfIndex") {
+                    merged = merged.merge(vcf)
                 }
             }
-                
-            log.info "Merged samples are " + merged.samples
-            
-            if(opts.tsv)
-                tsvWriter.writeNext((baseColumns*.key+ consColumns*.key +exportSamples) as String[])
-                    
-            printHeadContent(w)
-            
-            lineIndex=0;
-            
-            lastVariant = null;
-            Variant current  = null
-            ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
-                stats.toString()
-            })
-            merged.each { v->
-                try {
-                    current = v
-                    processVariant(v, vcfRegions, w)
-                }
-                catch(Exception e) {
-                    Exception e2 = new Exception("Failed to process variant " + current, e)
-                    e2 = StackTraceUtils.sanitize(e2)
-                    throw e2
-                }
-                progress.count()
+        }
+
+        log.info "Merged samples are " + merged.samples
+
+        if(opts.tsv)
+            tsvWriter.writeNext((baseColumns*.key+ consColumns*.key +exportSamples) as String[])
+
+        printHeadContent(w)
+
+        lineIndex=0;
+
+        lastVariant = null;
+        Variant current  = null
+        ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
+            stats.toString()
+        })
+        merged.each { v->
+            try {
+                current = v
+                processVariant(v, vcfRegions, w)
             }
-            
-            progress.end()
-            
-            
-            Map<String,Integer> genePriorities = [:]
-            if(opts.genelist) 
-                genePriorities = new File(opts.genelist).readLines()*.tokenize('\t').collectEntries { [it[0],it[1].toInteger()] } 
-            
-            w.println """];"""
-            
-            w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + exportSamples)};"
-            
-            w.println """
+            catch(Exception e) {
+                Exception e2 = new Exception("Failed to process variant " + current, e)
+                e2 = StackTraceUtils.sanitize(e2)
+                throw e2
+            }
+            progress.count()
+        }
+
+        progress.end()
+
+
+        Map<String,Integer> genePriorities = [:]
+        if(opts.genelist)
+            genePriorities = new File(opts.genelist).readLines()*.tokenize('\t').collectEntries { [it[0],it[1].toInteger()] }
+
+        w.println """];"""
+
+        w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + exportSamples)};"
+
+        w.println """
             var samples = ${json(exportSamples)};
 
             var pedigrees = ${pedigrees.toJson()};
@@ -339,52 +401,12 @@ class VCFtoHTML {
                 variantTable = \$.VariantTable('variantTable', samples, variants);
             });
             </script>
-            <style type='text/css'>
-            h1 {
-                font-size: 16px;
-            }
-            #filterHelp {
-                font-size: 9px;
-            }
-            label, .dataTables_info, .paginate_button, table#variantTable {
-                font-size: 10px;
-                font-family: verdana;
-            }
-        
-            td.vcfcol { text-align: center; }
-            tr.highlight, tr.highlighted, tr.highlight td.sorting_1 {
-                background-color: #ffeeee !important;
-            }
-        
-            #tags { float: right; }
-                    
-            .assignedTag, .rowTagDiv {
-                background-color: red;
-                border-radius: 5px;
-                color: white;
-                display: inline;
-                padding: 3px 5px;
-                font-size: 75%;
-                margin: 3px;
-            }
-            .rowTagDiv { font-size: 55%; }
-            .tag0 { background-color: #33aa33; }
-            .tag1 { background-color: #3333ff; }
-            .tag2 { background-color: #aa33aa; }
-            .tag3 { background-color: #ff6600; }
-            .unassignedTag { display: none; }
 
-            td.priority-1  { font-weight: bold; color: #ffaa00 !important; }
-            td.priority-2  { font-weight: bold; color: #ffaa00 !important; }
-            td.priority-3  { font-weight: bold; color: #ff6600 !important; }
-            td.priority-4  { font-weight: bold; color: #ff0000 !important; }
-        
-        
-            </style>
+            $DEFAULT_STYLES
             """;
-            
-           
-            w.println """
+
+
+        w.println """
             </head>
             <body>
             <p>Loading ...</p>
@@ -401,14 +423,6 @@ class VCFtoHTML {
             </body>
             </html>
             """
-        }
-        
-        if(tsvWriter != null)
-            tsvWriter.close()
-        
-        printStats(stats)
-        
-        printROC()
     }
 
     private List applySampleMask(List aliases, List vcfs) {
@@ -618,15 +632,15 @@ class VCFtoHTML {
         lastLines = 0
         boolean excludedByCons = true
         boolean printed = false
-        consequences.grep { !it.Consequence.split('&').every { EXCLUDE_VEP.contains(it) } }.each { vep ->
+        consequences.grep { !it.Consequence.split('&').every { excludedVEPConsequences.contains(it) } }.each { vep ->
                         
-            if(EXCLUDE_VEP.contains(consColumns['cons'](vep))) {
+            if(excludedVEPConsequences.contains(consColumns['cons'](vep))) {
                 return
             }
             excludedByCons = false
                         
             if(hasVEP) {
-                if(findMaxMaf(vep)>MAF_THRESHOLD)  {
+                if(findMaxMaf(vep)>maxMaf)  {
                     ++stats.excludeByMaf
                     return
                 }
