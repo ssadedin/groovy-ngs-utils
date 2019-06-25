@@ -404,11 +404,10 @@ class Regions implements Iterable<Region> {
     }
     
     @CompileStatic
-    List<Range> startingAt(String chr, int pos) {
+    List<IntRange> startingAt(String chr, int pos) {
         RangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return []
-        
         return chrIndex.startingAt(pos)
     }
     
