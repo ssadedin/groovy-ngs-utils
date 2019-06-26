@@ -22,6 +22,8 @@ package gngs
 
 import groovy.json.JsonOutput;
 import groovy.transform.CompileStatic
+
+import java.text.NumberFormat
 import java.util.regex.Pattern
 
 /**
@@ -304,6 +306,13 @@ class VEPConsequences {
  * @author simon.sadedin@mcri.edu.au
  */
 class Variant implements IRegion {
+    
+    static final NumberFormat QUAL_FORMATTER = NumberFormat.getInstance()
+    
+    static {
+        QUAL_FORMATTER.maximumFractionDigits = 2
+        QUAL_FORMATTER.groupingUsed = false
+    }
     
     /**
      * A specific allele in the context of a Variant in a VCF file
@@ -675,7 +684,9 @@ class Variant implements IRegion {
         fields[1] = String.valueOf(pos)
         fields[3] = ref
         fields[4] = alt?:"."
-        fields[5] = String.format("%2.2f",qual)
+//        fields[5] = String.format("%2.2f",qual)
+        fields[5] = QUAL_FORMATTER.format(qual)
+        
         fields[6] = filter
         
         if(snpEffDirty) {
