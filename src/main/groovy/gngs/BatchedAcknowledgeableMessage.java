@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import groovy.transform.CompileStatic;
+
 /**
  * A batched message automatically accumulates a fixed number of messagse before sending 
  * on to a {@link RegulatingActor}.
@@ -18,34 +20,32 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * @param <T>
  */
-public class BatchedAcknowledgeableMessage<T> extends AcknowledgeableMessage {
+@CompileStatic
+public class BatchedAcknowledgeableMessage<T> extends AcknowledgeableMessage<List<T>> {
     
-    public List<T> pendingMessages;
-   
     private final int batchSize;
     
     public BatchedAcknowledgeableMessage(AtomicInteger counter, final int batchSize) {
         super(new ArrayList<T>(batchSize), counter);
         this.batchSize = batchSize;
-        this.pendingMessages = (List<T>) this.payload;
     }
     
     public BatchedAcknowledgeableMessage(final BatchedAcknowledgeableMessage<T> other) {
-        super(other.pendingMessages, other.acknowledgeCounter);
+        super(other.payload, other.acknowledgeCounter);
         this.batchSize = other.batchSize;
     }
      
     public void batchTo(T o, RegulatingActor<T> to) {
-        pendingMessages.add(o);
-        if(pendingMessages.size()>batchSize) {
+        payload.add(o);
+        if(payload.size()>batchSize) {
             flush(to);
         }
     }
     
     public void flush(RegulatingActor<T> to) {
-        this.acknowledgeCounter.addAndGet(pendingMessages.size()-1);
+        this.acknowledgeCounter.addAndGet(payload.size()-1);
         to.sendLimited(new BatchedAcknowledgeableMessage<T>(this));
-        pendingMessages = new ArrayList<T>();
+        this.payload = new ArrayList<T>(batchSize);
     }
 }
 

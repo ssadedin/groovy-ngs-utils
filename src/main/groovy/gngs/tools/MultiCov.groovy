@@ -26,7 +26,7 @@ import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction
 
 import gngs.*
 import gngs.coverage.CoverageCombinerActor
-import gngs.coverage.CoveragePrinter
+import gngs.coverage.CoverageSummarizer
 import gngs.coverage.CoverageCalculatorActor
 import graxxia.IntegerStats
 import graxxia.Matrix
@@ -127,11 +127,11 @@ class MultiCov extends ToolBase {
             if(opts.targetmeans) 
                 options.collectRegionStatistics = true
                 
-            CoveragePrinter printer = new CoveragePrinter(options, w, samples)
+            CoverageSummarizer printer = new CoverageSummarizer(options, w, samples)
             
             if(opts['2pass']) {
                 log.info " Executing Phase 1 / 2 to estimate sample means ".center(80,"=")
-                CoveragePrinter printer1 = new CoveragePrinter(null, samples)
+                CoverageSummarizer printer1 = new CoverageSummarizer(null, samples)
                 this.phase1 = true
                 run(printer1)
                 
@@ -194,7 +194,7 @@ class MultiCov extends ToolBase {
             throw new IllegalArgumentException("Please specify either -L, -bed or -gene to define the regions to process")
     }
     
-    void run(CoveragePrinter printer) {
+    void run(CoverageSummarizer printer) {
         
         printer.start()
         
@@ -292,7 +292,7 @@ class MultiCov extends ToolBase {
         }
     }
 
-    private estimateMeans(Regions estRegions, CoveragePrinter printer) {
+    private estimateMeans(Regions estRegions, CoverageSummarizer printer) {
         if(printer.sampleMeans == null || printer.sampleMeans.isEmpty()) {
             Map<String, Double> sampleMeans = [:]
             bams.eachParallel { SAM bam ->
@@ -313,7 +313,7 @@ class MultiCov extends ToolBase {
         }
     }
     
-    private void printCoverageJs(CoveragePrinter printer, String fileName) {
+    private void printCoverageJs(CoverageSummarizer printer, String fileName) {
         
         Map statsJson = [ 
             means: printer.samples.collectEntries { sample ->
@@ -333,7 +333,7 @@ class MultiCov extends ToolBase {
     
     final List cvThresholds = (0..100).step(5)
     
-    private void writeSampleSummaries(CoveragePrinter printer) {
+    private void writeSampleSummaries(CoverageSummarizer printer) {
         
         if(!opts.samplesummarys) {
             return
@@ -361,7 +361,7 @@ class MultiCov extends ToolBase {
         }
     }
     
-    private void writeSampleRegionMeans(Writer w, CoveragePrinter printer) {
+    private void writeSampleRegionMeans(Writer w, CoverageSummarizer printer) {
         w.withWriter { 
             w.print('Mean\t')
             w.println(printer.sampleRegionStatsRegions.join('\t'))
@@ -398,7 +398,7 @@ class MultiCov extends ToolBase {
        )
     }
 
-    private printCorrelationTable(CoveragePrinter printer) {
+    private printCorrelationTable(CoverageSummarizer printer) {
         
         final List<Stats> sampleStats = printer.sampleStats
         
@@ -435,7 +435,7 @@ class MultiCov extends ToolBase {
         System.err.println finalCorrelationMatrix.toString()
     }
     
-    private writeGCProfile(CoveragePrinter printer) {
+    private writeGCProfile(CoverageSummarizer printer) {
         
         log.info "Writing GC profile to $opts.gcprofile ..."
         
@@ -499,14 +499,14 @@ class MultiCov extends ToolBase {
         return result
     }
 
-    private writeCorrelationTSV(BufferedWriter w, CoveragePrinter printer, Matrix finalCorrelationMatrix) {
+    private writeCorrelationTSV(BufferedWriter w, CoverageSummarizer printer, Matrix finalCorrelationMatrix) {
         w.println printer.samples.join('\t')
         for(String sample in printer.correlationSamples) {
             w.println finalCorrelationMatrix[][printer.correlationSamples.indexOf(sample)].collect {fmt.format(it)}.join('\t')
         }
     }
     
-    private writeCorrelationJs(BufferedWriter w, CoveragePrinter printer, Matrix finalCorrelationMatrix) {
+    private writeCorrelationJs(BufferedWriter w, CoverageSummarizer printer, Matrix finalCorrelationMatrix) {
         Map correlationBySample = printer.correlationSamples.collectEntries { corrSample ->
             [
                 corrSample, 

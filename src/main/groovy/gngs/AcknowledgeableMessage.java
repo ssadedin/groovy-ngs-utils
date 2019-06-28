@@ -2,14 +2,14 @@ package gngs;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class AcknowledgeableMessage {
+public class AcknowledgeableMessage<T> {
     
-    public AcknowledgeableMessage(Object payload, AtomicInteger counter) {
+    public AcknowledgeableMessage(T payload, AtomicInteger counter) {
         this.payload = payload;
         this.acknowledgeCounter = counter;
     }
     
-    final public Object payload;
+    public T payload;
     
     final public AtomicInteger acknowledgeCounter;
 }

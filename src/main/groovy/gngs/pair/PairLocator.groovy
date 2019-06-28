@@ -203,7 +203,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
     void assign(SAMRecord read) {
         assigned.add(read)
         if(assigned.size()>20) {
-            this.send(new AcknowledgeableMessage(assigned, this.pendingMessages))
+            this.send(new AcknowledgeableMessage(assigned, this.pendingMessageCount))
             this.assigned = new ArrayList(20)
         }
     }

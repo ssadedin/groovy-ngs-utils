@@ -69,7 +69,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     /**
      * Count of messages that have been sent to this actor but not processed
      */
-    final AtomicInteger pendingMessages = new AtomicInteger(0)
+    final AtomicInteger pendingMessageCount = new AtomicInteger(0)
     
     boolean stopped = false
     
@@ -152,8 +152,8 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
             progress.count()
         this.process(payload)
         am.acknowledgeCounter.decrementAndGet() 
-        if(!am.acknowledgeCounter.is(this.pendingMessages))
-            pendingMessages.decrementAndGet()
+        if(!am.acknowledgeCounter.is(this.pendingMessageCount))
+            pendingMessageCount.decrementAndGet()
     }
     
     @Override
@@ -189,7 +189,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     
     @CompileStatic
     public MessageStream sendTo(T o) {
-        this.sendLimited(new AcknowledgeableMessage(o, this.pendingMessages))
+        this.sendLimited(new AcknowledgeableMessage(o, this.pendingMessageCount))
     }
     
     @CompileStatic
@@ -232,8 +232,8 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
         }
         
         message.acknowledgeCounter.incrementAndGet()
-        if(!message.acknowledgeCounter.is(this.pendingMessages))
-            this.pendingMessages.incrementAndGet()
+        if(!message.acknowledgeCounter.is(this.pendingMessageCount))
+            this.pendingMessageCount.incrementAndGet()
         super.send(message)
     }
     
