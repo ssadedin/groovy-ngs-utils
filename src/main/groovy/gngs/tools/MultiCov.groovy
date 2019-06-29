@@ -102,6 +102,7 @@ class MultiCov extends ToolBase {
         }
         
         fmt.maximumFractionDigits = 2
+        fmt.groupingUsed = false
         
         this.scanRegions = resolveRegionsToScan()
         
