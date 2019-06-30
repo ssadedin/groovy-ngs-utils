@@ -1193,6 +1193,7 @@ class SAM {
         ]
     }
     
+    @CompileStatic
     Map<String, Integer> getContigs() {
         SamReader reader = newReader()
         try {
