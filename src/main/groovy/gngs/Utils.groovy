@@ -27,9 +27,12 @@ class ExecutedProcess {
  * The default Java log former uses a format that is too verbose, so
  * replace it with something more compact.
  */
+@CompileStatic
 public class SimpleLogFormatter extends Formatter {
     
     private static final String lineSep = System.getProperty("line.separator");
+    
+    private static final int DOT = (int)('.' as char)
     
     /**
      * A Custom format implementation that is designed for brevity.
@@ -42,6 +45,11 @@ public class SimpleLogFormatter extends Formatter {
         if(loggerName == null) {
             loggerName = "root";
         }
+        
+        int dotIndex = loggerName.lastIndexOf(DOT)
+        if(dotIndex>=0)
+            loggerName = loggerName.substring(dotIndex+1)
+            
         StringBuilder output = new StringBuilder()
             .append(loggerName)
             .append("\t[")
