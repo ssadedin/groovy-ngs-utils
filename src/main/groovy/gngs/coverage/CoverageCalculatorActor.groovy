@@ -87,6 +87,9 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
     int currentReferenceIndex = -1
     
+    // If set, all reads should be ignored until a non-matching read occurs
+    int flushingReferenceIndex = -1
+    
     Regions targetRegions
     
     Iterator<Region> regionIter
@@ -142,7 +145,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         
 //        Thread.sleep(1000)
         
-        if(r.referenceIndex < currentReferenceIndex)
+        if(r.referenceIndex == this.flushingReferenceIndex)
             return
             
         if(currentRegion == null) // occurs if we ran out of regions => end
@@ -154,21 +157,24 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         assert r != null
         assert currentRegion != null
         
-        while(r.referenceName != currentRegion.chr) {
+        while(r.referenceIndex != currentReferenceIndex) {
             
             if(!bedReferenceIndexes.contains(r.referenceIndex)) {
-                log.info "Ignoring contig $r.referenceName because not referenced in target regions"
                 return
             }
             
-            while(pos < currentRegion.to) {
+            final int currentTo = currentRegion.to
+            while(pos < currentTo) {
                 ++pos
                 flushPosition()
             }
             
-            if(regionIter.hasNext())
-                if(!nextRegion())
+            if(regionIter.hasNext()) {
+                if(!nextRegion()) {
                     return
+                }
+                log.info "Transition to ${currentRegion} seeking read ${r}"
+            }
         }
         
         flushToReadPosition(r)
@@ -176,12 +182,13 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         reads.add(r)
     }
     
+    @CompileStatic
     private void flushToEnd() {
         if(currentRegion == null)
             return
             
         while(currentRegion != null) {
-            int regionEnd = currentRegion.to
+            final int regionEnd = currentRegion.to
             while(pos < regionEnd) {
                 ++pos
                 flushPosition()
@@ -192,20 +199,25 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     }
     
     @CompileStatic
-    private flushToReadPosition(ReadRange r) {
+    private void flushToReadPosition(final ReadRange r) {
         final int alignmentStart = r.alignmentStart
         int regionEnd = currentRegion.to
+        final int startPos = pos
         while(pos < alignmentStart) {
             ++pos
             if(pos > regionEnd) {
+                final int transitionPos = pos
                 nextRegion()
                 
                 // If switching to the next region caused us to hit a new 
                 // chr then we have finished and can ignore this read
                 // Note also that running out of regions causes a change in
                 // currentReferenceIndex so that too will terminate here
-                if(r.referenceIndex != currentReferenceIndex)
+                if(r.referenceIndex != currentReferenceIndex) {
+                    log.info "Transition to ${currentRegion} due to read $r (started at $startPos, hit $transitionPos in scan)"
+                    this.flushingReferenceIndex = r.referenceIndex 
                     return
+                }
                     
                 regionEnd = currentRegion.to
             }
@@ -248,7 +260,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     }
     
     @CompileStatic
-    void flushPosition() {
+    private void flushPosition() {
         dropNonOverlapping()
         SampleReadCount src = new SampleReadCount(currentRegion, currentRegion.chr, pos, reads.size(), sample)
         sendDownstream(src)
