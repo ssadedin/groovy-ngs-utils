@@ -104,7 +104,7 @@ class MultiCov extends ToolBase {
         fmt.maximumFractionDigits = 2
         fmt.groupingUsed = false
         
-        this.scanRegions = resolveRegionsToScan()
+        this.scanRegions = this.filterToBAMContigs(resolveRegionsToScan())
         
         if(this.opts.p) {
             this.scanRegions = this.scanRegions.widen(this.opts.p.toInteger())
@@ -166,6 +166,27 @@ class MultiCov extends ToolBase {
         
         log.info "Finished in ${Utils.human((System.currentTimeMillis()-startTimeMs)/1000)} seconds"
     } 
+    
+    @CompileStatic
+    Regions filterToBAMContigs(Regions regions) {
+        final SAM bam = new SAM(opts.opts.arguments()[0])
+        final List<String> bamContigs = bam.contigList
+        
+        Set<String> warned = new HashSet()
+        
+        return regions.grep { Region r ->
+            if(r.chr in bamContigs) {
+                return true
+            }
+            else {
+                if(!(r.chr in warned))
+                    log.warning("Contig $r.chr is not found in the declared contigs for the BAM file. Regions on this contig / chromosome will be skipped")
+                    
+                warned << r.chr
+                return false
+            }
+        } as Regions
+    }
     
     /**
      * Combine the various possible options for specifying which region to analyse

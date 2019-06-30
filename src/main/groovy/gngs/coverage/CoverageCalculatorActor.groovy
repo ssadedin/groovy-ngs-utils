@@ -120,7 +120,10 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         
         this.bamContigs = allContigs
         this.bedReferenceIndexes = targetRegions*.chr.unique().collect { String chr ->
-            bamContigs.indexOf(chr)
+            int bamContigIndex = bamContigs.indexOf(chr)
+            if(bamContigIndex<0)
+                throw new IllegalArgumentException("The BED file you provided contains reference to contig $chr which is not present in the BAM file contigs")
+            return bamContigIndex
         } as Set
         
         log.info "Calculating coverage for ${targetRegions.numberOfRanges} regions"
@@ -263,7 +266,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
     
     String toString() {
-        "CoverageCalculator(sample=$sample, $currentRegion)"
+        "CoverageCalculator(sample=$sample, $currentRegion, pos=$pos)"
     }
     
     @CompileStatic
