@@ -205,6 +205,7 @@ class Plot {
         List<DataTable> datas = xys.collect { XYItem item ->
             DataTable dt = item.toTable()
             dt.name = item.name ?: ('Series ' + i)
+            dt.setName(item.name)
             ++i
             return dt
         }

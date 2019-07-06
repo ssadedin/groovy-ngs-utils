@@ -33,17 +33,41 @@ import gngs.VCF
 import gngs.VCFSummaryStats
 import gngs.VEPConsequences
 import gngs.Variant
+import gngs.plot.Lines
+import gngs.plot.Plot
+import graxxia.Stats
 import au.com.bytecode.opencsv.CSVWriter
+import de.erichseifert.gral.graphics.Drawable
+import de.erichseifert.gral.ui.InteractivePanel
 import groovy.json.JsonOutput
+import groovy.transform.AutoClone
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovy.xml.StreamingMarkupBuilder
 
 import java.util.regex.Pattern
 
+import javax.swing.JFrame
+
+public class LinePlotTest extends JFrame {
+    public LinePlotTest(Drawable plot) {
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        setSize(800, 600);
+        getContentPane().add(new InteractivePanel(plot));
+    }
+
+    public static void main(String[] args) {
+        LinePlotTest frame = new LinePlotTest();
+        frame.setVisible(true);
+    }
+}
+
+
 @CompileStatic
+@AutoClone
 class ROCPoint {
     
+   
     Variant variant
     
     boolean truePositive
@@ -55,6 +79,43 @@ class ROCPoint {
     int metricBin
 }
 
+abstract class MetricBins {
+    String name 
+    
+    MetricBins(String name) {
+        this.name = name
+    }
+    
+    abstract int getBinIndex(Variant v, String sample) 
+}
+
+class DPMetricBins extends MetricBins {
+    
+    DPMetricBins() {
+        super('Depth')
+    }
+    
+    int getBinIndex(Variant v, String sample) {
+        return v.getTotalDepth(sample)
+    }
+}
+
+class QualMetricBins extends MetricBins {
+    QualMetricBins () {
+        super('Qual')
+    }
+    
+    int getBinIndex(Variant v, String sample) {
+        return Math.round(v.qual)
+    }    
+}
+
+/**
+ * A comprehensive tools supporting many different functions to render a VCF in HTML format,
+ * as well as functionality to "diff" VCFs including computing ROC-like statistics.
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 class VCFtoHTML {
     private Map<String,String> sampleMap
@@ -66,7 +127,9 @@ class VCFtoHTML {
     
     private Map baseColumns = new LinkedHashMap()
     private List<String> filters
-    private BED target
+    
+    private List<BED> targets = []
+    
     private BED excludeRegions
     private Pedigrees pedigrees
     
@@ -161,6 +224,10 @@ class VCFtoHTML {
      * If enabled, a writer that outputs differences as tab separated format
      */
     CSVWriter tsvWriter = null
+    
+    MetricBins bins = new DPMetricBins()
+    
+    double minROCSensitivity = 0.2
         
     VCFtoHTML(CliOptions opts) {
         this.opts = opts
@@ -171,6 +238,29 @@ class VCFtoHTML {
         
         if(opts.maxMaf)
             maxMaf=opts.maxMaf.toFloat()
+            
+        if(this.opts.rocBinSize)
+            this.minBinSize = this.opts.rocBinSize.toInteger()
+            
+            
+        if(this.opts.rocmetric) {
+//                = new QualMetricBins()
+            switch(this.opts.rocmetric) {
+                case 'qual':
+                    this.bins = new QualMetricBins()
+                    break
+                case 'depth':
+                    this.bins = new DPMetricBins()
+                    break
+                default:
+                    throw new IllegalArgumentException("Please use either 'depth' or 'qual' as the setting for ROC metric")
+            }
+        }
+        
+        if(this.opts.rocminsens) {
+            this.minROCSensitivity = this.opts.rocminsens.toDouble()
+        }
+            
     }
     
     def js = [
@@ -205,7 +295,7 @@ class VCFtoHTML {
             f 'Comma separated list of families to export', args:1
             a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
             id 'Include variant ids in output'
-            target 'Exclude variants outside this region from comparison', args:1
+            target 'Variants must fall within this region to be included (multiple allowed)', args:Cli.UNLIMITED
             xtarget 'Exclude variants inside these target regions from the comparison', args:1
             genelist 'Add gene priorities based on two column, tab separated file', args:1
             chr 'Confine analysis to chromosome', args:Cli.UNLIMITED
@@ -222,10 +312,15 @@ class VCFtoHTML {
             mask 'Alias sample ids to first group of given regexp', args:1
             bam 'BAM File to compute coverage for variants if not in VCF', args:Cli.UNLIMITED, required:false
             roc 'Save a table of sensitivity and precision with sample <arg> as reference', args: 1, required:false
+            rocBinSize 'Minimum number of values to include in each ROC point', args:1, required: false
+            rocCsv 'Save ROC data in CSV format in the given file', args:1, required:false
+            rocmetric 'Metric to use for calculating ROC (qual, depth)', args:1, required: false
+            rocminsens 'Minimum sensitivity to plot for ROC (20%)', args:1, required: false
+            title 'Title to apply in various reports that are output', args:1, required: false
         }
         
         CliOptions opts = new CliOptions(opts:cli.parse(args))
-        if(!opts)
+        if(!opts || !opts.i)
             System.exit(1)
             
         new VCFtoHTML(opts).run()
@@ -244,8 +339,11 @@ class VCFtoHTML {
             pedigrees = Pedigrees.fromSingletons(allSamples)
         }
         
-        if(opts.target) {
-            target = new BED(opts.target).load()
+        if(opts.targets) {
+            targets = opts.targets.collect { t ->
+                log.info "Loading target region $t"
+                new BED(t).load() 
+            }
         }
         
         if(opts.xtarget) {
@@ -456,7 +554,9 @@ class VCFtoHTML {
         
         log.info "ROC table is based on sensitivity against ${rocTotalVariants} reference variants"
         
-        List<Map> roc = calculateROC()
+        List<Map> fullROC = calculateROC()
+        
+        List<Map> roc = fullROC.grep { it.sensitivity > minROCSensitivity }
         
         File rocFile = new File(outputFileName.replaceAll('.html$','.roc.md'))
         rocFile.withWriter { w ->
@@ -467,25 +567,135 @@ class VCFtoHTML {
             w.println ""
             
             Utils.table(out:w,
-                ['Depth', 'Variants', 'Sensitivity', 'Precision'],
+                [bins.name, 'Variants', 'Sensitivity', 'Precision'],
                 [roc*.bin, roc*.total, roc*.sensitivity.collect {Utils.perc(it)}, roc*.precision.collect{Utils.perc(it)}].transpose()
             )
         }
+        
+        if(opts.rocCsv) {
+            saveROCCSV(bins, roc) 
+        }
+        
+        Plot rocPlot = new Plot(title: 'ROC Curve for ' + rocSample + ' (Ranked by ' + bins.name + ')', xLabel: 'Precision', yLabel: 'Sensitivity') << \
+            new Lines(x: roc*.precision.collect { (1 - it)*100 }, y: roc*.sensitivity*.multiply(100), name: rocSample) 
+            
+        String rocImage = rocFile.path.replaceAll('\\.md', '\\.png')
+        rocPlot.save(rocImage)
+        log.info "ROC image saved as ${rocImage}"
+        
+        String rocHTML = rocFile.path.replaceAll('\\.md', '\\.html')
+        
+        new File(rocHTML).text = getROCHTML(bins, roc)
+        
+        // Save roc HTML
+        log.info "ROC html saved as ${rocHTML}"
+        
     }
+    
+    String getROCHTML(MetricBins bins, List<Map> points) {
+        
+        String titleExtra = opts.title ? "($opts.title)" :  ""
+        String rocJson = JsonOutput.prettyPrint(JsonOutput.toJson(points))
+        return """
+            <html>
+            <head>
+                <script type='text/javascript'>
+                var rocData = ${rocJson};
+                </script>
+                <script src='http://nvd3.org/assets/lib/d3.v3.js'></script>
+                <script src='http://nvd3.org/assets/js/nv.d3.js'></script>
+                <link href="http://nvd3.org/assets/css/nv.d3.css" rel="stylesheet">
+            </head>
+            <body>
+                <h1>ROC Curve: Sensitivity and False Positive Rate by ${bins.name} $titleExtra</h1>
+            
+                <b>Max Metric Value:</b> <input type=text name=maxMetric id=maxMetric> <button onclick='redraw()'>Redraw</button>
+            
+                <div id=chart style='width: 800; height: 600;'>
+                    <svg></svg>
+                </div>
+                <script type='text/javascript'>
+            
+            
+                function redraw() {
+                      document.getElementById('chart').innerHTML='<svg></svg>';
+                      chart = nv.models.lineChart()
+                                    .margin({left: 100})  
+                                    .transitionDuration(350)  
+                                    .showLegend(true)   
+                                    .showYAxis(true)        
+                                    .showXAxis(true)       
+                                    // .interpolate('basis')
+                      ;
+            
+                      chart.xAxis     //Chart x-axis settings
+                          .axisLabel('False Positive Rate (1 - Precision)')
+                          .tickFormat(d3.format(',r'));
+            
+                      chart.yAxis     //Chart y-axis settings
+                          .axisLabel('Sensitvity')
+                          .tickFormat(d3.format('.02f'));
+            
+            
+                      let maxMetric = 999999999999999;
+                      let maxMetricValue = document.getElementById('maxMetric').value
+                      if(maxMetricValue)
+                          maxMetric = parseFloat(maxMetricValue);
+            
+                      var myData = [{
+                        key: 'ROC',
+                        values: rocData.filter(point => point.bin < maxMetric)
+                                       .map(point => { return { x: 1 - point.precision, y: point.sensitivity, metric: point.bin } })
+                      }]
+
+                      chart.forceX(0)
+                      chart.forceY(0)
+            
+                      chart.tooltipContent((key, x, y, e, graph) => { 
+                         let metric = e.point.metric
+                          return '<b>Sensitivity:</b> ' + y + '<br><b>FPR:</b>' + x + '<br><b>Metric:</b>' + metric;
+                      })
+            
+                      d3.select('#chart svg') 
+                          .datum(myData)      
+                          .call(chart);       
+            
+                      
+                      console.log("Done")
+                }
+                redraw()
+                </script>
+            
+            </body>
+            </html>
+        """.stripIndent()
+    }
+  
+    
+    void saveROCCSV(MetricBins bins, List<Map> points) {
+        new File(opts.rocCsv).withWriter { w ->
+            w.write([bins.name, 'Values', 'Sensitivity', 'Precision'].join(',') + '\n')
+            for(rocPoint in points) {
+                w.write([rocPoint.bin, rocPoint.total, rocPoint.sensitivity, rocPoint.precision].join(',') + '\n')
+            }
+        }
+    }
+    
+    int minBinSize = 10
     
     List<Map> calculateROC() {
         
         rocPoints.each { 
             // For now, we are just using total depth as the metric
             // but of course, others should be added!
-            Integer dp = it.variant.getTotalDepth(rocSample) 
-            it.metricBin = dp
+//            Integer dp = it.variant.getTotalDepth(rocSample) 
+            it.metricBin = bins.getBinIndex(it.variant, rocSample)
         }
         
         // Sort from highest value of metric to lowest
         List<ROCPoint> sorted = 
             rocPoints.sort { -it.metricBin }
-            
+        
         sorted.inject { ROCPoint last, ROCPoint next ->
             next.tpCount = last.tpCount
             next.fpCount = last.fpCount
@@ -498,7 +708,27 @@ class VCFtoHTML {
             return next
         }
         
-        TreeMap<Integer,List<ROCPoint>> roc = sorted.groupBy { it.metricBin } 
+        TreeMap<Integer,List<ROCPoint>> rawRoc = sorted.groupBy { it.metricBin } 
+        
+        TreeMap<Integer,List<ROCPoint>> roc = new TreeMap<Integer, List<ROCPoint>>()
+        
+        List<ROCPoint> currentGroup = []
+//        double binTotal = 0d
+        rawRoc.each { Integer binIndex, List<ROCPoint> values ->
+            currentGroup.addAll(values)
+            if(currentGroup.size() > minBinSize) {
+                // log.info "Merging " + currentGroup*.metricBin.unique() + " bins together (" + currentGroup*.metricBin.unique().join(',') + ") to achieve $minBinSize values " 
+                roc.put(Math.round(Stats.mean(values*.metricBin)), currentGroup)
+                currentGroup = []
+            }
+        }
+        
+        if(roc.isEmpty()) 
+            throw new IllegalStateException("Too few points in each bin to create ROC data. Please use -rocBinSize to specify smaller bin size")
+        
+//        if(currentGroup.size() > minBinSize) {
+//            roc.put(Math.round(Stats.mean(values*.metricBin)), currentGroup)
+//        }
         
         return roc.collect { Map.Entry<Integer, List<ROCPoint>> binEntry ->
             
@@ -577,9 +807,11 @@ class VCFtoHTML {
         
         ++stats.total
                     
-        if((target != null) && !(v in target)) {
-            ++stats.excludeByTarget
-            return
+        for(target in targets) {
+            if(!(v in target)) {
+                ++stats.excludeByTarget
+                return
+            }
         }
                     
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
