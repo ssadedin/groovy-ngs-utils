@@ -36,11 +36,13 @@ class CoverageSummary {
     final PositionCounts countInfo
     final List<Double> values
     final Double coeffV
+    final Double baseMean
 
-    public CoverageSummary(PositionCounts countInfo, List<Double> values, Double coeffV) {
+    public CoverageSummary(final PositionCounts countInfo, final List<Double> values, final Double coeffV, final Double baseMean) {
         this.countInfo = countInfo;
         this.values = values;
         this.coeffV = coeffV;
+        this.baseMean = baseMean
     }    
 }
 
@@ -124,6 +126,12 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
     
     boolean collectRegionStatistics = false
     
+    boolean perBaseMean = false
+    
+    boolean outputBEDIds = false
+    
+    boolean outputTarget = false
+    
     CoveragePrinter printer 
     
     CoverageSummarizer(Map options=[:], Writer w, List<String> samples) {
@@ -153,6 +161,10 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
         numberFormat.minimumFractionDigits=0
         numberFormat.groupingUsed = false
         this.printer = new CoveragePrinter(w)       
+        
+        if(options.outputTarget) {
+            this.printer.outputTarget = true
+        }
 //        this.printer.start()
         
 //        this.batcher = new BatchedAcknowledgeableMessage(this.printer.pendingMessageCount, 20)
@@ -218,15 +230,24 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
             values = values.collect { it /(0.01d +  valueMean) }
         }
         
+        final Stats stats = (perBaseMean || coeffV) ? Stats.from(values) : null
         Double coeffVColumn = null
         if(coeffV) {
-            final Stats stats = Stats.from(values)
             final double coeffV = stats.standardDeviation / (1 + stats.mean)
             coeffVColumn = coeffV
             coeffvStats.addValue((int)(100*coeffV))
         }
         
-        writePosition(countInfo, values, coeffVColumn)
+        Double baseMean 
+        if(perBaseMean) {
+            baseMean = stats.mean
+        }
+        
+//        writePosition(countInfo, values, coeffVColumn, baseMean)
+        
+        final String id = this.outputBEDIds ? this.currentTarget.extra : null
+        
+        printer.writePosition(countInfo, values, coeffVColumn, baseMean, id)
     }
     
     @CompileStatic
@@ -266,7 +287,7 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
     BatchedAcknowledgeableMessage batcher 
     
     @CompileStatic
-    void writePosition(final PositionCounts countInfo, final List<Double> values, final Double coeffV) {
+    void writePosition(final PositionCounts countInfo, final List<Double> values, final Double coeffV, final Double baseMean) {
 //        CoverageSummary summary = new CoverageSummary(countInfo, values, coeffV)
 //        this.printer.sendTo(summary)
 //        batcher.batchTo(summary, printer)

@@ -60,15 +60,29 @@ class MultiCov extends ToolBase {
     
     boolean phase1 = false
     
+    static String OVERVIEW = """
+    MultiCov is a general, swiss army knife for computing per-base 
+    coverage across multiple (hence, "multi") samples simultaneously. There are 
+    many tools that compute coverage within a single samples, but some applications
+    require cross sample calculations at the per-base level. MultiCov 
+    does this with a focus on streaming and good performance so that (for example) 
+    computing per-base coverage including per-base cross sample mean, standard 
+    deviation along with cross-sample coverage correlation metrics can be 
+    done for 20 exomes in about 10 minutes.
+    """
+    
     static void main(String [] args) {
-        cli('-bed <bed file> <bam1> <bam2> ...', args) {
+        cli('-bed <bed file> <bam1> <bam2> ...', OVERVIEW, args) {
             bed 'BED file describing target regions to analyse coverage for', args:1
+            bedid 'Output id from BED file as left-hand column (requires -bed)'
+            otarget 'Output the target region for each base as a left hand column'
             'L' 'A specific region to process, or if a file, opened as a BED file', args:1
             p 'Padding to apply to chosen regions (0)', args:1
             gene 'A specific gene to scan', args:1
-            cv 'Output coefficient of variation for each position as column 2', required: false
+            cv 'Output coefficient of variation for each position as left-hand column', required: false
             rel 'Output values relative to sample mean'
             std 'Standardise output values to mean at each bp'
+            pbmean 'Output per-base mean across samples as left hand column', required: false
             w 'Average statistics over moving window of size <arg>bp', longOpt: 'window', args:1
             subs 'Subsample to emit 1 out of every <arg> positions', longOpt: 'subsample', args:1
             stats 'Print statistics about coverage values and variation'
@@ -128,6 +142,12 @@ class MultiCov extends ToolBase {
             if(opts.targetmeans) 
                 options.collectRegionStatistics = true
                 
+            if(opts.otarget) {
+                if(!opts.bed) 
+                    throw new IllegalArgumentException("Option -otarget was supplied but this option requires -bed")
+                options.outputTarget = true
+            }
+                
             CoverageSummarizer printer = new CoverageSummarizer(options, w, samples)
             
             if(opts['2pass']) {
@@ -156,11 +176,18 @@ class MultiCov extends ToolBase {
                 printer.relative = true
             if(opts.std)
                 printer.std = true
+            if(opts.pbmean)
+                printer.perBaseMean = true
             if(opts.corr)
                 printer.correlationSamples = opts.corr == '.' ? samples : opts.corr.tokenize(',')
             if(opts.minMQ)
                 this.minimumMapQ = opts.minMQ.toInteger()
-                
+            if(opts.bedid) {
+                if(!opts.bed) 
+                    throw new IllegalArgumentException("Option -bedid was supplied but this option requires -bed")
+                printer.outputBEDIds = true
+            }
+            
             run(printer)
         }
         
@@ -210,7 +237,10 @@ class MultiCov extends ToolBase {
         else
         if(opts.bed) {
             log.info "Reading bed file $opts.bed"
-            return new BED(opts.bed).load()
+            if(opts.bedid)
+                return new BED(opts.bed, withExtra:true).load(withExtra:true)
+            else
+                return new BED(opts.bed).load()
         }
         else 
             throw new IllegalArgumentException("Please specify either -L, -bed or -gene to define the regions to process")

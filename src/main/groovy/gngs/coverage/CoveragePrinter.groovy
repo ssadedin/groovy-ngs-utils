@@ -22,6 +22,8 @@ class CoveragePrinter extends Thread {
     
     final NumberFormat numberFormat = NumberFormat.numberInstance
     
+    boolean outputTarget = false
+    
     CoveragePrinter(Writer w) {
         this.w = w
         this.numberFormat.groupingUsed = false
@@ -50,22 +52,35 @@ class CoveragePrinter extends Thread {
     }
 
     @CompileStatic
-    private void writePosition(final CoverageSummary summary) {
+    void writePosition(final CoverageSummary summary) {
         
        if(w == null)
            return
-        
-       final PositionCounts countInfo = summary.countInfo
-       final List<Double> values = summary.values
-       final Double coeffV  = summary.coeffV
-       
+      
+       writePosition(summary.countInfo, summary.values,summary.coeffV, summary.baseMean, null)
+    }
+
+    @CompileStatic
+    public void writePosition(final PositionCounts countInfo, final List<Double> values, final Double coeffV, final Double baseMean, final String id) {
         line.setLength(0)
-            
+
         w.write(countInfo.chr)
         w.write('\t')
         w.write(countInfo.pos.toString())
         w.write('\t')
-        if(coeffV != null) {
+        if(this.outputTarget) {
+            w.write(countInfo.region.toString())
+            w.write('\t')
+        }
+        if(!id.is(null)) {
+            w.write(id)
+            w.write('\t')            
+        }
+        if(!baseMean.is(null)) {
+            w.write(numberFormat.format(baseMean))
+            w.write('\t')
+        }        
+        if(!coeffV.is(null)) {
             w.write(numberFormat.format(coeffV))
             w.write('\t')
         }
@@ -73,10 +88,9 @@ class CoveragePrinter extends Thread {
         int i = 0;
         for(;i<numValues; ++i) {
             w.write(numberFormat.format(values[i]))
-            w.write('\t')                                
+            w.write('\t')
         }
         w.write(numberFormat.format(values[numValues]))
         w.write('\n')
     }
-    
 }

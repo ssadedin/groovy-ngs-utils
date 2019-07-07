@@ -84,6 +84,10 @@ abstract class ToolBase {
         c()
     }
     
+    static void cli(String usage, String [] args, Closure specBuilder) {
+        cli(usage, null, args, specBuilder)
+    }
+    
     /**
      * Create an instance of the enclosing class and call its {@link #run} method after 
      * parsing options with a {@link gngs.Cli} instance configured by 
@@ -94,11 +98,17 @@ abstract class ToolBase {
      * @param specBuilder   a closure to configure a {@link groovy.util.CliBuilder} via a 
      *                      {@link gngs.Cli} instance
      */
-    static void cli(String usage, String [] args, Closure specBuilder) {
+    static void cli(String usage, String header, String [] args, Closure specBuilder) {
         
         Utils.configureSimpleLogging()
         
-        Cli cli = new Cli(usage: usage)
+        if(header) {
+            // lets us format it however we want in our groovy code and shows up reasonably
+            // wrapped from commons-cli
+            header = '\n' + header.stripIndent().readLines().grep { it }.join(' ') + '\n\nOptions:\n\n'
+        }
+        
+        Cli cli = new Cli(usage: usage, header: header)
         cli.h 'Show help', longOpt: 'help' 
         
         Class originalDelegate = specBuilder.delegate

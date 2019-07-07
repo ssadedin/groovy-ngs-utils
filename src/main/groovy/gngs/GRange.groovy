@@ -330,8 +330,9 @@ class Region extends Expando implements IRegion, Serializable {
         new Region(chr, range.from..range.to)
     }
     
+    @CompileStatic
     Object getExtra() {
-        range instanceof GRange ? range.extra : null
+        range instanceof GRange ? ((GRange)range).extra : null
     }
     
     /**
