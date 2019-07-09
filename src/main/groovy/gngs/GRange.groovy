@@ -22,6 +22,8 @@ package gngs
 
 import groovy.transform.CompileStatic;
 import htsjdk.samtools.SAMRecord
+import htsjdk.samtools.util.Interval
+
 import java.util.regex.Pattern
 
 @CompileStatic
@@ -386,6 +388,14 @@ class Region extends Expando implements IRegion, Serializable {
      */
     boolean isEmpty() {
         this.is(EMPTY_REGION)
+    }
+    
+    @CompileStatic
+    Object asType(Class clazz) {
+        if(clazz == Interval) {
+            return new Interval(chr, range.from, range.to)
+        }
+        return null
     }
     
     String igv() {

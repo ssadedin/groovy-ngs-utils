@@ -79,7 +79,7 @@ class ResourceDownloader {
             }
             
             if(!outputFile.exists()) {
-                String ucscUrl = urlPattern.replace('##genomeVersion##',ucscGenomeVersion)
+                String ucscUrl = urlPattern.replaceAll('##genomeVersion##',ucscGenomeVersion)
                 outputFile.withOutputStream { outputStream ->
                     new URL(ucscUrl).withInputStream { urlStream ->
                         Files.copy(urlStream, outputStream)
