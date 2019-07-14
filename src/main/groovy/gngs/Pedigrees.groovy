@@ -28,7 +28,7 @@ class Pedigrees {
     final static List PED_COLUMNS = ['familyId','id', 'paternalId', 'maternalId', 'sex', 'phenotype']
 
     /**
-     * Lookup table to find family by pedigree Id
+     * Lookup table to find family by family Id
      */
     Map<String,Pedigree> families = [:]
     
