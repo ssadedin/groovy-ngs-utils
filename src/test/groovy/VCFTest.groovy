@@ -256,4 +256,36 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
         assert vcf[0].size() > 0
         println vcf[0].type
     }
+    
+    @Test
+    void 'parse VCFs containing SVs 2'() {
+        VCF vcf = VCF.parse("/Users/simon.sadedin/work/ximmer/src/test/data/test.canvas.vcf")
+        
+        println vcf[0].size()
+        assert vcf[0].size() > 100
+        println vcf[0].type
+    }
+    
+    @Test
+    void 'test filtering with a discard writer'() {
+        String includePath = 'src/test/data/includes.vcf'
+        def discardPath = 'src/test/data/discards.vcf'
+        new File(includePath).withOutputStream { o ->
+            VCF.filter(new ByteArrayInputStream(testVCF.bytes), discardWriter: discardPath, outputStream: o) { Variant v ->
+                v.pos < 665058
+            }
+        }
+        
+        assert new File(includePath).exists()
+        assert new File(discardPath).exists()
+        
+        VCF incVcf = VCF.parse(includePath)
+        VCF excVcf = VCF.parse(discardPath)
+        
+        assert incVcf.find { it.pos == 325075 }
+        assert !incVcf.find { it.pos == 762485 }
+        
+        assert !excVcf.find { it.pos == 325075 }
+        assert excVcf.find { it.pos == 762485 }
+    }
  }

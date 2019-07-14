@@ -34,6 +34,7 @@ import htsjdk.tribble.readers.TabixReader;
 
 import org.codehaus.groovy.runtime.StackTraceUtils
 
+@CompileStatic
 class FormatMetaData {
     
     String id
@@ -47,6 +48,69 @@ class FormatMetaData {
 
 class StopParsingVCFException extends Exception {
 }
+
+@CompileStatic
+class VCFParseContext {
+    final VCF vcf
+    final Closure c
+    final Map options 
+    final Writer out 
+    final Writer discardWriter 
+            
+    boolean flushedHeader = false
+            
+    public VCFParseContext(VCF vcf, Closure c, Map options, Writer out, Writer discardWriter) {
+        this.vcf = vcf;
+        this.c = c;
+        this.options = options;
+        this.out = out;
+        this.discardWriter = discardWriter;
+    }
+
+    void flushHeader() {
+        if(flushedHeader)
+            return
+                    
+        if(options.updateHeader != null) {
+            vcf.headerLines = (List<String>)((Closure)options.updateHeader)(vcf.headerLines)
+        }
+        vcf.printHeader(out)
+                
+        if(!(this.discardWriter.is(null))) 
+            vcf.printHeader(this.discardWriter)
+                
+        flushedHeader = true                
+    }
+            
+    void write(Appendable a, Variant v) {
+        flushHeader()
+        a.append(v.line)                
+        a.append('\n')
+    }
+            
+    void add(final Variant v) {
+        if(this.out.is(null))
+            this.vcf.add(v)
+        else
+            this.write(out,v)
+    }
+            
+    void discard(final Variant v) {
+        if(!this.discardWriter.is(null))
+            this.write(discardWriter, v)
+    }
+    
+    void close() {
+        out.flush()
+        out.close()
+            
+        if(discardWriter != null) {
+            discardWriter.close()
+        }
+    }
+}
+            
+
 
 /**
  * The VCF class supports simple parsing, filtering, querying and updating of
@@ -222,7 +286,7 @@ class VCF implements Iterable<Variant> {
     }
     
     static VCF parse(String fileName, Pedigrees peds, Closure c = null) {
-        parse(fileName,peds.families.values() as List, c)
+        parse(fileName,peds?.families?.values() as List, c)
     }
     
     /**
@@ -369,6 +433,7 @@ class VCF implements Iterable<Variant> {
         VCF vcf = options.vcf ? (VCF)options.vcf : new VCF(pedigrees:peds)
         
         Writer out = createOutputWriter(options, filterMode)
+        Writer discardWriter  = options.discardWriter ? Utils.writer((String)options.discardWriter) : null
         
         if(options.fileName)
             vcf.fileName = options.fileName
@@ -407,6 +472,8 @@ class VCF implements Iterable<Variant> {
             }
         }
         
+        VCFParseContext ctx = new VCFParseContext(vcf, c, options, out, discardWriter)
+        
         try {
                
             r.eachLine { String line ->
@@ -438,7 +505,7 @@ class VCF implements Iterable<Variant> {
                   v.header = vcf
                         
                   if((samples==null) || samples.any {v.sampleDosage(it)}) {
-                      flushedHeader = processParsedVariant(vcf, v, c, flushedHeader, options, out)
+                      processParsedVariant(ctx, v)
                   }
                 }
                 catch(StopParsingVCFException stop) {
@@ -459,12 +526,9 @@ class VCF implements Iterable<Variant> {
         }
         
         if(filterMode) {
-            if(!flushedHeader)  {
-                vcf.printHeader()
-                flushedHeader = true
-            }
-            out.flush()
-            out.close()
+            ctx.flushHeader()
+
+            ctx.close()
         }
         return vcf
     }
@@ -501,25 +565,21 @@ class VCF implements Iterable<Variant> {
         return null
     }
     
+    
     @CompileStatic
-    static boolean processParsedVariant(VCF vcf, Variant v, Closure c, boolean flushedHeader, Map options, Writer out) {
-        if(!c || !(c(v)==false)) {
-            if(!out.is(null)) {
-                if(!flushedHeader)  {
-                    if(options.updateHeader != null) {
-                        vcf.headerLines = (List<String>)((Closure)options.updateHeader)(vcf.headerLines)
-                    }
-                    vcf.printHeader(out)
-                    flushedHeader = true
-                }
-                out.write(v.line)
-                out.write('\n')
-            }
-            else {
-                vcf.add(v)
-            }
+    static void processParsedVariant(final VCFParseContext ctx, final Variant v) {
+        
+        boolean include = true
+        
+        if(!ctx.c.is(null)) {
+            include = !(((Closure)ctx.c)(v) == false)
         }
-        return flushedHeader
+        
+        if(include) {
+            ctx.add(v)
+        }
+        else
+            ctx.discard(v)
     }
     
     /**
