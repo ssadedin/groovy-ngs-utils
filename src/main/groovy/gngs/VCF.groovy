@@ -426,6 +426,17 @@ class VCF implements Iterable<Variant> {
     }
     
     @CompileStatic
+    static VCF filter(Map options=[:], Reader r, Closure c) {
+        parseImpl(options, r, true, null, c)
+    }
+    
+    @CompileStatic
+    static VCF parse(Map options=[:], Reader r, boolean filterMode, Closure c) {
+        parseImpl(options, r, filterMode, null, c)
+    }
+     
+    
+    @CompileStatic
     private static VCF parseImpl(Map options=[:], Reader r, boolean filterMode, List<Pedigree> peds, Closure c) {
         
         boolean ignoreHomRef = !(options.includeHomRef ?: false)
@@ -553,8 +564,11 @@ class VCF implements Iterable<Variant> {
      */
     @CompileStatic
     private static Writer createOutputWriter(Map options, boolean filterMode) {
-        Writer out
         if(filterMode) {
+            if(options.writer) {
+                return (Writer)options.writer
+            }
+            else
             if(options.outputStream) {
                 return ((OutputStream)options.outputStream).newWriter()
             }
