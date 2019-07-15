@@ -39,14 +39,14 @@ class Table {
             System.exit(1)
         }
         
-        def file = null
+        List files = []
         if(opts.i) 
-            file = opts.i
+            files = [opts.i]
         else
         if(opts.arguments())
-            file = opts.arguments()[0]
+            files = opts.arguments() as List
             
-        String fileExt = file ? file.replaceAll(/^.*\./,'') : null
+        String fileExt = files[0] ? files[0].replaceAll(/^.*\./,'') : null
 
         Map readOptions = [:]
         if(opts.h) {
@@ -59,26 +59,28 @@ class Table {
                 readOptions.columnNames = autoMapper
             else
             if(autoMapper instanceof Closure)
-                readOptions.columnNames = autoMapper.call(file)
+                readOptions.columnNames = autoMapper.call(files[0])
             else
                 assert false
         }
+        
+        boolean multiFile = files?.size()>1
                         
         def data
-        if(!file) {
+        if(!files) {
             data = new TSV(readOptions,System.in.newReader()).toListMap()
         }
         else
-        if(opts.tsv || file.endsWith('tsv')) {
-            data = new TSV(readOptions,file).toListMap()
+        if(opts.tsv || files[0].endsWith('tsv')) {
+            data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else
-        if(opts.csv || file.endsWith('csv')) {
-            data = new CSV(readOptions,file).toListMap()
+        if(opts.csv || files[0].endsWith('csv')) {
+            data = files.collect { f -> new CSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else
-        if(file && new File(file).newReader().readLine().tokenize('\t').size()>3) {
-            data = new TSV(readOptions,file).toListMap()
+        if(files[0] && new File(files[0]).newReader().readLine().tokenize('\t').size()>3) {
+            data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else {
             System.err.println()
