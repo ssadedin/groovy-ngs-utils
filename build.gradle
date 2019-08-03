@@ -78,7 +78,7 @@ dependencies {
 jar {
     from configurations.compile.grep { !it.name.startsWith("cramtools") }.collect { 
         // println "Including $it"; 
-        it.isDirectory() ? it : zipTree(it) 
+        (it.isDirectory() || it.name.endsWith('.pom')) ? it : zipTree(it) 
     }
     from configurations.compile.grep { it.name.startsWith("cramtools") }.collect { 
         // println "Including $it"; 
@@ -100,6 +100,9 @@ jar {
             return true
 
         if(details.relativePath.pathString.contains("slf4j"))
+            return true
+
+        if(details.name.endsWith('.pom'))
             return true
 
         return false
