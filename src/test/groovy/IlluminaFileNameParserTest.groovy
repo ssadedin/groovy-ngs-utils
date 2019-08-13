@@ -2,8 +2,6 @@ import static org.junit.Assert.*;
 
 import org.junit.Test;
 
-import gngs.IlluminaFileNameParser
-
 
 class IlluminaFileNameParserTest {
     
