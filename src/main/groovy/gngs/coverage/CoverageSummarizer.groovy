@@ -257,17 +257,17 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
     
     @CompileStatic
     void newTargetRegion(final Region region) {
+        if(this.collectRegionStatistics) {
+            updateRegionMeanCoverages()
+            
+            this.sampleRegionStats = new Stats[samples.size()].collect { new Stats() } as Stats[]
+        }
+        
         currentTarget = region
         if(gcReference) {
             currentGc = gcReference.gc(currentTarget)
             currentGCBin = (int)(currentGc * 100 / 5)
             log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
-        }
-        
-        if(this.collectRegionStatistics) {
-            updateRegionMeanCoverages()
-            
-            this.sampleRegionStats = new Stats[samples.size()].collect { new Stats() } as Stats[]
         }
     }
     
