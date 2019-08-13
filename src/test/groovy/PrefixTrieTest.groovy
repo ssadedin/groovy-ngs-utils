@@ -124,4 +124,30 @@ class PrefixTrieTest {
         // trie.startsWith("CCCGGACGCACGGG",1,1,1,5)
         assert trie.startsWith("CCCGGACGCACGGG",1,1,1,5).size() == 1
     }
+    
+    @Test
+    void testNodeIterateKeys() {
+        trie = new PrefixTrie()
+        trie.add("foo",1)
+        trie.add("fo",2)
+        
+        List keys = trie.root["f"].keyIterator("f").collect { it }
+        
+        println "Keys are: $keys"
+        
+        assert ["fo","foo"].every { it in keys }
+    }
+    
+    @Test
+    void testIterateKeys() {
+        trie = new PrefixTrie()
+        trie.add("foo",1)
+        trie.add("fo",2)
+        
+        List keys = trie.keyIterator().collect { it }
+        
+        println "Keys are: $keys"
+        
+        assert ["fo","foo"].every { it in keys }
+    } 
 }

@@ -20,6 +20,8 @@
 
 package gngs
 
+import com.google.common.collect.Iterators
+
 import groovy.transform.CompileStatic
 
 /*
@@ -165,4 +167,13 @@ class PrefixTrie<T> {
                      .flatten()
                      .unique()
     } 
+    
+    @CompileStatic
+    Iterator<String> keyIterator() {
+        Iterators.concat(
+            this.root.collect { String prefix, TrieNode node ->
+                node.keyIterator(prefix)
+            }.iterator()
+        )
+    }
 }

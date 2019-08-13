@@ -20,6 +20,10 @@
 
 package trie
 
+import com.google.common.collect.Iterables
+import com.google.common.collect.Iterators
+import com.google.common.collect.Lists
+
 import groovy.transform.CompileStatic
 
 class TrieNode<T> {
@@ -51,6 +55,7 @@ class TrieNode<T> {
         return this
     }
     
+    @CompileStatic
     List<T> getAt(String key) {
         
         if(key.isEmpty())
@@ -159,6 +164,17 @@ class TrieNode<T> {
         
         result.unique()
         return result
+    }
+    
+   
+    @CompileStatic
+    Iterator<String> keyIterator(String prefix) {
+        List<String> myKeys = (List<String>)(this.values ? [ prefix ] : Collections.emptyList())
+        List<Iterator> iters = this.children.collect { keyChar, node ->
+                node.keyIterator(prefix+keyChar)
+        } + [myKeys.iterator()]
+        
+        return (Iterator<String>)Iterators.concat(iters.iterator())
     }
     
     TreeMap<String,TrieNode> children = [:]
