@@ -32,6 +32,10 @@ import org.codehaus.groovy.runtime.StackTraceUtils;
  * </pre>
  * Note: the 'chr','start' and 'end' columns here arbitrary - they don't affect what is 
  * parsed into the ranges.
+ * <p>If you are loading a CSV file, pass the separator to the "load" function:</p>
+ * <pre>
+ *  r = new RangeData("my_file.csv").load(separator:',')
+ * </pre>
  * <p>
  * RangedData extends the Regions class, so it supports all the usual methods for working with
  * genomic ranges. The only difference is that the ranges involved acquire properties 
