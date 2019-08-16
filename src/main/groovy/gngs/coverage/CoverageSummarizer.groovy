@@ -160,10 +160,13 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
         numberFormat.maximumFractionDigits=3
         numberFormat.minimumFractionDigits=0
         numberFormat.groupingUsed = false
-        this.printer = new CoveragePrinter(w)       
         
-        if(options.outputTarget) {
-            this.printer.outputTarget = true
+        if(w != null) {
+            this.printer = new CoveragePrinter(w)       
+        
+            if(options.outputTarget) {
+                this.printer.outputTarget = true
+            }
         }
 //        this.printer.start()
         
@@ -247,7 +250,8 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
         
         final String id = this.outputBEDIds ? this.currentTarget.extra : null
         
-        printer.writePosition(countInfo, values, coeffVColumn, baseMean, id)
+        if(!printer.is(null))
+            printer.writePosition(countInfo, values, coeffVColumn, baseMean, id)
     }
     
     @CompileStatic
