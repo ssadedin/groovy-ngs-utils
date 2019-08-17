@@ -246,11 +246,11 @@ class MultiCov extends ToolBase {
             throw new IllegalArgumentException("Please specify either -L, -bed or -gene to define the regions to process")
     }
     
-    void run(CoverageSummarizer printer) {
+    void run(CoverageSummarizer summarizer) {
         
-        printer.start()
+        summarizer.start()
         
-        CoverageCombinerActor combiner = new CoverageCombinerActor(printer, bams.size())
+        CoverageCombinerActor combiner = new CoverageCombinerActor(summarizer, bams.size())
         combiner.start()
             
         // By default, estimate mean coverage from the regions to be scanned
@@ -265,8 +265,8 @@ class MultiCov extends ToolBase {
             
             // If no means were provided and the user specified -rel, compute them
             if(opts.rel || opts.std || opts.co || opts.corr ) {
-                estimateMeans(estRegions, printer)
-                log.info "Ordered Means: " + printer.orderedMeans.join(", ")
+                estimateMeans(estRegions, summarizer)
+                log.info "Ordered Means: " + summarizer.orderedMeans.join(", ")
             }
             else {
                 log.info "Skipping estimate of means because no options requiring prior estimation of mean are enabled"
@@ -288,8 +288,8 @@ class MultiCov extends ToolBase {
         combiner.join()
             
         log.info "Stopping actor ..."
-        printer << RegulatingActor.STOP
-        printer.join()
+        summarizer << RegulatingActor.STOP
+        summarizer.join()
         log.info "Finished"
         
         if(phase1)
@@ -300,47 +300,47 @@ class MultiCov extends ToolBase {
             Utils.table(out:System.err,
                 ["Sample", "Mean (actual" + (opts.rel?",relative":"") + ")", "Mean (Est)", "StdDev"], 
                 [ 
-                    printer.samples, 
-                    printer.samples.collect { printer.sampleStats[printer.samples.indexOf(it)].mean },
-                    printer.samples.collect { printer.sampleMeans[it] },
-                    printer.samples.collect { printer.sampleStats[printer.samples.indexOf(it)].standardDeviation }
+                    summarizer.samples, 
+                    summarizer.samples.collect { summarizer.sampleStats[summarizer.samples.indexOf(it)].mean },
+                    summarizer.samples.collect { summarizer.sampleMeans[it] },
+                    summarizer.samples.collect { summarizer.sampleStats[summarizer.samples.indexOf(it)].standardDeviation }
                 ].transpose()
             )
             if(opts.cv) {
-                printCVInfo(printer.coeffvStats)
+                printCVInfo(summarizer.coeffvStats)
             }
         }
         
         if(opts.cvo) {
             new File(opts.cvo).withWriter { cvw ->
-                writeCVOutput(cvw, printer.coeffvStats)
+                writeCVOutput(cvw, summarizer.coeffvStats)
             }
         }
         
         if(opts.cvj) {
             new File(opts.cvj).withWriter { cvw ->
-                writeCVOutputJS(cvw, printer.coeffvStats)
+                writeCVOutputJS(cvw, summarizer.coeffvStats)
             }
         }
         
         if(opts.corr) {
-            printCorrelationTable(printer)
+            printCorrelationTable(summarizer)
         }
         
         if(opts.covo) {
-            printCoverageJs(printer, opts.covo)
+            printCoverageJs(summarizer, opts.covo)
         }
         
         if(opts.gcprofile) {
-            writeGCProfile(printer)
+            writeGCProfile(summarizer)
         }
         
         if(opts.targetmeans) {
-            writeSampleRegionMeans(new File(opts.targetmeans).newWriter(), printer)
+            writeSampleRegionMeans(new File(opts.targetmeans).newWriter(), summarizer)
         }
         
         if(opts.samplesummary) {
-            writeSampleSummaries(printer)
+            writeSampleSummaries(summarizer)
         }
     }
 
