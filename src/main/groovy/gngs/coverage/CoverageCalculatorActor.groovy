@@ -293,6 +293,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         calculator.start()
         
         List<String> chrs = (List<String>)scanRegions.collect { Region r -> r.chr }.unique()
+        int failMQ = 0
         for(String chr in chrs) {
             int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
             int end = scanRegions.index[chr].ranges.lastKey() + 1000
@@ -302,11 +303,16 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
                     SAMRecord r = iter.next()
                     if(r.getMappingQuality()>=minMQ)
                         calculator.send(new AcknowledgeableMessage(new ReadRange(r), downstreamCount))
+                    else
+                        ++failMQ
                 } 
             }
         }
         log.info "Sending stop message to CRA ${bam.samples[0]} ..."
         calculator << RegulatingActor.STOP
         calculator.join()
+        if(failMQ) {
+            log.info "${failMQ} reads failed mapping quality threshold $minMQ in $sample"
+        }
     }
 }
