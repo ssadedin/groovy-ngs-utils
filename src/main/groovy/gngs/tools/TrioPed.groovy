@@ -69,7 +69,7 @@ class TrioPed extends ToolBase {
             new PedTrio(father:father, mother: mother, proband: samples.find { !(it in [mother,father]) })
         }
         
-        if(trios.every { it.denovoRate > 0.1 }) 
+        if(trios.every { it.denovoRate > 0.05 }) 
             throw new IllegalStateException("No sample had low rate of de novo variants within trio. Unable to construct valid trio")
         
         // For each trio, find the rate of de novo variants in the child
