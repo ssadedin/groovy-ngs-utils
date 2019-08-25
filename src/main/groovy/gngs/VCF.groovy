@@ -1370,6 +1370,15 @@ class VCF implements Iterable<Variant> {
         this.variants.size()
     }
     
+    @CompileStatic
+    List<Map<String,Object>> toListMap() {
+     (List<Map<String,Object>>)[
+            this.toRegions().toListMap(), 
+            this*.info, 
+            this*.genoTypes*.getAt(0)
+        ].transpose().collect { Object infosObj -> List infos = (List)infosObj;  ((Map)infos[0]) + ((Map)infos[1]) + ((Map)infos[2])}
+    }
+    
     private VCFIndex index
     
     VCFIndex getIndex() {
