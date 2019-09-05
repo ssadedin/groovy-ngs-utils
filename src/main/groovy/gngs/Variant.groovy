@@ -520,7 +520,7 @@ class Variant implements IRegion {
         ref = fields[3]
         alts = COMMA_SPLIT.split(fields[4])
         alt = alts[0]
-        qual = (fields[5] == ".") ? -1.0f : Float.parseFloat(fields[5])
+        qual = fields[5].equals(".") ? -1.0f : Float.parseFloat(fields[5])
         filter = fields[6]
         info = fields[7]
         
@@ -1260,6 +1260,15 @@ class Variant implements IRegion {
     }
     
     /**
+     * Return the depth of the first alternate allele for the first sample
+     * @return
+     */
+    @CompileStatic
+    int getAltDepth() {
+        return getAlleleDepths(1)[0]
+    }
+    
+    /**
      * Return the number of reads supporting the given allele as a list
      * with one entry for each sample in the VCF
      * 
@@ -1308,7 +1317,7 @@ class Variant implements IRegion {
                 return 0i
         }
         else
-        if(ad[alleleIndex]==null || (ad[alleleIndex] == "."))
+        if(ad[alleleIndex]==null || (ad[alleleIndex].equals(".")))
             return 0i
 
         return (int)ad[alleleIndex]

@@ -300,6 +300,22 @@ class VariantTest {
     }
     
     @Test
+    void testAlleleDepths() {
+        VCF vcf = VCF.parse('src/test/data/allele_depth_test.vcf')
+        Variant v = vcf[0]
+        
+        println v.getAlleleDepths(1)
+        assert v.getAlleleDepths(1)[0] == 46
+        assert v.altDepth == 46
+        
+        v = vcf[1]
+        assert v.altDepth == 46
+        
+        v = vcf[2]
+        assert v.altDepth == 46
+    }
+    
+    @Test
     void testVaf() {
         v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   MQ=49.90    GT:AD:DP:GQ:PL  1/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
         assert Math.abs(v.vaf - 83 / 213) < 0.01
