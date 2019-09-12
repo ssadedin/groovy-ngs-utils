@@ -35,12 +35,16 @@ class GeneCovStats extends ToolBase {
         log.info "Computing CDS regions for ${geneList.size()} genes ..."
         List<Regions> geneRegions = computeExonicRegions(geneList) 
         
-        log.info "Calculating gene coverage statistics for total of ${Utils.humanBp(geneRegions.size())} ..."
+        log.info "Calculating gene coverage statistics for total of ${Utils.humanBp(geneRegions*.size().sum())} ..."
         List<Map> allGeneMasterStats = geneRegions.collect { calculateGeneMasterStats(it) }
         
         log.info "Done"
         
-        println Matrix.fromListMap(allGeneMasterStats).toMarkdown().toString()
+        Matrix m = Matrix.fromListMap(allGeneMasterStats)
+        System.out.withWriter { w ->
+            m.save(w)
+        }
+//        println m.toMarkdown().toString()
     }
     
     @CompileStatic
