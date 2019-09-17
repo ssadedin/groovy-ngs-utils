@@ -140,8 +140,6 @@ class PairScanner {
         
         this.pairWriter2 = new PairWriter(writer2, writerQueueSize)
         
-        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter, pairWriter2)  }
-        
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
@@ -150,7 +148,6 @@ class PairScanner {
   
     PairScanner(Writer writer, int numLocators, Regions regions = null, String filterExpr = null, int writerQueueSize = DEFAULT_WRITER_QUEUE_SIZE) {
         this.pairWriter = new PairWriter(writer, writerQueueSize)
-        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter) }
         this.regions = regions
         this.numLocators = numLocators
         this.filterExpr = filterExpr
@@ -165,6 +162,7 @@ class PairScanner {
         int locatorsCreated = 0
         this.locators = []
         
+        this.formatters = (1..numFormatters).collect { new PairFormatter(FORMATTER_BUFFER_SIZE, pairWriter, pairWriter2)  }
         
         this.formatterGroup = new DefaultPGroup(numFormatters+1)
         this.formatters*.parallelGroup = this.formatterGroup
