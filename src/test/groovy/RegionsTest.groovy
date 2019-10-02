@@ -3,6 +3,7 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import gngs.*
+import graxxia.Matrix
 
 /**
  * Note: most of the tests for Regions are in fact in the {@link BEDTest}
@@ -462,7 +463,36 @@ class RegionsTest {
         Region r2 = new Region('chr1', 48, 50)
         approx(r1.mutualOverlap(r2),0.02d)
      } 
-  
+     
+//     @Test
+//     void 'test serializability of IntRange'() {
+//         new File('test.ser').withObjectOutputStream { oos -> oos.writeObject(1..10) }
+//     }
+     
+     @Test
+     void 'test reduce of adjacent and coincident ending regions'() {
+         
+        def printr = { Matrix.fromListMap(it.toListMap()) }
+         
+        Regions r2 = new Regions()
+        
+        """
+            chr1    10    189
+            chr1    189   300
+            chr1    20    25
+            chr1    15    189
+        """.trim().readLines()*.tokenize().each { 
+            Region r = new Region(it[0], it[1].toInteger(), it[2].toInteger()-1)
+            r2.addRegion(r) 
+//            println("After $r: " + r2.index.chr1.ranges)
+        } 
+        
+        Regions rr = r2.reduce()
+        println Matrix.fromListMap(rr.toListMap())
+        
+        Region  middle = new Region("chr1:210-230")
+        assert rr.overlaps(middle)
+     }
       
      // Simplistic but easy to use approximate equals
      void approx(double x1, double x2) {

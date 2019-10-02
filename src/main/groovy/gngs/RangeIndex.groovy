@@ -206,17 +206,22 @@ class RangeIndex implements Iterable<IntRange> {
     private void splitEndRange(IntRange newRange, Map.Entry<Integer,List<IntRange>> containedEntry) {
         
         final int endPosition = (int)newRange.to
+        final int afterEndPosition = endPosition+1
+        final List<IntRange> existingEndRanges = ranges[afterEndPosition]
         
         // Make a new range from the end of our range to the start of the next higher range
         // It needs to have the previous range only, not our new range
         List<IntRange> clonedList = new ArrayList(containedEntry.value.size())
+        if(!existingEndRanges.is(null))
+            clonedList.addAll(existingEndRanges)
+            
         for(IntRange range in containedEntry.value) {
             if(endPosition < range.to )
                 clonedList.add(range)
         }
         
-        ranges[endPosition+1] = clonedList
-        checkRanges(endPosition+1)
+        ranges[afterEndPosition] = clonedList
+        checkRanges(afterEndPosition)
     }
     
     @CompileStatic
