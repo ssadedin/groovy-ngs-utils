@@ -861,9 +861,17 @@ class SAM {
         }
         return ((float)total)/ (end - pos + 1)
     }
+    
+    /**
+     * Create a CoverageStats object for the depth of coverage over the given region
+     */
+    @CompileStatic
+    CoverageStats coverageStatistics(IRegion r) { 
+        coverageStatistics(r.chr, r.range.from, r.range.to)
+    }
 
     /**
-     * Create a DescriptiveStatistics object
+     * Create a CoverageStats object for the depth of coverage over the given region
      */
     @CompileStatic
     CoverageStats coverageStatistics(String chr, int pos, int end) {
