@@ -493,9 +493,33 @@ class RegionsTest {
         Region  middle = new Region("chr1:210-230")
         assert rr.overlaps(middle)
      }
+     
+     
+     @Test
+     void 'test intersect with regions loaded from BED'() {
+        
+        Regions r1 = new BED('src/test/data/ixtest.bed').load() as Regions
+        BED r2 = new BED('src/test/data/ixtest2.bed').load()
+         
+         Regions ix = r2.intersect(r1)
+         
+         println "Ix has ${ix.numberOfRanges} regions"
+         
+         assert ix.numberOfRanges == 6
+         assert ix.find {  it.from == 2643628 && it.to == 2643639 }
+     }
       
      // Simplistic but easy to use approximate equals
      void approx(double x1, double x2) {
          assert Math.abs(x2 - x1) < 0.01
+     }
+     
+     Regions regions(String from) {
+         Regions result = new Regions()
+         from.trim().readLines()*.tokenize().each { 
+            Region r = new Region(it[0], it[1].toInteger(), it[2].toInteger()-1)
+            result.addRegion(r) 
+        } 
+        return result
      }
 }
