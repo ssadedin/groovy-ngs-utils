@@ -221,6 +221,16 @@ class Regions implements Iterable<Region> {
         this.intersect(other)
     }
     
+    @CompileStatic
+    Regions intersect(BED other) {
+        this.intersectImpl(other)
+    }
+    
+    @CompileStatic
+    Regions intersect(Regions other) { 
+        this.intersectImpl(other)
+    }
+    
     /**
      * Returns a set of regions representing each region in this Regions
      * intersected with the Regions in the other regions.
@@ -233,7 +243,7 @@ class Regions implements Iterable<Region> {
      * flatten the source and target first before calling this method.
      */
     @CompileStatic
-    Regions intersect(Regions other) {
+    Regions intersectImpl(Regions other) {
         Regions result = new Regions()
         this.index.each { chr, chrIndex ->
             RangeIndex otherChrIndex = other.index[chr]
