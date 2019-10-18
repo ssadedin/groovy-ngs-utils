@@ -405,6 +405,7 @@ class VCFtoHTML {
             }
             
             exportSamples = exportSamples.collect { id -> sampleMap[id] }
+            rocSample = exportSamples.find { it != referenceSample }
         }
         else {
             sampleMap = vcfs*.samples.flatten().collectEntries { [it,it] }
