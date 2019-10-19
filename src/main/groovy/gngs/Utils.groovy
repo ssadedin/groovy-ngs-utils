@@ -526,7 +526,7 @@ class Utils {
      * to allow configuration.
      *
      * @param startCmd  List of objects (will be converted to strings) as args to command
-     * @return Map with exitValue, err and out keys
+     * @return ExecutedProcess with exitValue, err and out attributes
      */
     @CompileStatic
     static ExecutedProcess exec(Map options = [:], List<Object> startCmd, Closure builder = null) {
