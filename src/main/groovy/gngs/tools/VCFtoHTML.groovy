@@ -577,7 +577,9 @@ class VCFtoHTML {
             saveROCCSV(bins, roc) 
         }
         
-        Plot rocPlot = new Plot(title: 'ROC Curve for ' + rocSample + ' (Ranked by ' + bins.name + ')', xLabel: 'Precision', yLabel: 'Sensitivity') << \
+        Plot rocPlot = new Plot(
+            title: 'ROC Curve for ' + rocSample + ' (Ranked by ' + bins.name + ')', xLabel: 'False Positive Rate (1 - Precision)', 
+            yLabel: 'Sensitivity') << \
             new Lines(x: roc*.precision.collect { (1 - it)*100 }, y: roc*.sensitivity*.multiply(100), name: rocSample) 
             
         String rocImage = rocFile.path.replaceAll('\\.md', '\\.png')
