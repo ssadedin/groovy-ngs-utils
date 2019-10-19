@@ -68,7 +68,7 @@ class VCFtoPed extends ToolBase {
         Utility to write out the samples in one or more VCFs as a PED file, with 
         sex informed by the VCF. Requires indexed VCF.
         """
-        cli('VCFtoPed',desc, args) {
+        cli('VCFtoPed <vcf1> [<vcf2>...]',desc, args) {
         }
     }
 }
