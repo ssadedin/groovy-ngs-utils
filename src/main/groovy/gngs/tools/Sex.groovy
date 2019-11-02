@@ -50,8 +50,11 @@ class Sex extends ToolBase {
             System.exit(1)
         }
         
+        int sampleSize = opts.sampleSize ? opts.sampleSize.toInteger() : 500
+        
         for(String vcf in opts.arguments().grep { it.endsWith('.vcf') }) {
-            gngs.Sex sex = new VCF(vcf).guessSex()
+            
+            gngs.Sex sex = new VCF(vcf).guessSex(0, sampleSize)
             
             if(opts.filter) {
                 if(opts.filter == sex.toString())
@@ -160,6 +163,7 @@ class Sex extends ToolBase {
             v 'Print verbose information about how sex is being determined'
             filter 'Print out input if it matches sex of argument (MALE, FEMALE)', args:1, required: false
             n 'Use <n> concurrent threads (only for certain operations)', args:1, required: false
+            sampleSize 'Minimum samples size (file type depeendent)', args:1, required: false
         }
     }
 }
