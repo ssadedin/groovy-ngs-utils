@@ -1251,11 +1251,11 @@ class VCF implements Iterable<Variant> {
      * @param sampleId
      * @return  estimated Sex of Sample
      */
-    Sex guessSex(String sampleId) {
+    Sex guessSex(String sampleId, int sampleSize=500) {
         if(!this.samples.contains(sampleId))
             throw new IllegalArgumentException("Sample $sampleId is not contained in this VCF")
             
-        guessSex(this.samples.indexOf(sampleId))
+        guessSex(this.samples.indexOf(sampleId), sampleSize)
     }
     
     
@@ -1275,7 +1275,7 @@ class VCF implements Iterable<Variant> {
      * @param vcf
      * @return  estimated Sex of sample
      */
-    Sex guessSex(int sampleIndex = 0, sampleSize=500) {
+    Sex guessSex(int sampleIndex = 0, int sampleSize=500) {
         
         // open the VCF and sample 100 variants from the X and Y chromosomes
         VCFIndex index = new VCFIndex(fileName)
