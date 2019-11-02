@@ -229,11 +229,19 @@ class VCFtoHTML {
     
     double minROCSensitivity = 0.2
         
+    
+    List<Closure> parsedFilters = []
+    
+    List<Closure> parsedPreFilters = []
+    
     VCFtoHTML(CliOptions opts) {
         this.opts = opts
         filters = []
         if(opts.filters) {
             filters = opts.filters
+            parsedFilters = filters.collect { 
+                new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
+            }
         }
         
         if(opts.maxMaf)
@@ -894,8 +902,9 @@ class VCFtoHTML {
                     return
                 }
             }
-                        
-            if(!filters.every { Eval.x(v, it) }) {
+            
+//            if(!filters.every { Eval.x(v, it) }) {
+            if(!parsedFilters.every { it(v) }) {
                 ++stats.excludeByFilter
                 return
             }
@@ -997,6 +1006,9 @@ class VCFtoHTML {
         List<String> preFilters = []
         if(opts.prefilters) {
             preFilters = opts.prefilters
+            parsedPreFilters = opts.prefilters.collect {
+                new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
+            }
         }
         
         List<VCF> vcfs = opts.is.collect { String vcfPath ->
@@ -1015,7 +1027,7 @@ class VCFtoHTML {
                 if(opts.chrs && !(v.chr in opts.chrs ))
                     return false
 
-                if(!preFilters.every { Eval.x(v, it) }) {
+                if(!parsedPreFilters.every { it(v) }) {
                     ++stats.excludeByPreFilter
                     return false
                 }
