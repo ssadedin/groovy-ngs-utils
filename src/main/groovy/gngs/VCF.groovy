@@ -1275,7 +1275,7 @@ class VCF implements Iterable<Variant> {
      * @param vcf
      * @return  estimated Sex of sample
      */
-    Sex guessSex(int sampleIndex = 0) {
+    Sex guessSex(int sampleIndex = 0, sampleSize=500) {
         
         // open the VCF and sample 100 variants from the X and Y chromosomes
         VCFIndex index = new VCFIndex(fileName)
@@ -1291,7 +1291,7 @@ class VCF implements Iterable<Variant> {
 //            System.err.println "WARNING: No contig index - assuming chrX for sex chromosome"
 //        }
         
-        int sexEstimationVariantCount = 500
+        int sexEstimationVariantCount = sampleSize
         
         List<Variant> xVariants = new ArrayList(sexEstimationVariantCount+1)
         
