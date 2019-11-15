@@ -64,14 +64,14 @@ class ResourceDownloader {
             stripChr = true
         }
         
-        String fileName = urlPattern.tokenize('/')[-1]
+        String fileName = urlPattern.tokenize('/')[-1].replaceAll('\\.(.*)$', '.' + ucscGenomeVersion + '.$1')
         
         File outputFile = new File(fileName)
         List<File> tried = [outputFile]
         
         try {
             if(!outputFile.exists()) { // In local directory?
-                File homeRefGene = new File(System.properties['user.home']+'/' + '.' + fileName)
+                File homeRefGene = new File(System.properties['user.home']+'/' + fileName)
                 if(homeRefGene.exists()) // In home directory?
                     outputFile = homeRefGene
                 else
