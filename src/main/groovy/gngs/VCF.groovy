@@ -1065,12 +1065,30 @@ class VCF implements Iterable<Variant> {
         }
     }
     
+    /**
+     * Support for the convenience syntax to check if a VCF contains a specific variant
+     * with the form:
+     * <pre>
+     * if(variant in vcf) {
+     *     ....
+     * }
+     * </pre>
+     * Note however that dosage of the variant is NOT compared, so a variant is "in" a VCF
+     * even if its allele count / zygosity is different to the variant of interest.
+     * 
+     * @param obj
+     * @return  true iff the object is a Variant and a variant with the same allele and position 
+     *          exists in this VCF
+     */
+    @CompileStatic
     boolean isCase(Object obj) {
         if(obj instanceof Variant) {
             Variant v = obj
+            String chrPos = v.chr + ':' + v.pos
+            List<Variant> variantsAtPos = chrPosIndex[chrPos]
             
             // Note that it's "in" there if any of the ALT's match, we don't require all of them
-            return this.chrPosIndex.containsKey(v.chr + ':' + v.pos) && chrPosIndex[v.chr+':'+v.pos].any { 
+            return variantsAtPos?.any { 
                 it.ref == v.ref && it.alts.any { it == v.alt }
             }
         }
