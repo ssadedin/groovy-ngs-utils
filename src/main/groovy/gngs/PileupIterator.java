@@ -153,6 +153,21 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
         this.iteratorPosition = -1;
     } 
     
+    /**
+     * Move the iterator to the next base position within the requested pileup range and return
+     * a Pileup object for that position.
+     * <p>
+     * The logic here is as follows:
+     * <p>
+     * <li>consume reads until we have found a read that is past the current coordinate of the pileup
+     * <li>keep reads in a list that is ordered by their start position
+     * <li>drop any reads from the list that end prior to the (new) start position
+     * <p>
+     * This creates an efficient store of all the reads overlapping the current pileup position.
+     * <p>
+     * Each read is not stored directly but in an object that captures its state within the current pileup
+     * (PileupState).
+     */
     public Pileup next() {
         
         if(!hasNext()) {
