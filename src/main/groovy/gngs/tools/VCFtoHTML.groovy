@@ -36,7 +36,7 @@ import gngs.Variant
 import gngs.plot.Lines
 import gngs.plot.Plot
 import graxxia.Stats
-import au.com.bytecode.opencsv.CSVWriter
+import com.opencsv.CSVWriter
 import de.erichseifert.gral.graphics.Drawable
 import de.erichseifert.gral.ui.InteractivePanel
 import groovy.json.JsonOutput

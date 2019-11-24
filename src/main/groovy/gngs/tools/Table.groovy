@@ -1,6 +1,6 @@
 package gngs.tools
 
-import au.com.bytecode.opencsv.CSVWriter
+import com.opencsv.CSVWriter
 import gngs.Cli
 import gngs.RefGenes
 import gngs.Region
