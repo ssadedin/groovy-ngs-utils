@@ -1110,12 +1110,13 @@ class VCF implements Iterable<Variant> {
      * @param v
      * @return a Variant matching v, if one is found, otherwise null
      */
+    @CompileStatic
     Variant find(Variant v) {
         List<Variant> candidates = chrPosIndex[v.chr+':'+v.pos]
         if(!candidates)
             return null
             
-        candidates.grep { it.ref == v.ref }.find { 
+        candidates.grep { Variant vc -> vc.ref == v.ref }.find { 
             it.alleles.any { 
                 myAllele -> v.alleles.any { 
                     otherAllele -> myAllele.alt == otherAllele.alt && myAllele.start == otherAllele.start  

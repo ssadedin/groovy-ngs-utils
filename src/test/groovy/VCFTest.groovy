@@ -102,13 +102,17 @@ chr1\t38098177\trs5773597\tCA\tC\t1179.73\t.\tAC=2;AF=1.00;AN=2;DB;DP=27;FS=0.00
         Variant v = new Variant(chr:"chr1", pos:325075, ref:"G", alt:"C")
         assert vcf.find(v) != null
         assert vcf.find(v).alt == "C"
+        assert v in vcf
         
         v = new Variant(chr:"chr1", pos:1276973, ref:"G", alt:"GACAC")
         assert vcf.find(v) != null
         assert vcf.find(v).type == "INS"
+        assert v in vcf
         
         v = new Variant(chr:"chr1", pos:38098177, ref:"CA", alt:"C")
         assert vcf.find(v) != null
+        
+        assert v in vcf
         
     }
     
