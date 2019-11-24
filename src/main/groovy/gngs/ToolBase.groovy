@@ -42,7 +42,10 @@ import groovy.util.logging.Log
  * @Log
  * class FooTool extends ToolBase {
  *     void run() {
- *         // ... do stuff ...
+ *         // ... do stuff with optsion via provided <code>opts</opts> variable ...
+ *         if(opts.i) {
+ *             // ...
+ *         }
  *     }
  * 
  *     static void main(String [] args) {
@@ -52,6 +55,19 @@ import groovy.util.logging.Log
  *     }
  * }
  * </pre>
+ * Creating tests for tools based on ToolBase encounters some challenges due to the static methods
+ * and the way the command line options are translated directly to the {@link opts} variable. To help, a 
+ * dedicated {@link #test} method is provided that allows invocation of the tool using command line arguments,
+ * which correctly sets up the {@link opts} variable as appropriate.
+ * <p>
+ * Example:
+ * <pre>
+ *     MultiCov mc = new MultiCov()
+ *     mc.test(['-bed', 'src/test/data/multicov_test.bed', 'src/test/data/small.test.bam']) {
+ *         mc.run()
+ *     }
+ * </pre>
+ *
  * 
  * @author Simon Sadedin
  */
