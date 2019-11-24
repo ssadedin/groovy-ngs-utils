@@ -128,8 +128,9 @@ class MultiCov extends ToolBase {
         
         this.bams = opts.arguments().collect { new SAM(it) }
         
-        List<String> samples = bams*.samples*.getAt(0)
-        log.info "Analysing coverage over ${Utils.humanBp(scanRegions.size())} for ${samples.size()} samples: ${samples.join(',')}"
+        List<String> samples = computeUniqueSamples()
+        
+        log.info "Analysing coverage over ${Utils.humanBp(scanRegions.size())} for ${samples.size()} samples: ${samples.join(', ')}"
         
         def output = opts.o ? Utils.outputWriter(opts.o) : System.out
         output.withWriter { w ->
@@ -192,6 +193,31 @@ class MultiCov extends ToolBase {
         }
         
         log.info "Finished in ${Utils.human((System.currentTimeMillis()-startTimeMs)/1000)} seconds"
+    }
+
+    /**
+     * Transform the list of sample extracted from the BAM file into a list of unique ids
+     * <p>
+     * Uniquification is necessary for the downstream CoverageSummarizer to work as it associates
+     * the coverage counts by sample id.
+     * 
+     * @return  list of unique sample ids
+     */
+    private List computeUniqueSamples() {
+        List<String> samples = bams*.samples*.getAt(0).inject([]) { acc, sample ->
+            int index = 1
+            while(sample in acc) {
+                log.info("Sample $sample is duplicated within the provided BAM files: will deduplicate by adding suffix _${index}")
+                if(sample ==~ /_[0-9]{1,}$/)
+                    sample = sample.replaceAll('_[0-9]{1,}', '_' + index)
+                else
+                    sample = sample + "_" + index
+                ++index
+            }
+            acc.add(sample)
+            return acc
+        }
+        return samples
     } 
     
     @CompileStatic
@@ -272,14 +298,16 @@ class MultiCov extends ToolBase {
                 log.info "Skipping estimate of means because no options requiring prior estimation of mean are enabled"
             }
             
-            bams.eachParallel { SAM bam ->
+            [summarizer.samples,bams].transpose().eachParallel { List sampleBamPair ->
+                String sample = sampleBamPair[0]
+                SAM bam = sampleBamPair[1]
                 if(opts.w || opts.s) {
                     int windowSize = opts.w ? opts.w.toInteger() : 0
                     int subsampling = opts.sub ? opts.sub.toInteger() : 1
-                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, windowSize, subsampling)
+                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, windowSize, subsampling, sample)
                 }
                 else {
-                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ)
+                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, 0, 1, sample)
                 }
             } 
         }
