@@ -1083,7 +1083,7 @@ class VCF implements Iterable<Variant> {
     @CompileStatic
     boolean isCase(Object obj) {
         if(obj instanceof Variant) {
-            Variant v = obj
+            Variant v = (Variant)obj
             String chrPos = v.chr + ':' + v.pos
             List<Variant> variantsAtPos = chrPosIndex[chrPos]
             
