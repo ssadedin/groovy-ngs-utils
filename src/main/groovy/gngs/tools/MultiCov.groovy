@@ -87,7 +87,7 @@ class MultiCov extends ToolBase {
             subs 'Subsample to emit 1 out of every <arg> positions', longOpt: 'subsample', args:1
             stats 'Print statistics about coverage values and variation'
             targetmeans 'Output a mean coverage matrix for each sample x target region (XHMM compatible)', args:1, required:false
-            samplesummary 'Output a summary of mean, median, % bases above thresholds for corresponding sample', args:Cli.UNLIMITED, required: false
+            samplesummary 'Output a summary of mean, median, % bases above thresholds for corresponding sample (specify once for each BAM file)', args:Cli.UNLIMITED, required: false
             minMQ 'Minimum mapping quality threshold for including reads (1)', args:1, required: false
             corr 'Determine corellation of other samples to specified samples (separated by comma), use "." to specify calculation of pairwise correlation for all samples', args:1
             co 'Correlation output file', longOpt: 'correlationOutput', args:Cli.UNLIMITED, required: false
