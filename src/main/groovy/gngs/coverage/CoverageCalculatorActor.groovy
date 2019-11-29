@@ -312,7 +312,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
                 while(iter.hasNext()) {
                     SAMRecord r = iter.next()
                     if(r.getMappingQuality()>=minMQ)
-                        calculator.send(new AcknowledgeableMessage(new ReadRange(r), downstreamCount))
+                        calculator.send(new AcknowledgeableMessage(new ReadRange(r, countFragments), downstreamCount))
                     else
                         ++failMQ
                 } 
