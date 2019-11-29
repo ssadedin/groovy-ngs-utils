@@ -24,6 +24,10 @@ import htsjdk.samtools.SAMRecord;
 public class ReadRange {
     
     public ReadRange(SAMRecord r) {
+        this(r, true); // by default count fragments, not reads
+    }
+    
+    public ReadRange(SAMRecord r, boolean countFragments) {
         
         this.referenceIndex = r.getReferenceIndex();
         this.alignmentStart = r.getAlignmentStart();
@@ -31,7 +35,7 @@ public class ReadRange {
         final int mateStart = r.getMateAlignmentStart();
         
         // Avoid double counting if two reads from the same fragment will overlap
-        if(r.getFirstOfPairFlag() && mateStart >= this.alignmentStart && mateStart <= alignmentEnd) {
+        if(countFragments && (r.getFirstOfPairFlag() && mateStart >= this.alignmentStart && mateStart <= alignmentEnd)) {
             alignmentEnd = mateStart;
         }
         this.referenceName = r.getReferenceName();
