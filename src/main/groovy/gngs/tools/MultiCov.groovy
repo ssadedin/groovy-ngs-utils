@@ -82,6 +82,7 @@ class MultiCov extends ToolBase {
             cv 'Output coefficient of variation for each position as left-hand column', required: false
             rel 'Output values relative to sample mean'
             std 'Standardise output values to mean at each bp'
+            countReads 'Count coverage over reads instead of per fragment (by default it does fragment)'
             pbmean 'Output per-base mean across samples as left hand column', required: false
             w 'Average statistics over moving window of size <arg>bp', longOpt: 'window', args:1
             subs 'Subsample to emit 1 out of every <arg> positions', longOpt: 'subsample', args:1
@@ -103,6 +104,7 @@ class MultiCov extends ToolBase {
     
     @Override
     public void run() {
+
         
         long startTimeMs = System.currentTimeMillis()
         
@@ -307,7 +309,7 @@ class MultiCov extends ToolBase {
                     combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, windowSize, subsampling, sample)
                 }
                 else {
-                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, 0, 1, sample)
+                    combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, 0, 1, sample, !opts.countReads)
                 }
             } 
         }
