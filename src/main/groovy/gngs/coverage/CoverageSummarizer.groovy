@@ -29,6 +29,7 @@ import graxxia.Matrix
 import graxxia.Stats
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
+import groovyx.gpars.GParsPool
 import groovyx.gpars.actor.DefaultActor
 
 @CompileStatic
@@ -381,7 +382,36 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
 
     @Override
     public void onEnd() {
+        log.info "Stopping summarizer at region $currentTarget"
         this.updateRegionMeanCoverages()
+    }
+    
+    /**
+     * Convenience method that computes coverage for the given alignments over the given regions,
+     * and returns the resulting CoverageSummarizer.
+     * <p>
+     * Note: the base level coverage will be computed but ignored.
+     * @param bams      
+     * @param regions
+     * @return
+     */
+    public static CoverageSummarizer summarize(List<SAM> bams, Regions regions) {
+        List<String> samples = bams.collect { it.samples[0] }
+        CoverageSummarizer summarizer = new CoverageSummarizer(null, samples, collectRegionStatistics: true)
+        summarizer.start()
+        CoverageCombinerActor combiner = new CoverageCombinerActor(summarizer, bams.size())
+        combiner.start()
+        
+        GParsPool.withPool(bams.size()) { 
+            bams.eachParallel { SAM bam ->
+                CoverageCalculatorActor.processBAM(bam, regions, combiner, 1)
+            }
+        }
+        log.info "Stopping ..."
+        
+        [combiner,summarizer].each { it.sendStop(); it.join() }
+        
+        return summarizer
     }
 }
 
