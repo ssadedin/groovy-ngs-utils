@@ -498,8 +498,22 @@ class Variant implements IRegion {
     }
     
     @CompileStatic
-    Region asType(Region region) {
-        new Region(this) 
+    Object asType(Class clazz) {
+        if(clazz == Region)
+            return new Region(this) 
+        else
+        if(clazz == Map) {
+            Map infoMap = getInfo()
+            return (Map)[
+                chr: chr,
+                pos: pos,
+                ref: ref,
+                alt: alt,
+                qual: qual,
+                dosages: this.getDosages()?.join(','),
+                ad: this.getAlleleDepths(0)
+            ] + getInfo() 
+        }
     }
     
     /**
