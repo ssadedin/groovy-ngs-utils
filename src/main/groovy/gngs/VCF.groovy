@@ -1296,6 +1296,10 @@ class VCF implements Iterable<Variant> {
      */
     Sex guessSex(int sampleIndex = 0, int sampleSize=500) {
         
+        final int minDepth = 13
+        
+        final int minFinalVariantsForSexEstimation = 50
+        
         // open the VCF and sample 100 variants from the X and Y chromosomes
         VCFIndex index = new VCFIndex(fileName)
         
@@ -1306,6 +1310,10 @@ class VCF implements Iterable<Variant> {
                 chr = 'X'
             }
         }
+        
+        // This region is stable in both GRCh38 and GRCh37 for sampling 
+        final Region variantSamplingRegion = new Region(chr,5000000,155270560)
+            
 //        else {
 //            System.err.println "WARNING: No contig index - assuming chrX for sex chromosome"
 //        }
@@ -1314,23 +1322,21 @@ class VCF implements Iterable<Variant> {
         
         List<Variant> xVariants = new ArrayList(sexEstimationVariantCount+1)
         
-        index.query(chr,5000000,155270560) { Variant v ->
+        index.query(variantSamplingRegion) { Variant v ->
             if(xVariants.size() >= sexEstimationVariantCount)
                 return false
                 
             // Consider only high quality variants that do not have a highly skewed 
             // allele balance    
             int dp = v.genoTypes[sampleIndex].DP ?: 20
-            if(dp  >=20 && v.qual > 20 && v.alleleBalance<0.1)
+            if(dp  >= minDepth && v.qual > 20 && v.alleleBalance<0.1)
                 xVariants << v
         }
         
-        if(xVariants.size() < 10)
+        if(xVariants.size() < minFinalVariantsForSexEstimation)
             throw new IllegalStateException("Too few variants available to use for estimation")
         
         Map<Integer, Integer> dosages = xVariants.countBy { it.getDosages(0)[sampleIndex] }
-        
-//        println "Sample ${samples[sampleIndex]} xcounts: $dosages"
         
         // No heterozygotes
         if(dosages[1] == null) {

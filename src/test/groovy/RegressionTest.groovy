@@ -28,6 +28,9 @@ class RegressionTest {
        
        println "Model is " + r
        
-       println r.estimateRegressionParameters()
+//       println r.estimateRegressionParameters()
+       
+       r.predict([2,3] as double[])
+       
     }
 }
