@@ -103,6 +103,14 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     // for debug only
     ReadRange currentRead
     
+    /**
+     * If true, fragments will be counted rather than reads
+     * <p>
+     * Counting reads over-estimates the biological sampling, but is concordant with 
+     * other tools such as BEDTools etc.
+     */
+    boolean countFragments = true
+    
     ProgressCounter progress = new ProgressCounter(
         withRate:true, 
         extra:  {"region: $currentRegion, sample: $sample, readBuffer: ${reads.size()}, pending: $pending"},
