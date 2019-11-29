@@ -224,6 +224,16 @@ class VCF implements Iterable<Variant> {
      * The VCF is set to lazy mode which auto-loads the variants when some methods are called.
      * @param fileName
      */
+    VCF(File file) {
+        this(file.path)
+    }
+    
+    /**
+     * Creates an empty VCF file based on the header of the given VCF file
+     * <p>
+     * The VCF is set to lazy mode which auto-loads the variants when some methods are called.
+     * @param fileName
+     */
     VCF(String fileName) {
          this.fileName = fileName
          readHeadersOnly(fileName)
