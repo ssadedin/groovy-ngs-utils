@@ -66,6 +66,8 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     final AtomicInteger pending = new AtomicInteger()
     
     final AtomicInteger processed = new AtomicInteger()
+
+    boolean countFragments = true
     
     final Map<String,AtomicInteger> pendingCounts = Collections.synchronizedMap([:])
     
