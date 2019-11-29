@@ -118,16 +118,18 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         timeInterval: 10000,
         lineInterval: 500
         )
+
     
-    public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, String sample) {
-        this(bam.getContigList(), targetRegions, combiner, sample)
+    public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, String sample, boolean countFragments = true) {
+        this(bam.getContigList(), targetRegions, combiner, sample, countFragments)
     }
     
-    public CoverageCalculatorActor(List<String> allContigs, Regions targetRegions, Actor combiner, String sample) {
+    public CoverageCalculatorActor(List<String> allContigs, Regions targetRegions, Actor combiner, String sample, boolean countFragments) {
         super(combiner, 20000, 100000);
         this.targetRegions = targetRegions
         this.regionIter = targetRegions.iterator();
         this.sample = sample;
+        this.countFragments = countFragments;
         
         this.bamContigs = allContigs
         this.bedReferenceIndexes = targetRegions*.chr.unique().collect { String chr ->
@@ -290,14 +292,14 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     }
     
     @CompileStatic
-    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream, final int minMQ, String sample=null) {
+    static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream, final int minMQ, String sample=null, boolean countFragments = true) {
        
         AtomicInteger downstreamCount = new AtomicInteger(0)
         
         if(sample == null)
             sample = bam.samples[0]
          
-        CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, downstream, sample) 
+        CoverageCalculatorActor calculator = new CoverageCalculatorActor(bam, scanRegions, downstream, sample, countFragments)
         calculator.start()
         
         List<String> chrs = (List<String>)scanRegions.collect { Region r -> r.chr }.unique()

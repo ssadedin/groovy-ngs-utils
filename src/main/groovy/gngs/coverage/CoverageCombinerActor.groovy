@@ -58,7 +58,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     String chr
     
     long pos = -1
-    
+
     TreeMap<Long,Map<String,Integer>> counts = new TreeMap()
     
     final AtomicInteger countSize = new AtomicInteger()
@@ -78,10 +78,11 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
         "Combining $chr:$pos (${XPos.parsePos(pos).startString()}) with ${counts[pos]?.size()?:0}/$numSamples reported, count buffer size=${countSize} (Samples = ${counts[pos]})"  
     }
     
-    CoverageCombinerActor(RegulatingActor printer, int numSamples) {
+    CoverageCombinerActor(RegulatingActor printer, int numSamples, boolean countFragments = true) {
         super(printer, 20000, 200000)
         this.progress = progress
         this.numSamples = numSamples
+        this.countFragments = countFragments
     }
     
     void add(SampleReadCount sampleCount) {
@@ -144,7 +145,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     }
      
     @CompileStatic
-    void processBAM(SAM bam, Regions scanRegions, int minMQ, int downsampleWindow=0, int subsample=1, String sample = null) {
+    void processBAM(SAM bam, Regions scanRegions, int minMQ, int downsampleWindow=0, int subsample=1, String sample = null, boolean countFragments = true) {
         
         RegulatingActor<SampleReadCount> coverageSink = this
         boolean stopSink = false
@@ -155,7 +156,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
             stopSink = true
         }
        
-        CoverageCalculatorActor.processBAM(bam, scanRegions, coverageSink, minMQ, sample)
+        CoverageCalculatorActor.processBAM(bam, scanRegions, coverageSink, minMQ, sample, countFragments)
 
         if(stopSink) {
             coverageSink.sendStop()
