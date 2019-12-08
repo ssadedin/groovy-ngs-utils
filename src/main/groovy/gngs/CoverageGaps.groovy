@@ -20,6 +20,7 @@
 package gngs
 
 import groovy.lang.IntRange
+
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
@@ -97,14 +98,22 @@ class CoverageGaps {
         
         String line
         int lastPos = -1
+        int covField = -1
+        boolean first = true
         ProgressCounter progress = createProgress()
         while((line = reader.readLine()) != null) {
             progress.count()
-//            println "Line: $line"
             List<String> fields = line.tokenize('\t')
             chr = fields[0]
+            
+            // Use the first line to check if the coverage is in the 3rd field or the 4th
+            if(first) {
+                first = false
+                covField = fields.size() == 3 ? 2 : 3
+            }
+            
             int pos = Integer.parseInt(fields[1])
-            int cov = Integer.parseInt(fields[2])
+            int cov = Integer.parseInt(fields[covField])
             if(pos != lastPos + 1) {
                 start = pos
             }
