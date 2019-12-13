@@ -33,13 +33,14 @@ import htsjdk.samtools.SAMFileWriter
  * 
  * @author simon.sadedin@mcri.edu.au
  */
+@CompileStatic
 class OrderedPairWriter implements Closeable {
     
     @Delegate
     SAMFileWriter samWriter 
     
     TreeSet<SAMRecordPair> buffer = new TreeSet({ SAMRecordPair p1, SAMRecordPair p2 ->
-        p1.r2.alignmentStart.compareTo(p2.r2.alignmentStart)
+        p1.r2.alignmentStart.compareTo(p2.r2.alignmentStart)?:p1.readName.compareTo(p2.readName)
     })
     
     int written = 0
