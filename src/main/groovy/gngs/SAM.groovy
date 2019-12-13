@@ -398,7 +398,7 @@ class SAM {
         }
         finally {
             try {
-                w.close()
+                opw.close()
             }
             catch(Exception e) {
                 // Ignore
