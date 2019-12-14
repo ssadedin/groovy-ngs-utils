@@ -221,6 +221,26 @@ class RefGenes {
        new Region(exons[0].chr, noAltExons*.from.min()..noAltExons*.to.max(), gene: hgncSymbol)
     }
     
+    
+    /**
+     * Compute a map of gene symbols with the amount of coding sequence overlapped by each gene 
+     * for the given region
+     * 
+     * @param region
+     * @return  Map from gene symbol to int representing size of CDS for that gene
+     */
+    @CompileStatic
+    Map<String,Integer> getCDS(final IRegion region) {
+        def result = this.getGenes(region) .collectEntries { gene ->
+                [
+                    gene,
+                    this.getExons((String)gene).intersect(region)*.size().sum()?:0
+                ]
+            }?:[:]
+            
+        return (Map<String,Integer>)result    
+    }
+    
     @CompileStatic
     List<Region> getExons(IRegion region) {
         return (List<Region>)refData.getOverlaps(region).collect { IntRange r ->
@@ -230,7 +250,16 @@ class RefGenes {
         }   
     }
     
-    List<String> getGenes(IRegion r) {
-        refData.getOverlaps(r)*.extra*.gene.unique()
+    /**
+     * @param  region  the region to query
+     * @return the list of HGNC symbols for genes that overlap the given region
+     */
+    @CompileStatic
+    List<String> getGenes(IRegion region) {
+       (List<String>)this.refData.getOverlaps(region)
+        .collect { IntRange r -> 
+            ((Region)((GRange)r).getExtra()).getProperty('gene') 
+        } // resolves list of gene symbols
+        .unique() 
     }
 }
