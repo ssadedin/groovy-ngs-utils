@@ -150,6 +150,10 @@ class MultiCov extends ToolBase {
                     throw new IllegalArgumentException("Option -otarget was supplied but this option requires -bed")
                 options.outputTarget = true
             }
+            
+            if(opts.gcprofile && !opts.rel) {
+                throw new IllegalArgumentException("Option -gcprofile requires option -rel")
+            }
                 
             CoverageSummarizer printer = new CoverageSummarizer(options, w, samples)
             
