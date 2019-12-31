@@ -272,7 +272,7 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
         if(gcReference) {
             currentGc = gcReference.gc(currentTarget)
             currentGCBin = (int)(currentGc * 100 / 5)
-            log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
+            // log.info "Calculated gc content $currentGc for region $currentTarget (bin $currentGCBin)"
         }
     }
     
