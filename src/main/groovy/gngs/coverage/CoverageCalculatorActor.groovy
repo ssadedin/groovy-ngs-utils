@@ -291,6 +291,10 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         "CoverageCalculator(sample=$sample, $currentRegion, pos=$pos)"
     }
     
+    /**
+     * Create a CoverageCalculatorActor and send all the reads from the given alignment that
+     * overlap the given regions to it.
+     */
     @CompileStatic
     static void processBAM(SAM bam, Regions scanRegions, RegulatingActor downstream, final int minMQ, String sample=null, boolean countFragments = true) {
        
