@@ -125,24 +125,29 @@ class FASTA {
     double gc(String chr, long start, long end) {
         
         byte [] bases = baseBytesAt(chr, start, end)
-        
+        return gc(bases)
+    }
+
+    @CompileStatic
+    static double gc(byte[] bases, int offset=0, int len=-1) {
         int gOrC = 0
         int aOrT = 0
-        
-        final int numBases = bases.length
-        for(int i=0; i<numBases; ++i) {
+
+        final int end = len >= 0 ? (offset+len) : bases.length
+       
+        for(int i=offset; i<end; ++i) {
             switch(bases[i]) {
                 case T:
                 case A:
                     ++aOrT
                     break
-               case G:
-               case C:
-                   ++gOrC
-                   break
+                case G:
+                case C:
+                    ++gOrC
+                    break
             }
         }
-        return gOrC / (1+gOrC + aOrT)
+        return gOrC / (1.0d+gOrC + aOrT)
     }
     
     /**
