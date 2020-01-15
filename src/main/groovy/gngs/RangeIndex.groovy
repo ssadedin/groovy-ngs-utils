@@ -446,13 +446,8 @@ class RangeIndex implements Iterable<IntRange> {
      */
     @CompileStatic
     List<Range> getOverlaps(final int start, final int end, final boolean returnFirst) {
-        
-        TreeSet<IntRange> resultSet = new TreeSet<IntRange>(INT_RANGE_COMPARATOR)
-            
-        final IntRange interval = start..end-1
-         
-        List<Range> result = []
-        Map.Entry<Integer,List<IntRange>> entry = ranges.lowerEntry(start+1)
+        def resultSet = new TreeSet<IntRange>(INT_RANGE_COMPARATOR)
+        def entry = ranges.lowerEntry(start+1)
         if(entry.is(null))
             entry = ranges.higherEntry(start)
             
@@ -469,8 +464,6 @@ class RangeIndex implements Iterable<IntRange> {
         }
         
         return (List<Range>)Arrays.asList(resultSet.toArray())
-        
-//        return resultSet as List
     }
     
     /**
@@ -926,19 +919,19 @@ class RangeIndex implements Iterable<IntRange> {
 
         return new Iterator<GRange>() {
             
-            Map.Entry<Integer,IntRange> prev = null
+            Map.Entry<Integer,List<IntRange>> prev = null
             
             IntRange prevRange = null
             
             boolean hasNext() {
 //                println "hasNext = " + i.hasNext() + " prev = " + prev
-                i.hasNext() || (prev != null && !prev.value.empty)
+                i.hasNext() || (prev.is(null) && !prev.value.empty)
             }
             
             GRange next() {
                 
-                Map.Entry<Integer,IntRange> curr = null
-                if(prev == null) {
+                Map.Entry<Integer,List<IntRange>> curr = null
+                if(prev.is(null)) {
                     prev = i.next()
                 }
                 
@@ -961,7 +954,6 @@ class RangeIndex implements Iterable<IntRange> {
                     int endPos = curr.key
                     int startPos =  prev.key                    
                     int beforeEndPos = endPos - 1
-                    
 
                     // We want to output contiguous ranges, ie: the end of
                     // of the previous range is the start of the next,
@@ -969,7 +961,7 @@ class RangeIndex implements Iterable<IntRange> {
                     // for real that it is a gap from information available in the 
                     // previous iteration. So in the previous one, we set prevRange
                     // non-null, only if its 'to' should be used as a starting point
-                    if(prevRange != null) {
+                    if(!prevRange.is(null)) {
                         startPos = prevRange.to
                     }
                     
