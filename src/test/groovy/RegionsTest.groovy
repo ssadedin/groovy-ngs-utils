@@ -508,6 +508,28 @@ class RegionsTest {
          assert ix.numberOfRanges == 6
          assert ix.find {  it.from == 2643628 && it.to == 2643639 }
      }
+     
+     @Test
+     void testDistanceTo() {
+        Regions regions = new Regions()
+        [
+            10..20,
+            30..40,
+            50..60
+        ]
+        .each {regions.addRegion(new Region("chr1", it))}
+        
+        regions.addRegion(new Region("chr2", 30, 40))
+        
+        def dist = { start, end ->
+            regions.distanceTo(new Region("chr1", start, end))
+        }
+         
+        assert dist(53,56) == 0
+        assert dist(67,73) == 7
+        assert dist(15,73) == 0
+        assert dist(42,45) == 2
+     } 
       
      // Simplistic but easy to use approximate equals
      void approx(double x1, double x2) {

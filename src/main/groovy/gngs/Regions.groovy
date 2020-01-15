@@ -571,6 +571,26 @@ class Regions implements Iterable<Region> {
         this.index[chr]?.nearest(pos)
     }
     
+    /**
+     * @return the distance to the nearest region in this Regions object, or -1 
+     *         if there is no region in the same contig, if a region onverlaps, 
+     *         returns 0
+     */
+    @CompileStatic
+    int distanceTo(String chr, int pos) { 
+        return this.index.containsKey(chr) ? this.index[chr].distanceTo(pos) : (int)-1
+    }
+    
+    /**
+     * @return the distance to the nearest region in this Regions object, or -1 
+     *         if there is no region in the same contig, if a region onverlaps, 
+     *         returns 0
+     */
+    @CompileStatic
+    int distanceTo(final Region r) { 
+        return this.index.containsKey(r.chr) ? this.index[r.chr].distanceTo(r.range) : (int)-1
+    }
+     
     List<Object> getExtrasAtPosition(String chr, int position) {
         List result = []
         

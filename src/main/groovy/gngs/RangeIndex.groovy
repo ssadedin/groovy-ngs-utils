@@ -573,7 +573,7 @@ class RangeIndex implements Iterable<IntRange> {
         }
     }
     
-    Range nearest(int pos) {
+    IntRange nearest(int pos) {
         List<IntRange> overlaps = this.getOverlaps(pos)
         if(overlaps) {
             return overlaps.min {Math.min(it.to-pos, pos-it.from)}
@@ -588,6 +588,41 @@ class RangeIndex implements Iterable<IntRange> {
             
             return (pos-prv.to) < (nxt.from - pos) ? prv : nxt
         }
+    }
+    
+    /**
+     * Returns the distance from the nearest range to the given position
+     * 
+     * @param pos
+     * @return
+     */
+    int distanceTo(final int pos) {
+        IntRange n = this.nearest(pos)
+        if(n.containsWithinBounds(pos))
+            return 0
+        else
+        if(n.from > pos) {
+            return n.from - pos
+        }
+        else
+        if(n.to < pos) {
+            return pos - n.to
+        }
+        else
+            assert false : "Position must be before, in or after the range"
+    }
+    
+    @CompileStatic
+    int distanceTo(final IntRange r) {
+        int minToStart = distanceTo(r.from)
+        int minToEnd = distanceTo(r.to)
+        if(minToStart<0)
+            return minToEnd
+        else
+        if(minToEnd<0)
+            return minToStart
+        else
+            return Math.min(minToEnd,minToStart)
     }
     
     Range first() {

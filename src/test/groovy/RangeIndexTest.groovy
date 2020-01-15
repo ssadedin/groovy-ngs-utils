@@ -532,4 +532,21 @@ class RangeIndexTest {
         assert index.getOverlaps(12,15).size()>0
     }
     
+    @Test
+    void testDistanceTo() {
+        RangeIndex index = new RangeIndex()
+        [
+            10..20,
+            30..40,
+            50..60
+        ]
+        .each {index.add(it)}
+         
+        assert index.distanceTo(55) == 0
+        assert index.distanceTo(50) == 0
+        assert index.distanceTo(63) == 3
+        assert index.distanceTo(48) == 2
+        assert index.distanceTo(5) == 5
+        assert index.distanceTo(0) == 10
+    }
 }
