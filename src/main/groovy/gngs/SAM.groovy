@@ -1100,6 +1100,38 @@ class SAM {
     int countOf(String chr, int pos, String baseString) {
         return pileup(chr,pos).countOf(baseString)
     }
+    
+    /**
+     * Use a simple thresholding approach to genotype SNPs at the given location
+     * 
+     * @param chr
+     * @param pos
+     * @return
+     */
+    @CompileStatic
+    String genotype(String chr, int pos) {
+        def bases = this.basesAt(chr, pos)
+        int total = bases.total
+    
+        Collection<Map.Entry> alleles = bases.sort { -it.value }.grep { Map.Entry e  -> e.key != 'total' && e.key != 'D' }.take(2)
+    
+    
+        Map.Entry<String,Integer> allele1 = alleles[0]
+        Map.Entry<String,Integer> allele2 = alleles[1]
+        
+        if(total == 0)
+            return '--'
+    
+        def genotype = null
+        if(((double)allele2.value) / total > 0.15) { // heterozygous
+            genotype = allele1.key + allele2.key
+        }
+        else {
+            genotype = allele1.key + allele1.key
+        }
+        return genotype
+    }
+    
  
     @CompileStatic
     PileupIterator.Pileup pileup(String chr, int pos) {
