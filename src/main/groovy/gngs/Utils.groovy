@@ -560,4 +560,9 @@ class Utils {
             
         return result
     }
+    
+    @CompileStatic
+    static String formatIfNumber(NumberFormat fmt, Object obj) {
+        obj instanceof Number ? fmt.format(obj) : String.valueOf(obj)
+    }
 }
