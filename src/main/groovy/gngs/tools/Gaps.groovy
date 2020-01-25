@@ -121,6 +121,10 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
 
         // If any had coding sequence overlap then return only the set that have that
         // Otherwise return the annotation with minimum cds distance
+        if(annotations.isEmpty()) {
+            return []
+        }
+        else
         if(annotations.any { it.cds_distance == 0 }) {
             return annotations.grep { Map ann -> ann.cds_distance == 0 }
         }
