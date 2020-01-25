@@ -29,16 +29,20 @@ import org.apache.commons.math3.stat.descriptive.SummaryStatistics
 
 
 /**
- * Discovers blocks of low coverage in a file output in BEDTools Coverage format.
+ * Discovers blocks of low coverage in a file output in BEDTools Coverage format,
+ * or alternatively {@link MultiCov} output.
  * <p>
  * Each low coverage block is output as a {@link CoverageBlock} object which 
- * has statistics about the coverage within the block. 
+ * has statistics about the coverage within the block. As {@link CoverageBlock} extends
+ * {@link Region}, you can easily turn this into a set of Regions to perform more
+ * calculations or statistics.
  * <p>
  * To use this class, create the object first by passing a file to compute coverage for,
  * then call the {@link #calculate} method to actually calculate the coverage blocks:
  * <pre>
  * CoverageGaps gaps = new CoverageGaps("test.cov.gz")
  * gaps.calculate()
+ * println("There are " + gaps.blocks.size() + " low coverage regions")
  * </pre>
  * @author Simon Sadedin
  */
@@ -50,6 +54,9 @@ class CoverageGaps {
      */
     int BUFFER_SIZE_BYTES = 1024*1024*20
     
+    /**
+     * Only include gaps that are at least this size
+     */
     int minRegionWidth = 0
     
     String coverageFilePath
@@ -64,6 +71,9 @@ class CoverageGaps {
     SummaryStatistics coverageStats = new SummaryStatistics()
     CoverageStats coveragePercentiles = new CoverageStats(1000)
     
+    /**
+     * Discovered gaps (the results) are stored here for access after calling {@link #calculate}
+     */
     List<CoverageBlock> blocks = []
     
     CoverageBlock block = null
