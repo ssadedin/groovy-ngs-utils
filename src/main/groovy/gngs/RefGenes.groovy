@@ -68,7 +68,7 @@ class RefGenes {
     /**
      * Default UCSC download URL for the refgene database
      */
-    static String UCSC_REFGENE_URL = "http://hgdownload.soe.ucsc.edu/goldenPath/##genomeVersion##/database/refGene.txt.gz" 
+    static String UCSC_REFGENE_URL = "https://hgdownload.soe.ucsc.edu/goldenPath/##genomeVersion##/database/refGene.txt.gz" 
     
     @CompileStatic
     static RefGenes download(String genomeVersion="hg19") {
