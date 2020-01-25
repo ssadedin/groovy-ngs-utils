@@ -50,52 +50,83 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
         
         // Check for overlapping transcripts
         assert block.annotations == null || block.annotations.isEmpty()
-        block.annotations = []
-        
-        List<GRange> transcripts = (List<GRange>)refgenes.refData.getOverlaps(block)
-        if(transcripts != null && !transcripts.isEmpty()) {
+        block.annotations = this.annotateGapRegion(blockRegion)
+        block.id = block.annotations[0]?.gene?:'N/A'
+    }
+    
+    @CompileStatic
+    List<Map> annotateGapRegion(final Region blockRegion) {
+        List<GRange> transcripts = (List<GRange>)refgenes.refData.getOverlaps(blockRegion)
+
+        if(transcripts == null || transcripts.isEmpty()) {
+            return []
+        }
+
+        List<Map> annotations = []
             
-            List<Region> regions = new ArrayList(transcripts.size())
-            for(GRange gr in transcripts) {
-                regions.add((Region)gr.extra)
-            }
-            
-            for(Region region in regions) {
-                
-                Map info = region.properties
-                block.id = info['gene']
-                
-                int cdsStart = info['cds_start'].toString().toInteger()
-                int cdsEnd = info.cds_end.toString().toInteger()
-
-                Region cdsRegion = new Region(block.chr, cdsStart, cdsEnd)
-                Regions cdsRegions = new Regions()
-                cdsRegions.addRegion(cdsRegion)
-
-                Regions exons = getExonsForTranscript((String)info.tx)
-                Regions intersectedExons = exons.intersect(new Regions([(IRegion)block]))
-//                log.info "intersected Exon numbers: " + intersectedExons*.exon
-                
-                Regions cdsExons = exons.intersectRegions(cdsRegions)
-
-                for(Region exon in exons) {
-                    def annotation = [ 
-                        transcript: info.tx, 
-                        strand: info.strand,
-                        gene: info.gene, 
-                        exon: info.strand == "+" ? exon['exon'] : (exons.numberOfRanges - (Integer)exon['exon']),
-                        cds_distance: cdsExons.distanceTo(blockRegion),
-                        transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
-                        coding_intersect: exon.overlaps(block) ? Math.max((int)exon.intersect(cdsRegion).intersect(block).size()-1,0) : 0
-                    ]
-                    block.annotations << annotation
-                }
-                
-            }
-//            log.info "Annotated gap (${block.hashCode()}): " + block
+        List<Region> transcriptRegions = new ArrayList(transcripts.size())
+        for(GRange gr in transcripts) {
+            transcriptRegions.add((Region)gr.extra)
         }
         
-        
+        for(final Region transcriptRegion in transcriptRegions) {
+            
+            Map info = transcriptRegion.properties
+           
+            int cdsStart = info['cds_start'].toString().toInteger()
+            int cdsEnd = info.cds_end.toString().toInteger()
+
+            Region cdsRegion = new Region(blockRegion.chr, cdsStart, cdsEnd)
+            Regions cdsRegions = new Regions()
+            cdsRegions.addRegion(cdsRegion)
+
+            Regions allTranscriptExons = getExonsForTranscript((String)info.tx)
+            Regions intersectedExons = allTranscriptExons.intersect(new Regions([(IRegion)blockRegion]))
+            Regions codingExons = allTranscriptExons.intersectRegions(cdsRegions)
+
+            List transcriptAnnotations = []
+            for(Region exon in allTranscriptExons) {
+                if(!blockRegion.overlaps(exon))
+                    continue
+
+                def annotation = [ 
+                    id: info.gene,
+                    transcript: info.tx, 
+                    strand: info.strand,
+                    gene: info.gene, 
+                    exon: info.strand == "+" ? exon['exon'] : (allTranscriptExons.numberOfRanges - (Integer)exon['exon']),
+                    cds_distance: codingExons.distanceTo(blockRegion),
+                    transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
+                    coding_intersect: exon.overlaps(blockRegion) ? Math.max((int)exon.intersect(cdsRegion).intersect(blockRegion).size()-1,0) : 0
+                ]
+                transcriptAnnotations << annotation
+            }
+            
+            // If no exon from the transcript actually overlapped, then we write out a single line annotation line for the transcript
+            if(transcriptAnnotations.isEmpty()) {
+                transcriptAnnotations << [
+                    id: info.gene,
+                    transcript: info.tx, 
+                    strand: info.strand,
+                    gene: info.gene, 
+                    exon: 'N/A',
+                    cds_distance: codingExons.distanceTo(blockRegion),
+                    transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
+                    coding_intersect: 0
+                ]
+            }
+            
+            annotations.addAll(transcriptAnnotations)
+        }
+
+        // If any had coding sequence overlap then return only the set that have that
+        // Otherwise return the annotation with minimum cds distance
+        if(annotations.any { it.cds_distance == 0 }) {
+            return annotations.grep { Map ann -> ann.cds_distance == 0 }
+        }
+        else {
+            return [annotations.min { Map ann -> ann.cds_distance }]
+        }
     }
     
     @CompileStatic
