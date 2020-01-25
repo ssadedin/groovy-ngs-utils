@@ -40,17 +40,19 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
         this.refgenes = refgenes
     }
     
-    final static List<String> ANNOTATION_COLUMNS = ['transcript', 'strand', 'gene', 'exon', 'coding_intersect']
+    final static List<String> ANNOTATION_COLUMNS = ['transcript', 'strand', 'gene', 'exon', 'coding_intersect','cds_distance','transcript_type']
 
     @CompileStatic
     @Override
     public void process(CoverageBlock block) {
         
+        final Region blockRegion = new Region(block)
+        
         // Check for overlapping transcripts
-        List<GRange> transcripts = (List<GRange>)refgenes.refData.getOverlaps(block)
         assert block.annotations == null || block.annotations.isEmpty()
         block.annotations = []
         
+        List<GRange> transcripts = (List<GRange>)refgenes.refData.getOverlaps(block)
         if(transcripts != null && !transcripts.isEmpty()) {
             
             List<Region> regions = new ArrayList(transcripts.size())
@@ -65,22 +67,28 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
                 
                 int cdsStart = info['cds_start'].toString().toInteger()
                 int cdsEnd = info.cds_end.toString().toInteger()
+
                 Region cdsRegion = new Region(block.chr, cdsStart, cdsEnd)
+                Regions cdsRegions = new Regions()
+                cdsRegions.addRegion(cdsRegion)
+
                 Regions exons = getExonsForTranscript((String)info.tx)
                 Regions intersectedExons = exons.intersect(new Regions([(IRegion)block]))
 //                log.info "intersected Exon numbers: " + intersectedExons*.exon
+                
+                Regions cdsExons = exons.intersectRegions(cdsRegions)
+
                 for(Region exon in exons) {
-                    if(!exon.overlaps(block))
-                        continue
-                        
-                    int cdsIntersect = Math.max((int)exon.intersect(cdsRegion).intersect(block).size()-1,0)
-                    block.annotations << [ 
+                    def annotation = [ 
                         transcript: info.tx, 
                         strand: info.strand,
                         gene: info.gene, 
                         exon: info.strand == "+" ? exon['exon'] : (exons.numberOfRanges - (Integer)exon['exon']),
-                        coding_intersect: cdsIntersect,
+                        cds_distance: cdsExons.distanceTo(blockRegion),
+                        transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
+                        coding_intersect: exon.overlaps(block) ? Math.max((int)exon.intersect(cdsRegion).intersect(block).size()-1,0) : 0
                     ]
+                    block.annotations << annotation
                 }
                 
             }
@@ -137,7 +145,8 @@ class Gaps {
             concurrency = opts.n.toInteger()
             
         format.maximumFractionDigits = 1
-        format.minimumFractionDigits = 1
+        format.minimumFractionDigits = 0
+        format.groupingUsed = false
     }
     
     void run() {
@@ -340,7 +349,7 @@ class Gaps {
         if(opts.csv) {
             List cols = ['Chr', 'Start', 'End', 'Gene', 'Width', 'Min Cov', 'Mean Cov', 'Max Cov']
             if(opts.r && !opts.a)
-                cols += ['Tx Name', 'Strand', 'Gene', 'Exon Number', 'CDS Overlap']
+                cols += ['Tx Name', 'Strand', 'Gene', 'Exon Number', 'CDS Overlap', 'CDS Distance', 'Transcript Type']
                 
             println(cols.join(','))
         }
@@ -377,7 +386,9 @@ class Gaps {
 //            log.info "Write gap (${block.hashCode()}): " + block
             if(block.annotations) {
                 for(Map annotation in block.annotations) {
-                    List rowFields = fields + GapAnnotator.ANNOTATION_COLUMNS.collect { annotation[it] }
+                    List rowFields = (fields + GapAnnotator.ANNOTATION_COLUMNS.collect { annotation[it] }).collect {
+                        Utils.formatIfNumber(format, it)
+                    }
                     if(annotationWriter != null) {
                         annotationWriter.println(rowFields.join(sep))
                         println(fields.join(sep))
