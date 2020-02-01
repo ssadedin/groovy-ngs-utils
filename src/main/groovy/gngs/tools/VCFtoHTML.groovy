@@ -45,6 +45,7 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovy.xml.StreamingMarkupBuilder
 
+import java.text.NumberFormat
 import java.util.regex.Pattern
 
 import javax.swing.JFrame
@@ -132,6 +133,12 @@ class VCFtoHTML {
     
     private BED excludeRegions
     private Pedigrees pedigrees
+    
+    private NumberFormat THREE_DIGIT_PRECISION = NumberFormat.numberInstance
+    
+    {
+        THREE_DIGIT_PRECISION.maxFractionDigits = 3
+    }
     
     static final String DEFAULT_STYLES = """
         <style type='text/css'>
@@ -796,7 +803,7 @@ class VCFtoHTML {
                     dp
                 }
             },
-            'vaf' : {Utils.percNumberFormat.format(it.vaf) },
+            'vaf' : {THREE_DIGIT_PRECISION.format(it.vaf) },
             'families' : { v ->
                 def fcount = v.pedigrees.count {  ped ->
                     def result = ped.samples.any {
