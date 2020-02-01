@@ -134,10 +134,11 @@ class VCFtoHTML {
     private BED excludeRegions
     private Pedigrees pedigrees
     
-    private NumberFormat THREE_DIGIT_PRECISION = NumberFormat.numberInstance
+    private NumberFormat THREE_DIGIT_PRECISION 
     
     {
-        THREE_DIGIT_PRECISION.maxFractionDigits = 3
+        THREE_DIGIT_PRECISION = NumberFormat.getNumberInstance()
+        THREE_DIGIT_PRECISION.maximumFractionDigits = 3
     }
     
     static final String DEFAULT_STYLES = """
