@@ -360,6 +360,7 @@ var userAnnotations = {
     var ALT_INDEX=++indexCounter;
     var QUAL_INDEX=++indexCounter;
     var DEPTH_INDEX=++indexCounter;
+    var VAF_INDEX=++indexCounter;
     var FAMILIES_INDEX=++indexCounter;
     var GENE_INDEX=++indexCounter;
     var CONS_INDEX=++indexCounter;
@@ -539,6 +540,7 @@ var userAnnotations = {
           get cons() { return rowSource[CONS_INDEX]; },
           get maf() { return rowSource[MAF_INDEX]; },
           get ad() {return rowSource[AD_INDEX]  },
+          get vaf() {return rowSource[VAF_INDEX]  },
           
           // Returns the distance from 0.5 (absolute value) for the balance between alleles
           get bal() { return  rowSource[AD_INDEX].map(function(aad) { return ((aad == null) || aad[0] == 0) ? 0 : Math.abs(0.5 - aad[1] /(aad[0] + aad[1])) }) },

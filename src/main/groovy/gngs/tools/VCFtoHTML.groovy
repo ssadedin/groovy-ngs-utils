@@ -765,7 +765,7 @@ class VCFtoHTML {
             System.err.println "INFO: This program requires that VCFs have VEP annotations for complete output. Output results will not have annotations and filtering\nmay be ineffective for samples in following files:"
             System.err.println "\n" + noVeps.collect { opts.is[(int)it]}.join("\n") + "\n"
             hasVEP = false
-        }
+        } 
 
         hasSNPEFF = vcfs.any { it.hasInfo("EFF") }
     }
@@ -796,6 +796,7 @@ class VCFtoHTML {
                     dp
                 }
             },
+            'vaf' : {Utils.percNumberFormat.format(it.vaf) },
             'families' : { v ->
                 def fcount = v.pedigrees.count {  ped ->
                     def result = ped.samples.any {
