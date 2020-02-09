@@ -54,6 +54,18 @@ import gngs.pair.Shuffler
  * property of the actor before starting it. This is because <code>RegulatingActor</code> instances
  * can hard-block when downstream actors are overwhelmed, leading to starvation of threads from
  * the downstream actors.
+ * <p>
+ * The simple way to use a regulating actor is just to use the <code>actor</method>, eg:
+ * <pre>
+ *     def received = []
+ *     actor = RegulatingActor.actor {
+ *        received << it
+ *     }
+ *     actor.start()
+ *     actor.sendTo("hello")
+ *     Thread.sleep(500)
+ *     println received // has message "hello"
+ * </pre>
 * 
  * @author Simon Sadedin
  *
@@ -240,6 +252,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     @CompileStatic
     static <T> RegulatingActor<T> actor(@ClosureParams(value=FromAbstractTypeMethods) Closure c) {
         RegulatingActor ds = new RegulatingActor<T>() {
+            @CompileStatic
             void process(T value) {
                 c(value)
             }
