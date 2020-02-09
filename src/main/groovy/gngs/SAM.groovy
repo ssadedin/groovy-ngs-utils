@@ -1234,6 +1234,15 @@ class SAM {
         ]
     }
     
+    /**
+     * Return the contigs of this BAM file as a set of regions
+     * 
+     * @return
+     */
+    Regions getContigRegions() {
+        getContigs().collect { new Region(it.key, 1, it.value) } as Regions
+    }
+    
     @CompileStatic
     Map<String, Integer> getContigs() {
         SamReader reader = newReader()
