@@ -28,7 +28,7 @@ class PairFilter extends RegulatingActor<Paired> {
 
    
     void process(SAMRecordPair pair, SAMRecord r2) {
-        Object result = filterClosure(pair)
+        Object result = filterClosure.call(pair)
         if(result == true) {
             this.sendDownstream([pair,r2])
         }
