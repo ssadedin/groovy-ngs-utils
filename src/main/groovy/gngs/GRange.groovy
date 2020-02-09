@@ -403,6 +403,11 @@ class Region extends Expando implements IRegion, Serializable {
         return new URL(url).text
     }
     
+    @CompileStatic
+    Region stripContigPrefix() {
+        new Region(this.chr.replace('chr',''), this.range)
+    }
+    
     String toString() {
         "$chr:$range.from-$range.to"
     }
