@@ -133,6 +133,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
     
     @Override
     void onEnd() {
+        progress.end()
         log.info "CoverageCombiner stopped at $pos"
     }
 
