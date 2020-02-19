@@ -35,12 +35,49 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
     
     RefGenes refgenes
 
+    HashMap<String, HashMap<String, String>> panelGeneMap
+
+    ArrayList<String> panelClasses 
+
+
     public GapAnnotator(RefGenes refgenes) {
         super(1000, 10000);
         this.refgenes = refgenes
     }
+
+    public GapAnnotator(RefGenes refgenes, ArrayList<String> panelFiles) {
+        this(refgenes)
+
+        this.panelGeneMap = [:]
+        this.panelClasses = new ArrayList()
+
+        // Process each panel File 
+        panelFiles.each {
+            def fileName = new File(it).name.trim()
+            // File name will be the upperclass name for the panel
+            def className = fileName.take(fileName.lastIndexOf('.'))
+            this.panelClasses.add(className)
+
+            def lm = new TSV(it, readFirstine:true).toListMap()
+            lm.each { item ->
+                def subClassName = item.keySet()[0]
+                def gene = item.get(subClassName)
+                if (gene) {
+                    if (!this.panelGeneMap.containsKey(gene)) {
+                        this.panelGeneMap[gene] = [:]
+                    }
+                    this.panelGeneMap[gene][className] = subClassName
+                }
+                
+            }
+        }
+    }
     
     final static List<String> ANNOTATION_COLUMNS = ['transcript', 'strand', 'gene', 'exon', 'coding_intersect','cds_distance','transcript_type']
+
+    final static String PANEL_ANNOTATION_KEY = "panel_annotations"
+
+    final static String PANEL_NOT_FOUND_KEY = "no"
 
     @CompileStatic
     @Override
@@ -56,6 +93,7 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
     
     @CompileStatic
     List<Map> annotateGapRegion(final Region blockRegion) {
+
         List<GRange> transcripts = (List<GRange>)refgenes.refData.getOverlaps(blockRegion)
 
         if(transcripts == null || transcripts.isEmpty()) {
@@ -85,6 +123,18 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
             Regions codingExons = allTranscriptExons.intersectRegions(cdsRegions)
 
             List transcriptAnnotations = []
+
+            // Add panel annotations 
+            HashMap panelAnnotations = new HashMap()
+            if (this.panelClasses && this.panelGeneMap) {
+                for(className in this.panelClasses) {
+                    panelAnnotations[className] = PANEL_NOT_FOUND_KEY
+                    if (this.panelGeneMap.containsKey(info.gene)) {
+                        panelAnnotations[className] = this.panelGeneMap[info.gene][className] == null ? PANEL_NOT_FOUND_KEY : this.panelGeneMap[info.gene][className]
+                    }
+                }
+            }
+
             for(Region exon in allTranscriptExons) {
                 if(!blockRegion.overlaps(exon))
                     continue
@@ -99,12 +149,16 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
                     transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
                     coding_intersect: exon.overlaps(blockRegion) ? Math.max((int)exon.intersect(cdsRegion).intersect(blockRegion).size()-1,0) : 0
                 ]
+
+                if (panelAnnotations) {
+                    annotation[PANEL_ANNOTATION_KEY] = panelAnnotations
+                }
                 transcriptAnnotations << annotation
             }
             
             // If no exon from the transcript actually overlapped, then we write out a single line annotation line for the transcript
             if(transcriptAnnotations.isEmpty()) {
-                transcriptAnnotations << [
+                def transcriptAnnotation = [
                     id: info.gene,
                     transcript: info.tx, 
                     strand: info.strand,
@@ -114,6 +168,10 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
                     transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
                     coding_intersect: 0
                 ]
+                if (panelAnnotations) {
+                    transcriptAnnotation[PANEL_ANNOTATION_KEY] = panelAnnotations
+                }
+                transcriptAnnotations << transcriptAnnotation
             }
             
             annotations.addAll(transcriptAnnotations)
@@ -292,16 +350,32 @@ class Gaps {
             a 'Write annotated report to separate file <arg>', args:1
             csv 'Write output comma separated instead of tab separated'
             h 'Output a human readable table'
+            p 'Set .tsv files [PanelClassName].tsv with Subclass names as headers', args:Cli.UNLIMITED, required:false
         }
+
         
         OptionAccessor opts = cli.parse(args)
         if(!opts) 
             System.exit(1)
-        
+
         if(!opts.arguments()) {
             cli.usage()
             System.err.println "Please provide a BEDTools coverage file"
             System.exit(1)
+        }
+
+        if(opts.ps) {
+            def err = false
+            for(panelFile in opts.ps) {
+                def currPanelFile = new File(panelFile)
+                if (!currPanelFile.exists()) {
+                    System.err.println "${panelFile} doesn't exist. Please provide an exisitng path"
+                    err = true
+                } 
+            }
+            if (err) {
+                System.exit(1)
+            }
         }
         
         Gaps gaps = new Gaps(opts)
@@ -312,11 +386,11 @@ class Gaps {
         CoverageGaps gaps = new CoverageGaps(coverageFile)
         if(opts.r) {
             RefGenes refgenes = new File(opts.r).exists() ? new RefGenes(opts.r) : RefGenes.download(opts.r)
-            gaps.gapProcessor = new GapAnnotator(refgenes)
+            gaps.gapProcessor = opts.ps ? new GapAnnotator(refgenes, opts.ps) : new GapAnnotator(refgenes)
             gaps.gapProcessor.start()
             log.info "Annotating using gene definitions from $opts.r"
         }
-        
+
         if(opts.t)
             gaps.threshold = opts.t.toInteger()
             
@@ -380,18 +454,27 @@ class Gaps {
         if(opts.a) {
             annotationWriter = Utils.writer(opts.a)
         }
+
+        def panelClasses = null
         
         if(opts.csv) {
             List cols = ['Chr', 'Start', 'End', 'Gene', 'Width', 'Min Cov', 'Mean Cov', 'Max Cov']
             if(opts.r && !opts.a)
                 cols += ['Tx Name', 'Strand', 'Gene', 'Exon Number', 'CDS Overlap', 'CDS Distance', 'Transcript Type']
-                
+            if(opts.p) {
+                panelClasses = opts.ps.collect {
+                    def fileName = new File(it).name
+                    fileName.trim().take(fileName.lastIndexOf('.'))
+                }
+                cols += panelClasses
+            }
+
             println(cols.join(','))
         }
         
         try {
             for(Region blockRegion in gaps) {
-                writeGap(blockRegion, annotationWriter)
+                writeGap(blockRegion, annotationWriter, panelClasses)
             }
         }
         finally {
@@ -409,9 +492,10 @@ class Gaps {
      * 
      * @param blockRegion
      * @param annotationWriter
+     * @param panelClasses
      */
 //    @CompileStatic
-    void writeGap(Region blockRegion, Writer annotationWriter) {
+    void writeGap(Region blockRegion, Writer annotationWriter, List panelClasses = null) {
         CoverageBlock block = blockRegion.extra
         List fields = [block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max]
         
@@ -423,6 +507,12 @@ class Gaps {
                 for(Map annotation in block.annotations) {
                     List rowFields = (fields + GapAnnotator.ANNOTATION_COLUMNS.collect { annotation[it] }).collect {
                         Utils.formatIfNumber(format, it)
+                    }
+                    // Add panel annotations
+                    if (panelClasses != null && annotation.containsKey(GapAnnotator.PANEL_ANNOTATION_KEY)) {
+                        panelClasses.each { c -> 
+                            rowFields << annotation[GapAnnotator.PANEL_ANNOTATION_KEY][c].trim()
+                        }
                     }
                     if(annotationWriter != null) {
                         annotationWriter.println(rowFields.join(sep))
