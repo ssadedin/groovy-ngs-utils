@@ -22,6 +22,7 @@ package gngs
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import gngs.coverage.CoverageCalculatorActor
 import groovy.stream.Stream;
 import groovy.transform.CompileStatic;
 import groovy.transform.stc.ClosureParams
@@ -835,18 +836,35 @@ class SAM {
             }
         }
     }
-
+    
+    @CompileStatic
+    RegulatingActor coverageAsync(Region region, int minMAPQ=1, @ClosureParams(value=SimpleType, options='gngs.SampleReadCount') Closure c) {
+        RegulatingActor actor = RegulatingActor.actor(c)
+        actor.start()
+        CoverageCalculatorActor.processBAM(this, [region] as Regions, actor, minMAPQ)
+        return actor
+    }
+  
+    @CompileStatic
+    RegulatingActor coverageAsync(Regions regions, int minMAPQ=1, @ClosureParams(value=SimpleType, options='gngs.SampleReadCount') Closure c) {
+        RegulatingActor actor = RegulatingActor.actor(c)
+        actor.start()
+        CoverageCalculatorActor.processBAM(this, regions, actor, minMAPQ)
+        return actor
+    }
+ 
     /**
-     * Return the number of mapped reads overlapping the given position
-     * 
-     * @param chr   the sequence name / chromosome to query
-     * @param pos   the chromosomal position to query
-     * 
-     * @return  the number of reads overlapping the position in the file
+     * Stream coverage values as {@link SampleReadCount} objects to the given actor 
+     * from the given region(s).
      */    
     @CompileStatic
-    int coverage(String chr, int pos, Closure c=null) {
-        return coverage(this.samFileReader, chr, pos, -1, c, minMappingQuality)
+    void coverageAsync(Region region, RegulatingActor sink, int minMAPQ=1) {
+        CoverageCalculatorActor.processBAM(this, [region] as Regions, sink, minMAPQ)
+    }
+    
+    @CompileStatic
+    int coverageAsync(Regions regions, RegulatingActor sink, int minMAPQ = 1) {
+        CoverageCalculatorActor.processBAM(this, regions, sink, minMAPQ)
     }
 
     @CompileStatic
