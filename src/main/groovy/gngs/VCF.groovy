@@ -436,6 +436,14 @@ class VCF implements Iterable<Variant> {
     }
     
     @CompileStatic
+    static VCF filter(Map options, String fileName, Closure c) {
+        new File(fileName).withReader { r ->
+            parseImpl(options, r, true, null, c)
+        }
+    }
+ 
+    
+    @CompileStatic
     static VCF filter(Map options=[:], Reader r, Closure c) {
         parseImpl(options, r, true, null, c)
     }
