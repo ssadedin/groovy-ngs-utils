@@ -418,6 +418,7 @@ class VCF implements Iterable<Variant> {
      *                    mutated when filtering
      * <li>fileName     - set or override the automatic fileName associated to the VCF
      * <li>vcf          - associate variants to given VCF instead of creating a new, empty one
+     * <li>writer       - when filtering, write to given writer instead of stdout
      * <li>outputStream - when filtering, write to given output stream instead of stdout
      *
      * @param f file to parse
