@@ -598,11 +598,11 @@ class Variant implements IRegion {
               String key = (String)field[0]
               String value = String.valueOf(field[1])
               if(key in numericGTFields) { 
-                  return [key,convertNumericValue(value)] 
+                  return [key,convertNumericValue(value,null)] 
               }
               else
               if(key in numericListFields) {
-                  return [key,value.tokenize(",").collect { convertNumericValue(it) }]  // strange typecast exc under compilestatic
+                  return [key,value.tokenize(",").collect { convertNumericValue(it,null) }]  // strange typecast exc under compilestatic
               }
               else
                   return field
@@ -686,6 +686,7 @@ class Variant implements IRegion {
      * The only update to snpEFF information is to remove individual 
      * annotations.
      */
+    @CompileStatic
     void update(String desc, Closure c) {
         this.snpEffDirty = false
         if(line == null)
@@ -782,7 +783,7 @@ class Variant implements IRegion {
                      return '.'
                 else
                 if(field instanceof List)
-                     return field.join(',') 
+                     return field.collect { it.is(null) ? '.' : it }.join(',') 
                  else
                      return field
             }.join(':')
@@ -1251,7 +1252,7 @@ class Variant implements IRegion {
     @CompileStatic
     Integer getTotalDepth() {
         if('DP' in this.header.formatMetaData) {
-            return this.genoTypes[0].DP as Integer
+            return (this.genoTypes[0].DP?:0) as Integer
         }
         return (int) (0..alts.size()).collect { getAlleleDepths(it)[0] }.sum()
     } 
@@ -1268,7 +1269,7 @@ class Variant implements IRegion {
     @CompileStatic
     Integer getTotalDepth(final int sampleIndex) {
         if('DP' in this.header.formatMetaData) {
-            return this.genoTypes[sampleIndex].DP as Integer
+            return (this.genoTypes[sampleIndex].DP?:0) as Integer
         }
         return (int) (0..alts.size()).collect { getAlleleDepths(it)[sampleIndex] }.sum()
     }

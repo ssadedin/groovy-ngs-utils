@@ -332,7 +332,39 @@ class VariantTest {
         assert v2.alts == ['A','G']
     }
  
+    @Test
+    void 'missing numeric genotype fields are reconstructed correctly after update'() {
+        v = var("chr10    46963776    .   C   A,G 20.00   PASS FOO=1  GT:DP:AD ./.:.:.")
+        
+        VCF header = v.header
+        
+        v.update('unit test') {
+            // noop
+        }
+        
+        assert v.line.split('\t')[9] == './.:.:.'
+    }
     
+   
+    @Test
+    void testGetTotalDepthMissing() {
+        v = var("chr10    46963776    .   C   A,G 20.00   PASS FOO=1  GT:DP:AD ./.:.:.")
+        assert v.totalDepth == 0
+        
+        // with no header will attempt to calculate from alts
+        v = var("chr10    46963776    .   C   A,G 20.00   PASS FOO=1  GT:DP:AD ./.:.:.")
+        v.header.formatMetaData = [FOO:'stuff']
+        assert v.totalDepth == 0
+ 
+    }
+    
+    @Test
+    void 'test allele depths are returned as zero if missing'() {
+        v = var("chr10    46963776    .   C   A,G 20.00   PASS FOO=1  GT:DP:AD ./.:.:.")
+        assert v.getAlleleDepths(1) == [0]
+    }
+ 
+     
     @Test
     void testVaf() {
         v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   MQ=49.90    GT:AD:DP:GQ:PL  1/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
