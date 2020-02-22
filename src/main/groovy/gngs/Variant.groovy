@@ -697,7 +697,7 @@ class Variant implements IRegion {
         fields[0] = chr
         fields[1] = String.valueOf(pos)
         fields[3] = ref
-        fields[4] = alt?:"."
+        fields[4] = alts?alts.join(','):"."
 //        fields[5] = String.format("%2.2f",qual)
         fields[5] = QUAL_FORMATTER.format(qual)
         

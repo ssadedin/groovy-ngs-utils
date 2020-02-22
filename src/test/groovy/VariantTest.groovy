@@ -316,6 +316,24 @@ class VariantTest {
     }
     
     @Test
+    void testUpdateMultiAllelic() {
+        v = var("chr10    46963776    .   C   A,G 20.00   PASS FOO=1  GT:DP:AD 0/0:50:20,30,20")
+        
+        VCF header = v.header
+        
+        v.update('unit test') {
+            v.genoTypes[0].DP = 10
+        }
+        
+        assert v.line.contains(':10:')
+        assert v.getTotalDepth('JOHNSMITH') == 10
+        
+        Variant v2 = Variant.parse(v.line)
+        assert v2.alts == ['A','G']
+    }
+ 
+    
+    @Test
     void testVaf() {
         v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   2147486609.19   .   MQ=49.90    GT:AD:DP:GQ:PL  1/2:4,83,93:213:99:7597,4181,5801,3074,0,3833")
         assert Math.abs(v.vaf - 83 / 213) < 0.01
@@ -344,6 +362,13 @@ class VariantTest {
         
         assert v.line.contains('4623')
         assert !v.line.contains('4623.0')
+        
+        println v.qual
+    }
+    
+    @Test
+    void 'test that parsing a QUAL value of . works correctly'() {
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   .   .   MQ=49.90    GT:AD:DP:GQ:PL  1/1:4,83,93:213:99:7597,4181,5801,3074,0,3833")
         
         println v.qual
     }
