@@ -67,6 +67,19 @@ class SampleReadCount {
  * pre-defined regions. The coverage values are emitted as messages to 
  * a downstream consumer as SampleReadCount objects, one for each position
  * in the target range.
+ * <p>
+ * The logic used is that since the reads are coordinate sorted, coverage
+ * depth can be computed in a streaming manner by storing a buffer of reads 
+ * ordered by position.
+ * <p>
+ * When a new read is considered, all the positions from the previous written position
+ * to the position before the start of the read can be written out. As each such position
+ * is processed, all reads that end prior to the position should be dropped from 
+ * the buffer. The number of reads in the buffer then by definition all overlap the
+ * position being written.
+ * <p>
+ * The above is the conceptual algorithm, but several refinements are implemented to
+ * improve computational / memory efficiency, handling of paired reads etc.
  * 
  * @author Simon Sadedin
  */
