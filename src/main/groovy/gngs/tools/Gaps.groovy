@@ -29,15 +29,16 @@ import groovy.transform.Memoized
 import groovy.util.logging.Log
 import groovyx.gpars.GParsPool
 import groovyx.gpars.GParsPoolUtil
+import graxxia.TSV
 
 @Log
 class GapAnnotator extends RegulatingActor<CoverageBlock> {
     
     RefGenes refgenes
 
-    HashMap<String, HashMap<String, String>> panelGeneMap
+    Map<String, Map<String, List>> panelGeneMap = new HashMap<String, Map<String, List>>()
 
-    ArrayList<String> panelClasses 
+    ArrayList<String> panelClasses = []
 
 
     public GapAnnotator(RefGenes refgenes) {
@@ -48,36 +49,52 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
     public GapAnnotator(RefGenes refgenes, ArrayList<String> panelFiles) {
         this(refgenes)
 
-        this.panelGeneMap = [:]
-        this.panelClasses = new ArrayList()
+        indexPanels(panelFiles)
+    }
+    
+    void indexPanels(List<String> panelFiles) {
+        
+        List panelClassNames = panelFiles.collect {
+
+            def fileName = new File(it).name.trim()
+
+            // File name will be the upperclass name for the panel
+            fileName.take(fileName.lastIndexOf('.'))
+        }
+        
+        indexPanels(panelClassNames, panelFiles.collect { new TSV(it).toListMap() })
+    }
+    
+    void indexPanels(List<String> panelClassNames, List<List<Map>> tsvs) {
 
         // Process each panel File 
-        panelFiles.each {
-            def fileName = new File(it).name.trim()
-            // File name will be the upperclass name for the panel
-            def className = fileName.take(fileName.lastIndexOf('.'))
-            this.panelClasses.add(className)
+        [tsvs, panelClassNames].transpose().each { lm, panelClassName ->
 
-            def lm = new TSV(it, readFirstine:true).toListMap()
-            lm.each { item ->
-                def subClassName = item.keySet()[0]
-                def gene = item.get(subClassName)
-                if (gene) {
+            this.panelClasses.add(panelClassName)
+
+            lm.each { Map row ->
+                row.each { rawSubClassName, gene -> 
+                    
+                    def subClassName = rawSubClassName.trim()
+                    
+                    if(!gene) 
+                        return
+
                     if (!this.panelGeneMap.containsKey(gene)) {
                         this.panelGeneMap[gene] = [:]
                     }
-                    this.panelGeneMap[gene][className] = subClassName
+                    
+                    List geneSubClasses = this.panelGeneMap[gene].computeIfAbsent(panelClassName) { [] }
+
+                    if(!(subClassName in geneSubClasses))
+                        geneSubClasses << subClassName
                 }
-                
             }
         }
+        
     }
     
     final static List<String> ANNOTATION_COLUMNS = ['transcript', 'strand', 'gene', 'exon', 'coding_intersect','cds_distance','transcript_type']
-
-    final static String PANEL_ANNOTATION_KEY = "panel_annotations"
-
-    final static String PANEL_NOT_FOUND_KEY = "no"
 
     @CompileStatic
     @Override
@@ -124,16 +141,7 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
 
             List transcriptAnnotations = []
 
-            // Add panel annotations 
-            HashMap panelAnnotations = new HashMap()
-            if (this.panelClasses && this.panelGeneMap) {
-                for(className in this.panelClasses) {
-                    panelAnnotations[className] = PANEL_NOT_FOUND_KEY
-                    if (this.panelGeneMap.containsKey(info.gene)) {
-                        panelAnnotations[className] = this.panelGeneMap[info.gene][className] == null ? PANEL_NOT_FOUND_KEY : this.panelGeneMap[info.gene][className]
-                    }
-                }
-            }
+            Map panelAnnotations = getPanelAnnotations((String)info.gene)
 
             for(Region exon in allTranscriptExons) {
                 if(!blockRegion.overlaps(exon))
@@ -147,12 +155,9 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
                     exon: info.strand == "+" ? exon['exon'] : (allTranscriptExons.numberOfRanges - (Integer)exon['exon']),
                     cds_distance: codingExons.distanceTo(blockRegion),
                     transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
-                    coding_intersect: exon.overlaps(blockRegion) ? Math.max((int)exon.intersect(cdsRegion).intersect(blockRegion).size()-1,0) : 0
-                ]
+                    coding_intersect: exon.overlaps(blockRegion) ? Math.max((int)exon.intersect(cdsRegion).intersect(blockRegion).size()-1,0) : 0,
+                ] + panelAnnotations
 
-                if (panelAnnotations) {
-                    annotation[PANEL_ANNOTATION_KEY] = panelAnnotations
-                }
                 transcriptAnnotations << annotation
             }
             
@@ -167,12 +172,13 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
                     cds_distance: codingExons.distanceTo(blockRegion),
                     transcript_type: (cdsStart == cdsEnd) ? 'non-coding' : 'coding',
                     coding_intersect: 0
-                ]
-                if (panelAnnotations) {
-                    transcriptAnnotation[PANEL_ANNOTATION_KEY] = panelAnnotations
-                }
+                ] + panelAnnotations
+
                 transcriptAnnotations << transcriptAnnotation
             }
+            
+
+            
             
             annotations.addAll(transcriptAnnotations)
         }
@@ -189,6 +195,18 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
         else {
             return [annotations.min { Map ann -> ann.cds_distance }]
         }
+    }
+    
+    @CompileStatic
+    @Memoized(maxCacheSize=500)
+    Map<String,Object> getPanelAnnotations(String gene) {
+        panelClasses.collectEntries { String panel ->
+            List subClasses = (List)panelGeneMap[gene]?.getAt(panel)
+            [
+                panel,
+                subClasses.join(',')?:'no'
+            ]
+        }        
     }
     
     @CompileStatic
