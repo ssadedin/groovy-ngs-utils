@@ -200,13 +200,20 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
     @CompileStatic
     @Memoized(maxCacheSize=500)
     Map<String,Object> getPanelAnnotations(String gene) {
-        panelClasses.collectEntries { String panel ->
-            List subClasses = (List)panelGeneMap[gene]?.getAt(panel)
-            [
-                panel,
-                subClasses.join(',')?:'no'
-            ]
-        }        
+        // Gene doesn't exist in the Map so set all panels no
+        if (!panelGeneMap.containsKey(gene)) {
+            return panelClasses.collectEntries { panel ->
+                [panel, 'no']
+            }
+        }
+        return panelClasses.collectEntries { panel ->
+            if (!panelGeneMap[gene].containsKey(panel)) {
+                [panel, 'no']
+            } else {
+                List subClasses = (List)panelGeneMap[gene][panel]
+                [panel, subClasses.join(',')]
+            }
+        }
     }
     
     @CompileStatic

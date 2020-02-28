@@ -107,6 +107,18 @@ class GapAnnotatorTest {
     
     @Test
     void testPanelAnnotation() {
-        // TODO
+        ga = new GapAnnotator(refgenes, ["src/test/data/test_panel.tsv", "src/test/data/test_panel2.tsv"])
+        Region gap = new Region('chrX:66,908,973-66,909,037')
+        List annotations = ga.annotateGapRegion(gap)
+
+        assert annotations.size() == 1
+
+        // check the transcript annotated is really the one with closest CDS distance
+        assert annotations[0].transcript in ['NM_001348063','NM_001348068']
+
+        assert annotations[0]['test_panel'] == "no"
+
+        assert annotations[0]["test_panel2"] == "Brugada Syndrome,Catecholaminergic"
+
     }
 }
