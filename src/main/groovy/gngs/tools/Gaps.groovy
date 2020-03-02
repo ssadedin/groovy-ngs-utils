@@ -31,13 +31,27 @@ import groovyx.gpars.GParsPool
 import groovyx.gpars.GParsPoolUtil
 import graxxia.TSV
 
+/**
+ * Annotates regions with gene, transcript, CDS overlap and distance information, as well
+ * as custom annotation to gene associations ("panels") and sub-panels 
+ * (groups of genes within a panel)
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 class GapAnnotator extends RegulatingActor<CoverageBlock> {
     
     RefGenes refgenes
 
+    /**
+     * Map keyed on gene to a nested lookup table that is keyed on panel name and returns the list of 
+     * subpanels from the major panel that include the gene.
+     */
     Map<String, Map<String, List>> panelGeneMap = new HashMap<String, Map<String, List>>()
 
+    /**
+     * List of all known sub panels ("panel classes")
+     */
     ArrayList<String> panelClasses = []
 
 
