@@ -120,5 +120,9 @@ class GapAnnotatorTest {
 
         assert annotations[0]["test_panel2"] == "Brugada Syndrome,Catecholaminergic"
 
+        // Case where gene is not in any panel
+        ga = new GapAnnotator(refgenes, ["src/test/data/test_panel.tsv"])
+        annotations = ga.annotateGapRegion(gap)
+        assert annotations[0]['test_panel'] == "no"
     }
 }
