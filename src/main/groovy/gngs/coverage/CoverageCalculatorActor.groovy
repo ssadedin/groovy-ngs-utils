@@ -132,6 +132,9 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         lineInterval: 500
         )
 
+    public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, boolean countFragments = true) {
+        this(bam.getContigList(), targetRegions, combiner, bam.samples[0], countFragments)
+    }
     
     public CoverageCalculatorActor(SAM bam, Regions targetRegions, Actor combiner, String sample, boolean countFragments = true) {
         this(bam.getContigList(), targetRegions, combiner, sample, countFragments)
@@ -285,7 +288,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     @CompileStatic
     private void flushPosition() {
         dropNonOverlapping()
-        SampleReadCount src = new SampleReadCount(currentRegion, currentRegion.chr, pos, reads.size(), sample)
+        SampleReadCount src = new SampleReadCount(currentRegion, currentRegion.chr, pos-1, reads.size(), sample)
         sendDownstream(src)
     }
     
