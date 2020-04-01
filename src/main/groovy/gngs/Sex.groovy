@@ -37,7 +37,8 @@ enum Sex {
             "FEMALE": FEMALE,
             "Male" : MALE,
             "Female": FEMALE,
-           "Unknown" : UNKNOWN,
+            "UNKNOWN" : UNKNOWN,
+            "Unknown" : UNKNOWN,
             "other" : UNKNOWN // ped file compatibility
     ]
     
@@ -58,6 +59,10 @@ enum Sex {
             
         if(codes.containsKey(value))
             return codes[value]
+
+        String uc = value.toString().toUpperCase()
+        if(codes.containsKey(uc))
+            return codes[uc]
 
 		throw new IllegalArgumentException("Bad sex value [$value] specified")
 	}
