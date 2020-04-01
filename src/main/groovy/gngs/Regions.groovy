@@ -922,11 +922,12 @@ class Regions implements Iterable<Region> {
     /**
      * Select the given number of ranges from these, approximately evenly spaced
      * 
-     * @param desiredRanges
+     * @param desiredRanges target number of ranges to preserve
+     * @param minRanges     the minimum number of ranges to preserve on each chromosome
      * @return
      */
     @CompileStatic
-    Regions thin(int desiredRanges, int minRanges) {
+    Regions thin(int desiredRanges, int minRangesPerChromosme) {
         int currentTotalRanges = this.numberOfRanges
         
         double proportionRetained = ((double)desiredRanges) / currentTotalRanges
@@ -938,7 +939,7 @@ class Regions implements Iterable<Region> {
         
         return this.grep { Region r -> 
             
-            if(this.index[r.chr].numRanges*proportionRetained < minRanges) {
+            if(this.index[r.chr].numRanges*proportionRetained < minRangesPerChromosme) {
                 return true
             }
             
