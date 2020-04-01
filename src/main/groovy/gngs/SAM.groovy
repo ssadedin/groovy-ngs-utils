@@ -1085,6 +1085,7 @@ class SAM {
      * @param r     the SamReader (SAM / BAM file) containing reads
      * @param chr   the sequence name / chromosome to query
      * @param pos   the chromosomal position to query
+     * @param c     a filter to include or reject reads
      * 
      * @return  the number of reads overlapping the position in the file
      */
