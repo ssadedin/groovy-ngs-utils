@@ -9,6 +9,9 @@ import java.awt.image.BufferedImage
 import javax.imageio.ImageIO
 import javax.imageio.ImageWriter
 import javax.imageio.stream.ImageOutputStream
+
+import com.twosigma.beakerx.chart.xychart.plotitem.XYGraphics
+
 import de.erichseifert.gral.data.DataSource
 import de.erichseifert.gral.data.DataTable
 import de.erichseifert.gral.data.EnumeratedData
@@ -27,6 +30,7 @@ import de.erichseifert.gral.plots.XYPlot
 import de.erichseifert.gral.plots.axes.AxisRenderer
 import de.erichseifert.gral.plots.lines.LineRenderer
 import de.erichseifert.gral.plots.lines.SmoothLineRenderer2D
+import de.erichseifert.gral.plots.points.DefaultPointRenderer2D
 import de.erichseifert.gral.plots.points.PointRenderer
 import de.erichseifert.gral.util.GraphicsUtils
 import graxxia.Stats
@@ -45,7 +49,7 @@ class DefaultPalette extends Palette {
 }
 
 class PlotItem {
-    String name = null
+    String displayName = null
 }
 
 class XYItem extends PlotItem {
@@ -80,6 +84,12 @@ class XYItem extends PlotItem {
 class Lines extends XYItem {
     
 }
+
+class Points extends XYItem {
+    
+}
+
+
 
 class Bars extends XYItem {
     
@@ -185,11 +195,70 @@ class Plot {
     
     List<PlotItem> items = []
     
+    List xBound = null
+    
+    List yBound = null
+    
     Palette palette = new DefaultPalette()
     
     Plot leftShift(PlotItem item) {
         this.items << item
         return this
+    }
+    
+    static Object saveAs(def plot, String fileName) {
+        if(plot instanceof com.twosigma.beakerx.chart.xychart.Plot) {
+            from(plot).save(fileName)
+        }
+        else
+        if(plot instanceof Plot) {
+            plot.save(fileName)
+        }
+        else {
+            throw new IllegalArgumentException('Please provide a gngs or beakerx Plot object - you provided: ' + plot?.class?.name)
+        }
+        return plot
+    }
+    
+    static Plot from(com.twosigma.beakerx.chart.xychart.Plot bxPlot) {
+        Plot p = new Plot(
+            title:bxPlot.title,
+            xLabel: bxPlot.xLabel,
+            yLabel: bxPlot.yLabel,
+            xBound: [bxPlot.xLowerBound, bxPlot.xUpperBound],
+            yBound: [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()],
+        )
+        
+        bxPlot.graphics.each { XYGraphics g ->
+            
+            def item = null
+            
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Points) {
+                item = new Points()
+            }
+            else
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Line) {
+                item = new Lines()
+            }
+            
+            if(!item)
+                return
+ 
+            g.properties.each { k,v ->
+                if(item.hasProperty(k)) {
+                    try {
+                        item[k] = v
+                    }
+                    catch(ReadOnlyPropertyException exReadOnly) {
+                        // ignore
+                    }
+                }
+            }
+            
+            p << item
+        }
+        
+        return p
     }
     
     void save(final String fileName) {
@@ -204,8 +273,8 @@ class Plot {
         int i = 1
         List<DataTable> datas = xys.collect { XYItem item ->
             DataTable dt = item.toTable()
-            dt.name = item.name ?: ('Series ' + i)
-            dt.setName(item.name)
+            dt.name = item.displayName ?: ('Series ' + i)
+            dt.setName(item.displayName)
             ++i
             return dt
         }
@@ -220,38 +289,75 @@ class Plot {
         xyPlot.setInsets(insets);
         
         i = 0
-        for(dt in datas) {
-            LineRenderer lines = new SmoothLineRenderer2D();
-            lines.setColor(palette.colors[ i % palette.colors.size()])
-            xyPlot.setLineRenderers(dt, lines)
+        
+        [xys,datas].transpose().each { xy, dt ->
+
+            if(xy instanceof Lines) {
+                LineRenderer lines = new SmoothLineRenderer2D();
+                lines.setColor(palette.colors[ i % palette.colors.size()])
+                xyPlot.setLineRenderers(dt, lines)
+            }
+            else {
+                PointRenderer pointRenderer = new DefaultPointRenderer2D()
+                pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
+                xyPlot.setPointRenderers(dt, pointRenderer)
+            }
 //            xyPlot.setMapping(dt, xys[i].name, '')
             ++i
         }
         
+//        for(dt in datas) {
+//            LineRenderer lines = new SmoothLineRenderer2D();
+//            lines.setColor(palette.colors[ i % palette.colors.size()])
+//            xyPlot.setLineRenderers(dt, lines)
+////            xyPlot.setMapping(dt, xys[i].name, '')
+//            ++i
+//        }
+//        
         xyPlot.setBackground(Color.white)
         xyPlot.getTitle().setText(title)        
         
         xyPlot.getAxis(XYPlot.AXIS_X).with {
-            min = Math.min(0, xys*.minX.min())
-            max = PlotUtils.roundUpToOOM(xys*.maxX.max())
+            if(xBound) {
+                min = xBound[0]
+                max = xBound[1]
+            }
+            else {
+                min = Math.min(0, xys*.minX.min())
+                max = PlotUtils.roundUpToOOM(xys*.maxX.max())
+            }
         }
         
         xyPlot.getAxis(XYPlot.AXIS_Y).with {
-            min = Math.min(0, xys*.minY.min())
-            max = PlotUtils.roundUpToOOM(xys*.maxY.max())
+            
+            if(yBound) {
+                min = yBound[0]
+                max = yBound[1]
+            }
+            else {
+                min = Math.min(0, xys*.minY.min())
+                max = PlotUtils.roundUpToOOM(xys*.maxY.max())
+            }
         }
         
         xyPlot.getAxisRenderer(XYPlot.AXIS_X).with { 
+            if(yBound) {
+                intersection = (yBound[0] as double)
+            }
+
             if(xLabel)
                 label.text = xLabel
         }
         
         xyPlot.getAxisRenderer(XYPlot.AXIS_Y).with { 
+            if(xBound) {
+                intersection = (xBound[0] as double)
+            }
             if(yLabel)
                 label.text = yLabel
         }
         
-        if(!(xyPlot instanceof BarPlot))
+        if(!(xyPlot instanceof BarPlot) && xys.any { it.displayName })
             xyPlot.setLegendVisible(true)
   
         BufferedImage bImage = new BufferedImage(1024, 800, BufferedImage.TYPE_INT_ARGB);
@@ -301,7 +407,6 @@ class PlotUtils {
         imageGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
         imageGraphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         
-
         DrawingContext context =
             new DrawingContext(imageGraphics);
 
