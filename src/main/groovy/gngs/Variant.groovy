@@ -812,7 +812,7 @@ class Variant implements IRegion {
     Map<String,Object> getInfo() {
         if(infos == null) {
             infos =  [:]
-            if(info != null) {
+            if((info != null) && (info != '.')) {
                 for(String s in info.tokenize(';')) {
                     int i = s.indexOf('=')
                     if(i<0) {
