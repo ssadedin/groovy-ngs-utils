@@ -281,6 +281,17 @@ class VariantTest {
     }
     
     @Test
+    void testUpdateNoInfo() {
+        v = var("chr10    46963776    .   C   <DEL> 20.00   PASS .  GT:DP:AD 0/0:1:20,30")
+        
+        v.update {
+            v.chr = '10'
+        }
+        
+        assert v.line.tokenize('\t')[7] == '.'
+    }
+    
+    @Test
     void testUpdateMultisampleVariant() {
         VCF vcf = VCF.parse("tests/data/test_multisample.vcf")
         v = vcf[0]
