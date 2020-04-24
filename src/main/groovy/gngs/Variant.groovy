@@ -710,7 +710,7 @@ class Variant implements IRegion {
             getInfo().EFF = this.snpEffInfo*.info.join(",")
         }
         
-        fields[7] = getInfo().collect {k,v -> v != null?"$k=$v":k}.join(';')
+        fields[7] = getInfo()?.collect {k,v -> v != null?"$k=$v":k}.join(';')?:'.'
         
         if(this.@genoTypes != null) {
             rebuildGenotypes(fields)
