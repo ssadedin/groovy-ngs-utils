@@ -410,6 +410,25 @@ class VCF implements Iterable<Variant> {
     }
     
     /**
+     * Attempts to identify which version of human genome build this VCF
+     * was created from. Not applicable to non-human genomes.
+     * 
+     * @return  hg19,hg18,GRCh37,GRCh38,hg38 or null if one of these is not identified
+     */
+    @CompileStatic
+    String sniffGenomeBuild() {
+        String line = this.headerLines.find {it.contains('##reference')}
+        
+        if(!line)
+            return null
+
+        for(build in ["GRCh37","GRCh38","hg18","hg19","hg38",]) {
+            if(line.contains(build))
+                return build
+        }
+    }
+    
+    /**
      * Parse the given VCF file, returning a full VCF, optionally filtered
      * by the closure (only rows returning true from closure will be included)
      * <p>
