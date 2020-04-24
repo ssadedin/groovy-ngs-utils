@@ -426,6 +426,14 @@ class VCF implements Iterable<Variant> {
             if(line.contains(build))
                 return build
         }
+        
+        if(line.contains('assembly38')) {
+            return 'GRCh38'
+        }
+        else 
+        if(line.contains('assembly37')) {
+            return 'GRCh37'
+        }
     }
     
     /**
