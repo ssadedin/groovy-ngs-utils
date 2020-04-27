@@ -1010,17 +1010,21 @@ class VCFtoHTML {
         }
     }
 
+    @CompileStatic
     List<VCF> loadVCFs() {
         
+        List<String> chrs = opts['chrs'] ? (List<String>)opts['chrs'] : null
+        
         List<String> preFilters = []
-        if(opts.prefilters) {
-            preFilters = opts.prefilters
-            parsedPreFilters = opts.prefilters.collect {
+        if(opts['prefilters']) {
+            preFilters = (List<String>)opts['prefilters']
+
+            parsedPreFilters = (List<Closure>)preFilters.collect {
                 new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
             }
         }
         
-        List<VCF> vcfs = opts.is.collect { String vcfPath ->
+        List<VCF> vcfs = ((List<String>)opts['is']).collect { String vcfPath ->
             
             log.info "Read $vcfPath ..."
             
@@ -1033,8 +1037,13 @@ class VCFtoHTML {
             
             vcf = VCF.parse(new File(vcfPath), null, samples:applicableExportSamples?:null) { Variant  v ->
                 
-                if(opts.chrs && !(v.chr in opts.chrs ))
+                if(chrs != null && !(v.chr in chrs))
                     return false
+                    
+               if(this.targets.any { Regions r -> !r.overlaps(v) }) {
+                    ++stats.excludeByTarget
+                   return false
+               }
 
                 if(!parsedPreFilters.every { it(v) }) {
                     ++stats.excludeByPreFilter
