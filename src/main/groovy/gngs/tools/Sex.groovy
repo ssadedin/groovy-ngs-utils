@@ -64,7 +64,12 @@ class Sex extends ToolBase {
                 println sex
         }
         
+        
         List bamFiles = opts.arguments().grep { it.endsWith('.bam') }
+        
+        if(bamFiles && !opts.target) 
+            throw new IllegalArgumentException('If BAM files are provided, target regions must be specified')
+
         if(opts.n) {
             processParallelBAMs(bamFiles)
         }
