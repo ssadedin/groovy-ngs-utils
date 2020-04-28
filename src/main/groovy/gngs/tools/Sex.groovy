@@ -109,20 +109,28 @@ class Sex extends ToolBase {
        SAM bam = new SAM(bamPath)
        SexKaryotyper kt = new SexKaryotyper(bam, targetRegions)
        kt.run()
-           
-       if(opts.filter) {
+       
+       if(!opts.stats && opts.filter) {
            if(opts.filter == kt.sex.toString())
                return bamPath
        }
        else {
-           if(opts.stats)
-               return [
+           if(opts.stats) {
+               List knownSex = opts.filter ? [['Sex', opts.filter]] : []
+
+               return  (
+               [
                    ['Sample', bam.samples[0]],
+               ]
+               + knownSex +
+               [ 
+                   
                    ['Inferred Sex', kt.sex.toString()],
                    ['xCoverage',kt.xCoverage],
                    ['yCoverage',kt.yCoverage],
                    ['autosomeCoverage',kt.autosomeCoverage]
-               ]*.join('\t').join('\n') + '\n'
+               ])*.join('\t').join('\n') + '\n'
+           }
            else
                return kt.sex                
        } 
