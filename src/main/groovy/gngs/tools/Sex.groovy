@@ -101,7 +101,8 @@ class Sex extends ToolBase {
     
     String processBAM(String bamPath) {
        Regions targetRegions = new BED(opts.t).load()
-       SexKaryotyper kt = new SexKaryotyper(new SAM(bamPath), targetRegions)
+       SAM bam = new SAM(bamPath)
+       SexKaryotyper kt = new SexKaryotyper(bam, targetRegions)
        kt.run()
            
        if(opts.filter) {
@@ -109,7 +110,16 @@ class Sex extends ToolBase {
                return bamPath
        }
        else {
-           return kt.sex                
+           if(opts.stats)
+               return [
+                   ['Sample', bam.samples[0]],
+                   ['Inferred Sex', kt.sex.toString()],
+                   ['xCoverage',kt.xCoverage],
+                   ['yCoverage',kt.yCoverage],
+                   ['autosomeCoverage',kt.autosomeCoverage]
+               ]*.join('\t').join('\n') + '\n'
+           else
+               return kt.sex                
        } 
     }
     
@@ -160,6 +170,7 @@ class Sex extends ToolBase {
     static main(args) {
         cli("Sex [-t <target region>] <vcf file | bam file | fastq> <vcf file | bam file | fastq> ...", args) {
             t 'Target regions to analyse (required for BAM files)', longOpt: 'target', args:1, required: false
+            stats 'Print extended information supporting inference', longOpt: 'stats'
             v 'Print verbose information about how sex is being determined'
             filter 'Print out input if it matches sex of argument (MALE, FEMALE)', args:1, required: false
             n 'Use <n> concurrent threads (only for certain operations)', args:1, required: false
