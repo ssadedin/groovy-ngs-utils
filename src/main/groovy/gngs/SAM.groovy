@@ -866,11 +866,17 @@ class SAM {
     int coverageAsync(Regions regions, RegulatingActor sink, int minMAPQ = 1) {
         CoverageCalculatorActor.processBAM(this, regions, sink, minMAPQ)
     }
-
+    
+    @CompileStatic
+    int coverage(String chr, int pos, Closure c=null) {
+        return coverage(this.samFileReader, chr, pos, -1, c, minMappingQuality)
+    }
+ 
     @CompileStatic
     int coverage(String chr, int pos, int end, Closure c=null) {
         return coverage(this.samFileReader, chr, pos, end, c, minMappingQuality)
     }
+
 
     @CompileStatic
     float meanCoverage(String chr, int pos, int end) {
