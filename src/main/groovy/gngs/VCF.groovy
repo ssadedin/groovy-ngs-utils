@@ -1292,6 +1292,76 @@ class VCF implements Iterable<Variant> {
         return counts[true] / (Double)(counts[false] + counts[true])
     }
     
+    /**
+     * Infer proband and calculate rate of de novo variants for a VCF containing a trio.
+     * 
+     * @return Map in the form [proband: <sample id>, denovoRate: <fraction of denovos>, ratio: <fraction of denovos / min of other two>]
+     */
+    Map trioDenovoRate() {
+        
+        List combos = [
+            [0,1,2],
+            [1,0,2],
+            [2,0,1]
+        ]
+        
+        int i=0
+        List<Map> rates = combos.collect { List combo ->
+            [ 
+                proband: samples[combo[0]],
+                denovoRate: denovoRate(*combo),
+                index: i++
+            ]
+        }.sort {
+            it.denovoRate
+        }
+        
+        Map result = [
+            proband: rates[0].proband,
+            denovoRate: rates[0].denovoRate,
+            ratio: rates[0].denovoRate / rates[1].denovoRate,
+            trios: rates
+        ]
+        
+        return result
+    }
+
+    /**
+     * Calculate the fraction of denovo variants if this VCF contains a trio with
+     * the indexes of the samples as given
+     * 
+     * @param proband   index in the samples array of the proband
+     * @param parent1   index in the samples array of first parent
+     * @param parent2   index in the samples array of second parent
+     * @return
+     */
+    @CompileStatic
+    double denovoRate(int proband, int parent1, int parent2) {
+        Map<Boolean,Integer> counts = this.grep { Variant v ->
+            (v.type == "SNP") && (v.dosages[proband] == 1) && (v.qual > 20) 
+        }
+        .countBy { Object o ->
+            Variant v = (Variant)o
+            List ds = v.dosages
+            
+            // true of variant IS de novo
+            (ds[proband]>0) && ((ds[parent1] == 0)  && (ds[parent2] == 0))
+        }
+        
+        // true => de novo
+        // false => inherited
+
+        if(!counts[false]) {
+            return 1.0d // no inherited => rate = 100% denovo
+        }
+        
+        if(!counts[true]) {
+            return 1.0d // no de novo => rate = 0% de novo
+        }
+  
+        return counts[true] / (double)(counts[false] + counts[true])
+    }
+
     double denovoRate(VCF m, VCF d) {
         Map<Boolean,Integer> counts = this.grep { Variant v ->
             (v.type == "SNP") && (v.dosages[0] == 1) && (v.qual > 20) 
