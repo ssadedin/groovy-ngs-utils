@@ -2,27 +2,61 @@ package gngs.plot
 
 import static org.junit.Assert.*
 
+import java.awt.Color
+
 import org.junit.Test
 
 class PlotTest {
 
 //    @Test
-    public void testLines() {
+//    public void testLines() {
+//        Plot p = new Plot(
+//            title:'Simons great plot',
+//            xLabel: "Random Stuff You Don't Care About",
+//            yLabel: "Stuff You Do Care About",
+//            ) << \
+//            new Lines(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], name: 'Bananas') << \
+//            new Lines(x: [1,2,3,4,5,6,7], y: [1,5,9,18,4,2,1], name: 'Oranges')
+//        p.save('test.png')
+//    }
+//    
+   @Test
+    public void testPoints() {
         Plot p = new Plot(
             title:'Simons great plot',
             xLabel: "Random Stuff You Don't Care About",
             yLabel: "Stuff You Do Care About",
+            xBound: [-20,20],
+            yBound: [-5, 30]
             ) << \
-            new Lines(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], name: 'Bananas') << \
-            new Lines(x: [1,2,3,4,5,6,7], y: [1,5,9,18,4,2,1], name: 'Oranges')
-        p.save('test.png')
+            new Points(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], displayName: 'Bananas') << \
+            new Points(x: [1,2,3,4,5,6,7], y: [1,5,9,18,4,2,1], displayName: 'Oranges') << \
+            new Text(x: 0, y:0, text: 'Hello there world', color: Color.green)
+
+        p.save('testpoints.png')
+    }
+  
+//    @Test // fails outside beakerx :-(
+    public void testBeakerx() {
+        def p = new com.twosigma.beakerx.chart.xychart.Plot(
+            title:'Simons great plot',
+            xLabel: "Random Stuff You Don't Care About",
+            yLabel: "Stuff You Do Care About",
+            xBound: [-20,20],
+            yBound: [-5, 30]
+            ) << \
+            new com.twosigma.beakerx.chart.xychart.plotitem.Points(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], displayName: 'Bananas')
+
+        Plot gngsPlot = Plot.from(p)
+
+//        p.save('testpoints.png')
     }
     
 //    @Test
     public void testBars() {
         Plot p = new Plot(title:'Simons great plot') << \
-            new Bars(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], name: 'Bananas') << \
-            new Bars(x: [1,2,3,4,5,6,7], y: [1,5,9,18,4,2,1], name: 'Oranges')
+            new Bars(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], displayName: 'Bananas') << \
+            new Bars(x: [1,2,3,4,5,6,7], y: [1,5,9,18,4,2,1], displayName: 'Oranges')
         p.save('testbars.png')        
     }
     

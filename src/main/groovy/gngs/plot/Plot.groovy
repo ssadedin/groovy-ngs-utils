@@ -2,6 +2,7 @@ package gngs.plot
 
 import java.awt.Color
 import java.awt.Graphics2D
+import java.awt.Paint
 import java.awt.RenderingHints
 import java.awt.geom.Rectangle2D
 import java.awt.image.BufferedImage
@@ -52,6 +53,13 @@ class PlotItem {
     String displayName = null
 }
 
+class Text {
+    String text
+    double x
+    double y
+    Color color
+}
+
 class XYItem extends PlotItem {
     Iterable<Number> x
     Iterable<Number> y
@@ -70,7 +78,11 @@ class XYItem extends PlotItem {
     
     DataTable toTable() {
         DataTable dt = new DataTable(2, Double)
-        [x,y].transpose().each { Number xVal, Number yVal ->
+        [x,y].transpose().each { List vals ->
+            
+            Number xVal = vals[0]
+            Number yVal = vals[1]
+            
             if(xVal > maxX)
                 maxX = xVal
             if(yVal > maxY)
@@ -199,10 +211,17 @@ class Plot {
     
     List yBound = null
     
+    List texts = []
+    
     Palette palette = new DefaultPalette()
     
     Plot leftShift(PlotItem item) {
         this.items << item
+        return this
+    }
+    
+    Plot leftShift(Text item) {
+        this.texts << item
         return this
     }
     
@@ -273,8 +292,8 @@ class Plot {
         int i = 1
         List<DataTable> datas = xys.collect { XYItem item ->
             DataTable dt = item.toTable()
-            dt.name = item.displayName ?: ('Series ' + i)
-            dt.setName(item.displayName)
+            dt.setName(item.displayName ?: ('Series ' + i))
+//            dt.setName(item.displayName)
             ++i
             return dt
         }
@@ -301,6 +320,7 @@ class Plot {
                 PointRenderer pointRenderer = new DefaultPointRenderer2D()
                 pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
                 xyPlot.setPointRenderers(dt, pointRenderer)
+
             }
 //            xyPlot.setMapping(dt, xys[i].name, '')
             ++i
@@ -317,7 +337,8 @@ class Plot {
         xyPlot.setBackground(Color.white)
         xyPlot.getTitle().setText(title)        
         
-        xyPlot.getAxis(XYPlot.AXIS_X).with {
+        def xAxis = xyPlot.getAxis(XYPlot.AXIS_X)
+        xAxis.with {
             if(xBound) {
                 min = xBound[0]
                 max = xBound[1]
@@ -328,7 +349,8 @@ class Plot {
             }
         }
         
-        xyPlot.getAxis(XYPlot.AXIS_Y).with {
+        def yAxis = xyPlot.getAxis(XYPlot.AXIS_Y)
+        yAxis.with {
             
             if(yBound) {
                 min = yBound[0]
@@ -360,13 +382,38 @@ class Plot {
         if(!(xyPlot instanceof BarPlot) && xys.any { it.displayName })
             xyPlot.setLegendVisible(true)
   
+            
+        double width = 1024.0d
+        double height = 800.0d
+        
+        for(Text text in texts) {
+
+            Label label = new Label(text.text)
+           
+            int renderXOffset = xyPlot.getAxisRenderer(XYPlot.AXIS_X).worldToView(xAxis, 0.0d, false)
+            
+            int labelRenderX = insets.left + width * (text.x - xAxis.min) / (xAxis.max - xAxis.min) - renderXOffset
+
+            int labelRenderY = height - (insets.top + width * (text.y - yAxis.min) / (yAxis.max - yAxis.min))
+            
+            label.setPosition(labelRenderX,labelRenderY)
+            label.alignmentX=0.0d
+            label.background = Color.orange
+            
+            if(text.color) {
+                label.color = text.color
+            }
+
+            xyPlot.add(label)
+        }
+        
         BufferedImage bImage = new BufferedImage(1024, 800, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2d = (Graphics2D) bImage.getGraphics();
         DrawingContext context = new DrawingContext(g2d, Quality.QUALITY, Target.BITMAP);
         
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
-            PlotUtils.write(xyPlot, w, 0,0, 1024, 800);
+            PlotUtils.write(xyPlot, w, 0,0, width, height);
         } 
     }
     
