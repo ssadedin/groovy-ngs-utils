@@ -13,11 +13,13 @@ class FASTATest {
          println r
          assert r.repetitions == 4
          assert r.motif == 'AT'.bytes
+         assert r.position == 0
          
          r = FASTA.repeatAt('ATCTATAT'.bytes, 2)
          println r
          assert r.repetitions == 2
          assert r.motif == 'AT'.bytes
+         assert r.position == 4
          
          r = FASTA.repeatAt('ATCATCTAT'.bytes, 3)
          println r

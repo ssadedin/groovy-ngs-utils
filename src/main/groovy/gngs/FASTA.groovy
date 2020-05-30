@@ -32,6 +32,8 @@ class RepeatMotif {
     
     byte [] motif
     
+    int position 
+    
     int repetitions
 }
 
@@ -350,6 +352,7 @@ class FASTA {
                         if(observedRepetitions > best.repetitions) {
                             best.motif = last
                             best.repetitions = observedRepetitions
+                            best.position = basePos - observedRepetitions*motifLength
                             last = new byte[motifLength]
                         }
                         else {
@@ -378,6 +381,7 @@ class FASTA {
         if(observedRepetitions > best.repetitions) {
             best.motif = last
             best.repetitions = observedRepetitions
+            best.position = totalLength - motifLength*observedRepetitions
         }
         return best.repetitions>1 ? best : null
     }
