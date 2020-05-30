@@ -591,7 +591,7 @@ class Variant implements IRegion {
     final static Set numericListFields = ["AD"] as Set
     
     // Causes strange typecast error (Char => CharSequence at marked line below
-//    @CompileStatic
+    @CompileStatic
     Map<String,Object> parseGenoTypeFields(String gt) {
         [genoTypeFields, gt.tokenize(':')].transpose().collectEntries { Object fieldObj ->
               List field = (List)fieldObj
