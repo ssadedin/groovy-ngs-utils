@@ -174,6 +174,29 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
 //        this.batcher = new BatchedAcknowledgeableMessage(this.printer.pendingMessageCount, 20)
     }
     
+    void writeHeaders() {
+
+        line.setLength(0)
+        
+        List headers = ["chr", "pos"]
+        
+        if(this.outputTarget)
+            headers << "region"
+
+        if(outputBEDIds) 
+            headers << "id"
+
+        if(perBaseMean) 
+            headers << "mean"
+
+        if(coeffV) 
+            headers << "coeffv"
+
+        headers.addAll(samples)
+        w.write(headers.join('\t'))
+        w.write('\n')
+    }
+    
     void setRelative(boolean value) {
         this.relative = value
         if(this.sampleMeans != null && !this.sampleMeans.isEmpty())

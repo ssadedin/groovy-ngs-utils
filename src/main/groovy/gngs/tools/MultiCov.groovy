@@ -96,6 +96,7 @@ class MultiCov extends ToolBase {
             cvj 'Coefficient of variation output file: write coeffv in javascript loadable form to this file', args:1, required:false 
             gcref 'Reference to compute GC content against', args:1, required: false
             '2pass' 'use two phase analysis to get accurate estimates of means'
+            headers 'include headers in output file', longOpt: 'headers'
             o 'Output file to write results to', longOpt: 'output', args:1
             gcprofile 'Write GC profile for each sample to this file in JSON format (requires gcprof)', args:1, required: false 
             covo 'Write statistics about coverage to the given file in js format', args:1
@@ -193,6 +194,10 @@ class MultiCov extends ToolBase {
                 if(!opts.bed) 
                     throw new IllegalArgumentException("Option -bedid was supplied but this option requires -bed")
                 printer.outputBEDIds = true
+            }
+            
+            if(opts.headers) {
+                printer.writeHeaders()
             }
             
             run(printer)
