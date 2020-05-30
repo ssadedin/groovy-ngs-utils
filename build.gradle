@@ -62,12 +62,15 @@ dependencies {
      compile group: 'com.github.scribejava', name: 'scribejava-core', version: '5.6.0'
      compile group: 'org.yaml', name: 'snakeyaml', version: '1.23'
      compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
+     compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
+
+    compile group:'org.slf4j', name:'slf4j-jdk14', version: '1.7.5'
      
      // compile group: 'com.github.samtools', name: 'htsjdk', version: '1.141'
      // compile 'org.utgenome.thirdparty:picard:1.102.0'
      compile 'com.xlson.groovycsv:groovycsv:1.0'
      // compile group: 'de.erichseifert.gral', name: 'gral-core', version: '0.11'
-     compile 'log4j:log4j:1.2.17'
+     //compile 'log4j:log4j:1.2.17'
      compile 'org.xerial:sqlite-jdbc:3.8.6'
      compile files(fileTree(dir:'lib', includes:['*.jar']))
      compile project('htsjdk')
@@ -76,14 +79,27 @@ dependencies {
 
 // Bundle all dependencies into output library
 jar {
-    from configurations.compile.grep { !it.name.startsWith("cramtools") }.collect { 
+    from configurations.compile.grep { 
+        !it.name.startsWith("cramtools") && 
+        !it.name.contains('log4j') &&
+        !it.name.startsWith('groovy-') &&
+        !it.name.contains('-linux-armhf-') &&
+        !it.name.contains('win-i686') &&
+        !it.name.contains('linux-i686')
+    }.collect { 
+
         // println "Including $it"; 
+
+
         (it.isDirectory() || it.name.endsWith('.pom')) ? it : zipTree(it) 
     }
+
+    /*
     from configurations.compile.grep { it.name.startsWith("cramtools") }.collect { 
         // println "Including $it"; 
         it.isDirectory() ? it : zipTree(it) 
     }
+    */
 
     exclude { details ->
 
@@ -96,10 +112,13 @@ jar {
         if(details.relativePath.pathString.contains("groovyjarjar"))
             return true
 
-        if(details.relativePath.pathString.contains("Log4jLoggerFactory"))
+        if(details.relativePath.pathString ==~ '.*/Log4J.*.class$')
             return true
 
-        if(details.relativePath.pathString.contains("slf4j"))
+        if(details.relativePath.pathString.contains("log4j"))
+            return true
+
+        if(details.relativePath.pathString.contains("commons/logging"))
             return true
 
         if(details.name.endsWith('.pom'))
