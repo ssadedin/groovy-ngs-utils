@@ -617,7 +617,10 @@ class Variant implements IRegion {
         if(value.isInteger())
             return value.toInteger()
         
-        return value.toFloat()
+        if(value.isFloat())
+            return value.toFloat()
+
+        return defaultValue
     }
     
     /**
