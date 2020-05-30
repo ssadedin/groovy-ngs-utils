@@ -35,6 +35,20 @@ import org.biojava.nbio.core.sequence.location.template.Location;
 /**
  * Utility for helping to perform alignments with BioJava
  * 
+ * Simple usage of the form:
+ * <pre>
+ * Align.global('AATTAATTAA','AATTCATAA').profile
+ * AATTAATTAA
+ * AATTCAT-AA
+ * </pre>
+ * Or for a more readable base by base comparison, use {@link #profile}:
+ * <pre>
+ * Align.profile('AATTAATTAA','AATTCATAA')
+ * AATTAATTAA
+ *     |     
+ * AATTCAT-AA
+ * </pre>
+ * 
  * @author simon.sadedin@mcri.edu.au
  */
 class Align {
@@ -49,10 +63,26 @@ class Align {
         substitutionMatrix : SubstitutionMatrixHelper.getNuc4_4()
     ]
         
+    /**
+     * Returns a BioJava aligner with profile computed.
+     * 
+     * @param queryString
+     * @param referenceString
+     * 
+     * @return  aligner with profile computed, use Aligner.profile to access result
+     */
     static Aligner global(String queryString, String referenceString) {
         global([:], queryString, referenceString)
     }
     
+    /**
+     * Returns a BioJava aligner with profile computed.
+     * 
+     * @param queryString
+     * @param referenceString
+     * 
+     * @return  aligner with profile computed, use Aligner.profile to access result
+     */
     static Aligner global(Map params, String queryString, String referenceString) {
         
         // Override defaults with any parameters passed in
@@ -64,12 +94,43 @@ class Align {
         GapPenalty gapPenalty = new SimpleGapPenalty((short)5,(short)1);
         
         NeedlemanWunsch<DNASequence, NucleotideCompound> aligner = new NeedlemanWunsch<DNASequence, NucleotideCompound>(query, reference, gapPenalty, actualParams.substitutionMatrix);
-//        System.out.println("Score is " +   aligner.getScore());
         
         Profile<DNASequence, NucleotideCompound> profile = aligner.getProfile();
-//        System.out.println("Alignment = \n" + profile.toString());
         
         return aligner
+    }
+    
+    /**
+     * Returns a formatted string representing the comparison between the two sequences
+     * with '-' representing gaps and '|' joining mismatches.
+     * 
+     * @param queryString
+     * @param referenceString
+     * @return
+     */
+    static String profile(String queryString, String referenceString) {
+        
+        Aligner aligner = Align.global(queryString, referenceString)
+        
+        
+        return aligner.profile
+                      .alignedSequences
+                      *.asType(List)
+                      .transpose()
+                      .collect { base1, base2 ->
+                         if(base1 == base2) {
+                             [base1,' ',base2]
+                         }
+                         else
+                         if(base1.toString() == '-' || base2.toString() == '-') {
+                             [base1,' ',base2]
+                         }
+                         else {
+                             [base1, '|', base2]
+                         }
+                      }.transpose()
+                      *.join('')
+                      .join('\n')
     }
 
 }
