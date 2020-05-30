@@ -292,4 +292,26 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
         assert !excVcf.find { it.pos == 325075 }
         assert excVcf.find { it.pos == 762485 }
     }
+    
+    /*
+    @Test
+    void 'test filter header'() {
+        VCF.filter('tests/data/test.23.vcf', updateHeader: { return it }) { 
+            // noop
+        }
+    }
+    
+    @Test
+    void 'test trioDenovoRate calculation'() {
+        VCF trio = VCF.parse('test.trio.chr1.vcf')
+        
+        println trio.trioDenovoRate()
+    }
+    */
+
+    
+    @Test
+    void 'parse VCF with LowDepth annotations'() {
+        VCF vcf = VCF.parse('test.lowdepth.vcf')
+    }
  }
