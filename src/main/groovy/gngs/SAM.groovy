@@ -23,7 +23,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import gngs.coverage.CoverageCalculatorActor
-import groovy.stream.Stream;
 import groovy.transform.CompileStatic;
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FirstParam
@@ -992,53 +991,7 @@ class SAM {
         }
         return regions
     }
-    
-    def stream(Closure c) {
-        SAMRecordIterator i = null
-        SamReader r = newReader()
-        i = r.iterator()
-        use(SAMRecordCategory) {
-            Stream s = Stream.from(i)
-            c.delegate = s;
-            try {
-                c(s)
-            }
-            finally {
-                r.close()
-            }
-        }
-        
-    }
-    
-    Stream getRegions() {
-        getRegions(null, 0, 0)
-    }
-    
-    Stream getRegions(String chr, int start, int end) {
-
-        ProgressCounter progress = new ProgressCounter()
-        SAMRecordIterator i = null
-        if(chr == null)
-            i = samFileReader.iterator()
-        else {
-            i = samFileReader.query(chr, start, end, false)
-        }
-        
-        Stream.from(i).filter { SAMRecord r ->
-            if(!i.hasNext())
-                i.close()
-            progress.count()
-            r.alignmentStart <= 0 || r.alignmentEnd <= 0
-        }.map { SAMRecord r ->
-            Region region = new Region(r.getReferenceName(),
-                            Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
-
-            region.range = new GRange((int)region.range.from,(int)region.range.to,region)
-            region.setProperty('read',r)
-            region
-        }
-    }
-
+   
     /**
      * Return read pairs from this SAM file that overlap the specified region
      * as a Regions object - that is, as a set of genomic intervals. Each 
