@@ -130,32 +130,29 @@ abstract class ToolBase {
         Class originalDelegate = specBuilder.delegate
         
         def err = System.err
-        
-        err.println("=" * 80)
-        err.println "\n" + originalDelegate.name.replaceAll('^.*\\.','') + "\n"
-        err.println("=" * 80)
-        err.println ""
-        
         specBuilder.delegate = cli
         specBuilder()
         
         if('-h' in args || '--help' in args) {
+            printHeader(originalDelegate, null)
             printHelpAndExit(cli, err)
         }
         
         OptionAccessor rawOpts = cli.parse(args) 
         if(!rawOpts) {
+            printHeader(originalDelegate, null)
             err.println ""
             err.println footer
             System.exit(1)
         }
         CliOptions opts = new CliOptions(opts:rawOpts)
-        
         setProxy()
             
         ToolBase tool = test.get()?: originalDelegate.newInstance()
         tool.parser = cli
         tool.opts = opts
+        
+        printHeader(originalDelegate, tool)
         
         if(test.get()) 
             return
@@ -169,6 +166,23 @@ abstract class ToolBase {
             err.println "\n" + footer 
             System.exit(1)
         }
+    }
+    
+    private static printHeader(Class originalDelegate, ToolBase tool) {
+        def err = System.err 
+        err.println("=" * 80)
+        err.println("")
+        if(tool)
+            tool.printTitle()
+        else
+            System.err.println originalDelegate.name.replaceAll('^.*\\.','') 
+        err.println("")
+        err.println("=" * 80)
+        err.println ""
+    }
+    
+    void printTitle() {
+        System.err.println this.class.name.replaceAll('^.*\\.','') 
     }
 
     private static printHelpAndExit(Cli cli, PrintStream err) {
