@@ -22,8 +22,18 @@ package gngs
 
 import groovy.transform.CompileStatic;
 import groovy.transform.Memoized
+import groovy.transform.ToString
 import htsjdk.samtools.reference.IndexedFastaSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequence;
+
+@ToString(includeNames=true)
+@CompileStatic
+class RepeatMotif {
+    
+    byte [] motif
+    
+    int repetitions
+}
 
 /**
  * Simple utilities for manipulating FASTA files.
@@ -310,4 +320,66 @@ class FASTA {
     static String bracket(String seq, int start, int end) {
         "${seq.substring(0,start)}[${seq.substring(start,end)}]${seq.substring(end)}"
     }
+    
+    /**
+     * Checks if there is a repeat of given motif length in the given bases.
+     * 
+     * @param baseBytes     bytes to check
+     * @param motifLength   size of motif to check for
+     * @param start         offset within baseBytes to start searching (default:0)
+     * 
+     * @return  null if no repeat observed, RepeatMotif object if found
+     */
+    @CompileStatic
+    static RepeatMotif repeatAt(final byte [] baseBytes, final int motifLength, final int start=0) {
+        
+        byte [] last = null
+        int observedRepetitions = 0
+        
+        final int totalLength = baseBytes.size()
+        
+        RepeatMotif best = new RepeatMotif(motif: null as byte[], repetitions: 0)
+        
+        outer: for(int i=start ; i<totalLength; i+= motifLength) {
+            int basePos = i;
+
+            if(last != null) {
+                for(int i_kmer=0; i_kmer<motifLength && basePos<totalLength; ++i_kmer) {
+
+                    if(baseBytes[basePos] != last[i_kmer]) {
+                        if(observedRepetitions > best.repetitions) {
+                            best.motif = last
+                            best.repetitions = observedRepetitions
+                            last = new byte[motifLength]
+                        }
+                        else {
+                            if(i+motifLength<totalLength) {
+                                System.arraycopy(baseBytes, i, last, 0, motifLength)
+                                observedRepetitions = 1
+                            }
+                            else {
+                                observedRepetitions = 0
+                                last = null
+                            }
+                        }
+                        continue outer
+                    }
+                    ++basePos
+                }
+            }
+            else {
+                last = new byte[motifLength]
+                System.arraycopy(baseBytes, i, last, 0, motifLength)
+            }
+            
+            // kmer matches
+            ++observedRepetitions
+        }
+        if(observedRepetitions > best.repetitions) {
+            best.motif = last
+            best.repetitions = observedRepetitions
+        }
+        return best.repetitions>1 ? best : null
+    }
+
 }

@@ -5,6 +5,44 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 class FASTATest {
+    
+    
+    @Test
+    void 'test repeat detection'() {
+         def r = FASTA.repeatAt('ATATATAT'.bytes, 2)
+         println r
+         assert r.repetitions == 4
+         assert r.motif == 'AT'.bytes
+         
+         r = FASTA.repeatAt('ATCTATAT'.bytes, 2)
+         println r
+         assert r.repetitions == 2
+         assert r.motif == 'AT'.bytes
+         
+         r = FASTA.repeatAt('ATCATCTAT'.bytes, 3)
+         println r
+         assert r.repetitions == 2
+         assert r.motif == 'ATC'.bytes
+         
+         // When there is no repeat, should return null
+         r = FASTA.repeatAt('ATCACCGAT'.bytes, 3)
+         assert r == null
+         
+         r = FASTA.repeatAt('CATATATAT'.bytes, 2, 1)
+         println r
+         assert r.repetitions == 4
+         assert r.motif == 'AT'.bytes
+         
+         r = FASTA.repeatAt('AAAAA'.bytes, 1)
+         println r
+         assert r.repetitions == 5
+         assert r.motif == 'A'.bytes
+         
+         r = FASTA.repeatAt('GTGCTGTAGCT'.bytes, 2)
+         println r
+         assert r == null
+
+     }
 
 ////    @Test
 //    public void testHeaders() {
