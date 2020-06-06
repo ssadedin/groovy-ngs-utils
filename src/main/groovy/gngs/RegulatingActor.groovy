@@ -123,6 +123,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
         terminate()
     }
     
+    @CompileStatic
     @Override
     public void run() {
         react(new MessagingRunnable<Object>(this) {
