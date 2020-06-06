@@ -20,6 +20,7 @@ public class Toolbase9 {
             System.err.println("A problem was experienced executing the tool "+ args[0] + "\n\nThis may occur if you specified a tool that doesn't exist, or possibly if you are using an unusual JVM\n\n");
             e.printStackTrace();
             System.err.println("ERROR: " + e.getMessage());
+            System.exit(1);
         }
     }
     
