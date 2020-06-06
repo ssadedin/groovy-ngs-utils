@@ -28,7 +28,7 @@ class Shuffler extends RegulatingActor<Paired> implements Runnable {
     
     final int bufferSize
     
-    int emitThreshold
+    static int emitThreshold
     
     static NavigableMap buffer  = new ConcurrentSkipListMap<Integer, Paired>()
     
