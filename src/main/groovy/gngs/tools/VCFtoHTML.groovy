@@ -832,6 +832,11 @@ class VCFtoHTML {
                 ++stats.excludeByTarget
                 return
             }
+            
+            if(excludeRegions && (v in excludeRegions)) {
+                ++stats.excludeByTarget
+                return
+            }
         }
                     
         List baseInfo = baseColumns.collect { baseColumns[it.key](v) }
