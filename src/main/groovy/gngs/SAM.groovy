@@ -1472,9 +1472,6 @@ class SAM {
     @CompileStatic
     static void index(File bamFile) {
         
-        println "New index code"
-        
-        
         SamReaderFactory samReaderFactory = 
             SamReaderFactory.makeDefault()
                             .validationStringency(ValidationStringency.SILENT)
