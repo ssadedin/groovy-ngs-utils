@@ -29,6 +29,7 @@ import groovy.transform.stc.FirstParam
 import groovy.transform.stc.SimpleType
 import htsjdk.samtools.BAMIndexer
 import htsjdk.samtools.BAMRecord;
+import htsjdk.samtools.QueryInterval
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory
@@ -38,6 +39,7 @@ import htsjdk.samtools.SAMFormatException;
 import htsjdk.samtools.SAMReadGroupRecord;
 import htsjdk.samtools.SAMRecord;
 import htsjdk.samtools.SAMRecordIterator;
+import htsjdk.samtools.SAMSequenceDictionary
 import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.SamInputResource
 import htsjdk.samtools.ValidationStringency;
@@ -1453,6 +1455,14 @@ class SAM {
         return 0;
     }
     */
+    
+    @CompileStatic
+    List<QueryInterval> toQueryIntervals(final Regions regions) {
+        final SAMSequenceDictionary dict = samFileReader.fileHeader.sequenceDictionary
+        regions.collect { Region region ->
+            new QueryInterval(dict.getSequenceIndex(region.chr), region.from, region.to)
+        }
+    }
     
     /**
      * Create an index for the given BAM file

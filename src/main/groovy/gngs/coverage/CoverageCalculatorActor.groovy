@@ -27,8 +27,10 @@ import groovy.transform.ToString
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
 import groovyx.gpars.actor.DefaultActor
+import htsjdk.samtools.QueryInterval
 import htsjdk.samtools.SAMRecord
 import htsjdk.samtools.SAMRecordIterator
+import htsjdk.samtools.SamReader
 import htsjdk.tribble.readers.TabixReader
 
 /**
@@ -327,15 +329,25 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         for(String chr in chrs) {
             int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
             int end = scanRegions.index[chr].ranges.lastKey() + 1000
+            
+            Regions chrScanRegions = scanRegions.grep { Region r -> r.chr == chr } as Regions
+            List<QueryInterval> intervals = bam.toQueryIntervals(chrScanRegions)
+
             log.info "Scan $chr from $start to $end"
-            bam.withIterator(new Region(chr, start, end))  { SAMRecordIterator iter ->
-                while(iter.hasNext()) {
-                    SAMRecord r = iter.next()
-                    if(r.getMappingQuality()>=minMQ)
-                        calculator.send(new AcknowledgeableMessage(new ReadRange(r, countFragments), downstreamCount))
-                    else
-                        ++failMQ
-                } 
+            bam.withReader { SamReader reader ->
+                SAMRecordIterator iter = reader.query(intervals as QueryInterval[], false)
+                try {
+                    while(iter.hasNext()) {
+                        SAMRecord r = iter.next()
+                        if(r.getMappingQuality()>=minMQ)
+                            calculator.send(new AcknowledgeableMessage(new ReadRange(r, countFragments), downstreamCount))
+                        else
+                            ++failMQ
+                    } 
+                }
+                finally {
+                    iter.close()
+                }
             }
         }
         log.info "Sending stop message to CRA ${bam.samples[0]} ..."
