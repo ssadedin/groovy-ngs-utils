@@ -13,6 +13,7 @@ import javax.imageio.stream.ImageOutputStream
 
 import com.twosigma.beakerx.chart.xychart.plotitem.XYGraphics
 
+import de.erichseifert.gral.data.Column
 import de.erichseifert.gral.data.DataSource
 import de.erichseifert.gral.data.DataTable
 import de.erichseifert.gral.data.EnumeratedData
@@ -27,6 +28,7 @@ import de.erichseifert.gral.graphics.Orientation
 import de.erichseifert.gral.io.plots.DrawableWriter
 import de.erichseifert.gral.io.plots.DrawableWriterFactory
 import de.erichseifert.gral.plots.BarPlot
+import de.erichseifert.gral.plots.BarPlot.BarRenderer
 import de.erichseifert.gral.plots.XYPlot
 import de.erichseifert.gral.plots.axes.AxisRenderer
 import de.erichseifert.gral.plots.lines.LineRenderer
@@ -45,7 +47,7 @@ class Palette {
 
 class DefaultPalette extends Palette {
     DefaultPalette() {
-       colors = [Color.black, Color.red, Color.blue, Color.green, Color.orange, new Color(100,0,100)] 
+       colors = [new Color(20,30,100), Color.red, Color.blue, Color.green, Color.orange, new Color(100,0,100)] 
     }
 }
 
@@ -61,7 +63,7 @@ class Text {
 }
 
 class XYItem extends PlotItem {
-    Iterable<Number> x
+    Iterable<Object> x
     Iterable<Number> y
     
     double maxX = Double.MIN_VALUE
@@ -77,19 +79,23 @@ class XYItem extends PlotItem {
     }
     
     DataTable toTable() {
-        DataTable dt = new DataTable(2, Double)
-        [x,y].transpose().each { List vals ->
-            
-            Number xVal = vals[0]
-            Number yVal = vals[1]
-            
-            if(xVal > maxX)
-                maxX = xVal
-            if(yVal > maxY)
-                maxY = yVal
-            dt.add(xVal.toDouble(), yVal.toDouble())
-        }
-        return dt
+        List xList = x as List
+        List yList = y as List
+
+        Column xColumn = new Column(Double, xList)
+        Column yColumn = new Column(Double, yList)
+        
+        List<Column> cols = [xColumn, yColumn]
+        
+        maxX = x.max()
+        maxY = y.max()
+
+        DataTable dt =  createTable(cols)
+        return dt ; 
+    }
+    
+    DataTable createTable(List<Column> columns) {
+        return new DataTable(*columns)
     }
 }
 
@@ -104,7 +110,18 @@ class Points extends XYItem {
 
 
 class Bars extends XYItem {
+    Double width
+    List labels
     
+    DataTable createTable(List<Column> columns) {
+        if(labels) {
+            columns << new Column(String, labels*.toString())
+        }
+        if(width == null && x.size()>1) {
+            width = (0.84) * Math.abs(x[1] - x[0])
+        }
+        return super.createTable(columns)
+    }
 }
 
 class Histogram {
@@ -298,11 +315,13 @@ class Plot {
             return dt
         }
         
+        DataTable [] dtArray = datas as DataTable[]
+        
         XYPlot xyPlot = 
             xys.any { it instanceof Bars } ? 
-                new BarPlot(datas as DataTable[])
+                new BarPlot(dtArray)
             :
-                new XYPlot(datas as DataTable[])
+                new XYPlot(dtArray)
                 
         Insets2D.Double insets = new Insets2D.Double(40.0, 80.0, 80.0, 80.0)
         xyPlot.setInsets(insets);
@@ -315,6 +334,18 @@ class Plot {
                 LineRenderer lines = new SmoothLineRenderer2D();
                 lines.setColor(palette.colors[ i % palette.colors.size()])
                 xyPlot.setLineRenderers(dt, lines)
+            }
+            else
+            if(xy instanceof Bars) {
+                List<BarRenderer> bars = xyPlot.getPointRenderers(dtArray[0])
+                bars*.setColor(palette.colors[ i % palette.colors.size()])
+                if(xy.width != null)
+                    xyPlot.setBarWidth(xy.width)
+                    
+                if(xy.labels != null) {
+                    bars*.setValueColumn(2)
+                    bars*.setValueVisible(true)
+                }
             }
             else {
                 PointRenderer pointRenderer = new DefaultPointRenderer2D()

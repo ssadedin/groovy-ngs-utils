@@ -73,6 +73,17 @@ class PlotTest {
         
     }
     
+    
+    @Test
+    void testBarPlot() {
+        Plot p = new Plot(title:'This bar serves great chips')
+        p << new Bars(
+            x:(10..70).step(10),
+            y:[2,7,1,5,4,6,3], 
+            labels:['cat','juice','frog','bog','dog','house','bat']
+            )
+        p.save('bars.png')
+    }
 
     @Test
     void testHistogram() {
