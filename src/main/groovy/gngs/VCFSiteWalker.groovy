@@ -102,7 +102,7 @@ class VCFSiteWalker {
     public VCFSiteWalker(List<String> vcfs) {
         super();
         this.vcfs = vcfs.collect { 
-            new VCFWalkPosition(iter: new VCFFileReader(new File(it)).iterator())
+            new VCFWalkPosition(iter: new VCFFileReader(new File(it), false).iterator())
         }
     }    
     
