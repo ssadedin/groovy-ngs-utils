@@ -121,7 +121,7 @@ class QualMetricBins extends MetricBins {
 class VCFtoHTML {
     private Map<String,String> sampleMap
     private String outputFileName
-    private String rocSample
+    private List<String> rocSamples
     private boolean hasSNPEFF
     private boolean hasVEP
     private Map consColumns
@@ -214,6 +214,8 @@ class VCFtoHTML {
     float maxMaf=0.05
     
     List<ROCPoint> rocPoints = []
+    
+    Map<String, List<ROCPoint>> sampleROCPoints 
     
     /**
      * The number of variants included from the reference sample 
@@ -371,9 +373,8 @@ class VCFtoHTML {
         if(opts.roc)
             referenceSample = opts.roc
         
-        // Sample to perform ROC on is the first that was not specifed
-        // as the reference sample
-        rocSample = exportSamples.find { it != referenceSample }
+        // Samples to perform ROC on are those not specified as the reference sample
+        rocSamples = exportSamples.grep { it != referenceSample }
         
         List<VCF> vcfs = loadVCFs()
            
@@ -421,11 +422,17 @@ class VCFtoHTML {
             }
             
             exportSamples = exportSamples.collect { id -> sampleMap[id] }
-            rocSample = exportSamples.find { it != referenceSample }
+            rocSamples = exportSamples.grep { it != referenceSample }
         }
         else {
             sampleMap = vcfs*.samples.flatten().collectEntries { [it,it] }
         }
+        
+        if(opts.roc) {
+            // Initialise with a list for each sample
+            sampleROCPoints = rocSamples.collectEntries { [it, []] }
+        }
+        
         
         log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples?.join(",") }.join(" ")
         log.info "Export samples are: " + exportSamples
@@ -571,50 +578,61 @@ class VCFtoHTML {
         
         log.info "ROC table is based on sensitivity against ${rocTotalVariants} reference variants"
         
-        List<Map> fullROC = calculateROC()
-        
-        List<Map> roc = fullROC.grep { it.sensitivity > minROCSensitivity }
-        
-        File rocFile = new File(outputFileName.replaceAll('.html$','.roc.md'))
-        rocFile.withWriter { w ->
+        Map<String,List<Map>> rocs = [:]
+
+        for(rocSample in rocSamples) {
             
-            String hd = "ROC Table for ${rocSample} vs ${referenceSample}"
-            w.println hd
-            w.println ("=" * hd.size())
-            w.println ""
+            List<Map> fullROC = calculateROC(rocSample)
             
-            Utils.table(out:w,
-                [bins.name, 'Variants', 'Sensitivity', 'Precision'],
-                [roc*.bin, roc*.total, roc*.sensitivity.collect {Utils.perc(it)}, roc*.precision.collect{Utils.perc(it)}].transpose()
-            )
-        }
-        
-        if(opts.rocCsv) {
-            saveROCCSV(bins, roc) 
+            rocs[rocSample] = fullROC
+            
+            List<Map> roc = fullROC.grep { it.sensitivity > minROCSensitivity }
+            
+            File rocFile = new File(outputFileName.replaceAll('.html$', rocSample+'.roc.md'))
+            rocFile.withWriter { w ->
+                
+                String hd = "ROC Table for ${rocSample} vs ${referenceSample}"
+                w.println hd
+                w.println ("=" * hd.size())
+                w.println ""
+                
+                Utils.table(out:w,
+                    [bins.name, 'Variants', 'Sensitivity', 'Precision'],
+                    [roc*.bin, roc*.total, roc*.sensitivity.collect {Utils.perc(it)}, roc*.precision.collect{Utils.perc(it)}].transpose()
+                )
+            }
+            
+            if(opts.rocCsv) {
+                saveROCCSV(bins, roc) 
+            }
         }
         
         Plot rocPlot = new Plot(
-            title: 'ROC Curve for ' + rocSample + ' (Ranked by ' + bins.name + ')', xLabel: 'False Positive Rate (1 - Precision)', 
-            yLabel: 'Sensitivity') << \
-            new Lines(x: roc*.precision.collect { (1 - it)*100 }, y: roc*.sensitivity*.multiply(100), displayName: rocSample) 
+            title: 'ROC Curve for ' + rocSamples.join(',') + ' (Ranked by ' + bins.name + ')', xLabel: 'False Positive Rate (1 - Precision)', 
+            yLabel: 'Sensitivity') 
+        
+        
+        rocs.each { rocSample, roc ->
+            rocPlot << new Lines(x: roc*.precision.collect { (1 - it)*100 }, y: roc*.sensitivity*.multiply(100), displayName: rocSample) 
+        }
             
-        String rocImage = rocFile.path.replaceAll('\\.md', '\\.png')
+        String rocImage = outputFileName.replaceAll('.html$', '.roc.png')
         rocPlot.save(rocImage)
         log.info "ROC image saved as ${rocImage}"
         
-        String rocHTML = rocFile.path.replaceAll('\\.md', '\\.html')
+        String rocHTML = rocImage.replaceAll('\\.png', '\\.html')
         
-        new File(rocHTML).text = getROCHTML(bins, roc)
+        new File(rocHTML).text = getROCHTML(bins, rocs)
         
         // Save roc HTML
         log.info "ROC html saved as ${rocHTML}"
         
     }
     
-    String getROCHTML(MetricBins bins, List<Map> points) {
+    String getROCHTML(MetricBins bins, Map<String, List<Map>> points) {
         
         String titleExtra = opts.title ? "($opts.title)" :  ""
-        String rocJson = JsonOutput.prettyPrint(JsonOutput.toJson(points))
+        String rocJson = JsonOutput.prettyPrint(JsonOutput.toJson(points.collect { [ name: it.key, roc: it.value ]}))
         return """
             <html>
             <head>
@@ -660,15 +678,17 @@ class VCFtoHTML {
                       let maxMetricValue = document.getElementById('maxMetric').value
                       if(maxMetricValue)
                           maxMetric = parseFloat(maxMetricValue);
-            
-                      var myData = [{
-                        key: 'ROC',
-                        values: rocData.filter(point => point.bin < maxMetric)
-                                       .map(point => { return { x: 1 - point.precision, y: point.sensitivity, metric: point.bin } })
-                      }]
 
+                      var myData  = rocData.map(rocObj => { return {
+                         key: rocObj.name,
+                         values: rocObj.roc.filter(point => point.bin < maxMetric)
+                                       .map(point => { return { x: 1 - point.precision, y: point.sensitivity, metric: point.bin } })
+                      }})
+            
                       chart.forceX(0)
-                      chart.forceY(0)
+
+                      if(!maxMetricValue)
+                          chart.forceY(0)
             
                       chart.tooltipContent((key, x, y, e, graph) => { 
                          let metric = e.point.metric
@@ -702,13 +722,18 @@ class VCFtoHTML {
     
     int minBinSize = 10
     
-    List<Map> calculateROC() {
+    /**
+     * Compute an ROC style curve for the sample 
+     * 
+     * @param sample
+     * @return
+     */
+    List<Map> calculateROC(String sample) {
         
+        List<ROCPoint> rocPoints = sampleROCPoints[sample]
+       
         rocPoints.each { 
-            // For now, we are just using total depth as the metric
-            // but of course, others should be added!
-//            Integer dp = it.variant.getTotalDepth(rocSample) 
-            it.metricBin = bins.getBinIndex(it.variant, rocSample)
+            it.metricBin = bins.getBinIndex(it.variant, sample)
         }
         
         // Sort from highest value of metric to lowest
@@ -952,13 +977,16 @@ class VCFtoHTML {
             return 
         
         int referenceDosage = v.sampleDosage(referenceSample)
-        int rocDosage = v.sampleDosage(rocSample)
+        
+        for(sample in rocSamples) {
+            int rocDosage = v.sampleDosage(sample)
+            if(rocDosage>0)
+                sampleROCPoints[sample] << new ROCPoint(variant: v, truePositive:rocDosage == referenceDosage)
+        }
+        
         if(referenceDosage > 0) {
             ++rocTotalVariants
         }
-        
-        if(rocDosage>0)
-            rocPoints << new ROCPoint(variant: v, truePositive:rocDosage == referenceDosage)
     }
 
     private printHeadContent(BufferedWriter w) {
@@ -1023,6 +1051,8 @@ class VCFtoHTML {
         List<String> preFilters = []
         if(opts['prefilters']) {
             preFilters = (List<String>)opts['prefilters']
+            
+            log.info "Will apply pre-filters: " + preFilters.join('; ')
 
             parsedPreFilters = (List<Closure>)preFilters.collect {
                 new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
