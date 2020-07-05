@@ -482,15 +482,26 @@ class Utils {
     
     @CompileStatic
     static Writer outputWriter(String fileName) {
-        int bufferSize = 1024*1024
+        new PrintWriter(outputStream(fileName))
+    } 
+    
+    @CompileStatic
+    static OutputStream outputStream(String fileName, int bufferSize=1048576) {
+        
+        if(fileName == '-' || fileName == '/dev/stdout')
+            return System.out
+        
+
+
         if(fileName.endsWith(".bgz"))
-          new PrintWriter(new BufferedOutputStream(new BlockCompressedOutputStream(fileName), bufferSize).newWriter())
+            new BufferedOutputStream(new BlockCompressedOutputStream(fileName), bufferSize)
         else
         if(fileName.endsWith(".gz"))
-          new PrintWriter(new GZIPOutputStream(new FileOutputStream(fileName), bufferSize).newWriter())
+            new GZIPOutputStream(new FileOutputStream(fileName), bufferSize)
         else
-          new PrintWriter(new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize).newWriter())
+            new BufferedOutputStream(new File(fileName).newOutputStream(), bufferSize)
     } 
+ 
     
     /**
      * Close all the streams associated with the given process
