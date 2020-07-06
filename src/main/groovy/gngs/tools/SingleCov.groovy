@@ -108,7 +108,7 @@ class SingleCov extends ToolBase {
             out.close()
         }
         
-        println "Coverage statistics: $covStats"
+        log.info "Coverage statistics: $covStats"
         
         if(opts.samplesummary) {
             writeSampleSummary(opts.samplesummary, covStats)
@@ -161,9 +161,9 @@ class SingleCov extends ToolBase {
     
             final int start = intervals[i][0]
             while(pos < start) {
+                ot.removeNonOverlaps(pos)
                 covs[pos] = (short)ot.size()
                 ++pos
-                ot.removeNonOverlaps(pos)
             }
     
             ot.add(intervals[i])
@@ -204,9 +204,17 @@ class SingleCov extends ToolBase {
                 int alignmentStart = r.alignmentStart
 
                 // Don't double count if reads overlap
-                if(r.getFirstOfPairFlag() && mateStart >= alignmentStart && mateStart <= alignmentEnd) {
-                    alignmentEnd = mateStart
+                if(r.getFirstOfPairFlag() && mateStart == alignmentStart) { 
+                    // Note this logic is special: for the special case where the reads exactly overlap,
+                    // there is no reliable choice which read is "first", so we can't decide which one
+                    // to clip based on start position. That is why for the special case that they exactly
+                    // overlap, we arbitrarily choose to exclude the first-of-pair completely from the coverage
+                    // count and keep the whole second read
+                    continue
                 }
+                else
+                if(mateStart > alignmentStart && mateStart <= alignmentEnd) 
+                    alignmentEnd = mateStart
 
                 intervals[i] = [alignmentStart, alignmentEnd] as int[]
                 ++i
