@@ -961,4 +961,49 @@ class Regions implements Iterable<Region> {
         
         return new Region(contig, index.first().from..index.last().to)
     }
+
+    @CompileStatic
+    Regions getContigRegions(final String chr) {
+        Regions result = new Regions()
+        if(!this.index.containsKey(chr))
+            return result
+
+        for(IntRange r in this.index[chr]) {
+            result.addRegion((Region)((GRange)r).extra)
+        }
+        return result
+    }
+    
+    /**
+     * Divide these regions into two regions objects with approximately the same
+     * total bp in each half
+     *
+     * @return
+     */
+    @CompileStatic
+    List<Regions> balancedSplit() {
+        
+        final long totalBp = this.size()
+        final int halfBp = (int)(totalBp >> 1)
+        final Regions firstHalf = new Regions()
+        Regions secondHalf = new Regions()
+
+        long accumulatedBp = 0
+        Iterator<Region> iter = this.iterator()
+        while(accumulatedBp<halfBp) {
+            Region r = iter.next()
+            accumulatedBp += r.size()
+            
+            if(accumulatedBp<halfBp)
+                firstHalf.addRegion(r)
+            else
+                secondHalf.addRegion(r)
+        }
+        
+        while(iter.hasNext()) {
+            secondHalf.addRegion(iter.next())
+        }
+        
+        return [firstHalf, secondHalf]
+    }
 }

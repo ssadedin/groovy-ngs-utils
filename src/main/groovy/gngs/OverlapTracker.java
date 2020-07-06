@@ -48,6 +48,10 @@ public final class OverlapTracker {
         reads.add(new int [] { r.alignmentStart, r.alignmentEnd });
     }
     
+    public final void add(final int [] startAndEnd) {
+        reads.add(startAndEnd);
+    }
+
     public int size() {
         return this.reads.size();
     }
