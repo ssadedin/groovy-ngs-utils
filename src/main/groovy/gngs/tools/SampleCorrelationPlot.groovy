@@ -9,23 +9,27 @@ import groovy.util.logging.Log
 import htsjdk.variant.variantcontext.Genotype
 import htsjdk.variant.variantcontext.VariantContext
 
+/**
+ * Computes pairwise SNP correlation for a set of input VCFs, outputting as a plot
+ * or a table in TSV format.
+ * <p>
+ * The input VCFs can be single or multisample. Correlation is computed on the dosage of each
+ * SNP present in each sample, eg: 0 - homref, 1 - ref/alt, 2 - homalt.
+ * <p>
+ * Example of running:
+ * <p>
+ * <pre>
+ * gngstool SampleCorrelationPlot -ocorr correlations.tsv -o correlations.png test1.vcf test2.vcf ...
+ * </pre>
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 class SampleCorrelationPlot extends ToolBase {
 
     @Override
     public void run() {
-//        VCF merged = null
-//        for(vcfPath in opts.arguments()) {
-//            log.info "Reading $vcfPath"
-//            VCF vcf = VCF.parse(vcfPath)
-//            if(merged == null) {
-//                merged = vcf
-//            }
-//            else {
-//                merged = merged.merge(vcf)
-//            }
-//        }
-        
+       
         VariantContext lastVariant = null
         ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, timeInterval: 10000, extra: {
             "chr: $lastVariant.contig pos: $lastVariant.start (${lastVariant.genotypes[0].sampleName})"
@@ -97,7 +101,12 @@ class SampleCorrelationPlot extends ToolBase {
             corrs.save(opts.ocorr)
         }
         
-        graxxia.Drawing d = new graxxia.Drawing(opts.o, 120*samples.size(), 100*samples.size(), 0, 0, corrs.columnDimension+2, corrs.columnDimension+1)
+        graxxia.Drawing d = new graxxia.Drawing(opts.o, 
+            120*samples.size(), // 120 pixels width / sample
+            100*samples.size(), // 100 pixels width / sample
+            0, 0, 
+            corrs.columnDimension+2, 
+            corrs.columnDimension+1)
         
         int yOffset = 1
         int xOff = 1
