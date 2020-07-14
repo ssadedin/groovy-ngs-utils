@@ -410,7 +410,14 @@ class Utils {
         
         if(fileLike instanceof Reader)
             return fileLike
+            
+        InputStream stream = Utils.createStream(fileLike)
         
+        return stream.newReader()
+    }
+    
+    static InputStream createStream(fileLike) {
+       
         boolean gzip = false
         boolean bgzip = false
         
@@ -442,8 +449,8 @@ class Utils {
         if(bgzip) {
             fileLike = new BlockCompressedInputStream(fileLike)
         }
-        return fileLike.newReader()
-    }
+        return fileLike
+    } 
     
     /**
      * Executes the given closure, passing as parameters all of the given filenames opened as 

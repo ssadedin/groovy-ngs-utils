@@ -402,7 +402,7 @@ class VCF implements Iterable<Variant> {
     
     VCF load(Closure c = null) {
         VCF self = this
-        new File(this.fileName).withInputStream { ins ->
+        Utils.createStream(this.fileName).withStream { ins ->
             VCF.parse(ins, null, c, vcf:self)
         }
         lazyLoad = false
