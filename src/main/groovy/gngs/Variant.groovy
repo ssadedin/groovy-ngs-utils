@@ -602,7 +602,7 @@ class Variant implements IRegion {
               }
               else
               if(key in numericListFields) {
-                  return [key,value.tokenize(",").collect { convertNumericValue(it,null) }]  // strange typecast exc under compilestatic
+                  return [key, value.equals('.') ? null : value.tokenize(",").collect { convertNumericValue(it,null) }]  // strange typecast exc under compilestatic
               }
               else
                   return field
