@@ -118,6 +118,8 @@ abstract class ToolBase {
         
         Utils.configureSimpleLogging()
         
+        Class originalDelegate = specBuilder.delegate
+
         if(header) {
             // lets us format it however we want in our groovy code and shows up reasonably
             // wrapped from commons-cli
@@ -127,32 +129,30 @@ abstract class ToolBase {
         Cli cli = new Cli(usage: usage, header: header)
         cli.h 'Show help', longOpt: 'help' 
         
-        Class originalDelegate = specBuilder.delegate
-        
         def err = System.err
         specBuilder.delegate = cli
         specBuilder()
         
+        ToolBase tool = test.get()?: originalDelegate.newInstance()
+
         if('-h' in args || '--help' in args) {
-            printHeader(originalDelegate, null)
+            printHeader(originalDelegate, tool)
             printHelpAndExit(cli, err)
         }
         
+        printHeader(originalDelegate, tool)
         OptionAccessor rawOpts = cli.parse(args) 
         if(!rawOpts) {
-            printHeader(originalDelegate, null)
             err.println ""
             err.println footer
             System.exit(1)
         }
+
         CliOptions opts = new CliOptions(opts:rawOpts)
         setProxy()
             
-        ToolBase tool = test.get()?: originalDelegate.newInstance()
         tool.parser = cli
         tool.opts = opts
-        
-        printHeader(originalDelegate, tool)
         
         if(test.get()) 
             return
