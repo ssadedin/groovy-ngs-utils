@@ -40,7 +40,7 @@ class ReadSpans {
  * @author Simon Sadedin
  */
 @Log
-class SingleCov extends ToolBase {
+class Cov extends ToolBase {
 
     Regions scanRegions
     
@@ -244,7 +244,7 @@ class SingleCov extends ToolBase {
     
     
     static void main(String[] args) {
-        cli('SingleCov [-o] -L <target regions> <bam file>', args) {
+        cli('Cov [-o] -L <target regions> <bam file>', args) {
             o 'Output file to write to', args:1, required: true
             minMQ 'Minimum mapping quality (1)', args:1, required: false
             samplesummary 'File to write coverage statistics to in tab separated format', args:1, required: false
