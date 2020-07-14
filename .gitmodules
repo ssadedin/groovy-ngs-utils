@@ -3,4 +3,4 @@
 	url = https://github.com/ssadedin/graxxia.git
 [submodule "htsjdk"]
 	path = htsjdk
-	url = https://github.com/samtools/htsjdk.git
+	url = git@github.com:ssadedin/htsjdk.git

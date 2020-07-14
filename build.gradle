@@ -136,8 +136,17 @@ jar {
 }
 
 groovydoc {
+    destinationDir = new File('doc')
+    source = 'src/main/groovy'
     overviewText = resources.text.fromFile('src/main/groovy/overview.html')
+    docTitle = ''
+    doLast {
+        println "Doing it now"
+        ant.copy file:"src/main/resources/docstyle.css", tofile:'doc/stylesheet.css', overwrite:true
+    }
 }
+
+
 
 test {
     filter {
@@ -151,15 +160,10 @@ test {
 */
 }
 
-task doc << {
-    groovydoc {
-        packageNames = ['']
-        destinationDir = new File('doc')
-        source = 'src/main/groovy'
-    }
-}
 
-task wrapper(type: Wrapper) {
-    gradleVersion = '4.3.1'
+if (rootProject == project) {
+    wrapper {
+        gradleVersion = '5.2.1'
+    }
 }
 
