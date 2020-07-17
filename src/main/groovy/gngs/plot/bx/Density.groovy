@@ -1,7 +1,7 @@
 package gngs.plot.bx
 
+import com.twosigma.beakerx.chart.Color
 import com.twosigma.beakerx.chart.xychart.plotitem.XYGraphics
-
 import groovy.transform.CompileStatic
 
 @CompileStatic
@@ -59,7 +59,21 @@ trait Density {
         this.bw = attributes.get('bw',bw).toDouble()
         this.segments = attributes.get('segments',segments).toInteger()
         
-        attributes.each { k,v -> if(!(k in DENSITY_ATTRIBUTES)) this.properties.put(k, v); }
+        def me = this
+        
+        attributes.each { String k, Object v -> 
+            if(!(k in DENSITY_ATTRIBUTES))  {
+                if(k == 'color' && (v instanceof Color)) {
+                    me.setColor(v)
+                }
+                else {
+                    String method = 'set' + k.capitalize()
+                    me.invokeMethod(method,[v])
+                }
+            }
+        }
+        
+        com.twosigma.beakerx.chart.xychart.plotitem.Area area
         
         if(!('data' in attributes)) 
             throw new IllegalArgumentException('Please provide a data attribute with values to display')

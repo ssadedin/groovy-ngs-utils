@@ -2,6 +2,7 @@ package gngs.plot
 
 import static org.junit.Assert.*
 
+import gngs.plot.bx.Density
 import java.awt.Color
 
 import org.junit.Test
@@ -85,9 +86,9 @@ class PlotTest {
         p.save('bars.png')
     }
 
+    Random r = new Random()
     @Test
     void testHistogram() {
-        Random r = new Random()
 //        List<Double> data = (1..1000).collect { r.nextGaussian() }
         
         Map dataMap = [
@@ -115,5 +116,12 @@ class PlotTest {
                 xLabel: 'Frobbles of the Fribfrob',
                 yLabel: 'Fringles of the funglefib')
         hist.save('testhist.png')
+    }
+    
+    @Test
+    void testDensity() {
+        def normals = (1..1000).collect { r.nextGaussian() }
+        def line = new Density.Line(data:normals, displayName:'TestLine', color: com.twosigma.beakerx.chart.Color.blue)
+        assert line.displayName  == 'TestLine'
     }
 }
