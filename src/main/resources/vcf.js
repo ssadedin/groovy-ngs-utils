@@ -91,7 +91,7 @@ var allTags = [];
 var userAnnotations = { 
     tags : {} 
 };
-    
+
 (function ($, window, document, undefined ) {
 
     var variantTable = null;
@@ -553,7 +553,17 @@ var userAnnotations = {
         
         for(var i=0; i<samples.length;++i) {
             Object.defineProperty(data,samples[i], { get:  partial(function(sampleIndex) { 
-            		return rowSource[sampleIndex+nonSampleColumnCount];
+                    var dosage = new Number(rowSource[sampleIndex+nonSampleColumnCount]);
+                    var ads = rowSource[AD_INDEX][sampleIndex]
+                    try {
+                        dosage.depth = ads.reduce((acc,i) => acc+i);
+                        dosage.ad = ads;
+                        dosage.vaf = dosage.depth > 0 ? (ads[1] / dosage.depth) : 0
+                    }
+                    catch(e) {
+                        console.log(e);
+                    }
+                    return dosage;
                 },i)
             });
         }
