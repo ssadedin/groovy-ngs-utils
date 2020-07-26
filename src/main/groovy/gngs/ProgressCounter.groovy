@@ -71,52 +71,59 @@ class ProgressCounter {
     Logger log
     
     Closure extra = null
+
+    void count(Closure c) {
+        count(1,c)
+    }
     
     @CompileStatic
-    void count(Closure c = null) {
+    void count(int num = 1, Closure c = null) {
         if(startTimeMs < 0)
             startTimeMs = System.currentTimeMillis()
-        if(count % lineInterval == 0) {
-            long deltaMs = System.currentTimeMillis() - lastPrintTimeMs
-            if(deltaMs > timeInterval) {
-                if(c!=null)
-                  c(count)
-                else {
-                    
-                    String rateInfo = ""
-                    if(withRate) {
-                        float rate = 1000.0*((count-lastPrintCount)/((float)(deltaMs+1)))
-                        rateInfo = String.format(" @ %.2f/s ", rate)
-                    }
-                    
-                    String totalInfo = ""
-                    int padding = 12
-                    if(total != null) {
-                        totalInfo = " (" + Utils.perc(count/(1+total)) + ")"
-                        padding = total.toString().size() + 7
-                    }
+            
+        for(int i=0; i<num; ++i) {
+            if(count % lineInterval == 0) {
+                long deltaMs = System.currentTimeMillis() - lastPrintTimeMs
+                if(deltaMs > timeInterval) {
+                    if(c!=null)
+                      c(count)
+                    else {
                         
-                   String extraInfo = ""
-                   if(extra != null) {
-                       extraInfo = extra.call()
-                   }   
-                    
-                   String progressLine
-                   if(withTime)
-                       progressLine = new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + extraInfo
-                   else
-                       progressLine = (prefix?"\t$prefix :\t":"") + "Processed ${(String.valueOf(count) + totalInfo).padRight(padding)}" + rateInfo + extraInfo
-                       
-                   if(log != null)
-                       log.info(progressLine)
-                   else
-                       out.println(progressLine) 
+                        String rateInfo = ""
+                        if(withRate) {
+                            float rate = 1000.0*((count-lastPrintCount)/((float)(deltaMs+1)))
+                            rateInfo = String.format(" @ %.2f/s ", rate)
+                        }
+                        
+                        String totalInfo = ""
+                        int padding = 12
+                        if(total != null) {
+                            totalInfo = " (" + Utils.perc(count/(1+total)) + ")"
+                            padding = total.toString().size() + 7
+                        }
+                            
+                       String extraInfo = ""
+                       if(extra != null) {
+                           extraInfo = extra.call()
+                       }   
+                        
+                       String progressLine
+                       if(withTime)
+                           progressLine = new Date().toString() + (prefix?"\t$prefix":"") + " :\t Processed $count" + rateInfo + extraInfo
+                       else
+                           progressLine = (prefix?"\t$prefix :\t":"") + "Processed ${(String.valueOf(count) + totalInfo).padRight(padding)}" + rateInfo + extraInfo
+                           
+                       if(log != null)
+                           log.info(progressLine)
+                       else
+                           out.println(progressLine) 
+                    }
+                    lastPrintTimeMs = System.currentTimeMillis()
+                    lastPrintCount = count
                 }
-                lastPrintTimeMs = System.currentTimeMillis()
-                lastPrintCount = count
             }
+            ++count
         }
-        ++count
     }
     
     void end() {
