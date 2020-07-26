@@ -731,6 +731,10 @@ class VCFtoHTML {
     List<Map> calculateROC(String sample) {
         
         List<ROCPoint> rocPoints = sampleROCPoints[sample]
+        if(!rocPoints) {
+            log.info "No points found on the ROC curve for $sample: will exclude from output"
+            return []
+        }
        
         rocPoints.each { 
             it.metricBin = bins.getBinIndex(it.variant, sample)
@@ -820,14 +824,12 @@ class VCFtoHTML {
             'ref': {it.ref },
             'alt': {it.alt },
             'qual': {it.qual },
-            'depth': {
-                def dp = it.info.DP
-                if(dp == null) {
-                    bams*.value*.coverage(it.chr, it.pos).min()
-                }
-                else {
-                    dp
-                }
+            'depth': { Variant v ->
+                def dp = v.header.samples.grep { v.sampleDosage(it) }.collect { v.getTotalDepth(it) }.max()
+                if(dp)
+                    return dp
+                else
+                    return bams*.value*.coverage(v.chr, v.pos).max()
             },
             'vaf' : {THREE_DIGIT_PRECISION.format(it.vaf) },
             'families' : { v ->
@@ -838,7 +840,8 @@ class VCFtoHTML {
                     return result
                 }
                 return fcount;
-            }
+            },
+            'gqs' : { Variant v -> v.genoTypes.collect { ((it.GQ == null) || it.GQ.equals('.')) ? null : it.GQ.toDouble()} }
         ]
 
         consColumns = [

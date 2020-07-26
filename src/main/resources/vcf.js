@@ -362,6 +362,7 @@ var userAnnotations = {
     var DEPTH_INDEX=++indexCounter;
     var VAF_INDEX=++indexCounter;
     var FAMILIES_INDEX=++indexCounter;
+    var GQS_INDEX=++indexCounter;
     var GENE_INDEX=++indexCounter;
     var CONS_INDEX=++indexCounter;
     var MAF_INDEX=++indexCounter;
@@ -555,10 +556,12 @@ var userAnnotations = {
             Object.defineProperty(data,samples[i], { get:  partial(function(sampleIndex) { 
                     var dosage = new Number(rowSource[sampleIndex+nonSampleColumnCount]);
                     var ads = rowSource[AD_INDEX][sampleIndex]
+                    var gqs = rowSource[GQS_INDEX][sampleIndex]
                     try {
                         dosage.depth = ads.reduce((acc,i) => acc+i);
                         dosage.ad = ads;
                         dosage.vaf = dosage.depth > 0 ? (ads[1] / dosage.depth) : 0
+                        dosage.gq = gqs[sampleIndex]
                     }
                     catch(e) {
                         console.log(e);
