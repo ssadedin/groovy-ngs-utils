@@ -97,9 +97,9 @@ class VariantTest {
         assert v1.findAlleleIndex(v2.alleles[0]) == 1
     }
     
-    Variant var(String line, Closure headerFilter = null) {
+    Variant var(String line, Closure headerFilter = null, List samples = ['JOHNSMITH']) {
         VCF vcf = new VCF()
-        vcf.lastHeaderLine = ['CHROM','POS','REF','ALT','QUAL','FILTER','INFO','FORMAT','JOHNSMITH'] as String[]
+        vcf.lastHeaderLine = (['CHROM','POS','REF','ALT','QUAL','FILTER','INFO','FORMAT'] + samples) as String[]
         List hdrs = [
             '##fileformat=VCFv4.2', 
             '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">',
@@ -416,4 +416,25 @@ class VariantTest {
         println v.qual
     }
     
+    
+    @Test
+    void 'vaf for nondefault sample'() {
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   .   .   MQ=49.90    GT:AD:DP:GQ:JL:JP:PL:PP 0/0:71,0:71:99:119:119:0,120,1800:0,113,1792    0/1:66,83:149:99:119:119:2041,0,1361:2108,0,1360    0/1:81,72:153:99:119:119:1742,0,1970:1749,0,2029", 
+            null, ['JOHN','JANE','TOM']
+        )
+        
+        def approx_equal = { a,b ->
+            assert Math.abs(a-b)<0.01
+        }
+        
+        approx_equal v.vaf, 0.0d 
+
+        approx_equal v.getVaf(1,0), 0.0d 
+
+        // First alternate allele of the second sample = 83/(66+83)
+        approx_equal v.getVaf(1,1), 0.5570469799
+
+        approx_equal v.getVaf(1,2), 0.4705882353
+        
+    }
 }
