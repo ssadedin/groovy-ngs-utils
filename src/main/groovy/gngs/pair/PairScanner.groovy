@@ -21,8 +21,7 @@ package gngs.pair
 
 import gngs.*
 
-
-import static Utils.human
+import static gngs.Utils.human
 
 import java.util.concurrent.ConcurrentHashMap
 

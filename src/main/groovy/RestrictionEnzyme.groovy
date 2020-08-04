@@ -22,7 +22,7 @@ import java.util.regex.Pattern;
 
 import gngs.FASTA
 import htsjdk.samtools.util.SequenceUtil;
-import static FASTA.*
+import static gngs.FASTA.*
 
 /**
  * A simple class for matching motifs in restriction enzymes to 

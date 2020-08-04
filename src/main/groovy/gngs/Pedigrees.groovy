@@ -18,10 +18,10 @@ package gngs
  *  License along with this library; if not, write to the Free Software
  */
 
-import static RelationshipType.*
+import static gngs.RelationshipType.*
 
 import graxxia.TSV
-import static Sex.*
+import static gngs.Sex.*
 
 class Pedigrees {
     

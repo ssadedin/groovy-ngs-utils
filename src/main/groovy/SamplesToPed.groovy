@@ -5,7 +5,7 @@
  * @author simon.sadedin@mcri.edu.au
  */
 
-import static RelationshipType.*
+import static gngs.RelationshipType.*
 
 import gngs.Pedigree
 import gngs.Relationship

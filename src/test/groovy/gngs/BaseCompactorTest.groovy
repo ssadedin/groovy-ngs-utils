@@ -4,7 +4,7 @@ import static org.junit.Assert.*
 
 import org.junit.Test
 
-import static BaseCompactor.*
+import static gngs.BaseCompactor.*
 
 class BaseCompactorTest {
 
