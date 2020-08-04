@@ -35,7 +35,7 @@ class SampleCorrelationPlot extends ToolBase {
             "chr: $lastVariant.contig pos: $lastVariant.start (${lastVariant.genotypes[0].sampleName})"
         })
         
-        List<String> samples = opts.arguments().collect { new VCF(it).samples }.sum()
+        List<String> samples = opts.arguments().collectMany { new VCF(it).samples }.unique()
 
         List dosages = []
         
@@ -45,7 +45,6 @@ class SampleCorrelationPlot extends ToolBase {
 
         VCFSiteWalker locusWalker = new VCFSiteWalker(opts.arguments())
         locusWalker.walk { List<VariantContext> variants ->
-            
             
             lastVariant = variants[0]
             
