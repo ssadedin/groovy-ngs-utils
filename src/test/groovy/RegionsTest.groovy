@@ -530,6 +530,44 @@ class RegionsTest {
         assert dist(15,73) == 0
         assert dist(42,45) == 2
      } 
+     
+     
+     @Test
+     void testBalancedSplit() {
+         Regions regions = regions '''
+         chr1   10  20
+         chr1   30  50
+         chr1   100 120
+         chr1   180 200
+         '''
+         
+         def (s1, s2) = regions.balancedSplit()
+         
+         assert s1.numberOfRanges == 2
+         assert s2.numberOfRanges == 2
+
+         assert s1.overlaps('chr1',10,20)
+         assert s1.overlaps('chr1',30,50)
+         assert !s1.overlaps('chr1',100,120)
+
+     }
+     
+     @Test
+     void testGetContigRegions() {
+         Regions regions = regions '''
+         chr1   10  20
+         chr1   30  50
+         chr2   100 120
+         chr2   150 190
+         chr4   180 200
+         '''
+          
+         Regions chr2 = regions.getContigRegions('chr2')
+         
+         assert chr2.size() == 60
+         assert chr2.numberOfRanges == 2
+         assert chr2.every { it.chr == 'chr2' }
+     }
       
      // Simplistic but easy to use approximate equals
      void approx(double x1, double x2) {
