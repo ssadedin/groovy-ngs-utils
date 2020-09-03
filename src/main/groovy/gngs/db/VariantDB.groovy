@@ -1,4 +1,3 @@
-package gngs.db
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -18,17 +17,16 @@ package gngs.db
  *  License along with this library; if not, write to the Free Software
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-import java.sql.Timestamp;
+package gngs.db 
+
+import groovy.sql.Sql
+import groovy.util.logging.Log;
 
 import com.xlson.groovycsv.PropertyMapper;
 
-import gngs.Pedigree
-import gngs.Pedigrees
-import gngs.Subject
-import gngs.Variant
+import gngs.db.Schema;
+import gngs.*
 import gngs.Variant.Allele
-import groovy.sql.Sql
-import groovy.util.logging.Log;
 
 /**
  * VariantDB implements a simple, embedded, variant tracking database that
@@ -56,7 +54,7 @@ import groovy.util.logging.Log;
  * @author simon
  */
 @Log
-class VariantDB implements Closeable {
+class VariantDB {
     
     /**
      * The file name of the database that is connected to
@@ -150,34 +148,19 @@ class VariantDB implements Closeable {
                                 $sampleId, 
                                 ${family?.motherOf(sampleId)?.id}, 
                                 ${family?.fatherOf(sampleId)?.id}, 
-                                ${family?.id}, 
+                                ${family?.id?:sampleId}, 
                                 ${subject?.phenoTypes?.getAt(0)?:0}, 
                                 ${cohort},
                                 ${batch},
                                 datetime('now'));
         """)
-        
-        def result =  findSample(sampleId)
-        addSampleBatch(result.id,batch,cohort)
-        return result
-    }
-    
-    void addSampleBatch(Long sampleId, String batch, String cohort) {
-        db.execute("""
-            insert into sample_batch (id, sample_id, batch, cohort, created) 
-                 select NULL, 
-                        $sampleId,
-                        $batch,
-                        $cohort,
-                        datetime('now')
-                 where not exists (select 1 from sample_batch where sample_id = $sampleId and batch = $batch);
-        """)
+        return findSample(sampleId)
     }
     
     /**
      * Find a variant in the database by its start position
      */
-    def findVariant(Variant variant, Variant.Allele allele) {
+    def findVariant(Variant variant, Allele allele) {
         db.firstRow("select * from variant where chr=$variant.chr and start=$allele.start and alt=$allele.alt")
     }
     
@@ -200,19 +183,9 @@ class VariantDB implements Closeable {
     
     /**
      * Return a counts of the number of observations of the given variant.
-     * Two values are returned: 
-     *   <li>sampleCount - the number of unique samples in which the variant was observed
-     *   <li>familyCount - the number of unique families in which the variant was observed
-     *   
-     * @param batch If provided, variants will only be provided if they are observed in
-     *              this batch OR any earlier batch. The intent is to support reproducibility
-     *              so that new samples can be added to the database without changing the
-     *              variant counts if queried for old samples.
+     * Two values are returned: samples and families. 
      */
-    Map countObservations(Variant v, Variant.Allele allele, String batch=null) {
-        
-        def dateString = queryBatchDateTime(batch)
-        
+    Map countObservations(Variant v, Allele allele) {
         int sampleCount = db.firstRow(
            """select count(distinct(o.sample_id))
                        from variant_observation o,
@@ -222,11 +195,9 @@ class VariantDB implements Closeable {
                          and v.start = $allele.start
                          and v.end = $allele.end
                          and v.alt = $allele.alt
-                         and o.created <= datetime($dateString)
         """)[0]
         
-        int familyCount = db.firstRow(
-           """select count(distinct(coalesce(s.family_id,s.sample_id)))
+        def familySql = """select count(distinct(s.family_id))
                      from variant_observation o,
                           variant v, 
                           sample s
@@ -236,34 +207,12 @@ class VariantDB implements Closeable {
                          and v.end = $allele.end
                          and v.alt = $allele.alt
                          and o.sample_id = s.id
-                         and o.created <= datetime($dateString)
-        """)[0]
+        """
+        
+        println(familySql)
+        int familyCount = db.firstRow(familySql)[0]
         
         return [samples: sampleCount, families: familyCount]
-    }
-
-    /**
-     * Find the time of the most recent variant observation added for the given
-     * batch, formatted correctly as a string relative to GMT for querying via SQLite. 
-     * If batch is null, return the current time plus 1 second.
-     * 
-     * @param batch id of batch to query
-     * @return a String containing the date in SQLite format
-     */
-    private String queryBatchDateTime(String batch) {
-        def dateString = null
-        if(batch) {
-            dateString = db.firstRow("""
-                select max(vo.created) 
-                       from variant_observation vo 
-                       where vo.batch_id = $batch
-            """)[0]
-        }
-        else {
-            Timestamp countBefore = new Timestamp(System.currentTimeMillis()+1000)
-            dateString = countBefore.format("yyyy-MM-dd HH:mm:ss", TimeZone.getTimeZone("UTC"))
-        }
-        return dateString
     }
     
     /**
@@ -303,40 +252,6 @@ class VariantDB implements Closeable {
     }
     
     /**
-     * Map of string to database rows of cached sample information
-     */
-    Map<String, Object> cachedSampleInfo = [:]
-    
-    /**
-     * Returns cached rows from the sample table for each sample. If rows do not exist yet for
-     * the sample, adds rows to the table. If rows do exist, returns the existing rows.
-     * Also adds batch information.
-     * 
-     * @param addSamples
-     * @param batch
-     * @param cohort
-     * @return a map keyed on sample id, with values being the row from the sample 
-     *         table for each sample
-     */
-    Map addCachedSampleInfo(List<String> addSamples, String batch, String cohort, Pedigrees peds=null) {
-        addSamples.collectEntries { sampleId ->
-            def sample_row = cachedSampleInfo[sampleId]
-            if(!sample_row) {
-                sample_row = findSample(sampleId)
-                if(!sample_row) {
-                    sample_row = addSample(sampleId, peds, cohort, batch)
-                }
-                else {
-                    if(batch != sample_row.batch) {
-                        addSampleBatch(sample_row.id, batch, cohort)
-                    }
-                }
-            }
-            [sampleId, sample_row]
-        }
-    }
-    
-    /**
      * Add the given variant to the database. If sampleToAdd is specified,
      * add it for only the given sample. Otherwise add it for all the samples that 
      * are genotyped to have the variant
@@ -351,80 +266,67 @@ class VariantDB implements Closeable {
      * 
      * @return count of variants added
      */
-    int add(String batch, Pedigrees peds, Variant v, Variant.Allele alleleToAdd=null, String cohort=null, String sampleToAdd=null, def annotations=null) {
-        
-        List addSamples = sampleToAdd ? [sampleToAdd] : v.header.samples
-        Map sampleInfo = addCachedSampleInfo(addSamples, batch, cohort, peds)
+    int add(String batch, Pedigrees peds, Variant v, Allele alleleToAdd=null, String cohort=null, String sampleToAdd=null, def annotations=null) {
         
         int countAdded = 0
         def alleles = alleleToAdd ? [alleleToAdd] : v.alleles
-        if(alleles.size()>1) {
-            log.warning "Variant $v has > 1 alternate allele. Import of non-primitive VCFs is not recommended, second and subsequent alleles will be ignored"
-        }
-
-        def allele = alleles[0]
-        def variant_row = findVariant(v, allele)
-        if(!variant_row) {
-            
-            if(annotations == null && v.header.hasInfo("CSQ") || v.header.hasInfo('ANN')) {
-                def vep = v.maxVep
-                if(!vep)
-                    vep = [:]
+        for(Allele allele in v.alleles) {
+            def variant_row = findVariant(v, allele)
+            if(!variant_row) {
+                
+                if(annotations == null) {
+                    def vep = v.getVepInfo()[allele.index]
+                    def cons = v.getConsequence(allele.index)
+                    if(cons != null && cons.indexOf("(")>=0) 
+                        cons = cons.substring(0, cons.indexOf("("))
+                    db.execute("""
+                        insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id) 
+                                    values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, ${vep?.SIFT}, ${vep?.PolyPhen}, ${vep?.Condel}, 
+                                           ${cons}, $v.maxVepMaf, $v.id);
+                    """)
+                }
+                else {
                     
-                String cons = vep.Consequence
-                if(cons != null && cons.indexOf("(")>=0) 
-                    cons = cons.substring(0, cons.indexOf("("))
-
-                db.execute("""
-                    insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id, gene) 
-                                values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, $vep.SIFT, $vep.PolyPhen, $vep.Condel, 
-                                       ${cons}, $v.maxVepMaf, $v.id, 
-                                       $vep.SYMBOL
-                    );
-                """)
+                    float maxFreq = ["ONEKG_FREQ", "ESP_FREQ", "EXAC_FREQ"].collect { getFreq(it,annotations) }.max()
+                    String aaChange = getAnnotation("AACHANGE", annotations)
+                    db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id) 
+                                   values (NULL, $v.chr, 
+                                                 $v.pos, 
+                                                 $allele.start, $allele.end, 
+                                                 $v.ref, $allele.alt,
+                                                 $annotations.ExonicFunc,
+                                                 $aaChange,
+                                                 $maxFreq, 
+                                                 ${getAnnotation("DBSNP", annotations)})
+                               """)
+                }
             }
-            else {
-                
-                if(annotations == null)
-                    annotations = [:]
-                
-                float maxFreq = ["ONEKG_FREQ", "ESP_FREQ", "EXAC_FREQ"].collect { getFreq(it,annotations) }.max()
-                String aaChange = getAnnotation("AACHANGE", annotations)
-                String gene = annotations.Gene?:""
-                gene = gene.split(";")[0]
-                db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id, gene) 
-                               values (NULL, $v.chr, 
-                                             $v.pos, 
-                                             $allele.start, $allele.end, 
-                                             $v.ref, $allele.alt,
-                                             $annotations.ExonicFunc,
-                                             $aaChange,
-                                             $maxFreq, 
-                                             ${getAnnotation("DBSNP", annotations)},
-                                             $gene
-                                            )
-                           """)
-            }
-        }
-        variant_row = findVariant(v,allele)
-        
-        // For every sample carrying the allele, add an observation
-        for(String sampleId in addSamples.grep { v.sampleDosage(it) }) {
+            variant_row = findVariant(v,allele)
             
-            def sample_row = sampleInfo[sampleId]
-            
-            def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
-            if(!variant_obs) {
-                db.execute("""
-                    insert into variant_observation (id,variant_id,sample_id, batch_id, qual,dosage, created) 
-                                values (NULL, $variant_row.id, 
-                                              ${sample_row.id}, 
-                                              ${batch},
-                                              ${v.sampleGenoType(sampleId)?.GQ?.toDouble()}, 
-                                              ${v.sampleDosage(sampleId)}, 
-                                              datetime('now'));
-                """)
-                ++countAdded
+            // For every sample carrying the allele, add an observation
+            for(String sampleId in v.header.samples.grep { v.sampleDosage(it) }) {
+                
+                if(sampleToAdd && (sampleId != sampleToAdd))
+                    continue
+                
+                def sample_row = findSample(sampleId)
+                if(!sample_row) {
+                    sample_row = addSample(sampleId, peds, cohort, batch)
+                }
+                
+                def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
+                if(!variant_obs) {
+                    db.execute("""
+                        insert into variant_observation (id,variant_id,sample_id, batch_id, qual,dosage, created) 
+                                    values (NULL, $variant_row.id, 
+                                                  ${sample_row.id}, 
+                                                  ${batch},
+                                                  ${v.sampleGenoType(sampleId)?.GQ?.toDouble()}, 
+                                                  ${v.sampleDosage(sampleId)}, 
+                                                  datetime('now'));
+                    """)
+                    ++countAdded
+                }
             }
         }
         return countAdded
@@ -458,120 +360,70 @@ class VariantDB implements Closeable {
      * Return a set of counts of times the given variant has been 
      * observed with in
      * 
-     * <li> all cohorts
-     * <li> all except the specified cohort
-     * <li> within the specified cohort
-     * 
-     * Additional cohorts can be excluded by setting a comma separated list as the
-     * value 'excludeCohorts' in options.
-     * <p>
-     * The returned map has 3 attributes:
-     * <li>total - total number of smaples observed to have the variant, regardless of cohort
-     * <li>in_target - total number of samples observed to have the variant within specified cohort
-     * <li>other_target - total number of samples observed to have the variant outside of specified cohort
+     * a) all cohorts
+     * b) all except the specified cohort
+     * c) within the specified cohort
      */
-    Map queryVariantCounts(Map options=[:], Variant variant, Variant.Allele allele, String sampleId) {
+    Map queryVariantCounts(Map options=[:], Variant variant, Allele allele, String sampleId, String cohort) {
         
-        String dateString = queryBatchDateTime(options.batch)
+        def params = [
+            chr: variant.chr,
+            pos: allele.start,
+            alt: allele.alt,
+            cohort: cohort
+        ]
+
+        String batchClause = ""
+        if(options.batch) {
+            batchClause = ' AND o.batch_id = :batch '
+            params.batch = options.batch
+        }
         
         // The total observations of the variant
-        def variant_count = db.firstRow(
-            """
-            select count(distinct(o.sample_id)) 
-                from variant_observation o, variant v 
-                where o.variant_id = v.id 
-                  and v.chr = $variant.chr 
-                  and v.pos = $allele.start 
-                  and v.alt = $allele.alt
-                  and o.created <= datetime($dateString)
-            """)[0]
-            
-        def excludeCohortsInClause = ""
+        def variant_count = db.firstRow('''
+            select count(distinct(o.sample_id))
+            from variant_observation o, variant v 
+            where o.variant_id = v.id and v.chr = :chr and v.pos = :pos and v.alt = :alt
+        ''' + batchClause, params)[0]
         
-        List excludedCohorts = []
+        def excludeCohorts = ""
         if(options.excludeCohorts) 
-            excludedCohorts.addAll(options.excludeCohorts)
-        
-        if(sampleId != null) {
-            def sample_batch = db.firstRow("select coalesce(sb.cohort,s.cohort) as cohort from sample s, sample_batch sb where sb.sample_id = s.id and s.sample_id = $sampleId")
-            def sampleCohorts = sample_batch?.cohort
-            if(sampleCohorts) {
-                log.info "Excluding cohorts $sampleCohorts based on cohorts of $sampleId"
-                excludedCohorts.addAll(sampleCohorts)
-            }
-        }
-        
-        if(excludedCohorts)
-            excludeCohortsInClause = 
-              'and not exists (select 1 from sample_batch sb, sample s2 where s2.id = s.id and sb.cohort in ("' + excludedCohorts.join('","') + '"))'
-
-          println "Running query: " +  """
-            select count(distinct(s.id))
-            from variant_observation o, variant v, sample s
-            where o.variant_id = v.id 
-                  and v.chr = $variant.chr 
-                  and v.pos = $allele.start
-                  and v.alt = $allele.alt
-                  and o.sample_id = s.id
-                  and o.created <= datetime($dateString)
-                  """ + excludeCohortsInClause
-
-              
-                      
+            excludeCohorts = 'and s.cohort not in ("' + options.excludeCohorts.join('","') + '")'
+            
+       
         def variant_count_outside_target = 0
-        Utils.time("query_count_outside_target") {
-            variant_count_outside_target = db.firstRow("""
+//        if(variant_count>1) { // Will always be at least 1 because it will be recorded for the sample we are processing now
+            def outsideTargetSql = '''
             select count(distinct(s.id))
             from variant_observation o, variant v, sample s
             where o.variant_id = v.id 
-                  and v.chr = $variant.chr 
-                  and v.pos = $allele.start
-                  and v.alt = $allele.alt
+                  and v.chr = :chr
+                  and v.pos = :pos
+                  and v.alt = :alt
                   and o.sample_id = s.id
-                  and o.created <= datetime($dateString)
-                  """ + excludeCohortsInClause
-            )[0] 
-        }
+                  and s.cohort <> :cohort
+           ''' + excludeCohorts + batchClause
+           
+           println(outsideTargetSql)
+            
+            variant_count_outside_target = db.firstRow(outsideTargetSql, params)[0] 
+            
         
-        log.info "Variant $variant found in $sampleId $variant_count times globally, $variant_count_outside_target outside $excludedCohorts / $options.excludeCohorts"
+            log.info "Variant $variant found $variant_count times globally, $variant_count_outside_target outside target $cohort / $options.excludeCohorts"
+//        }
         
-        log.info "Running query: " + """
-            select count(distinct(vs.id))
-            from variant_observation o, variant v, sample qs, sample vs, sample_batch qsb, sample_batch vsb
+        int variant_count_within_target = db.firstRow('''
+            select count(distinct(s.id))
+            from variant_observation o, variant v, sample s
             where o.variant_id = v.id 
-                  and v.chr = $variant.chr 
-                  and v.pos = $allele.start
-                  and v.alt = $allele.alt
-                  and o.sample_id = vs.id
-                  and vsb.sample_id = vs.id
-                  and qs.sample_id = $sampleId
-                  and qsb.sample_id = qs.id
-                  and qs.cohort = vs.cohort
-                  and o.created <= datetime($dateString)
-        """
-        
-        int variant_count_within_target = Utils.time("query_count_within_target") {
-             db.firstRow("""
-                select count(distinct(vs.id))
-                from variant_observation o, variant v, sample qs, sample vs, sample_batch qsb, sample_batch vsb
-                where o.variant_id = v.id 
-                      and v.chr = $variant.chr 
-                      and v.pos = $allele.start
-                      and v.alt = $allele.alt
-                      and o.sample_id = vs.id
-                      and vsb.sample_id = vs.id
-                      and qs.sample_id = $sampleId
-                      and qsb.sample_id = qs.id
-                      and qs.cohort = vs.cohort
-                      and o.created <= datetime($dateString)
-                """)[0] 
-        }
-             
-        return [ 
-            total: variant_count, 
-            other_target: variant_count_outside_target, 
-            in_target: variant_count_within_target 
-        ]
+                  and v.chr = :chr
+                  and v.pos = :pos
+                  and v.alt = :alt
+                  and o.sample_id = s.id
+                  and s.cohort = :cohort
+            ''' + batchClause, params)[0] 
+         
+        return [ total: variant_count, other_target: variant_count_outside_target, in_target: variant_count_within_target ]
     }
     
     /**
