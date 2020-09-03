@@ -38,4 +38,10 @@ class CliOptions {
     Object getProperty(String name) {
         overrides.getOrDefault(name, opts?.getProperty(name))
     }
+    
+    List<String> arguments() {
+        if(overrides.containsKey('arguments'))
+            return overrides.arguments
+        return opts.arguments()
+    }
 }
