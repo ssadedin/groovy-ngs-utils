@@ -103,6 +103,10 @@ class Lines extends XYItem {
     
 }
 
+class Line extends XYItem {
+    
+}
+
 class Points extends XYItem {
     
 }
