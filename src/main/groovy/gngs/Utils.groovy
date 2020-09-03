@@ -583,4 +583,31 @@ class Utils {
     static String formatIfNumber(NumberFormat fmt, Object obj) {
         obj instanceof Number ? fmt.format(obj) : String.valueOf(obj)
     }
+    
+    /**
+     * Attempts to parse the given string as a list of numbers and returns the list if it can
+     */
+    static List toNumberList(String value) {
+        List tokens = value.tokenize(',')
+        if((tokens.size() > 1) && tokens.every { it.isNumber() }) {
+            tokens.collect { convertNum(it) }
+        }
+        else {
+            return null
+        }
+    }
+    
+    /**
+     * Attempts to convert the given value to a number, returns the number if it can,
+     * or the value as a string if it can't.
+     */
+    static def convertNum(String x) {
+        if(x.isInteger())
+            return x.toInteger()
+        else
+        if(x.isDouble())
+            return x.toDouble()
+        else
+            return x
+    }
 }
