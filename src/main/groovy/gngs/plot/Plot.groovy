@@ -330,7 +330,7 @@ class Plot {
         
         [xys,datas].transpose().each { xy, dt ->
 
-            if(xy instanceof Lines) {
+            if(xy instanceof Lines || xy instanceof Line) {
                 LineRenderer lines = new SmoothLineRenderer2D();
                 lines.setColor(palette.colors[ i % palette.colors.size()])
                 xyPlot.setLineRenderers(dt, lines)
