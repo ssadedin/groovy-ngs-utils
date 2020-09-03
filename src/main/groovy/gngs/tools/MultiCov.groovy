@@ -60,6 +60,11 @@ class MultiCov extends ToolBase {
     
     boolean phase1 = false
     
+    /**
+     * Means calculated as part of the 2-pass mean estimation phase
+     */
+    Map<String,Double> means
+    
     static String OVERVIEW = """
     MultiCov is a general, swiss army knife for computing per-base 
     coverage across multiple (hence, "multi") samples simultaneously. There are 
@@ -162,9 +167,9 @@ class MultiCov extends ToolBase {
                 log.info " Executing Phase 1 / 2 to estimate sample means ".center(80,"=")
                 CoverageSummarizer printer1 = new CoverageSummarizer(null, samples)
                 this.phase1 = true
-                run(printer1)
+                run(printer1, true)
                 
-                Map means = samples.collectEntries { sample ->
+                this.means = samples.collectEntries { sample ->
                     [ sample,  printer1.sampleStats[printer1.samples.indexOf(sample)].mean ]
                 }
                 printer.setSampleMeans(means)
@@ -233,7 +238,7 @@ class MultiCov extends ToolBase {
     
     @CompileStatic
     Regions filterToBAMContigs(Regions regions) {
-        final SAM bam = new SAM(opts.opts.arguments()[0])
+        final SAM bam = new SAM(opts.arguments()[0])
         final List<String> bamContigs = bam.contigList
         
         Set<String> warned = new HashSet()
@@ -283,7 +288,12 @@ class MultiCov extends ToolBase {
             throw new IllegalArgumentException("Please specify either -L, -bed or -gene to define the regions to process")
     }
     
-    void run(CoverageSummarizer summarizer) {
+    /**
+     * 
+     * @param summarizer
+     * @param skipEstimateMeans if set to false, determine whether to estimate means automatically
+     */
+    void run(CoverageSummarizer summarizer, boolean skipEstimateMeans=false) {
         
         summarizer.start()
         
@@ -301,7 +311,7 @@ class MultiCov extends ToolBase {
         GParsPool.withPool(bams.size()) {
             
             // If no means were provided and the user specified -rel, compute them
-            if(opts.rel || opts.std || opts.co || opts.corr ) {
+            if(!skipEstimateMeans && (opts.rel || opts.std || opts.co || opts.corr )) {
                 estimateMeans(estRegions, summarizer)
                 log.info "Ordered Means: " + summarizer.orderedMeans.join(", ")
             }
@@ -314,7 +324,7 @@ class MultiCov extends ToolBase {
                 SAM bam = sampleBamPair[1]
                 if(opts.w || opts.s) {
                     int windowSize = opts.w ? opts.w.toInteger() : 0
-                    int subsampling = opts.sub ? opts.sub.toInteger() : 1
+                    int subsampling = opts.subs ? opts.subs.toInteger() : 1
                     combiner.processBAM(bam, this.scanRegions, this.minimumMapQ, windowSize, subsampling, sample)
                 }
                 else {
@@ -397,6 +407,7 @@ class MultiCov extends ToolBase {
                 log.info "Mean of $sample = $mean"
                 sampleMeans[sample] = mean
             }
+            this.means = sampleMeans
             printer.setSampleMeans(sampleMeans)
         }
         else {
