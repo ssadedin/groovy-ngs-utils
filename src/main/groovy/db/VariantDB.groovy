@@ -1,3 +1,4 @@
+package db
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -21,9 +22,11 @@ import java.sql.Timestamp;
 
 import com.xlson.groovycsv.PropertyMapper;
 
-import db.Schema;
-import gngs.*
-
+import gngs.Pedigree
+import gngs.Pedigrees
+import gngs.Subject
+import gngs.Variant
+import gngs.Variant.Allele
 import groovy.sql.Sql
 import groovy.util.logging.Log;
 
@@ -92,6 +95,7 @@ class VariantDB implements Closeable {
      * @param fileName
      */
     public VariantDB(String fileName) {
+        throw new Exception('Bar')
         this.connectString = "jdbc:sqlite:$fileName"
         this.driver = "org.sqlite.JDBC"
         this.schema = new Schema()
@@ -355,69 +359,82 @@ class VariantDB implements Closeable {
         
         int countAdded = 0
         def alleles = alleleToAdd ? [alleleToAdd] : v.alleles
-        for(Variant.Allele allele in v.alleles) {
-            def variant_row = findVariant(v, allele)
-            if(!variant_row) {
-                
-                if(annotations == null && v.header.hasInfo("CSQ")) {
-                    def vep = v.getVepInfo()[allele.index]
-                    if(!vep)
-                    	vep = [:]
-                        
-                    def cons = v.getConsequence(allele.index)
-                    if(cons != null && cons.indexOf("(")>=0) 
-                        cons = cons.substring(0, cons.indexOf("("))
-                    db.execute("""
-                        insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id, gene) 
-                                    values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, $vep.SIFT, $vep.PolyPhen, $vep.Condel, 
-                                           ${cons}, $v.maxVepMaf, $v.id, 
-                                           $vep.SYMBOL
-                        );
-                    """)
-                }
-                else {
-                    
-                    if(annotations == null)
-                        annotations = [:]
-                    
-                    float maxFreq = ["ONEKG_FREQ", "ESP_FREQ", "EXAC_FREQ"].collect { getFreq(it,annotations) }.max()
-                    String aaChange = getAnnotation("AACHANGE", annotations)
-                    String gene = annotations.Gene?:""
-					gene = gene.split(";")[0]
-                    db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id, gene) 
-                                   values (NULL, $v.chr, 
-                                                 $v.pos, 
-                                                 $allele.start, $allele.end, 
-                                                 $v.ref, $allele.alt,
-                                                 $annotations.ExonicFunc,
-                                                 $aaChange,
-                                                 $maxFreq, 
-                                                 ${getAnnotation("DBSNP", annotations)},
-										         $gene
-                                                )
-                               """)
-                }
-            }
-            variant_row = findVariant(v,allele)
+        if(alleles.size()>1) {
+            log.warning "Variant $v has > 1 alternate allele. Import of non-primitive VCFs is not recommended, second and subsequent alleles will be ignored"
+        }
+
+        def allele = alleles[0]
+        def variant_row = findVariant(v, allele)
+        if(!variant_row) {
             
-            // For every sample carrying the allele, add an observation
-            for(String sampleId in addSamples.grep { v.sampleDosage(it) }) {
+            if(annotations == null && v.header.hasInfo("CSQ") || v.header.hasInfo('ANN')) {
                 
-                def sample_row = sampleInfo[sampleId]
+               
+                def vep = v.maxVep
                 
-                def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
-                if(!variant_obs) {
-                    db.execute("""
-                        insert into variant_observation (id,variant_id,sample_id, batch_id, qual,dosage, created) 
-                                    values (NULL, $variant_row.id, 
-                                                  ${sample_row.id}, 
-                                                  ${batch},
-                                                  ${v.sampleGenoType(sampleId)?.GQ?.toDouble()}, 
-                                                  ${v.sampleDosage(sampleId)}, 
-                                                  datetime('now'));
-                    """)
-                    ++countAdded
+                throw new Exception('foo')
+
+                if(v.pos == 7337) {
+                    log.info "Max vep for $v is $vep"
                 }
+                
+                if(!vep)
+                    vep = [:]
+                    
+                String cons = vep.Consequence
+                if(cons != null && cons.indexOf("(")>=0) 
+                    cons = cons.substring(0, cons.indexOf("("))
+
+                db.execute("""
+                    insert into variant (id,chr, pos, start,end,ref,alt, sift, polyphen, condel, consequence, max_freq,dbsnp_id, gene) 
+                                values (NULL, $v.chr, $v.pos, $allele.start, $allele.end, ${v.ref}, $allele.alt, $vep.SIFT, $vep.PolyPhen, $vep.Condel, 
+                                       ${cons}, $v.maxVepMaf, $v.id, 
+                                       $vep.SYMBOL
+                    );
+                """)
+            }
+            else {
+                
+                if(annotations == null)
+                    annotations = [:]
+                
+                float maxFreq = ["ONEKG_FREQ", "ESP_FREQ", "EXAC_FREQ"].collect { getFreq(it,annotations) }.max()
+                String aaChange = getAnnotation("AACHANGE", annotations)
+                String gene = annotations.Gene?:""
+                gene = gene.split(";")[0]
+                db.execute("""insert into variant (id,chr,pos,start,end,ref,alt,consequence,protein_change,max_freq, dbsnp_id, gene) 
+                               values (NULL, $v.chr, 
+                                             $v.pos, 
+                                             $allele.start, $allele.end, 
+                                             $v.ref, $allele.alt,
+                                             $annotations.ExonicFunc,
+                                             $aaChange,
+                                             $maxFreq, 
+                                             ${getAnnotation("DBSNP", annotations)},
+                                             $gene
+                                            )
+                           """)
+            }
+        }
+        variant_row = findVariant(v,allele)
+        
+        // For every sample carrying the allele, add an observation
+        for(String sampleId in addSamples.grep { v.sampleDosage(it) }) {
+            
+            def sample_row = sampleInfo[sampleId]
+            
+            def variant_obs = db.firstRow("select * from variant_observation where sample_id = ${sample_row.id} and variant_id = ${variant_row.id} and batch_id = $batch;")
+            if(!variant_obs) {
+                db.execute("""
+                    insert into variant_observation (id,variant_id,sample_id, batch_id, qual,dosage, created) 
+                                values (NULL, $variant_row.id, 
+                                              ${sample_row.id}, 
+                                              ${batch},
+                                              ${v.sampleGenoType(sampleId)?.GQ?.toDouble()}, 
+                                              ${v.sampleDosage(sampleId)}, 
+                                              datetime('now'));
+                """)
+                ++countAdded
             }
         }
         return countAdded

@@ -1325,6 +1325,47 @@ class Variant implements IRegion {
         }
     }
     
+    /**
+     * Tries to intelligently parse the genotypes in this variant by converting all
+     * fields that look numeric to a numeric form.
+     * <p>
+     * NOTE: this is not done respecting information in the VCF header, and may return
+     * inconsistent data types for different variants for the same field - eg: if a number
+     * appears to be an integer, it will ve converted to an integer, even if the 
+     * field may be sometimes fractional.
+     */
+    List<Map> getParsedGenotypes() {
+        this.genoTypes.collect { Map gtInfo ->
+            gtInfo.collectEntries { k,x ->
+                def value = x
+                if(x instanceof String)  {
+                    def listValue = Utils.toNumberList(x)
+                    if(listValue)
+                        value = listValue
+                    else
+                        value = Utils.convertNum(x)
+                }
+
+                [k, value]
+            }
+        }
+    }
+    
+    Map<String,Object> getParsedInfo() {
+        this.getInfo().collectEntries { k,x ->
+            def value = x
+            if(x instanceof String)  {
+                def listValue = Utils.toNumberList(x)
+                if(listValue)
+                    value = listValue
+                else
+                    value = Utils.convertNum(x)
+            }
+
+            [k, value]
+        }
+    }
+    
     @CompileStatic
     int getGenotypeDepth(Map<String,Object> gt, int alleleIndex) {
         List ad = (List)gt.AD
