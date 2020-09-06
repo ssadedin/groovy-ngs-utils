@@ -18,9 +18,11 @@ class LiftOver extends ToolBase {
         gngs.LiftOver lo = new gngs.LiftOver(from: opts.from, to: opts.to)
         
         def formatResult = opts.tabs ? {
-           println([it.chr, it.from, it.to].join("\t")) 
+           if(it)
+               println([it.chr, it.from, it.to].join("\t")) 
         } : {
-           println(it.toString()) 
+           if(it)
+               println(it.toString()) 
         }
         
         int count = 0
