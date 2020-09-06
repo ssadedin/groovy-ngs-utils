@@ -137,6 +137,7 @@ class Region extends Expando implements IRegion, Serializable {
     @CompileStatic
     void parseRegion(String region) {
         int colonIndex = region.indexOf(":")
+        List tokens
         if(colonIndex>0) {
             this.chr = region.substring(0, colonIndex)
             int dashIndex = region.indexOf("-")
@@ -146,6 +147,13 @@ class Region extends Expando implements IRegion, Serializable {
             catch(java.lang.NumberFormatException f) {
                 this.range = new GRange(region.substring(colonIndex+1, dashIndex).replace(',','').toInteger(),region.substring(dashIndex+1).replace(',','').toInteger(), null)
             }
+        }
+        else
+        if((tokens = region.tokenize('\t')).size() > 1) {
+            this.range = 
+                new GRange(tokens[1].toInteger(), 
+                           tokens[2].toInteger(), null)
+           this.chr = tokens[0]
         }
         else {
            this.chr = region

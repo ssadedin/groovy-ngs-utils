@@ -553,6 +553,14 @@ class RegionsTest {
      }
      
      @Test
+     void testParseFromTabSeparated() {
+         Region r = new Region('chr1\t300\t400')
+         assert r.chr == 'chr1'
+         assert r.from == 300
+         assert r.to == 400
+     }
+     
+     @Test
      void testGetContigRegions() {
          Regions regions = regions '''
          chr1   10  20
