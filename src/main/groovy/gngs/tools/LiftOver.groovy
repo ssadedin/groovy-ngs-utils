@@ -19,10 +19,10 @@ class LiftOver extends ToolBase {
         
         def formatResult = opts.tabs ? {
            if(it)
-               println([it.chr, it.from, it.to].join("\t")) 
+               return ([it.chr, it.from, it.to].join("\t")) 
         } : {
            if(it)
-               println(it.toString()) 
+               return (it.toString()) 
         }
         
         int count = 0
