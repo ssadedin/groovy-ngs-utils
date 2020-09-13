@@ -2,6 +2,7 @@ package gngs.tools
 
 import gngs.*
 import graxxia.IntegerStats
+import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.actor.Actor
@@ -112,6 +113,9 @@ class Cov extends ToolBase {
         
         if(opts.samplesummary) {
             writeSampleSummary(opts.samplesummary, covStats)
+        }
+        if(opts.covo) {
+            printCoverageJs(covStats, opts.covo)
         }
     }
     
@@ -242,12 +246,30 @@ class Cov extends ToolBase {
         log.info "Wrote sample summary for ${bam.samples[0]} to $outputFile"
     }
     
+    private void printCoverageJs(IntegerStats stats, String fileName) {
+        
+        Map statsJson = [ 
+            means: [ 
+                [ bam.samples[0], stats.mean ]
+            ].collectEntries(),
+                
+            medians: [
+                [ bam.samples[0], stats.median]
+            ].collectEntries(),
+        ]
+        
+        new File(fileName).withWriter { w ->
+            w.println('covs = // NOJSON\n' + JsonOutput.prettyPrint(JsonOutput.toJson(statsJson)))
+        }
+        log.info "Wrote coverage stats to $fileName"
+    }
     
     static void main(String[] args) {
         cli('Cov [-o] -L <target regions> <bam file>', args) {
             o 'Output file to write to', args:1, required: true
             minMQ 'Minimum mapping quality (1)', args:1, required: false
             samplesummary 'File to write coverage statistics to in tab separated format', args:1, required: false
+            covo 'File to write coverage statistics in js format to', args:1, required: false
             'L' 'bam file to read from', args:1, required: true, longOpt: 'target'
         }
     }
