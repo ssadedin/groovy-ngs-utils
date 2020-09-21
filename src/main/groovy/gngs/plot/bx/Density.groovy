@@ -91,6 +91,12 @@ trait Density {
         kd = new smile.stat.distribution.KernelDensity(values, bw)
         step = (max - min) / segments
         
+        // This is a bit arbitrary, but if all the values are the same, we will just show
+        // a bin of 1.0 either side of whatever the value is
+        if(step == 0.0d) {
+            step = 1.0d
+        }
+        
         min -= step*2
         max += step*2
         
