@@ -332,21 +332,31 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
             
             Regions chrScanRegions = scanRegions.grep { Region r -> r.chr == chr } as Regions
             List<QueryInterval> intervals = bam.toQueryIntervals(chrScanRegions)
+            
+            QueryInterval[] optimizedIntervals = QueryInterval.optimizeIntervals(intervals as QueryInterval[])
+            
+            log.info "Scanning ${optimizedIntervals.size()} optimized intervals"
 
             log.info "Scan $chr from $start to $end"
             bam.withReader { SamReader reader ->
-                SAMRecordIterator iter = reader.query(intervals as QueryInterval[], false)
                 try {
-                    while(iter.hasNext()) {
-                        SAMRecord r = iter.next()
-                        if(r.getMappingQuality()>=minMQ)
-                            calculator.send(new AcknowledgeableMessage(new ReadRange(r, countFragments), downstreamCount))
-                        else
-                            ++failMQ
-                    } 
+                    SAMRecordIterator iter = reader.query(optimizedIntervals, false)
+                    try {
+                        while(iter.hasNext()) {
+                            SAMRecord r = iter.next()
+                            if(r.getMappingQuality()>=minMQ)
+                                calculator.send(new AcknowledgeableMessage(new ReadRange(r, countFragments), downstreamCount))
+                            else
+                                ++failMQ
+                        } 
+                    }
+                    finally {
+                        iter.close()
+                    }
                 }
-                finally {
-                    iter.close()
+                catch(Exception e) {
+                    e.printStackTrace()
+                    throw e
                 }
             }
         }
