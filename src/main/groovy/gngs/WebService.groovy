@@ -125,8 +125,9 @@ class WebService {
     public WebService(String endPoint, String api=null) {
         super();
         this.endPoint = endPoint;
-        if(api != null)
+        if(api != null) {
             this.api = api.startsWith('/') ? api.substring(1) : api;
+        }
         else
             this.api = ''
     }
@@ -342,7 +343,7 @@ class WebService {
     }
     
     URL encodeURL(Map params, String method, String payload) {
-        String url = "$endPoint/$api"
+        String url = api ? "$endPoint/$api" : endPoint
         Map sigParams = [:]
         if(credentials || credentialsPath) {
             if(payload) {
