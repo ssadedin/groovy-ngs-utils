@@ -838,7 +838,9 @@ class Regions implements Iterable<Region> {
      * Save the regions in BED format. If an 'extra' option is provided, this is called
      * as a closure to return an id field to use for each region.
      * 
-     * @param options
+     * @param options   extra: closure returning data to write into 4th column, 
+     *                  sorted: true to sort lexically, Comparator to sort custom
+     *                          (see {@link NumericRegionComparator)
      * @param fileName
      */ 
     void save(Map options, Writer w) {
