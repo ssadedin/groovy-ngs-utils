@@ -222,6 +222,15 @@ class Regions implements Iterable<Region> {
     }
     
     @CompileStatic
+    Regions intersectRegion(Region other) {
+        Regions result = new Regions()
+        for(r in intersect(other)) {
+            result.addRegion(new Region(other.chr, r.from, r.to))
+        }
+        return result
+    }
+    
+    @CompileStatic
     Regions intersect(BED other) {
         this.intersectImpl(other)
     }

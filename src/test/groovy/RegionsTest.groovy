@@ -576,6 +576,27 @@ class RegionsTest {
          assert chr2.numberOfRanges == 2
          assert chr2.every { it.chr == 'chr2' }
      }
+     
+     @Test
+     void 'testIntersectRegions'() {
+         def region_list = [
+             "chr7:150643964-150644141", 
+             "chr7:150644415-150644601", 
+             "chr7:150644693-150644965"
+         ]
+         
+         def regions = region_list.collect { new Region(it) } as Regions
+         
+         def region = new Region("chr7:150643964-150644966")
+         
+         def ix = regions.intersectRegion(region)
+         assert ix.numberOfRanges == 3
+         
+         ix = regions.intersectRegions([region] as Regions)
+         assert ix.numberOfRanges == 3
+         
+         
+     }
       
      // Simplistic but easy to use approximate equals
      void approx(double x1, double x2) {
