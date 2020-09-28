@@ -316,7 +316,7 @@ class RegionsTest {
     } 
     
     @Test
-    void testForward() {
+    void 'forward and backward'() {
         Regions regions = new Regions([
             new Region("chr1",100..120),   
             new Region("chr1",130..160),
@@ -330,6 +330,7 @@ class RegionsTest {
         // One region
         assert regions.forward("chr1", 212, 1) == 215..220
         assert regions.backward("chr1", 212, 1) == 190..210
+        assert regions.backward("chr1", 215, 1) == 190..210
         
         // Two regions
         assert regions.forward("chr1", 212, 2) == 230..260

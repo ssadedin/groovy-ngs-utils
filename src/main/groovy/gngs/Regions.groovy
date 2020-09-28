@@ -511,7 +511,13 @@ class Regions implements Iterable<Region> {
         Iterator<IntRange> iter = chrIndex.reverseIteratorAt(pos)
         while(iter.hasNext() && count > 0) {
             result = iter.next()
-            --count
+            
+            // note: when pos is the start of a region, the first region
+            // returned from the reverse iterator is that region - but this does
+            // not represent going backward at all, so only count if the 
+            // region returned starts before pos
+            if(result.from < pos)
+                --count
         }
         return result
     }
