@@ -729,7 +729,7 @@ class Regions implements Iterable<Region> {
      *
      * @return
      */
-    Regions unique() {
+    Regions uniquify() {
         Regions result = new Regions()
         this.eachRange(unique:true) { chr, from, to, extra ->
             result.addRegion(chr, from, to+1, extra)
