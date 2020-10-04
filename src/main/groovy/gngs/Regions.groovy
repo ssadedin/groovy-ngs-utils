@@ -292,7 +292,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     List<Region> getOverlapRegions(IRegion r) {
-        getOverlaps(r.chr, r.range.from, r.range.to).collect { IntRange overlap ->
+        (List<Region>)getOverlaps(r.chr, r.range.from, r.range.to).collect { IntRange overlap ->
             def extra = ((GRange)overlap).extra
             return extra instanceof Region ? extra : new Region(r.chr, overlap)
         }
