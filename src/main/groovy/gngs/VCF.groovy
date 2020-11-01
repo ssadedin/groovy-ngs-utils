@@ -256,7 +256,7 @@ class VCF implements Iterable<Variant> {
     }
 
     @CompileStatic
-    private addAll(Iterable variants) {
+    private addAll(Iterable<Variant> variants) {
         for(Variant v in variants) {
             this.add(v)
         }
