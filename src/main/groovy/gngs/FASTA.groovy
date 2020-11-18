@@ -35,6 +35,10 @@ class RepeatMotif {
     int position 
     
     int repetitions
+    
+    int getTotalSize() {
+        return motif.size() * repetitions
+    }
 }
 
 /**
@@ -174,6 +178,29 @@ class FASTA {
      */
     byte[] baseBytesAt(String contig, long start, long end) {
       return this.indexedFastaFile.getSubsequenceAt(contig, start, end).bases
+    }
+    
+    /**
+     * Search for a repeat at the given position and return a RepeatMotif object
+     * if one is found
+     * 
+     * @param contig
+     * @param position
+     * @return RepeatMotif or null if none is found
+     */
+    @CompileStatic
+    RepeatMotif repeatAt(final String contig, final int position, final int maxLen = 4) {
+        byte[] bases = baseBytesAt(contig, position, position+20)
+        RepeatMotif bestMotif = null
+        for(int len=1; len<=maxLen;++len) {
+            RepeatMotif motif = repeatAt(bases, len)
+            if(motif) {
+                if(!bestMotif || motif.repetitions>bestMotif.repetitions) {
+                    bestMotif = motif
+                }
+            }
+        }
+        return bestMotif
     }
      
     public static final int T = (int)"T".charAt(0)
