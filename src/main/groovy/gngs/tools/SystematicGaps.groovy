@@ -12,6 +12,8 @@ import graxxia.Thresholder
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
+import java.text.NumberFormat
+
 import org.apache.commons.math3.stat.descriptive.SummaryStatistics
 
 @CompileStatic
@@ -42,10 +44,21 @@ class SystematicGap {
  */
 @Log
 class SystematicGaps extends ToolBase {
+    
+    NumberFormat numberFormat = java.text.NumberFormat.numberInstance;
+
+    {
+        numberFormat.maximumFractionDigits = 2
+        numberFormat.minimumFractionDigits = 0
+    }
+    
+    String separator = '\t'
+    
     static void main(String[] args) {
         cli('SystematicGaps -threshold <threshold> <bgzip>  ...', args) {
             threshold 'The coverage threshold below which samples are considered to have insufficent coverage', args:1, required: true
             refgene 'Path to refgene database or auto to download (hg19)', args:1
+            format 'csv or tsv for comma vs tab separators', args:1, required: false
             padding 'Amount to widen interval of gap when searching for overlapping genes', args:1
         }
     }
@@ -62,6 +75,12 @@ class SystematicGaps extends ToolBase {
         if(opts.arguments().size() == 0) 
             throw new IllegalArgumentException("Please provide one or more bgzipped coverage files")
             
+        if(opts.csv) 
+            separator = ','
+        else
+        if(opts.tsv) 
+            separator = '\t'
+
         CoveragePosition currentCp = null
         RefGenes refgene = null
         if(opts.refgene) {
@@ -74,6 +93,8 @@ class SystematicGaps extends ToolBase {
                 refgene = new RefGenes(new File(opts.refgene))
             }
         }
+        
+        GapAnnotator annotator = new GapAnnotator(refgene)
         
         Thresholder<CoveragePosition> thr =  new Thresholder<CoveragePosition>()
         
@@ -108,14 +129,35 @@ class SystematicGaps extends ToolBase {
         log.info "Found ${thr.ranges.size()} systematic coverage gaps"
 //        Regions gapRegions = new Regions(thr.ranges.collect { new Region(it.value.chr, it)})
                 
+        List<String> headers = null
+
         System.out.withWriter { w ->
             thr.ranges.each { r ->
                 SystematicGap gap = r.value
+
                 final Region gapRegion = new Region(gap.chr, r.from, r.to)
                 final Region searchRegion = gapRegion.widen(widenGapForGeneSearchBy)
                 String gene = searchForOverlappingGenes(refgene, searchRegion)
-                w.write([gap.chr, r.from, r.to, gene, [gap.stats.min,gap.stats.max, gap.stats.mean].join(',')].join('\t'))
-                w.write('\n')
+                List<Map> annotations = annotator.annotateGapRegion(gapRegion)
+                
+                for(anno in annotations) {
+                    anno.remove('gene')
+                    if(headers == null) {
+                        headers = ['chr','start','end','size','gene','min_cov','max_cov','mean_cov'] + anno*.key
+                        w.write(headers.join(separator))
+                        w.write('\n')
+                    }
+
+                    w.write((
+                        [
+                            gap.chr, r.from, r.to, r.size(), gene, 
+                            numberFormat.format(gap.stats.min), 
+                            numberFormat.format(gap.stats.max), 
+                            numberFormat.format(gap.stats.mean)
+                        ]+anno*.value.collect { (it == null || it == 'null')  ? '' : it }).join(separator)
+                    )
+                    w.write('\n')
+                }
             }
         }
             
