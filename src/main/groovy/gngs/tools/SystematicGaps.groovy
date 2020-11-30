@@ -75,10 +75,10 @@ class SystematicGaps extends ToolBase {
         if(opts.arguments().size() == 0) 
             throw new IllegalArgumentException("Please provide one or more bgzipped coverage files")
             
-        if(opts.csv) 
+        if(opts.format == 'csv') 
             separator = ','
         else
-        if(opts.tsv) 
+        if(opts.format == 'tsv') 
             separator = '\t'
 
         CoveragePosition currentCp = null
