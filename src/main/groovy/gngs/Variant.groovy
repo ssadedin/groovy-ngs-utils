@@ -120,7 +120,7 @@ class SnpEffInfo {
 }
 
 class VEPConsequences {
-    static List<String> RANKED_CONSEQUENCES = [
+    public static List<String> RANKED_CONSEQUENCES = [
         "transcript_ablation",
         "splice_donor_variant",
         "splice_acceptor_variant",
