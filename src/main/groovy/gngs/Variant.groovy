@@ -814,19 +814,34 @@ class Variant implements IRegion {
     @CompileStatic
     Map<String,Object> getInfo() {
         if(infos == null) {
-            infos =  [:]
-            if((info != null) && (info != '.')) {
-                for(String s in info.tokenize(';')) {
-                    int i = s.indexOf('=')
-                    if(i<0) {
-                        infos[s]=Boolean.TRUE
-                        continue
-                    }
-                    infos[s.substring(0,i)] = s.substring(i+1)
-                }
-            }
+            infos =  parseInfoString(this.info)        
         }
         return infos
+    }
+    
+    /**
+     * Parse the value from a VCF INFO field into a Map structure
+     * <p>
+     * Note this does not do a type safe parsing; all values are parsed to
+     * Strings
+     *  
+     * @param value
+     * @return
+     */
+    @CompileStatic
+    static Map<String,Object> parseInfoString(final String value) {
+        Map result = [:]
+        if((value != null) && (value != '.')) {
+            for(String s in value.tokenize(';')) {
+                int i = s.indexOf('=')
+                if(i<0) {
+                    result[s]=Boolean.TRUE
+                    continue
+                }
+                result[s.substring(0,i)] = s.substring(i+1)
+            }
+        }
+        return result
     }
     
     /**
