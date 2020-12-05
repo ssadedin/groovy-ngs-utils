@@ -33,22 +33,6 @@ class MitoGnomAD {
     public static final List<String> HAPLOGROUPS= ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'HV', 'I', 'J', 'K', 'L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'M', 'N', 'P', 'R', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
     
    
-   @CompileStatic
-    static List<Integer> intList(def value) {
-        String.valueOf(value).tokenize(',')*.toInteger()
-    }
-    
-    @CompileStatic
-    static List<Double> doubleList(def value) {
-        String.valueOf(value).tokenize(',')*.toDouble()
-    }
-    
-    @CompileStatic
-    static List<List<Integer>> listOfHistograms(def value) {
-        ((String)value)[1..-2].tokenize('],[').collate(10).collect { it*.toInteger() }
-    }
-  
-    
     String variant_collapsed
 
     boolean hap_defining_variant
@@ -136,4 +120,28 @@ class MitoGnomAD {
             common_low_heteroplasmy: info.containsKey('common_low_heteroplasmy')
         )
     }
+    
+    @CompileStatic
+    static List<Integer> intList(def value) {
+        if(value.equals('.'))
+            return null
+        String.valueOf(value).tokenize(',')*.toInteger()
+    }
+    
+    @CompileStatic
+    static List<Double> doubleList(def value) {
+        if(value.equals('.'))
+            return null
+        String.valueOf(value).tokenize(',').collect { it.equals('.') ? 0.0d : it as Double }
+    }
+    
+    @CompileStatic
+    static List<List<Integer>> listOfHistograms(def value) {
+        if(value.equals('.'))
+            return null
+
+        ((String)value)[1..-2].tokenize('],[').collate(10).collect { it*.toInteger() }
+    }
+  
+  
 }
