@@ -23,6 +23,7 @@ class MitoGnomADTest {
         
         assert mn.pon_mt_trna_prediction == gngs.PON_TRNA_Prediction.NEUTRAL
         assert mn.mitotip_trna_prediction == MITOTIP_Prediction.LIKELY_BENIGN
+        assert mn.pon_ml_probability_of_pathogenicity > 0.2 && mn.pon_ml_probability_of_pathogenicity < 0.4
         
         assert mn.common_low_heteroplasmy == false
         
