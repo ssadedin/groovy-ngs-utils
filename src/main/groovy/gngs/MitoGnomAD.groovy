@@ -51,7 +51,7 @@ class MitoGnomAD {
     GnomADHist hl_hist;
     double dp_mean;
     double mq_mean;
-    double tlod_mean;
+    Double tlod_mean;
     double af_hom;
     double af_het;
 
@@ -89,7 +89,7 @@ class MitoGnomAD {
             an : info.AN as Integer,
             ac_hom : info.AC_hom as Integer,
             ac_het : info.AC_het as Integer,
-            tlod_mean : info.tlod_mean as Double,
+            tlod_mean : safeDouble(info.tload_mean),
             af_hom : info.AF_hom as Double,
             af_het : info.AF_het as Double,
             max_hl : info.max_hl as Double,
@@ -119,6 +119,15 @@ class MitoGnomAD {
                 : null,
             common_low_heteroplasmy: info.containsKey('common_low_heteroplasmy')
         )
+    }
+    
+    @CompileStatic
+    static Double safeDouble(def value) {
+       if(value == null) 
+           return null
+       if(value.equals('.'))
+           return null
+       return value as Double
     }
     
     @CompileStatic
