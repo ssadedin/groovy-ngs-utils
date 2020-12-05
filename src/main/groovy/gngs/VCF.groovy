@@ -1152,8 +1152,11 @@ class VCF implements Iterable<Variant> {
      * given variant. These operations become much more reliable (but still not
      * 100% reliable) when both VCFs from which the variants are drawn are decomposed
      * into primitives.
+     * <p>
+     * NOTE: this function does not require a genotype level match to return a variant. It
+     * will return a variant found in the VCF regardless of genotype (eg: even hom ref)
      * 
-     * @param v
+     * @param v Variant to find
      * @return a Variant matching v, if one is found, otherwise null
      */
     @CompileStatic
