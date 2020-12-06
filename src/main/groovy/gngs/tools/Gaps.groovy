@@ -424,7 +424,7 @@ class Gaps {
             }
         }
         
-        Gaps gaps = new Gaps(opts)
+        Gaps gaps = new Gaps(new CliOptions(opts:opts))
         gaps.run()
     }
     
