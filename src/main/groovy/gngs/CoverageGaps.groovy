@@ -84,6 +84,9 @@ class CoverageGaps {
     
     RegulatingActor<CoverageBlock> gapProcessor = null
     
+    CoverageGaps() {
+    }
+
     CoverageGaps(String coverageFilePath) {
         this.coverageFilePath = coverageFilePath
     }

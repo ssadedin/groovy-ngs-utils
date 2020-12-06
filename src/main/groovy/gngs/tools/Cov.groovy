@@ -54,6 +54,8 @@ class Cov extends ToolBase {
     SAM bam 
     
     Writer out
+
+    Writer gaps
     
     int minimumMappingQuality = 1
     
@@ -63,6 +65,11 @@ class Cov extends ToolBase {
     
     byte coverageOverlapMode = COVERAGE_MODE_NO_COUNT_OVERLAPS;
     
+    int gapThreshold = 20
+    
+    GapAnnotator gapAnnotator
+    CoverageGaps gapCalculator
+  
     @Override
     public void run() {
         
@@ -79,6 +86,13 @@ class Cov extends ToolBase {
         
         this.contigSizes = bam.contigs
         
+        if(opts.gt) 
+            this.gapThreshold = Integer.parseInt(opts.gt)
+            
+        if(opts.gaps) {
+            log.info "Will calculate gaps based on coverage depth threshold of $gapThreshold"
+        }
+
         initOverlapMode()
         
         if(opts.minMQ)
@@ -87,7 +101,15 @@ class Cov extends ToolBase {
         log.info "Analysing ${Utils.humanBp(scanRegions.size())} from ${opts.arguments()[0]}"
         log.info "Mapping quality threshold = $minimumMappingQuality"
         
-        out = new AsciiWriter(Utils.outputStream(opts.o,10*1024*1024), 5*1024*1024)
+        openStreams()
+        
+        if(opts.gaps) {
+            gapAnnotator = new GapAnnotator(new RefGenes((String)opts['refgene']))
+            gapAnnotator.start()
+            gapCalculator = new CoverageGaps()
+            gapCalculator.threshold = this.gapThreshold
+            gapCalculator.gapProcessor = gapAnnotator
+        }
         
         RegulatingActor writerActor = RegulatingActor.actor { contig, covs ->
             writeCoverage(contig, covs)
@@ -115,7 +137,15 @@ class Cov extends ToolBase {
         }
         finally {
             out.close()
+            
         }
+
+        if(gaps) {
+            gapAnnotator.sendStop()
+            gapAnnotator.join()
+        }
+        
+        writeGaps()
         
         log.info "Coverage statistics: $covStats"
         
@@ -124,6 +154,30 @@ class Cov extends ToolBase {
         }
         if(opts.covo) {
             printCoverageJs(covStats, opts.covo)
+        }
+    }
+    
+    private void writeGaps() {
+        if(!gaps)
+            return
+        
+        this.gaps.write((Gaps.DEFAULT_COLUMNS + GapAnnotator.ANNOTATION_OUTPUT_COLUMNS).join(',') + '\n')
+        
+        Gaps gapWriter = new Gaps(new CliOptions(overrides:[L:opts.L, r:opts.refgene, csv:true]))
+        gapWriter.gapWriter = null
+        for(CoverageBlock block in gapCalculator.blocks) {
+            gapWriter.writeGapBlock(block, this.gaps)
+        }
+        gaps.close()
+    }
+
+    private openStreams() {
+        out = new AsciiWriter(Utils.outputStream(opts.o,10*1024*1024), 5*1024*1024)
+        if(opts.gaps) {
+            if(!opts.refgene)
+                throw new IllegalArgumentException("If -gaps is specified then -refgene is required")
+
+            gaps = new AsciiWriter(Utils.outputStream(opts.gaps,10*1024*1024), 5*1024*1024)
         }
     }
 
@@ -145,6 +199,8 @@ class Cov extends ToolBase {
     void writeCoverage(String contig, short [] covs) {
         final Regions contigRegions = scanRegions.getContigRegions(contig)
         log.info "Write ${Utils.human(contigRegions.size())} coverage values for contig: $contig"
+        
+       
         for(Region r in contigRegions) {
             final int start = r.from
             final int end = r.to
@@ -153,6 +209,8 @@ class Cov extends ToolBase {
             for(int pos = start; pos < end; ++pos) {
 
                 int cov = pos< covLen ? Math.max(Math.min(1000,covs[pos]),zero) : 0
+                if(gaps != null) 
+                    gapCalculator.processLine(r.chr, start, pos, cov, '')
 
                 covStats.addIntValue(cov)
                 out.write(contig)
@@ -302,6 +360,9 @@ class Cov extends ToolBase {
             minMQ 'Minimum mapping quality (1)', args:1, required: false
             samplesummary 'File to write coverage statistics to in tab separated format', args:1, required: false
             covo 'File to write coverage statistics in js format to', args:1, required: false
+            gaps 'File to write annotated gaps to', args:1, required: false
+            gt 'Gap threshold - coverage level below which a region is considered a gap', args:1, required: false
+            refgene 'Refgene database for annotating gaps (required if -gaps specified)', args:1, required: false
             om 'Overlap mode whether to count overlapping read fragments - one of none,half (default=none)', longOpt:'overlap-mode', args: 1
             'L' 'bam file to read from', args:1, required: true, longOpt: 'target'
         }

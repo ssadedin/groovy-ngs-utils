@@ -108,7 +108,15 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
         
     }
     
+    /**
+     * Names of properties set as annotations on gap regions
+     */
     final static List<String> ANNOTATION_COLUMNS = ['transcript', 'strand', 'gene', 'exon', 'coding_intersect','cds_distance','transcript_type']
+    
+    /**
+     * Prettier human readable version of above columns - should always match 1-1
+     */
+    final static List<String> ANNOTATION_OUTPUT_COLUMNS = ['Tx Name', 'Strand', 'Symbol', 'Exon Number', 'CDS Overlap', 'CDS Distance', 'Transcript Type']
 
     @CompileStatic
     @Override
@@ -251,7 +259,9 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
 @Log
 class Gaps {
     
-    OptionAccessor opts
+    final static List DEFAULT_COLUMNS = ['Chr', 'Start', 'End', 'Gene', 'Width', 'Min Cov', 'Mean Cov', 'Max Cov']
+    
+    CliOptions opts
     
     Regions targetRegions
     
@@ -259,9 +269,12 @@ class Gaps {
     
     NumberFormat format = NumberFormat.numberInstance
     
-    Gaps(OptionAccessor opts) {
+    Writer gapWriter 
+    
+    Gaps(CliOptions opts) {
         this.opts = opts
         this.targetRegions = null
+        this.gapWriter = new PrintWriter(System.out)
         if(opts.L) {
             this.targetRegions = new BED(opts.L,withExtra:true).load(withExtra:true).collect {
                 new Region(it.chr, it.from+1, it.to, id: it.range.extra)
@@ -490,10 +503,10 @@ class Gaps {
 
         def panelClasses = null
         
+        List cols = [] + DEFAULT_COLUMNS // clone
         if(opts.csv) {
-            List cols = ['Chr', 'Start', 'End', 'Gene', 'Width', 'Min Cov', 'Mean Cov', 'Max Cov']
             if(opts.r && !opts.a)
-                cols += ['Tx Name', 'Strand', 'Gene', 'Exon Number', 'CDS Overlap', 'CDS Distance', 'Transcript Type']
+                cols += GapAnnotator.ANNOTATION_OUTPUT_COLUMNS
             if(opts.p) {
                 panelClasses = opts.ps.collect {
                     def fileName = new File(it).name
@@ -527,15 +540,20 @@ class Gaps {
      * @param annotationWriter
      * @param panelClasses
      */
-//    @CompileStatic
+    @CompileStatic
     void writeGap(Region blockRegion, Writer annotationWriter, List panelClasses = null) {
-        CoverageBlock block = blockRegion.extra
+        CoverageBlock block = (CoverageBlock)blockRegion.extra
+        writeGapBlock(block, annotationWriter, panelClasses)
+    }
+
+    public void writeGapBlock(CoverageBlock block, Writer annotationWriter, List panelClasses = null) {
+
         List fields = [block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max]
-        
+
         String sep = opts.csv ? ',' : '\t'
-        
+
         if(opts.r) {
-//            log.info "Write gap (${block.hashCode()}): " + block
+            //            log.info "Write gap (${block.hashCode()}): " + block
             if(block.annotations) {
                 for(Map annotation in block.annotations) {
                     List rowFields = (fields + GapAnnotator.ANNOTATION_COLUMNS.collect { annotation[it] }).collect {
@@ -543,26 +561,29 @@ class Gaps {
                     }
                     // Add panel annotations
                     if (panelClasses != null && annotation.containsKey(GapAnnotator.PANEL_ANNOTATION_KEY)) {
-                        panelClasses.each { c -> 
+                        panelClasses.each { c ->
                             rowFields << annotation[GapAnnotator.PANEL_ANNOTATION_KEY][c].trim()
                         }
                     }
                     if(annotationWriter != null) {
                         annotationWriter.println(rowFields.join(sep))
-                        println(fields.join(sep))
+                        if(gapWriter)
+                            gapWriter.println(fields.join(sep))
                     }
                     else
-                        println(rowFields.join(sep))
+                        gapWriter.println(rowFields.join(sep))
                 }
             }
             else { // Add empty values for the annotations
                 String annotatedFields = (fields + (['']*GapAnnotator.ANNOTATION_COLUMNS.size())).join(sep)
                 if(annotationWriter != null) {
                     annotationWriter.println(annotatedFields)
-                    println(fields.join(sep))
+                    if(gapWriter)
+                        gapWriter.println(fields.join(sep))
                 }
                 else {
-                    println(annotatedFields)
+                    if(gapWriter)
+                        gapWriter.println(annotatedFields)
                 }
             }
         }
