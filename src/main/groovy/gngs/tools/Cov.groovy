@@ -57,6 +57,12 @@ class Cov extends ToolBase {
     
     int minimumMappingQuality = 1
     
+    final static byte COVERAGE_MODE_NO_COUNT_OVERLAPS = 0
+
+    final static byte COVERAGE_MODE_HALF_COUNT_OVERLAPS = 1
+    
+    byte coverageOverlapMode = COVERAGE_MODE_NO_COUNT_OVERLAPS;
+    
     @Override
     public void run() {
         
@@ -72,6 +78,8 @@ class Cov extends ToolBase {
         this.bam = new SAM(opts.arguments()[0])
         
         this.contigSizes = bam.contigs
+        
+        initOverlapMode()
         
         if(opts.minMQ)
             this.minimumMappingQuality = opts.minMQ.toInteger()
@@ -117,6 +125,19 @@ class Cov extends ToolBase {
         if(opts.covo) {
             printCoverageJs(covStats, opts.covo)
         }
+    }
+
+    private initOverlapMode() {
+        String overlapModeValue = opts.om ?:'none'
+        if(overlapModeValue == 'none') {
+            this.coverageOverlapMode = COVERAGE_MODE_NO_COUNT_OVERLAPS
+        }
+        else
+        if(overlapModeValue == 'half') {
+            this.coverageOverlapMode = COVERAGE_MODE_HALF_COUNT_OVERLAPS
+        }
+        else
+            throw new IllegalArgumentException('Overlap mode ' + opts.om + ' is not a valid value')
     }
     
    
@@ -194,6 +215,7 @@ class Cov extends ToolBase {
 
         Region region = new Region("$contig:0-${contigSizes[contig]}")
         bam.withIterator(region) {
+            final byte com = coverageOverlapMode
             while(it.hasNext()) {
                 SAMRecord r = it.next()
                 if(r.getReadUnmappedFlag())
@@ -205,20 +227,30 @@ class Cov extends ToolBase {
                     
                 final int mateStart = r.getMateAlignmentStart();
                 int alignmentEnd = r.alignmentEnd
-                int alignmentStart = r.alignmentStart
+                final int alignmentStart = r.alignmentStart
 
-                // Don't double count if reads overlap
-                if(r.getFirstOfPairFlag() && mateStart == alignmentStart) { 
-                    // Note this logic is special: for the special case where the reads exactly overlap,
-                    // there is no reliable choice which read is "first", so we can't decide which one
-                    // to clip based on start position. That is why for the special case that they exactly
-                    // overlap, we arbitrarily choose to exclude the first-of-pair completely from the coverage
-                    // count and keep the whole second read
-                    continue
+                if(com == COVERAGE_MODE_NO_COUNT_OVERLAPS) {
+                    // Don't double count if reads overlap
+                    if(r.getFirstOfPairFlag() && mateStart == alignmentStart) { 
+                        // Note this logic is special: for the special case where the reads exactly overlap,
+                        // there is no reliable choice which read is "first", so we can't decide which one
+                        // to clip based on start position. That is why for the special case that they exactly
+                        // overlap, we arbitrarily choose to exclude the first-of-pair completely from the coverage
+                        // count and keep the whole second read
+                        continue
+                    }
+                    else
+                    if(mateStart > alignmentStart && mateStart <= alignmentEnd) 
+                        alignmentEnd = mateStart
                 }
-                else
-                if(mateStart > alignmentStart && mateStart <= alignmentEnd) 
-                    alignmentEnd = mateStart
+                else { // COVERAGE_MODE_HALF_COUNT_OVERLAPS
+                    // This is a legacy mode that emulates behaviour of our previous coverage
+                    // depth calculations. It is suboptimal because it fails to compensate for
+                    // read overlap when the R1 is not first of pair
+                    if(r.getFirstOfPairFlag() && mateStart >= alignmentStart && mateStart <= alignmentEnd) {
+                        alignmentEnd = mateStart;
+                    }
+                }
 
                 intervals[i] = [alignmentStart, alignmentEnd] as int[]
                 ++i
@@ -270,6 +302,7 @@ class Cov extends ToolBase {
             minMQ 'Minimum mapping quality (1)', args:1, required: false
             samplesummary 'File to write coverage statistics to in tab separated format', args:1, required: false
             covo 'File to write coverage statistics in js format to', args:1, required: false
+            om 'Overlap mode whether to count overlapping read fragments - one of none,half (default=none)', longOpt:'overlap-mode', args: 1
             'L' 'bam file to read from', args:1, required: true, longOpt: 'target'
         }
     }
