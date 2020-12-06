@@ -21,6 +21,26 @@ class ReadSpans {
     String toString() { "$count read spans from ${intervals[0][0]} to ${intervals[count-1][1]}"}
 }
 
+@Log
+@CompileStatic
+class GapIntersector extends RegulatingActor<CoverageBlock> {
+    
+    Regions targetRegions
+    
+    RegulatingActor<CoverageBlock> downstream
+
+    @Override
+    public void process(CoverageBlock block) {
+        
+        if(block.chr == 'chrX') {
+            log.info "chrx block $block"
+        }
+        
+        if(targetRegions.overlaps(block))
+            downstream.sendTo(block)
+    }
+}
+
 /**
  * SingleCov is a counterpoint to MultiCov, offering a subset of its functionality
  * for single samples at higher performance.
@@ -108,7 +128,15 @@ class Cov extends ToolBase {
             gapAnnotator.start()
             gapCalculator = new CoverageGaps()
             gapCalculator.threshold = this.gapThreshold
-            gapCalculator.gapProcessor = gapAnnotator
+
+            if(opts.gaptarget) {
+                Regions gapRegions = new BED(opts.gaptarget).load()
+                gapCalculator.gapProcessor = new GapIntersector(downstream:gapAnnotator, targetRegions:gapRegions)
+                gapCalculator.gapProcessor.start()
+            }
+            else {
+                gapCalculator.gapProcessor = gapAnnotator
+            }
         }
         
         RegulatingActor writerActor = RegulatingActor.actor { contig, covs ->
@@ -141,6 +169,12 @@ class Cov extends ToolBase {
         }
 
         if(gaps) {
+            
+            if(opts.gaptarget) {
+                gapCalculator.gapProcessor.sendStop()
+                gapCalculator.gapProcessor.join()
+            }
+            
             gapAnnotator.sendStop()
             gapAnnotator.join()
         }
@@ -161,11 +195,16 @@ class Cov extends ToolBase {
         if(!gaps)
             return
         
+        Regions gapTargets
+        if(opts.gaptargets)
+            gapTargets = new BED(opts.gaptarget).load()
         this.gaps.write((Gaps.DEFAULT_COLUMNS + GapAnnotator.ANNOTATION_OUTPUT_COLUMNS).join(',') + '\n')
         
         Gaps gapWriter = new Gaps(new CliOptions(overrides:[L:opts.L, r:opts.refgene, csv:true]))
         gapWriter.gapWriter = null
         for(CoverageBlock block in gapCalculator.blocks) {
+            if(gapTargets && !gapTargets.overlaps(block))
+                continue
             gapWriter.writeGapBlock(block, this.gaps)
         }
         gaps.close()
@@ -361,10 +400,11 @@ class Cov extends ToolBase {
             samplesummary 'File to write coverage statistics to in tab separated format', args:1, required: false
             covo 'File to write coverage statistics in js format to', args:1, required: false
             gaps 'File to write annotated gaps to', args:1, required: false
+            gaptarget 'Regions over which to report gaps', args:1, required: false
             gt 'Gap threshold - coverage level below which a region is considered a gap', args:1, required: false
             refgene 'Refgene database for annotating gaps (required if -gaps specified)', args:1, required: false
             om 'Overlap mode whether to count overlapping read fragments - one of none,half (default=none)', longOpt:'overlap-mode', args: 1
-            'L' 'bam file to read from', args:1, required: true, longOpt: 'target'
+            'L' 'Regions over which to report coverage depth', args:1, required: true, longOpt: 'target'
         }
     }
     
