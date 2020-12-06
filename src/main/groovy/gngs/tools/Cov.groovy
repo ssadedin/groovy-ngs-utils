@@ -31,11 +31,6 @@ class GapIntersector extends RegulatingActor<CoverageBlock> {
 
     @Override
     public void process(CoverageBlock block) {
-        
-        if(block.chr == 'chrX') {
-            log.info "chrx block $block"
-        }
-        
         if(targetRegions.overlaps(block))
             downstream.sendTo(block)
     }
