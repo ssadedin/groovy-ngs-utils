@@ -4,12 +4,12 @@ import groovy.transform.CompileStatic
 
 @CompileStatic
 class GnomADHist {
-    
+
     int smaller
     int larger
-    
+
     List<Integer> bins;
-    
+
     static GnomADHist parse(def value, def smaller, def larger) {
         new GnomADHist(bins: MitoGnomAD.intList(value), smaller: smaller as Integer, larger: larger as Integer)
     }
@@ -25,14 +25,14 @@ enum MITOTIP_Prediction {
 
 /**
  * Models gnomAD annotations for mitochondrial variants
- * 
+ *
  * @author Simon Sadedin
  */
 class MitoGnomAD {
-    
+
     public static final List<String> HAPLOGROUPS= ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'HV', 'I', 'J', 'K', 'L0', 'L1', 'L2', 'L3', 'L4', 'L5', 'M', 'N', 'P', 'R', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
-    
-   
+
+
     String variant_collapsed
 
     boolean hap_defining_variant
@@ -48,7 +48,7 @@ class MitoGnomAD {
     int an
     int ac_hom
     int ac_het
-    GnomADHist hl_hist;
+    List<Integer> hl_hist;
     double dp_mean;
     double mq_mean;
     Double tlod_mean;
@@ -74,21 +74,22 @@ class MitoGnomAD {
     GnomADHist age_hist_het;
     GnomADHist dp_hist_all;
     GnomADHist dp_hist_alt;
-    
+
     // Optional fields: PON TRNA predictions
     PON_TRNA_Prediction pon_mt_trna_prediction
     Double pon_ml_probability_of_pathogenicity
-    
+
     // Optional fields: MITOTIP scores
     Double mitotip_score
-    MITOTIP_Prediction mitotip_trna_prediction 
-   
+    MITOTIP_Prediction mitotip_trna_prediction
+
     @CompileStatic
     static MitoGnomAD parse(Map<String,Object> info) {
         MitoGnomAD result = new MitoGnomAD(
             an : info.AN as Integer,
             ac_hom : info.AC_hom as Integer,
             ac_het : info.AC_het as Integer,
+            hl_hist : intList(info.hl_hist),
             tlod_mean : safeDouble(info.tload_mean),
             af_hom : info.AF_hom as Double,
             af_het : info.AF_het as Double,
@@ -107,43 +108,43 @@ class MitoGnomAD {
             dp_hist_all : GnomADHist.parse(info.dp_hist_all_bin_freq, 0, info.dp_hist_all_n_larger),
             dp_hist_alt : GnomADHist.parse(info.dp_hist_alt_bin_freq, 0, info.dp_hist_alt_n_larger),
             hap_defining_variant : info.containsKey('hap_defining_variant'),
-            pon_mt_trna_prediction : info.pon_mt_trna_prediction ? 
+            pon_mt_trna_prediction : info.pon_mt_trna_prediction ?
                 PON_TRNA_Prediction.valueOf(((String)info.pon_mt_trna_prediction).toUpperCase().replaceAll(' ','_'))
                 :
                 null,
             pon_ml_probability_of_pathogenicity : info.pon_ml_probability_of_pathogenicity ?
                 info.pon_ml_probability_of_pathogenicity as Double : null,
-                
+
             mitotip_trna_prediction : info.mitotip_trna_prediction ?
                 MITOTIP_Prediction.valueOf(((String)info.mitotip_trna_prediction).toUpperCase().replaceAll(' ','_'))
                 : null,
             common_low_heteroplasmy: info.containsKey('common_low_heteroplasmy')
         )
     }
-    
+
     @CompileStatic
     static Double safeDouble(def value) {
-       if(value == null) 
+       if(value == null)
            return null
        if(value.equals('.'))
            return null
        return value as Double
     }
-    
+
     @CompileStatic
     static List<Integer> intList(def value) {
         if(value.equals('.'))
             return null
         String.valueOf(value).tokenize(',')*.toInteger()
     }
-    
+
     @CompileStatic
     static List<Double> doubleList(def value) {
         if(value.equals('.'))
             return null
         String.valueOf(value).tokenize(',').collect { it.equals('.') ? 0.0d : it as Double }
     }
-    
+
     @CompileStatic
     static List<List<Integer>> listOfHistograms(def value) {
         if(value.equals('.'))
@@ -151,6 +152,6 @@ class MitoGnomAD {
 
         ((String)value)[1..-2].tokenize('],[').collate(10).collect { it*.toInteger() }
     }
-  
-  
+
+
 }
