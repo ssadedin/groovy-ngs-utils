@@ -275,7 +275,7 @@ class Cov extends ToolBase {
         
         log.info "Allocate ${Utils.human(covSize*2)} bytes for coverage values"
 
-        short [] covs =  new short[covSize]
+        short [] covs =  new short[covSize+1]
         
         final ot = new gngs.OverlapTracker()
     
