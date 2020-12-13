@@ -230,6 +230,7 @@ class Cov extends ToolBase {
         }
         else
         if(overlapModeValue == 'half') {
+            log.info "Calculating coverage in legacy half-overlap mode"
             this.coverageOverlapMode = COVERAGE_MODE_HALF_COUNT_OVERLAPS
         }
         else
