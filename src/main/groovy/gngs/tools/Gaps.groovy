@@ -588,7 +588,7 @@ class Gaps {
             }
         }
         else {
-            println(fields.join(sep))
+            gapWriter.println(fields.join(sep))
         }
     }
 
