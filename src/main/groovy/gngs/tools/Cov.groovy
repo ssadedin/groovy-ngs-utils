@@ -200,7 +200,13 @@ class Cov extends ToolBase {
         for(CoverageBlock block in gapCalculator.blocks) {
             if(gapTargets && !gapTargets.overlaps(block))
                 continue
-            gapWriter.writeGapBlock(block, this.gaps)
+
+            List<IntRange> ixs = gapTargets ? gapTargets.intersect(block) : [block.range]
+            ixs.each { ix ->
+                block.start = ix.from-1
+                block.end = ix.to
+                gapWriter.writeGapBlock(block, this.gaps)
+            }
         }
         gaps.close()
     }
