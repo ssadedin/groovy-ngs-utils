@@ -561,7 +561,7 @@ var userAnnotations = {
                         dosage.depth = ads.reduce((acc,i) => acc+i);
                         dosage.ad = ads;
                         dosage.vaf = dosage.depth > 0 ? (ads[1] / dosage.depth) : 0
-                        dosage.gq = gqs[sampleIndex]
+                        dosage.gq = gqs ? gqs[sampleIndex] : 0
                     }
                     catch(e) {
                         console.log(e);
