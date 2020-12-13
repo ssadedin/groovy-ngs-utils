@@ -191,8 +191,10 @@ class Cov extends ToolBase {
             return
         
         Regions gapTargets
-        if(opts.gaptargets)
+        if(opts.gaptarget) {
             gapTargets = new BED(opts.gaptarget).load()
+            log.info "Filtering to gaps overlapping gap targets: $opts.gaptarget (${Utils.humanBp(gapTargets.size())})"
+        }
         this.gaps.write((Gaps.DEFAULT_COLUMNS + GapAnnotator.ANNOTATION_OUTPUT_COLUMNS).join(',') + '\n')
         
         Gaps gapWriter = new Gaps(new CliOptions(overrides:[L:opts.L, r:opts.refgene, csv:true]))
