@@ -304,10 +304,11 @@ class Cov extends ToolBase {
     ReadSpans readContig(final String contig) {
         
         int i = 0
+        int seqIndex
         
         int recordCount = (int)bam.withReader { SamReader r ->
             
-            def seqIndex = r.fileHeader.sequenceDictionary.sequences.find { it.sequenceName == contig }.sequenceIndex
+            seqIndex = r.fileHeader.sequenceDictionary.sequences.find { it.sequenceName == contig }.sequenceIndex
 
             BAMIndexMetaData meta = ((Indexing)r).index.getMetaData(seqIndex)
             
@@ -343,15 +344,15 @@ class Cov extends ToolBase {
                         continue
                     }
                     else
-                    if(mateStart > alignmentStart && mateStart <= alignmentEnd) 
+                    if(mateStart > alignmentStart && mateStart <= alignmentEnd && r.mateReferenceIndex == seqIndex && !r.mateUnmappedFlag) 
                         alignmentEnd = mateStart
                 }
                 else { // COVERAGE_MODE_HALF_COUNT_OVERLAPS
                     // This is a legacy mode that emulates behaviour of our previous coverage
                     // depth calculations. It is suboptimal because it fails to compensate for
                     // read overlap when the R1 is not first of pair
-                    if(r.getFirstOfPairFlag() && mateStart >= alignmentStart && mateStart <= alignmentEnd) {
-                        alignmentEnd = mateStart;
+                    if(r.getFirstOfPairFlag() && mateStart >= alignmentStart && mateStart <= alignmentEnd && r.mateReferenceIndex == seqIndex && !r.mateUnmappedFlag) {
+                        alignmentEnd = mateStart - 1;
                     }
                 }
 
