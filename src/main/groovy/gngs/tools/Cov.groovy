@@ -140,7 +140,7 @@ class Cov extends ToolBase {
         writerActor.start()
         
         RegulatingActor countActor = RegulatingActor.actor { contig, spans ->
-            def covs = countCoverage(spans)
+            def covs = countCoverage(contig,spans)
             writerActor.sendTo([contig,covs])
         }
         countActor.start()
@@ -269,11 +269,14 @@ class Cov extends ToolBase {
     }
     
     @CompileStatic
-    short [] countCoverage(final ReadSpans spans) {
+    short [] countCoverage(final String contig, final ReadSpans spans) {
+        
+        if(spans.count == 0)
+            return [] as short[];
 
         int covSize = spans.intervals[spans.count-1][1]
         
-        log.info "Allocate ${Utils.human(covSize*2)} bytes for coverage values"
+        log.info "Allocate ${Utils.human(covSize*2)} bytes for coverage values for $contig"
 
         short [] covs =  new short[covSize+1]
         
