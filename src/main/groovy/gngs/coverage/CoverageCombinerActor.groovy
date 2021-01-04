@@ -182,7 +182,7 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
         
         List<String> chrs = scanRegions*.chr.unique()
         int count = 0
-        BatchedAcknowledgeableMessage bam = new BatchedAcknowledgeableMessage(downstreamCount, 10)
+        BatchedAcknowledgeableMessage<SampleReadCount> bam = new BatchedAcknowledgeableMessage(downstreamCount, 10)
         for(String chr in chrs) {
             int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
             int end = scanRegions.index[chr].ranges.lastKey() + 1000
