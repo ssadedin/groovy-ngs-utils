@@ -70,6 +70,8 @@ class Cov extends ToolBase {
     
     Writer out
 
+    Writer downsampledOut
+
     Writer gaps
     
     int minimumMappingQuality = 1
@@ -107,6 +109,10 @@ class Cov extends ToolBase {
         if(opts.gaps) {
             log.info "Will calculate gaps based on coverage depth threshold of $gapThreshold"
         }
+        
+        if(opts.do) {
+            this.downsampledOut = Utils.writer(opts.do)
+        }
 
         initOverlapMode()
         
@@ -134,8 +140,10 @@ class Cov extends ToolBase {
             }
         }
         
+        int downsampleFactor = opts.downsampleFactor ?: 0
+        
         RegulatingActor writerActor = RegulatingActor.actor { contig, covs ->
-            writeCoverage(contig, covs)
+            writeCoverage(contig, covs, downsampleFactor)
         }
         writerActor.start()
         
@@ -160,7 +168,8 @@ class Cov extends ToolBase {
         }
         finally {
             out.close()
-            
+            if(downsampledOut)
+                downsampledOut.close()
         }
 
         if(gaps) {
@@ -239,23 +248,43 @@ class Cov extends ToolBase {
             throw new IllegalArgumentException('Overlap mode ' + opts.om + ' is not a valid value')
     }
     
+    private final void writeDownsampled(final String contig, final int pos, IntegerStats stats) {
+        downsampledOut.write(contig)
+        downsampledOut.write('\t')
+        downsampledOut.write(String.valueOf(pos))
+        downsampledOut.write('\t')
+        downsampledOut.write(String.valueOf(stats.mean))
+        downsampledOut.write('\n')
+    }
    
     @CompileStatic
-    void writeCoverage(String contig, short [] covs) {
+    private final void writeCoverage(String contig, short [] covs, final int downsampleFactor) {
         final Regions contigRegions = scanRegions.getContigRegions(contig)
         log.info "Write ${Utils.human(contigRegions.size())} coverage values for contig: $contig"
         
-       
+        IntegerStats downsampleStats = downsampleFactor>0 ? new IntegerStats(1000) : null
         for(Region r in contigRegions) {
+            downsampleStats.clear()
             final int start = r.from
             final int end = r.to
             final int zero = 0
             final int covLen = covs.size()
+            final int downsamplePoint = (int)(downsampleFactor / 2i)
+            int offset = 0
             for(int pos = start; pos < end; ++pos) {
 
                 int cov = pos< covLen ? Math.max(Math.min(1000,covs[pos]),zero) : 0
                 if(gaps != null) 
                     gapCalculator.processLine(r.chr, start, pos, cov, '')
+
+                if(downsampleFactor>0) {
+                    if(offset % downsampleFactor == downsamplePoint) {
+                        writeDownsampled(contig,pos,downsampleStats)
+                    }
+                    else {
+                        downsampleStats.addValue(cov)
+                    }
+                }
 
                 covStats.addIntValue(cov)
                 out.write(contig)
@@ -264,6 +293,10 @@ class Cov extends ToolBase {
                 out.write('\t')
                 out.write(String.valueOf(cov))
                 out.write('\n')
+                ++offset
+            }
+            if(downsampleFactor>0 && offset<downsamplePoint) {
+                writeDownsampled(contig,start+offset,downsampleStats)
             }
         }
     }
@@ -406,6 +439,8 @@ class Cov extends ToolBase {
     static void main(String[] args) {
         cli('Cov [-o] -L <target regions> <bam file>', args) {
             o 'Output file to write to', args:1, required: true
+            'do' 'Output file for downsampled output', args:1, required:false, longOpt: 'downsampleOutput', type: File
+            'df' 'Factor to downsample by', args:1, required:false, longOpt: 'downsampleFactor', type: Integer
             minMQ 'Minimum mapping quality (1)', args:1, required: false
             samplesummary 'File to write coverage statistics to in tab separated format', args:1, required: false
             covo 'File to write coverage statistics in js format to', args:1, required: false
