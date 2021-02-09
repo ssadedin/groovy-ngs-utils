@@ -226,7 +226,7 @@ class WebService {
         Response response = service.execute(request)
         if(response.getCode() >= 400) {
             WebServiceException e = 
-                new WebServiceException("Request to $url failed with status code $response.code (response=${response.body?.take(80)}...)", response.code, response.getMessage(), response.body)
+                new WebServiceException("Request to $url failed with status code $response.code (response=${response.body?.take(120)}...)", response.code, response.getMessage(), response.body)
             throw e
         }
         String responseText = response.body
