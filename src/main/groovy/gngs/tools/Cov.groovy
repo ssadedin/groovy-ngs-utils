@@ -264,7 +264,7 @@ class Cov extends ToolBase {
         
         IntegerStats downsampleStats = downsampleFactor>0 ? new IntegerStats(1000) : null
         for(Region r in contigRegions) {
-            downsampleStats.clear()
+            downsampleStats?.clear()
             final int start = r.from
             final int end = r.to
             final int zero = 0
