@@ -223,7 +223,7 @@ class Utils {
      * 
      * @param rows  List of map objects representing data, keys of each Map must be identical
      */
-    static void table(Map options = [:], List<Map> rows) {
+    static def table(Map options = [:], List<Map> rows) {
         List headers = rows[0]*.key
         List data = rows.collect { it*.value }
         table(options, headers, data)
@@ -248,9 +248,12 @@ class Utils {
      * @param rows      a list of lists, where each inner list represents a
      *                  row in the table
      */
-    static void table(Map options = [:], List<String> headers, List<List> rows) {
+    static def table(Map options = [:], List<String> headers, List<List> rows) {
         
         String indent = options.indent ? (" " * options.indent) : ""
+        if(options.border == true) {
+            options.border = '|'
+        }
         
         def out = options.out ?: System.out
         
@@ -301,15 +304,19 @@ class Utils {
         // Now render the table
         String header = headers.collect { hd -> hd.padRight(columnWidths[hd]) }.join(" | ")
         
+        String leftBorder = options.border ? options.border + ' ' : ''
+        String rightBorder = options.border ? ' ' + options.border : ''
+
         if(options.topborder) {
-            out.println indent + ("-" * header.size())
+            out.println indent + (options.border?' ':'') + ("-" * header.size()) + (options.border?'--':'') 
         }
-        
-        out.println indent + header
-        out.println indent + headers.collect { hd -> '-' *columnWidths[hd] }.join("-|-")
+       
+        out.println indent + leftBorder + header + rightBorder
+        out.println indent + leftBorder.replaceAll(' ','-') + headers.collect { hd -> '-' *columnWidths[hd] }.join("-|-") + rightBorder.replaceAll(' ','-')
         
         rows.each { row ->
             int i=0
+            out.print leftBorder
             headers.each { hd -> 
                 if(i!=0)
                     out.print(" | ");
@@ -318,8 +325,13 @@ class Utils {
                     
                 renderers[hd](formatters[hd](row[i++]), columnWidths[hd])
             }
-            out.println ""
+            out.println rightBorder
         }
+        
+        if(options.out)
+            return out
+        else
+            return null
     }
     
     public static int getNumberOfOpenFiles() {
