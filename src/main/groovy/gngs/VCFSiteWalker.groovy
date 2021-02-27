@@ -23,6 +23,7 @@ import java.util.List
 
 import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.FromString
 import groovy.transform.stc.SimpleType
 import htsjdk.variant.variantcontext.VariantContext
 import htsjdk.variant.vcf.VCFFileReader
@@ -112,7 +113,7 @@ class VCFSiteWalker {
      * 
      * @param callback  Closure as callback
      */
-    void walk(@ClosureParams(value=SimpleType, options='gngs.VCFWalkPosition') Closure callback) {
+    void walk(@ClosureParams(value=FromString, options='java.util.List<htsjdk.variant.variantcontext.VariantContext>') Closure callback) {
         
         vcfs*.next()
         
