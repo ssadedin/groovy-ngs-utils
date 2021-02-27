@@ -80,11 +80,10 @@ class VCFWalkPosition {
 }
 
 /**
- * Traverses a set of VCFs site by site, such that all sites in the VCFs are visited
- * one at a time.
+ * Traverses a set of VCFs site by site, such that all sites in the VCFs are visited, or alternatively,
+ * allele by allele (such at that each site is processed multiple times, once for each ref/alt allele combination).
  * <p>
- * <b>Note: </b> Requires sorted, indexed VCF
- * <b>Note2:</b> Sites may be repeated if they are repeated in a given VCF (eg: a VCF where multiallelic sites have been decomposed into primitives)
+ * <b>Note: </b> Requires sorted, normalised VCF
  * <p>
  * Example usage:
  * <pre>
@@ -119,6 +118,43 @@ class VCFSiteWalker {
         
         while(vcfs.any { it.variant != null }) {
             processNextPosition(callback)
+        }
+    }
+
+    /**
+     * Walk all the input VCFs by allele - that is, the callback is invoked once for each
+     * unique position/allele within the VCF
+     * <p>
+     * Note: this differs from the basic {@link #walk} method because there can
+     * be multiple alt alleles at the same site. In that method, all the alleles at the same
+     * site will be included together in the same callback. 
+     * <p>
+     * There can also be multiple reference alleles (eg: indel from one individual overlapping
+     * a SNP from a second). Therefore this method further groups the variants into distinct 
+     * ref/alt groups, and each group is output separately as a separate VCF record.
+     * 
+     * @param callback  Closure as callback
+     */
+    @CompileStatic
+    void walkByAllele(@ClosureParams(value=FromString, options='java.util.List<htsjdk.variant.variantcontext.VariantContext>') Closure callback) {
+        
+        vcfs*.next()
+        
+        while(vcfs.any { it.variant != null }) {
+            processNextPosition { List<VariantContext> variants ->
+                processByAllele(variants, callback)
+            }
+        }
+    }
+    
+    @CompileStatic
+    private void processByAllele(List<VariantContext> variants, @ClosureParams(value=FromString, options='java.util.List<htsjdk.variant.variantcontext.VariantContext>') Closure callback) {
+        Map<String, List<VariantContext>> alleles = variants.groupBy { VariantContext ctx ->
+            ctx.getReference().baseString + '/' + ctx.getAlternateAllele(0).baseString
+        }
+
+        alleles.each { String bases, List<VariantContext> alleleVariants ->
+            callback(alleleVariants)
         }
     }
     
