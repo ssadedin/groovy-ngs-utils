@@ -318,20 +318,34 @@ public class CompactReadPair implements ReadPair {
         // If it's R1 and aligned to neg strand, then we should flip back
         // if it's R2 and aligned to pos strand, then we sh
         final boolean flipR1 = pairInfo.getR1NegativeStrandFlag(); // TODO: FIXME r2.getMateNegativeStrandFlag();
-        
+       
         byte [][] expanded = compressor.expand(this.compressedBases);
         byte [] decompressedBases = expanded[0];
         byte [] decompressedQuals = expanded[1];
-        
+        if(flipR1)
+            SequenceUtil.reverseComplement(decompressedBases);
+         
+        boolean reordered = pairInfo.getReorderRequired();
+        if(reordered) {
+            StringBuilder tmp = b1;
+            b1 = b2;
+            b2 = tmp;
+            
+            b2.append("@");
+            b2.append(r1Name);
+            if(nameSuffix != null) { 
+                b2.append((CharSequence)nameSuffix);
+            }        
+            appendR2(pairInfo, b2, r2);
+        }
+
         b1.append('@');
         b1.append(r1Name);
         if(nameSuffix != null) { 
             b1.append((CharSequence)nameSuffix);
         }        
         b1.append(" 1:N:0:1\n");
-        if(flipR1)
-            SequenceUtil.reverseComplement(decompressedBases);
-        
+       
         b1.append(new String(decompressedBases, 0, readLength));
         b1.append("\n+\n");
         
@@ -349,13 +363,15 @@ public class CompactReadPair implements ReadPair {
         //////////////////////////////////////////////////////////////////////
         // R2
         //////////////////////////////////////////////////////////////////////
-        b2.append("@");
-        b2.append(r1Name);
-        if(nameSuffix != null) { 
-            b2.append((CharSequence)nameSuffix);
-        }        
-        
-        appendR2(pairInfo, b2, r2);
+       
+        if(!reordered) {
+            b2.append("@");
+            b2.append(r1Name);
+            if(nameSuffix != null) { 
+                b2.append((CharSequence)nameSuffix);
+            }        
+            appendR2(pairInfo, b2, r2);
+        }
         
         long mem = -compressedBases[0].length;
         mem -= r2.compressedBases[0].length;

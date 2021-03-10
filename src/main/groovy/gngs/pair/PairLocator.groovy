@@ -34,20 +34,22 @@ class Paired<PairType> {
 	
 	final static byte R1_READ_NEGATIVE_STRAND_FLAG = 0x1
 	final static byte R2_READ_NEGATIVE_STRAND_FLAG = 0x2
+	final static byte REORDER_IN_OUTPUT = 0x4
 	
 	public String key
     public PairType r1
     public PairType r2
 	int flags = 0
 
-    public Paired(String key, PairType r1, PairType r2, boolean r1NegStrand, boolean r2NegStrand, int rand) {
+    public Paired(String key, PairType r1, PairType r2, boolean r1NegStrand, boolean r2NegStrand, boolean flipOrder, int rand) {
         super();
 		this.key = key
         this.r1 = r1;
         this.r2 = r2;
 		this.flags |= (r1NegStrand ? R1_READ_NEGATIVE_STRAND_FLAG : 0)
 		this.flags |= (r2NegStrand ? R2_READ_NEGATIVE_STRAND_FLAG : 0)
-        this.flags |= (rand & 0xFFFC)
+		this.flags |= (flipOrder ? REORDER_IN_OUTPUT : 0)
+        this.flags |= (rand & 0xFFF8)
     }
 	
 	boolean getR1NegativeStrandFlag() {
@@ -57,6 +59,10 @@ class Paired<PairType> {
 	boolean getR2NegativeStrandFlag() {
 		flags & R2_READ_NEGATIVE_STRAND_FLAG
 	}
+    
+    boolean getReorderRequired() {
+        flags & REORDER_IN_OUTPUT
+    }
 }
 
 @CompileStatic
@@ -170,6 +176,7 @@ class PairLocator<PairType extends ReadPair> extends RegulatingActor<List<SAMRec
     			new CompactReadPair(record, this.baseQualityTag), 
     			record.mateNegativeStrandFlag, 
     			record.readNegativeStrandFlag,
+                record.firstOfPairFlag,
                 rand.nextInt()
             )
 
