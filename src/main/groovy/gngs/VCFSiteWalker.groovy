@@ -106,12 +106,23 @@ class VCFSiteWalker {
         }
     }    
     
+    public VCFSiteWalker(List<String> vcfs, List<String> names) {
+        super();
+        this.vcfs = [vcfs,names].transpose().collect { vcf, name ->
+            VCFFileReader reader = new VCFFileReader(new File(vcf), false)
+            reader.reader.codec.name = name
+            new VCFWalkPosition(iter: reader.iterator())
+        }
+    }    
+ 
+    
     /**
      * The primary entry point for using the VCFSiteWalker. Call this method passing a closure 
      * as a callback to receive each VCF site as a list if {@link VariantContext} objects.
      * 
      * @param callback  Closure as callback
      */
+    @CompileStatic
     void walk(@ClosureParams(value=FromString, options='java.util.List<htsjdk.variant.variantcontext.VariantContext>') Closure callback) {
         
         vcfs*.next()

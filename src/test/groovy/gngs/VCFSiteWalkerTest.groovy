@@ -121,4 +121,18 @@ class VCFSiteWalkerTest {
         
         assert tested_positions.indexOf(18124323) < tested_positions.indexOf(18124324) 
     } 
+    
+    @Test
+    void testNamedVCFs() {
+
+        def observed = []
+
+        new VCFSiteWalker(['src/test/data/giab1.tiny.trio.vcf','src/test/data/giab2.tiny.trio.vcf'], ['joe','frank']).walkByAllele { variants ->
+            int pos = variants[0].start
+            if(pos == 16591593) {
+                assert variants[0].source == 'joe'
+                assert variants[1].source == 'frank'
+            }
+        }
+    }
 }
