@@ -18,7 +18,7 @@ class HeaderCat extends ToolBase {
             int fileIndex = 0
             String vcfPath = vcfPaths[fileIndex]
             
-            log.info "Processing file $vcfPath"
+            log.info "Processing file $vcfPath (${fileIndex+1}/${vcfPaths.size()}"
 
             // For the first file cat the whole file
             Reader r0 = files[0]
