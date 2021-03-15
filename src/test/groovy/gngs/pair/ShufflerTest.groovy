@@ -32,7 +32,7 @@ class ShufflerTest {
         
         reads.each { e ->
             SAMRecord r = e.value[0]
-            Paired p = new Paired(r.readName, new SAMRecordPair(r1:r), new SAMRecordPair(r1:r), false, true, 0)
+            Paired p = new Paired(r.readName, new SAMRecordPair(r1:r), new SAMRecordPair(r1:r), false, true, false, 0)
             s.process(p)
         }
         
