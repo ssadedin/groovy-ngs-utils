@@ -373,18 +373,19 @@ class VCF implements Iterable<Variant> {
     /**
      * Convenience method to accept string for parsing file
      */
+    @CompileStatic
     static VCF parse(Map options=[:], String fileName, List<Pedigree> peds = null, Closure c = null) {
         if(fileName == "-")
           parse(System.in,peds,c)
         else {
             if(fileName.endsWith('.gz')) {
-                new File(fileName).withInputStream { vcfIs ->
+                (VCF)new File(fileName).withInputStream { vcfIs ->
                     vcfIs = new GZIPInputStream(vcfIs)
                     parse(options + [fileName:fileName], vcfIs,peds,c)
                 }
             }
             else {
-              parse(new File(fileName),peds,c)
+              parse(options, new File(fileName),peds,c)
             }
         }
     }
@@ -1165,6 +1166,7 @@ class VCF implements Iterable<Variant> {
         toRegions()
     }
     
+    @CompileStatic
     Regions toRegions() {
         Regions bed = new Regions()
         for(Variant v in this) {
