@@ -1176,7 +1176,7 @@ class VCF implements Iterable<Variant> {
     }
     
     Object asType(Class clazz) {
-        if(clazz == Region || clazz == BED ) {
+        if(clazz == Regions || clazz == BED ) {
             return toRegions()
         }
         else {
