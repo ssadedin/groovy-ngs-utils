@@ -109,7 +109,66 @@ class VCFParseContext {
         }
     }
 }
+
+@CompileStatic
+class VCFIterator implements Iterator<Variant>, Closeable {
+
+    Variant nextVariant = null
+    
+    Reader reader 
+    
+    VCF vcf
+    
+    VCFIterator(VCF vcf) {
+        this.reader = Utils.createReader(vcf.fileName)
+        this.vcf = vcf
+        String line = vcf.readHeaders(reader)
+        if(line) {
+            nextVariant = Variant.parse(line)
+            nextVariant.header = this.vcf
+        }
+    }
+
+    @Override
+    public boolean hasNext() {
+        if(nextVariant == null)
+            readNextVariant()
             
+        if(nextVariant)
+            return true
+
+        if(!reader.is(null)) {
+            reader.close()
+            reader = null
+        }
+        return false
+    }
+    
+    void readNextVariant() {
+        String line = reader.readLine()
+        if(line == null) {
+            nextVariant = null
+            return
+        }
+        Variant v = Variant.parse(line)
+        v.header = this.vcf
+        this.nextVariant = v
+    }
+
+    @Override
+    public Variant next() {
+        def result = nextVariant
+        readNextVariant()
+        return result
+    }
+    
+    void close() {
+        if(reader) {
+            reader.close()
+            reader = null
+        }
+    }
+}
 
 
 /**
@@ -281,18 +340,30 @@ class VCF implements Iterable<Variant> {
      */
     private void readHeadersOnly(String fileName) {
         Utils.reader(fileName) { Reader r ->
-            String line = r.readLine();
-            while(line != null) {
-                if(line.startsWith('#')) {
-                    this.headerLines.add(line)
-                }
-                else
-                    break
-
-                line = r.readLine()
-            }
-            parseLastHeaderLine()
+            readHeaders(r)
         }
+    }
+
+    /**
+     * Reads the headers of the VCF from the given reader, and stores them in the 
+     * headerLines field
+     * 
+     * @return  the first non-header line
+     */
+    @CompileStatic
+    String readHeaders(Reader r) {
+        String line = r.readLine();
+        while(line != null) {
+            if(line.startsWith('#')) {
+                this.headerLines.add(line)
+            }
+            else
+                break
+
+            line = r.readLine()
+        }
+        parseLastHeaderLine()
+        return line
     }
     
     static VCF parse(String fileName, Pedigrees peds, Closure c = null) {
@@ -1504,10 +1575,21 @@ class VCF implements Iterable<Variant> {
         }
     }
 
+    /**
+     * Return an iterator that iterates through the variants in this
+     * VCF.
+     * 
+     * <p><b>Note</b>: if the VCF is created lazily (file name constructor) then the 
+     * iterator must be closed if iteration does not complete.</p>
+     */
     @Override
     @CompileStatic
     public Iterator<Variant> iterator() {
-        return this.variants.iterator()
+        if(this.lazyLoad) {
+            return new VCFIterator(this)
+        }
+        else
+            return this.variants.iterator()
     }
     
     int getSize() {
