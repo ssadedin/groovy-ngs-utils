@@ -323,7 +323,7 @@ class Variant implements IRegion {
      * @author simon.sadedin@mcri.edu.au
      */
     @CompileStatic
-    final class Allele {
+    final public class Allele {
         
         public Allele(int index, int start, int end, String alt, String type) {
             this.index = index;
