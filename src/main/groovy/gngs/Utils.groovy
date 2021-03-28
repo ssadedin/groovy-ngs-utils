@@ -2,6 +2,8 @@ package gngs
 import groovy.lang.Closure;
 import groovy.time.TimeCategory;
 import groovy.transform.CompileStatic;
+import groovy.transform.NamedDelegate
+import groovy.transform.NamedVariant
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
 import htsjdk.samtools.util.BlockCompressedInputStream
@@ -21,6 +23,16 @@ class ExecutedProcess {
     Appendable err
     Appendable out
     int exitValue
+}
+
+class TableOptions {
+    Integer indent
+    Map format
+    Map render
+    Boolean topborder
+    Writer out
+    String border
+    String title
 }
 
 /**
@@ -219,16 +231,18 @@ class Utils {
     /**
      * Convenience version of {@link #table} to display data in the form of a list of
      * Maps as a table, assuming all the Maps have the same keys which are to be the
-     * headers of the table.
+     * headers of the table. See {@link TableOptions} for optional parameters.
      * 
      * @param rows  List of map objects representing data, keys of each Map must be identical
      */
-    static def table(Map options = [:], List<Map> rows) {
+    @NamedVariant
+    static Writer table(@NamedDelegate TableOptions options=new TableOptions(), List<Map> rows) {
         List headers = rows[0]*.key
         List data = rows.collect { it*.value }
         table(options, headers, data)
     }
     
+   
     /**
      * A utility to print a table of values in a nice format for 
      * output on a terminal. Columns are aligned, padded, borders
@@ -241,24 +255,28 @@ class Utils {
      * Optional parameters: 
      * <li><code>indent</code>: amount to indent table by
      * <li><code>format</code>: Map keyed on column containing custom formatters
+     * <li><code>render</code>: Map, keyed on column containing custom renderers
+     * <li><code>border</code>: String defining character to use as border
      * <li><code>topborder</code>: if true, a top border will be added
      * <li><code>out</code>: Custom output writer / stream to write results to
      * 
      * @param headers   a list of column names
      * @param rows      a list of lists, where each inner list represents a
      *                  row in the table
+     * @return          the writer if one was provided as the <code>out</code> named arg
      */
-    static def table(Map options = [:], List<String> headers, List<List> rows) {
+    @NamedVariant
+    static Writer table(@NamedDelegate TableOptions options=new TableOptions(), List<String> headers, List<List> rows) {
         
         String indent = options.indent ? (" " * options.indent) : ""
-        if(options.border == true) {
+        if(options.border == 'true') {
             options.border = '|'
         }
         
         def out = options.out ?: System.out
         
         // Create formatters
-        Map formatters = options.get('format',[:])
+        Map formatters = options.format?:[:]
         headers.each { h ->
             if(!formatters[h])
                 formatters[h] = { String.valueOf(it) }
@@ -282,7 +300,7 @@ class Utils {
         }
         
         // Create renderers
-        Map renderers = options.get('render',[:])
+        Map renderers = options.render?:[:]
         headers.each { hd ->
             if(!renderers[hd]) {
                 renderers[hd]  = { val, width  -> out.print val.padRight(width) }
@@ -300,10 +318,22 @@ class Utils {
         else {
             headers.each { columnWidths[it] = it.size() }
         }
-            
+        
+        
+           
         // Now render the table
         String header = headers.collect { hd -> hd.padRight(columnWidths[hd]) }.join(" | ")
         
+        int totalWidth = header.size()
+        if(options.title) {
+            out.println("-" * (totalWidth))
+            if(totalWidth > 160)
+                out.println(" " + options.title.padRight((totalWidth-2), " ") + " ")
+            else
+                out.println(" " + options.title.center((totalWidth-2), " ") + " ")
+            out.println("-" * (totalWidth))
+        }
+ 
         String leftBorder = options.border ? options.border + ' ' : ''
         String rightBorder = options.border ? ' ' + options.border : ''
 
