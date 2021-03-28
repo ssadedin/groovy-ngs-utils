@@ -197,7 +197,7 @@ class VCFIndex {
     
     @CompileStatic
     Iterator<Variant> iterator(String chr, int start, int end) {
-        if(!fileName.endsWith('.gz')) 
+        if(!fileName.endsWith('.gz') && !fileName.endsWith('.bgz')) 
             throw new IllegalStateException("Iterator queries are only supported for Tabix indexed VCFs")
             
         TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
