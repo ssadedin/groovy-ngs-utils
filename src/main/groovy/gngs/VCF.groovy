@@ -1110,14 +1110,18 @@ class VCF implements Iterable<Variant> {
             
         vepColumns = [:]
         
-        for(vepType in ["CSQ","ANN"]) { 
+        for(vepType in ["CSQ","ANN","vep"]) { 
                
             Map csqInfo = getInfoMetaData(vepType)
                
             if(!csqInfo)
                 continue
-                
-            String fields = (csqInfo.Description =~ 'Format: (.*)')[0][1]
+
+            def vepFormatMatch = (csqInfo.Description =~ 'Format: (.*)')
+            if(!vepFormatMatch)
+                continue
+
+            String fields = vepFormatMatch[0][1]
             
             String [] vepTypeColumns = fields.split("\\|")
             
