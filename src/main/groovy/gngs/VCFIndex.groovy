@@ -1,5 +1,6 @@
 package gngs
 import groovy.transform.CompileDynamic
+
 /*
  *  Groovy NGS Utils - Some simple utilites for processing Next Generation Sequencing data.
  *
@@ -20,6 +21,8 @@ import groovy.transform.CompileDynamic
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
@@ -184,8 +187,8 @@ class VCFIndex {
         query(r.chr, r.range.from, r.range.to, c)
     }
     
-    void query(String chr, int start, int end, Closure c) {
-        if(fileName.endsWith('gz')) {
+    void query(String chr, int start, int end, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
+        if(fileName.endsWith('.gz') || fileName.endsWith('.bgz')) {
             queryTabix(chr,start,end,c)
         }
         else 
