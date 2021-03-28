@@ -885,6 +885,10 @@ class Variant implements IRegion {
         if((csqs = getInfo().ANN)) {
            vepFields = this.header.getVepColumns("ANN")
         }
+        else
+        if((csqs = getInfo().vep)) {
+           vepFields = this.header.getVepColumns("vep")
+        }
         
         if(!csqs)
             return []
