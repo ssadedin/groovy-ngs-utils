@@ -1239,8 +1239,8 @@ class VCF implements Iterable<Variant> {
             return null
             
         candidates.grep { Variant vc -> vc.ref == v.ref }.find { 
-            it.alleles.any { 
-                myAllele -> v.alleles.any { 
+            it.alleles.any { myAllele -> 
+                v.alleles.any { 
                     otherAllele -> myAllele.alt == otherAllele.alt && myAllele.start == otherAllele.start  
                 } 
             }
