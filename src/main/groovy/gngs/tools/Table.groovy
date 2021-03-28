@@ -21,6 +21,7 @@ class Table {
         Cli cli = new Cli(usage: "Table <tsv>", header: "Options:")
         cli.with {
             i 'File to display as table', args:1, required: false
+            t 'Title for table', longOpt: 'title', args:1, required: false
             tsv 'Force TSV format'
             csv 'Force CSV format'
             c 'Columns to show', longOpt: 'columns', args:1, required:false
@@ -139,8 +140,13 @@ class Table {
             annotateGenes(data)
         }
         
+        def tableOptions = [:]
+        if(opts.title) {
+            tableOptions.title = opts.title
+        }
+        
         if(outputFormat == 'txt') {
-            Utils.table(data[0]*.key, data.collect { it*.value })
+            Utils.table(tableOptions, data[0]*.key, data.collect { it*.value })
         }
         else
         if(outputFormat == 'csv') {
