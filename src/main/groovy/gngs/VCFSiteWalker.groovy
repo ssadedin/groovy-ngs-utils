@@ -174,6 +174,7 @@ class VCFSiteWalker {
      * 
      * @param callback  
      */
+    @CompileStatic
     private void processNextPosition(Closure callback) {
         
         // Group by position, then order by those
@@ -194,6 +195,7 @@ class VCFSiteWalker {
         processPosition(nextVariants[0], callback)
     }
     
+    @CompileStatic
     private void processPosition(List<VCFWalkPosition> variants, Closure callback) {
         callback(variants*.variant.sum())
         variants*.next()
