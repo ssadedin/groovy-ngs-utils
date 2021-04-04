@@ -1083,6 +1083,14 @@ class VCF implements Iterable<Variant> {
         return getInfoMetaData(id) != null
     }
     
+    @CompileStatic
+    boolean hasVEP() {
+        return hasInfo('CSQ') ||  // standard
+               hasInfo('ANN') ||  // adopted by MGHA
+               hasInfo('vep') // gnomAD
+    }
+    
+    @CompileStatic
     String[] getVepColumns() {
         getVepColumns("auto")
     }
@@ -1092,6 +1100,7 @@ class VCF implements Iterable<Variant> {
      * 
      * @return
      */
+    @CompileStatic
     String[] getVepColumns(String vepType) {
         parseVepColumns()
         
