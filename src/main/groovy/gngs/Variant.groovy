@@ -872,11 +872,12 @@ class Variant implements IRegion {
         }
     }
    
+    @CompileStatic
     List<Map<String,Object>> getVepInfo() {
         if(this.header == null)
             throw new IllegalStateException("Variant must have a header to query VEP information")
             
-        def csqs = getInfo().CSQ 
+        String csqs = getInfo().CSQ 
         def vepFields = null
         if(csqs) {
            vepFields = this.header.getVepColumns("CSQ")
@@ -892,7 +893,6 @@ class Variant implements IRegion {
         
         if(!csqs)
             return []
-//            throw new IllegalStateException("This function requires VEP annotations. Please annotate with VEP in order to proceed")
             
         COMMA_SPLIT.split(csqs).collect { csq -> [vepFields,PIPE_SPLIT.split(csq)].transpose().collectEntries() }
     }
@@ -1314,14 +1314,17 @@ class Variant implements IRegion {
     @CompileStatic
     List<Integer> getAlleleDepths(int alleleIndex) {
         
-        if('AD' in this.header.formatMetaData) {
+        boolean hasAD = ('AD' in this.header?.formatMetaData) ||
+                        ('AD' in this.genoTypes[0])
+        
+        if(hasAD) {
             return this.genoTypes.collect { gt ->
                 getGenotypeDepth(gt, alleleIndex)
             }
         }
         else
         // For a single sample VCF and a single alternate allele, we can use DP4 from samtools
-        if(this.header.hasInfo('DP4') && alleleIndex<2 && this.header.samples.size() == 1) {
+        if(this.header?.hasInfo('DP4') && alleleIndex<2 && this.header?.samples.size() == 1) {
             List<Integer> dps = ((String)this.getInfo()['DP4']).tokenize(',')*.toInteger()
             
             assert dps.size() == 4 : "DP4 should always be list of 4 integers"
@@ -1650,13 +1653,15 @@ class Variant implements IRegion {
      * 
      * @return  A map with key value pairs of VEP annotation fields.
      */
+    @CompileStatic
     Map<String,Object> getMaxVep() {
-        def allVeps = getVepInfo().inject([]) { veps, vep ->
-            veps.addAll(vep.Consequence.split("&").collect { [vep,it]})
+        List<List> allVeps = (List<List>)getVepInfo().inject([]) { veps, vep ->
+            String cons = vep.Consequence
+            veps.addAll(cons.split("&").collect { [vep,it]})
             return veps;
         }
-        return allVeps.max { 
-            VEPConsequences.severityOf(it[1]) 
+        return allVeps.max { List vepAndCons ->
+            VEPConsequences.severityOf((String)(vepAndCons[1]))
         }?.getAt(0)
     }
     
@@ -1671,6 +1676,7 @@ class Variant implements IRegion {
         return vep?.Consequence?.split("&")?.max { VEPConsequences.severityOf(it)}
     }
     
+    @CompileStatic
     long getXpos() {
         XPos.computePos(this.chr, this.pos)
     }
