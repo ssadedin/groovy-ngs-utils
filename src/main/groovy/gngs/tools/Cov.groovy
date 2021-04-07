@@ -402,7 +402,7 @@ class Cov extends ToolBase {
     
     void writeSampleSummary(String outputFile, IntegerStats stats) {
 
-        List<String> headers = ['Median Coverage', 'Mean Coverage', 'perc_bases_above_1', 'perc_bases_above_10', 'perc_bases_above_20', 'perc_bases_above_50']
+        List<String> headers = ['Median Coverage', 'Mean Coverage', 'perc_bases_above_1', 'perc_bases_above_5', 'perc_bases_above_10', 'perc_bases_above_20', 'perc_bases_above_50']
 
         new File(outputFile).withWriter { w ->
             w.println(headers.join("\t"))
@@ -410,6 +410,7 @@ class Cov extends ToolBase {
                 stats.median,
                 Utils.humanNumberFormat.format(stats.mean),
                 Utils.humanNumberFormat.format(100*stats.fractionAbove(1)),
+                Utils.humanNumberFormat.format(100*stats.fractionAbove(5)),
                 Utils.humanNumberFormat.format(100*stats.fractionAbove(10)),
                 Utils.humanNumberFormat.format(100*stats.fractionAbove(20)),
                 Utils.humanNumberFormat.format(100*stats.fractionAbove(50)),
