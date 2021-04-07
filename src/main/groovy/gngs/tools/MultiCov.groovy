@@ -441,7 +441,7 @@ class MultiCov extends ToolBase {
             return
         }
         
-        List<String> headers = ['Median Coverage', 'Mean Coverage', 'perc_bases_above_1', 'perc_bases_above_10', 'perc_bases_above_20', 'perc_bases_above_50']
+        List<String> headers = ['Median Coverage', 'Mean Coverage', 'perc_bases_above_1', 'perc_bases_above_5', 'perc_bases_above_10', 'perc_bases_above_20', 'perc_bases_above_50']
         int n = 0
         [opts.samplesummarys, printer.rawCoverageStats].transpose().each { String outputFile, IntegerStats stats ->
             // The user could provide less samplesummary options than BAM files
@@ -453,6 +453,7 @@ class MultiCov extends ToolBase {
                     stats.median,
                     Utils.humanNumberFormat.format(stats.mean),
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(1)),
+                    Utils.humanNumberFormat.format(100*stats.fractionAbove(5)),
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(10)),
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(20)),
                     Utils.humanNumberFormat.format(100*stats.fractionAbove(50)),
