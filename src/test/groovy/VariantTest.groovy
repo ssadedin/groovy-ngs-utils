@@ -18,6 +18,9 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+
+import gngs.VepConsequence
+
 import static org.junit.Assert.*;
 
 import org.junit.Test;
@@ -240,7 +243,10 @@ class VariantTest {
     @Test
     void testGetGenes() {
         Variant v = VCF.parse("tests/data/test.vep.ann.vcf")[0]
-        println "Genes are: " + v.getGenes(VEPConsequences.RANKED_CONSEQUENCES[-1])
+        List<String> actualResult = v.getGenes(VepConsequence.knownValues()[-1].term)
+        assert actualResult == ['LMNA']
+        assert actualResult == v.getGenes(VEPConsequences.RANKED_CONSEQUENCES[-1])
+        println "Genes are: " + actualResult
     }
     
     @Test

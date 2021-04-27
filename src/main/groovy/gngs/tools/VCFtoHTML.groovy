@@ -19,6 +19,7 @@
  */
 package gngs.tools
 
+import gngs.VepConsequence
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
 import gngs.BED
@@ -31,7 +32,6 @@ import gngs.SAM
 import gngs.Utils
 import gngs.VCF
 import gngs.VCFSummaryStats
-import gngs.VEPConsequences
 import gngs.Variant
 import gngs.plot.Lines
 import gngs.plot.Plot
@@ -846,7 +846,7 @@ class VCFtoHTML {
 
         consColumns = [
             'gene' : {it['SYMBOL']},
-            'cons' : {vep -> vep['Consequence'].split('&').min { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) } },
+            'cons' : {vep -> vep['Consequence'].split('&').min { VepConsequence.fromTerm(it).ordinal() } },
             'maf'  : this.&findMaxMaf
         ]
     }
