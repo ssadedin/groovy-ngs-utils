@@ -119,6 +119,10 @@ class SnpEffInfo {
     }
 }
 
+/**
+ * This is deprecated and superseded by {@link VepConsequence}
+ */
+@Deprecated
 class VEPConsequences {
     public static List<String> RANKED_CONSEQUENCES = [
         "transcript_ablation",
@@ -1622,17 +1626,17 @@ class Variant implements IRegion {
      *                      be returned
      */
     List<String> getGenes(String minVEPCons) {
-        int thresholdConsequenceIndex = VEPConsequences.RANKED_CONSEQUENCES.indexOf(minVEPCons)
+        int thresholdConsequenceIndex = VepConsequence.fromTerm(minVEPCons).ordinal()
         if(this.header.getInfoMetaData("CSQ") || this.header.getInfoMetaData("ANN"))
             return getVepInfo().grep { vep ->
-                AMPERSAND_SPLIT.split(vep.Consequence).every { VEPConsequences.RANKED_CONSEQUENCES.indexOf(it) <= thresholdConsequenceIndex }
+                AMPERSAND_SPLIT.split(vep.Consequence).every { VepConsequence.fromTerm(it).ordinal() <= thresholdConsequenceIndex }
             }*.SYMBOL
         else {
             return getSnpEffInfo().grep { snpeff ->
                 String vepCons = SnpEffInfo.EFFECT_TO_VEP[snpeff.EFFECT_TO_VEP]
                 if(!vepCons)
                     return false
-                return (VEPConsequences.RANKED_CONSEQUENCES.indexOf(vepCons)) <= thresholdConsequenceIndex
+                return (VepConsequence.fromTerm(vepCons).ordinal()) <= thresholdConsequenceIndex
             }*.gene
         }
     }
@@ -1649,7 +1653,7 @@ class Variant implements IRegion {
     
     /**
      * Return the details of the most severe VEP consequence, as ranked by
-     * {@link VEPConsequences#RANKED_CONSEQUENCES}.
+     * {@link VepConsequence} ordinal value.
      * 
      * @return  A map with key value pairs of VEP annotation fields.
      */
@@ -1661,7 +1665,7 @@ class Variant implements IRegion {
             return veps;
         }
         return allVeps.max { List vepAndCons ->
-            VEPConsequences.severityOf((String)(vepAndCons[1]))
+            VepConsequence.severityOf(vepAndCons[1] as String)
         }?.getAt(0)
     }
     
@@ -1673,7 +1677,7 @@ class Variant implements IRegion {
      */
     String getConsequence(int alleleIndex) {
         def vep = getVepInfo()[alleleIndex]
-        return vep?.Consequence?.split("&")?.max { VEPConsequences.severityOf(it)}
+        return vep?.Consequence?.split("&")?.max { VepConsequence.severityOf(it)}
     }
     
     @CompileStatic
@@ -1683,7 +1687,7 @@ class Variant implements IRegion {
     
     String getMaxVepImpact() {
         Map<String,Object> vep = getMaxVep()
-        List maxCons = vep.Consequence?.tokenize('&')?.collect { VEPConsequences.VEP_IMPACTS[it]?:"UNKNOWN" }
+        List maxCons = vep.Consequence?.tokenize('&')?.collect { VepConsequence.fromTerm(it).impact.name() }
         for(String impact in ["HIGH","MODERATE","MODIFIER","LOW"]) {
             if(impact in maxCons)
                 return impact
