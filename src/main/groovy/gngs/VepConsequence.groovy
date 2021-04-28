@@ -83,9 +83,30 @@ enum VepConsequence {
         ordinal() + 1
     }
 
+    int getSeverity() {
+        values().size() - ordinal()
+    }
+
+    Map<String, Object> toMap() {
+        Collections.unmodifiableMap([
+                id              : name(),
+                rank            : rank,
+                severity        : severity,
+                name            : name(),
+                shortName       : shortName,
+                term            : term,
+                impact          : impact.toMap(),
+                type            : type,
+                soAccession     : soAccession,
+                ensemblColourHex: ensemblColourHex,
+                displayTerm     : displayTerm,
+                description     : description,
+        ])
+    }
+
     static int severityOfConsequence(VepConsequence consequence) {
         int index = consequence.ordinal()
-        if(index<0)
+        if (index < 0)
             index = values().size()
         values().size() - index
     }
@@ -132,4 +153,12 @@ enum VepImpact {
     }
 
     String description
+
+    Map<String, Object> toMap() {
+        return Collections.unmodifiableMap([
+                id         : name(),
+                name       : name(),
+                description: description,
+        ])
+    }
 }
