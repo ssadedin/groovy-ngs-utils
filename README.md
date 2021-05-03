@@ -1,4 +1,4 @@
-# Groovy NGS Utils ![Tests](https://github.com/github/docs/actions/workflows/ci-build.yml/badge.svg)
+# Groovy NGS Utils ![Tests](https://github.com/ssadedin/groovy-ngs-utils/actions/workflows/ci-build.yml/badge.svg)
 
 A library for working with next generation (MPS) sequencing data in Groovy.
 
