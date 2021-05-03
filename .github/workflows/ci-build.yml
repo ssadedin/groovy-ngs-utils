@@ -1,0 +1,22 @@
+name: Java CI
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up JDK 8
+        uses: actions/setup-java@v2
+        with:
+          java-version: '8'
+          distribution: 'adopt'
+      - name: Install groovy
+        run: sudo apt-get install groovy
+      - name: Build with Gradle
+        run: ./gradlew dist -x test
+      - name: Execute tests
+        run: ./gradlew :test
