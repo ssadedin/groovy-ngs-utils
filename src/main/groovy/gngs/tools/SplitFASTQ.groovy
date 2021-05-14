@@ -119,6 +119,8 @@ class SplitFASTQ extends ToolBase {
             s 'Sharding specification in form n,m n=shard to output, n=total shards', args:1, required: true
             r1 'FASTQ file read 1', args: 1, required: true
             r2 'FASTQ file read 2', args: 1, required: false
+            o1 'Output file read 1', args: 1, required: false
+            o2 'Output file read 2', args: 1, required: false
             f 'Downsampling factor (1.0)', args: 1, required: false
             dedupe 'Only emit reads that are not duplicates of reads already seen'
             n 'Number of threads to use for deduping (4)', args:1, required: false
@@ -146,29 +148,46 @@ class SplitFASTQ extends ToolBase {
         log.info "Splitting ${opts.r1},${opts.r2} ${numberOfShards} ways and outputting shard ${shardId}"
         log.info "Deduplication enabled: $opts.dedupe"
         
-        Writer output = System.out.newWriter()
+        Writer output1 
+        Writer output2 
+        if(opts.o1) {
+            output1 = Utils.outputWriter(opts.o1)
+        }
+        else {
+            output1 = System.out.newWriter()
+        }
+        
+        if(opts.o2) {
+            output2 = Utils.outputWriter(opts.o2)
+        }
+        else {
+            output2 = output1
+        }
+
         try {
             if(opts.dedupe) {
-                runDeduped(shardId, numberOfShards, (opts.n?:4).toInteger(),output)
+                runDeduped(shardId, numberOfShards, (opts.n?:4).toInteger(),output1)
             }
             else {
-                runNoDedupe(shardId, numberOfShards, output)
+                runNoDedupe(shardId, numberOfShards, output1, output2)
             }
         }
         finally {
-            output.close()
+            output1.close()
+            if(output1 != output2)
+                output2.close()
         }
     }
     
     @CompileStatic
-    public runNoDedupe(int shardId, int shards, Writer output) {
+    public runNoDedupe(int shardId, int shards, Writer output1, Writer output2) {
         int numberWritten = 0
         int numberProcessed = 0
         String r1Path = (String)opts['r1']
         String r2Path = (String)opts['r2']
         
         if(r2Path != "false") {
-            FASTQ.filter(r1Path, r2Path, output) { FASTQRead r1, FASTQRead r2 ->
+            FASTQ.filter(r1Path, r2Path, output1, output2) { FASTQRead r1, FASTQRead r2 ->
                 int hash = r1.name.hashCode()
                 int readShardId = Math.abs(hash % shards)
                 ++numberProcessed 
@@ -196,7 +215,7 @@ class SplitFASTQ extends ToolBase {
                 } 
                 if(readShardId == shardId) {
                     ++numberWritten
-                    r1.write(output)
+                    r1.write(output1)
                 }
             }
         }
