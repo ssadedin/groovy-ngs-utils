@@ -99,7 +99,7 @@ class TrieNode<T> {
                 mismatchValue = 1
             
             // Mismatches
-            List childResults = []
+            List<TrieQuery> childResults = []
             int newMismatchValue = query.mismatches - mismatchValue
             if(newMismatchValue>=0) {
                 childResults = node.startsWith(subKey, query.mismatch(pivot, newMismatchValue), maxValues)
@@ -110,9 +110,9 @@ class TrieNode<T> {
                 return result.take(maxValues)
                 
             // Deletions
-            List grandChildResults = null
+            List<TrieQuery> grandChildResults = null
             if(query.deletions>0) {
-                grandChildResults = node.children.collect { grandChildPivot, grandChild -> 
+                grandChildResults = (List<TrieQuery>)node.children.collect { grandChildPivot, grandChild -> 
                     int gcMismatchValue = query.mismatches
                     if(grandChildPivot != pivot)
                         gcMismatchValue -= 1

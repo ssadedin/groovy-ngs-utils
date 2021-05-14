@@ -583,7 +583,7 @@ class VCF implements Iterable<Variant> {
         
         setParsingDelegate(c)
         
-        List<String> samples = options.samples != null ? options.samples : null
+        List<String> samples = (List<String>)(options.samples != null ? options.samples : null)
         List<Integer> keepColumns = null
         
         Closure parseLastHeader =  {
