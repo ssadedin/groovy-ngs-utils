@@ -135,7 +135,7 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
     
     CoveragePrinter printer 
     
-    CoverageSummarizer(Map options=[:], Writer w, List<String> samples) {
+    CoverageSummarizer(Map options=[:], Writer w, List<String> samples, Integer rawStatsMaxPercentileValue = 1000) {
         super(50000,100000)
         this.progress = new ProgressCounter(withRate:true, log:log, withTime:true, extra: { "Computing stats on region: $currentTarget" })
         this.w = w
@@ -157,7 +157,7 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
                 ]
             }
         }
-        this.rawCoverageStats = (1..samples.size()).collect { new IntegerStats(1000) } 
+        this.rawCoverageStats = (1..samples.size()).collect { new IntegerStats(rawStatsMaxPercentileValue) }
         numberFormat.maximumFractionDigits=3
         numberFormat.minimumFractionDigits=0
         numberFormat.groupingUsed = false
