@@ -59,7 +59,9 @@ class MultiCov extends ToolBase {
     int minimumMapQ = 1
     
     boolean phase1 = false
-    
+
+    int statsMaxPctValue = 1000
+
     /**
      * Means calculated as part of the 2-pass mean estimation phase
      */
@@ -104,7 +106,10 @@ class MultiCov extends ToolBase {
             headers 'include headers in output file', longOpt: 'headers'
             o 'Output file to write results to', longOpt: 'output', args:1
             gcprofile 'Write GC profile for each sample to this file in JSON format (requires gcprof)', args:1, required: false 
-            covo 'Write statistics about coverage to the given file in js format', args:1
+            covo 'Write statistics about coverage to the given file in js format', args:1, required: false
+            covoStats 'Write statistics about coverage to the given file json format', args:1, required: false
+            covoSampleOutputs 'The samples written to file specified in covo can be overriden', args:1, required: false
+            statsMaxPctValue 'The max percentile value allowed when using raw coverage stats, defaults to 1000', args:1, required: false
         }
     }
     
@@ -160,12 +165,13 @@ class MultiCov extends ToolBase {
             if(opts.gcprofile && !opts.rel) {
                 throw new IllegalArgumentException("Option -gcprofile requires option -rel")
             }
-                
-            CoverageSummarizer printer = new CoverageSummarizer(options, w, samples)
+
+            Integer statsMaxPercentileValue = opts.statsMaxPctValue ?: 1000
+            CoverageSummarizer printer = new CoverageSummarizer(options, w, samples, statsMaxPercentileValue)
             
             if(opts['2pass']) {
                 log.info " Executing Phase 1 / 2 to estimate sample means ".center(80,"=")
-                CoverageSummarizer printer1 = new CoverageSummarizer(null, samples)
+                CoverageSummarizer printer1 = new CoverageSummarizer(Collections.emptyMap(), null, samples, statsMaxPercentileValue)
                 this.phase1 = true
                 run(printer1, true)
                 
@@ -379,7 +385,11 @@ class MultiCov extends ToolBase {
         if(opts.covo) {
             printCoverageJs(summarizer, opts.covo)
         }
-        
+
+        if(opts.covoStats) {
+            printCoverageStatsJson(summarizer, opts.covoStats)
+        }
+
         if(opts.gcprofile) {
             writeGCProfile(summarizer)
         }
@@ -419,20 +429,40 @@ class MultiCov extends ToolBase {
         
         Map statsJson = [ 
             means: printer.samples.collectEntries { sample ->
-                [ sample, printer.sampleStats[printer.samples.indexOf(sample)].mean] 
+                [ sample, printer.sampleStats[printer.samples.indexOf(sample)].mean]
             },
-                
+
             medians: printer.samples.collectEntries { sample ->
                 [ sample, printer.rawCoverageStats[printer.samples.indexOf(sample)].median]
             },
         ]
-        
+
         new File(fileName).withWriter { w ->
             w.println('covs = // NOJSON\n' + JsonOutput.prettyPrint(JsonOutput.toJson(statsJson)))
         }
         log.info "Wrote coverage stats to $fileName"
     }
-    
+
+    private void printCoverageStatsJson(CoverageSummarizer printer, String fileName) {
+
+        Map statsJson = [
+            means: printer.samples.collectEntries { sample ->
+                String sampleOutput = opts?.covoSampleOutputs?.getOrDefault(sample, sample) ?: sample
+                [ sampleOutput, printer.sampleStats[printer.samples.indexOf(sample)].mean]
+            },
+
+            medians: printer.samples.collectEntries { sample ->
+                String sampleOutput = opts?.covoSampleOutputs?.getOrDefault(sample, sample) ?: sample
+                [ sampleOutput, printer.rawCoverageStats[printer.samples.indexOf(sample)].median]
+            },
+        ]
+
+        new File(fileName).withWriter { w ->
+            w.println(JsonOutput.prettyPrint(JsonOutput.toJson(statsJson)))
+        }
+        log.info "Wrote coverage stats to $fileName"
+    }
+
     final List cvThresholds = (0..100).step(5)
     
     private void writeSampleSummaries(CoverageSummarizer printer) {

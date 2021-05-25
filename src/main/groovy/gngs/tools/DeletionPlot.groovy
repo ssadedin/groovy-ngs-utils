@@ -1,16 +1,11 @@
 package gngs.tools
 
-import gngs.CliOptions
-import gngs.Region
-import gngs.SAM
-import gngs.ToolBase
-import gngs.Utils
-import gngs.plot.Plot
+import gngs.*
 import gngs.plot.Bars
 import gngs.plot.Line
+import gngs.plot.Plot
 import graxxia.IntegerStats
 import graxxia.Matrix
-import graxxia.Stats
 import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -26,6 +21,7 @@ class DeletionPlot extends ToolBase {
     private Region region
     private List<String> bamPaths
     private String sampleOutput
+    private String covoStats
     
     /**
      * This object accumulates results from each analysis section that runs and is eventually dumped
@@ -41,6 +37,7 @@ class DeletionPlot extends ToolBase {
         cli('DeletionPlot -bam <sample of interest> <control bams>', args) {
             region 'Region to plot in chromosomal coordinates (chr:start-end)', args:1, required: true
             covo 'Coverage file output', args:1, required: true
+            covoStats 'Coverage stats file output', args:1, required: false
             sample 'The sample of interest', args:1, required: true
             sampleOutput 'Use this value instead of actual sample value when writing JSON', args:1, required: false
             covplot  'Name of file to write coverage plot in', args:1, required: true
@@ -67,6 +64,8 @@ class DeletionPlot extends ToolBase {
 
         region = new Region(opts.region)
 
+        createCoverageStats()
+
         plotCoverage()
         
         plotSplitReads() 
@@ -81,7 +80,31 @@ class DeletionPlot extends ToolBase {
             w << JsonOutput.prettyPrint(JsonOutput.toJson(jsonResults))
         }
     }
-    
+
+    void createCoverageStats() {
+        log.info "Creating coverage stats"
+
+        mcov = new MultiCov()
+        Map multicovOpts = [
+                rel              : false,
+                std              : true,
+                '2pass'          : true,
+                headers          : true,
+                w                : 10,
+                subs             : 10,
+                o                : opts.covo,
+                L                : opts.region,
+                covoStats        : opts.covoStats,
+                covoSampleOutputs: [("${opts.sample}".toString()): "${opts.sampleOutput}"],
+                statsMaxPctValue : 50000,
+                arguments        : bamPaths
+        ]
+
+        mcov.opts = new CliOptions(overrides:multicovOpts)
+
+        mcov.run()
+    }
+
     void plotCoverage() {
         
         mcov = new MultiCov()
