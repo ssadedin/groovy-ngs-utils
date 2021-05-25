@@ -25,6 +25,7 @@ class DeletionPlot extends ToolBase {
     private MultiCov mcov
     private Region region
     private List<String> bamPaths
+    private String sampleOutput
     
     /**
      * This object accumulates results from each analysis section that runs and is eventually dumped
@@ -41,6 +42,7 @@ class DeletionPlot extends ToolBase {
             region 'Region to plot in chromosomal coordinates (chr:start-end)', args:1, required: true
             covo 'Coverage file output', args:1, required: true
             sample 'The sample of interest', args:1, required: true
+            sampleOutput 'Use this value instead of actual sample value when writing JSON', args:1, required: false
             covplot  'Name of file to write coverage plot in', args:1, required: true
             srplot 'Name of the file to write the split read plot in', args:1, required: true
             json 'Combined json output file', args:1, required: false
@@ -51,7 +53,7 @@ class DeletionPlot extends ToolBase {
     public void run() {
         
         System.properties['java.awt.headless']='true'
-        
+        sampleOutput = opts.sampleOutput ?: opts.sample
         bamPaths = opts.arguments()
 
         String bamPath = bamPaths.find {
@@ -120,7 +122,7 @@ class DeletionPlot extends ToolBase {
 
         covPlot.save(this.opts.covplot)
         
-        jsonResults[opts.sample].coverage = [posValues, covValues].transpose().collect { pos, cov ->
+        jsonResults[opts.sampleOutput].coverage = [posValues, covValues].transpose().collect { pos, cov ->
             [
                 pos: pos, 
                 cov: cov
@@ -183,7 +185,7 @@ class DeletionPlot extends ToolBase {
         ) <<
             new Bars(x:sr_ds.pos as List, y: sr_ds.count as List)
         
-        jsonResults[opts.sample].splitReads = sr_ds.collect {
+        jsonResults[opts.sampleOutput].splitReads = sr_ds.collect {
             [
                 pos: pos,
                 count: count
