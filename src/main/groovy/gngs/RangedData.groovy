@@ -2,6 +2,7 @@ package gngs
 import com.xlson.groovycsv.PropertyMapper;
 
 import graxxia.TSV
+import groovy.transform.CompileStatic
 
 import java.util.zip.GZIPInputStream
 
@@ -99,6 +100,7 @@ class RangedData extends Regions {
         this.endColumn = endColumn
     }
     
+    @CompileStatic
     RangedData load(Map options=[:], Closure c=null) {
         
         int lineNumber = 0
@@ -125,13 +127,19 @@ class RangedData extends Regions {
                     r.setChr(r.chr.substring(3)) // must call setChr due to expando
                 }
                     
-                r.range.extra = r
-                if(!columns)
-                    columns = line.columns*.key
+                ((GRange)r.range).extra = r
+                
+                
+                if(!columns) {
+                    final Map<String,Object> cols = (Map<String,Object>)line.columns
+                    columns = cols*.key
+                }
                     
-                line.columns.each { String columnName, int index ->
+                line.columns.each { Map.Entry<String,Integer> e ->
+                    final String columnName = e.key
+                    final int index = e.value
                     if(index != startColumn && index != endColumn && index != chrColumn) {
-                        r.setProperty(columnName, line.values[index])
+                        r.setProperty(columnName, ((List)line.values)[index])
                     }
                 }
                 if(c != null) {
