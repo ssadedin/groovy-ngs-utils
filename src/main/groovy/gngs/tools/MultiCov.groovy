@@ -496,7 +496,7 @@ class MultiCov extends ToolBase {
     
     private void writeSampleRegionMeans(Writer w, CoverageSummarizer printer) {
         w.withWriter { 
-            w.print('Mean\t')
+            w.print('sample\t')
             w.println(printer.sampleRegionStatsRegions.join('\t'))
             
             for(sample in printer.samples) {
