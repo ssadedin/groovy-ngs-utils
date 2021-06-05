@@ -22,7 +22,18 @@ class Delfin extends ToolBase {
     /**
      * Likelihood ratio at which to output deletions
      */
-    double deletionCallThreshold = 3
+    double deletionCallThreshold = 3.5
+    
+    /**
+     * The maximum number of PCA components that will be removed
+     */
+    int maxPCAComponents = 20
+    
+    /**
+     * Treat more than this number of deletion calls within a chromosome as a sign that
+     * batch effects are creating artefactual CNVs
+     */
+    int maxDeletionCallsPerChromosome = 30
     
     Regions targets
     
@@ -34,6 +45,8 @@ class Delfin extends ToolBase {
         cli('-t <target regions bed> -cov <cov1> [-cov <cov2> ...] -o <deletions.tsv>', args) {
             t 'Target region bed file', args:1, required: true, type: File, longOpt: 'targets'
             o 'Output TSV file containing deletions (stdout)', args:1, required: false, type: File
+            lrt 'Likelihood ratio threshold to emit deletion calls at (3.5)', args:1, required: false, type: Double
+            maxpc 'Set maximum principle components to remove from data (20)', args:1, required: false, type: Integer
             lr 'Output file to save likelihood ratio estimates in', args:1, required: false, type: File
             s 'Samples to test for CNVs (all)', args:'*', required: false, type:String
             chr 'Process the given chromosome only (false, process all)', args: 1, required: false
@@ -56,6 +69,14 @@ class Delfin extends ToolBase {
         List<String> chrs = opts.chr ? [opts.chr] : targets.allRanges*.key
         
         log.info "Processing ${chrs.size()} chromosomes separately in parallel"
+        
+        if(opts.lrt != false) {
+            this.deletionCallThreshold = opts.lrt
+        }
+        
+        if(opts.maxpc) {
+            this.maxPCAComponents = opts.maxpc
+        }
 
         List actors = chrs.collect { chr ->
             Actors.actor {  
@@ -97,39 +118,35 @@ class Delfin extends ToolBase {
             "Chromosome $chr has only ${colIndexes.size()} target regions which is too few to analyse correctly for deletions"
             
         Matrix subset = covs[][colIndexes] 
+        subset.@displayColumns = 10
+        subset.@displayRows = 8
+        subset.@displayPrecision = 2
         
         assert subset != null
-
-        log.info "Calculating likelihoods for $chr"
-
-        Matrix lrs = computeLikelihoods(subset)
         
+        log.info "Coverages for $chr are:\n$subset"
+        
+        Matrix std = subset.standardise()
+        
+        log.info "Std for $chr are:\n$std"
+        
+        log.info "Calculating PCA basis vectors on $chr ..."
+        Matrix reduced = std.reduce(maxPCAComponents)
+       
         // Note: important that samples listed in order they are found in cov matrix
         List<String> samples = opts.ss ? covs.sample.findAll { it in opts.ss }: covs.sample 
         
-        // The list of samples to call CNVs for
-        List<Integer> sampleRows = opts.ss ? covs.findIndexValues { sample in samples } : (0..<covs.rowDimension)
+        Matrix lrs = samples.collect { callAndOptimise(chr, it, subset, std, reduced) } as Matrix
+        lrs.@names = subset.@names
+        lrs.sample = samples
         
-        Matrix sampleLRs = lrs[sampleRows]
-        
-        if(opts.lr) {
-            Utils.writer("${opts.lr}.${chr}.tsv").withWriter { w -> 
-                sampleLRs.save(w, r:true) 
-            }
-        }
-
-        log.info "Calculated sample LRS: \n$sampleLRs"
-        
-        // Identify candidate CNV regions
-        def cnvs = lrs[sampleRows]*.findIndexValues { it > deletionCallThreshold }
-        
-        log.info "CNV lrs are: \n$cnvs"
+        def allCNVs = lrs*.findIndexValues { it > deletionCallThreshold }
         
         Regions chrRegions = targets[colIndexes] as Regions
         Regions mergedCNVs =
-            [samples, cnvs].transpose().collectMany { String sampleId, List<Integer> regionIndices ->
+            [samples, allCNVs].transpose().collectMany { String sampleId, List<Integer> regionIndices ->
                 log.info "Found ${regionIndices.size()} for $sampleId in $chr"
-                int sampleIndex = covs.sample.indexOf(sampleId)
+                int sampleIndex = lrs.sample.indexOf(sampleId)
                 
                 Regions sampleUnmergedCNVs = chrRegions[regionIndices].eachWithIndex { cnv, index ->
                     cnv.sample = sampleId 
@@ -137,13 +154,95 @@ class Delfin extends ToolBase {
                     cnv.index = regionIndices[index]
                 }
                 
-                               // Merge consecutive ranges
+                // Merge consecutive ranges
                 return mergeConsecutiveRegions(sampleUnmergedCNVs)
             }
+         
 
         return mergedCNVs
     }
     
+    List<Double> callAndOptimise(String chr, String sample, Matrix scaled, Matrix std,  Matrix reduced) {
+        
+        log.info "Calculating likelihoods for $sample on $chr"
+
+        // The index of the sample to call CNVS for in the main matrix
+        int sampleIndex = covs.sample.findIndexOf { it == sample }
+
+        List lrs 
+        int nComponentsToRemove = 0
+        int cnvCount = 0
+        while(!lrs || cnvCount > maxDeletionCallsPerChromosome) {
+            lrs = computeLikelihoods(sample, chr, scaled, std, reduced, nComponentsToRemove)[sampleIndex] as List
+            nComponentsToRemove++
+            
+            cnvCount = lrs.count { it > deletionCallThreshold} 
+            
+            log.info "Analysis for $sample/$chr with $nComponentsToRemove components removed produced $cnvCount calls"
+
+            if(nComponentsToRemove>=maxPCAComponents)
+                break
+        }
+
+//        if(opts.lr) {
+//            Utils.writer("${opts.lr}.${chr}.tsv").withWriter { w -> 
+//                sampleLRs.save(w, r:true) 
+//            }
+//        }
+
+        // Identify candidate CNV regions
+        def cnvs = lrs.findIndexValues { it > deletionCallThreshold }
+        
+        log.info "CNV lrs are: \n$cnvs"
+       
+        return lrs
+    }
+    
+ 
+    /**
+     * Transform the matrix of row-normalised coverage values into a matrix 
+     * of log-scaled likelihood ratios comparing the z-score of a diploid
+     * model to a single-ploidy model.
+     * 
+     * @param row-normalised coverage values, row per sample, column per target region
+     * @return  matrix of likelihoods
+     */
+    @CompileStatic
+    Matrix computeLikelihoods(final String sample, final String chr, final Matrix scaled, final Matrix std, final Matrix reduced, final int nComponentsToRemove) {
+
+        assert std != null
+
+       
+        Matrix basis = (Matrix)reduced.metadata.basis
+        
+        log.info "Calculating likelihoods with $nComponentsToRemove components removed for $sample $chr"
+        Matrix approxStd
+        if(nComponentsToRemove > 0) {
+            Matrix approx = std - (Matrix)((reduced.columns as List)[0..<nComponentsToRemove] as Matrix) * (Matrix)(basis[0..<nComponentsToRemove])
+            approxStd = approx.standardise()
+        }
+        else {
+            approxStd = std
+        }
+        
+        // Diploid regions are by definition std dev 1 because the matrix was standardised
+        FastNormal diploid = new FastNormal(0, 1)
+
+         // For deletions we must calculate a separate estimated mean from each column because the 
+        // standard deviation of each column is different
+        List<FastNormal> deletions = scaled.columns.collect {  MatrixColumn c ->
+            Stats colStats = Stats.from(c)
+            new FastNormal(-0.5 * colStats.mean / colStats.standardDeviation, 1) 
+        }
+        
+        Matrix lrs = approxStd.transform { double x, int i, int j -> deletions[j].logDensity(x) } - 
+                     approxStd.transform { double x -> diploid.logDensity(x) }
+
+        lrs.@names = std.@names
+        
+        return lrs
+    }
+
     private List<Region> mergeConsecutiveRegions(final Regions unmergedCNVs) {
         return unmergedCNVs.inject([]) { List<Region> result, Region cnv  ->
             if(result && cnv.index == (result[-1].index+1)) {
@@ -161,39 +260,6 @@ class Delfin extends ToolBase {
                 result << cnv
             result
         }        
-    }
-
-    /**
-     * Transform the matrix of row-normalised coverage values into a matrix 
-     * of log-scaled likelihood ratios comparing the z-score of a diploid
-     * model to a single-ploidy model.
-     * 
-     * @param row-normalised coverage values, row per sample, column per target region
-     * @return  matrix of likelihoods
-     */
-    @CompileStatic
-    Matrix computeLikelihoods(final Matrix subset) {
-
-        assert subset != null
-
-        // Diploid regions are by definition std dev 1 because the matrix was standardised
-        FastNormal diploid = new FastNormal(0, 1)
-
-        // For deletions we must calculate a separate estimated mean from each column because the 
-        // standard deviation of each column is different
-        List<FastNormal> deletions = subset.columns.collect {  MatrixColumn c ->
-            Stats colStats = Stats.from(c)
-            new FastNormal(-0.5 * colStats.mean / colStats.standardDeviation, 1) 
-        }
-        
-        Matrix std = subset.standardise()
-        
-        Matrix lrs = std.transform { double x, int i, int j -> deletions[j].logDensity(x) } - 
-                     std.transform { double x -> diploid.logDensity(x) }
-
-        lrs.@names = std.@names
-        
-        return lrs
     }
     
     /**
