@@ -130,13 +130,37 @@ class Delfin extends ToolBase {
             [samples, cnvs].transpose().collectMany { String sampleId, List<Integer> regionIndices ->
                 log.info "Found ${regionIndices.size()} for $sampleId in $chr"
                 int sampleIndex = covs.sample.indexOf(sampleId)
-                chrRegions[regionIndices].eachWithIndex { cnv, index ->
+                
+                Regions sampleUnmergedCNVs = chrRegions[regionIndices].eachWithIndex { cnv, index ->
                     cnv.sample = sampleId 
                     cnv.lr = lrs[sampleIndex][(int)regionIndices[index]]
+                    cnv.index = regionIndices[index]
                 }
+                
+                               // Merge consecutive ranges
+                return mergeConsecutiveRegions(sampleUnmergedCNVs)
             }
 
         return mergedCNVs
+    }
+    
+    private List<Region> mergeConsecutiveRegions(final Regions unmergedCNVs) {
+        return unmergedCNVs.inject([]) { List<Region> result, Region cnv  ->
+            if(result && cnv.index == (result[-1].index+1)) {
+                // Merge this CNV with the adjacent call
+                Region adjacent = result[-1]
+                
+                log.info "Merge $adjacent ($adjacent.index) with $cnv ($cnv.index)"
+                Region merged = new Region(cnv.chr, adjacent.from, cnv.to)
+                merged.sample = cnv.sample
+                merged.lr = Math.max(adjacent.lr, cnv.lr )
+                merged.index = cnv.index
+                result[-1] = merged
+            }
+            else
+                result << cnv
+            result
+        }        
     }
 
     /**
