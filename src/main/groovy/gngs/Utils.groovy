@@ -30,7 +30,7 @@ class TableOptions {
     Map format
     Map render
     Boolean topborder
-    Writer out
+    Appendable out
     String border
     String title
 }
@@ -358,8 +358,12 @@ class Utils {
             out.println rightBorder
         }
         
-        if(options.out)
-            return out
+        if(options.out) {
+            if(out instanceof PrintStream)
+                return out.newWriter()
+            else
+                return out
+        }
         else
             return null
     }
