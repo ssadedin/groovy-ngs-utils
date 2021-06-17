@@ -301,10 +301,38 @@ class Plot {
         return p
     }
     
-    void save(final String fileName) {
+    BufferedImage getImage() {
+        getImage(800,600)
+    }
+
+    BufferedImage getImage(int width, int height) {
+
+        int rasterFormat = BufferedImage.TYPE_INT_RGB;
+        BufferedImage image = new BufferedImage(
+                (int)Math.ceil(width), (int)Math.ceil(height), rasterFormat);
+        Graphics2D g = image.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
         
-        assert fileName.endsWith('.png')
+        g.background = Color.white
+        g.fillRect(0, 0, width, height)
+
+        DrawingContext context = new DrawingContext(g);
+        DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
+
+        XYPlot xyPlot = toXYPlot(width,height)
         
+        Rectangle2D boundsOld = xyPlot.getBounds();
+        xyPlot.setBounds(0, 0, width, height);
+        xyPlot.draw(context)
+        
+        return image
+    }
+    
+    XYPlot toXYPlot(int imageWidth, int imageHeight) {
         double maxX = Double.MIN_VALUE
         double maxY = Double.MIN_VALUE
         
@@ -418,8 +446,8 @@ class Plot {
             xyPlot.setLegendVisible(true)
   
             
-        double width = 1024.0d
-        double height = 800.0d
+        double width = (double)imageWidth
+        double height = (double)imageHeight
         
         for(Text text in texts) {
 
@@ -442,10 +470,19 @@ class Plot {
             xyPlot.add(label)
         }
         
-        BufferedImage bImage = new BufferedImage(1024, 800, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = (Graphics2D) bImage.getGraphics();
-        DrawingContext context = new DrawingContext(g2d, Quality.QUALITY, Target.BITMAP);
+        return xyPlot
+    }
+    
+    void save(final String fileName) {
         
+        assert fileName.endsWith('.png')
+
+        int width = 1024
+        int height = 800
+        
+        
+        XYPlot xyPlot = toXYPlot(width, height)
+
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
             PlotUtils.write(xyPlot, w, 0,0, width, height);
