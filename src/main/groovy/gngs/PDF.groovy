@@ -1,3 +1,4 @@
+package gngs
 import java.awt.Color;
 import java.awt.Image;
 import java.awt.Toolkit;
@@ -306,7 +307,7 @@ class PDF {
 		 
 		 float aspectRatio = (height/ (float)awtImage.getWidth(null))
 //		 println "Aspect ratio = $aspectRatio"
-		 img.scaleAbsolute(300,(float)aspectRatio * 300)
+		 img.scaleAbsolute((float)300,(float)(aspectRatio * 300))
 		 img.absoluteX = 150
 		 elementStack[-1].add(img)
 	 }
