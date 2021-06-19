@@ -21,6 +21,8 @@
 package gngs
  
 import groovy.transform.CompileStatic;
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 
 import java.awt.event.ItemEvent;
 import java.nio.MappedByteBuffer
@@ -366,7 +368,7 @@ class VCF implements Iterable<Variant> {
         return line
     }
     
-    static VCF parse(String fileName, Pedigrees peds, Closure c = null) {
+    static VCF parse(String fileName, Pedigrees peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse(fileName,peds?.families?.values() as List, c)
     }
     
@@ -374,7 +376,7 @@ class VCF implements Iterable<Variant> {
      * Convenience method to accept string for parsing file
      */
     @CompileStatic
-    static VCF parse(Map options=[:], String fileName, List<Pedigree> peds = null, Closure c = null) {
+    static VCF parse(Map options=[:], String fileName, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         if(fileName == "-")
           parse(System.in,peds,c)
         else {
@@ -390,42 +392,50 @@ class VCF implements Iterable<Variant> {
         }
     }
     
-    static VCF parse(Map options=[:], String fileName, Closure c) {
+    @CompileStatic
+    static VCF parse(Map options=[:], String fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parse(options, fileName,null,c)
     }
     
-    static VCF parse(File f, List<Pedigree> peds = null, Closure c = null) {
+    @CompileStatic
+    static VCF parse(File f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse([:], f, peds, c)
     }
     
     @CompileStatic
-    static VCF parse(Map options,File f, List<Pedigree> peds = null, Closure c = null) {
+    static VCF parse(Map options,File f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         (VCF)Utils.reader(f.absolutePath) { r ->
             parseImpl(options+[fileName:f.path],r, false, peds, c)
         }
     }
     
-    static VCF parse(Closure c = null) {
+    @CompileStatic
+    static VCF parse(@ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse("-",null,c)
     }
     
-    static VCF parse(List<Pedigree> peds, Closure c = null) {
-        parse("-",peds,c)
+    @CompileStatic
+    static VCF parse(List<Pedigree> peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
+        parse(System.in,peds,c)
     }
     
-    static VCF parse(InputStream f, List<Pedigree> peds = null, Closure c = null) {
+    @CompileStatic
+    static VCF parse(InputStream f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse([:],f,peds,c)
     }
     
-    static VCF parse(Map options, InputStream f, List<Pedigree> peds = null, Closure c = null) {
+    @CompileStatic
+    static VCF parse(Map options, InputStream f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parseImpl(options,f,false, peds,c)
     }
     
-    static void filter(File f, Closure c = null) {
-        filter(f,null,c)
+    @CompileStatic
+    static void filter(Map options=[:], File f, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
+        filter(options, f,null,c)
     }
     
-    static void filter(File f, List<Pedigree> peds, Closure c = null) {
+    @CompileStatic
+    static void filter(Map options=[:],File f, List<Pedigree> peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         InputStream stream = null
         if(f.name.endsWith('.gz')) {
             stream = new BufferedInputStream(new GZIPInputStream(new FileInputStream(f)))
@@ -433,34 +443,34 @@ class VCF implements Iterable<Variant> {
         else {
             stream = new BufferedInputStream(new FileInputStream(f))
         }
-        filter([fileName:f.path],stream,peds,c)
+        filter(options+[fileName:f.path],stream,peds,c)
     }
     
-    static void filter(String fileName, Closure c = null) {
-        filter(fileName,null,c)
-    }
-    
-    static void filter(String fileName, List<Pedigree> peds, Closure c = null) {
+    @CompileStatic
+    static void filter(Map options=[:], String fileName, List<Pedigree> peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         if(fileName == "-")
-          filter([:],(InputStream)System.in,peds,c)
+          filter(options,(InputStream)System.in,peds,c)
         else
-          filter(new File(fileName),peds,c)
+          filter(options, new File(fileName),peds,c)
     }
     
-    static void filter(Closure c = null) {
-        filter("-",null,c)
+    @CompileStatic
+    static void filter(Map options=[:], @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
+        filter(options, "-",null,c)
     }
     
-    static void filter(Map options=[:], InputStream f, Closure c) {
+    @CompileStatic
+    static void filter(Map options=[:], InputStream f, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parseImpl(options,f,true,null, c)
     }
     
-    static void filter(Map options=[:], InputStream f, List<Pedigree> peds = null, Closure c = null) {
+    @CompileStatic
+    static void filter(Map options=[:], InputStream f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parseImpl(options,f,true,peds,c)
     }
     
     @CompileStatic
-    void each(Closure c) {
+    void each(@ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         if(lazyLoad) {
             load { v ->
                 c(v)
@@ -472,7 +482,8 @@ class VCF implements Iterable<Variant> {
         }
     }
     
-    VCF load(Closure c = null) {
+    @CompileStatic
+    VCF load(@ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         VCF self = this
         Utils.createStream(this.fileName).withStream { ins ->
             VCF.parse(ins, null, c, vcf:self)
@@ -525,7 +536,7 @@ class VCF implements Iterable<Variant> {
      * @param c filter closure
      */
     @CompileStatic
-    private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, Closure c) {
+    private static VCF parseImpl(Map options=[:], InputStream f, boolean filterMode, List<Pedigree> peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         Reader r = f.newReader()
         try {
             return parseImpl(options, r, filterMode, peds, c)
@@ -536,7 +547,7 @@ class VCF implements Iterable<Variant> {
     }
     
     @CompileStatic
-    static VCF filter(Map options, String fileName, Closure c) {
+    static VCF filter(Map options, String fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         new File(fileName).withReader { r ->
             parseImpl(options, r, true, null, c)
         }
@@ -544,18 +555,18 @@ class VCF implements Iterable<Variant> {
  
     
     @CompileStatic
-    static VCF filter(Map options=[:], Reader r, Closure c) {
+    static VCF filter(Map options=[:], Reader r, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parseImpl(options, r, true, null, c)
     }
     
     @CompileStatic
-    static VCF parse(Map options=[:], Reader r, boolean filterMode, Closure c) {
+    static VCF parse(Map options=[:], Reader r, boolean filterMode, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parseImpl(options, r, filterMode, null, c)
     }
      
     
     @CompileStatic
-    private static VCF parseImpl(Map options=[:], Reader r, boolean filterMode, List<Pedigree> peds, Closure c) {
+    private static VCF parseImpl(Map options=[:], Reader r, boolean filterMode, List<Pedigree> peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         
         boolean ignoreHomRef = !(options.includeHomRef ?: false)
         
