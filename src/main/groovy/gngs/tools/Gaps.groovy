@@ -161,7 +161,7 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
             Regions intersectedExons = allTranscriptExons.intersect(new Regions([(IRegion)blockRegion]))
             Regions codingExons = allTranscriptExons.intersectRegions(cdsRegions)
 
-            List transcriptAnnotations = []
+            List<Map> transcriptAnnotations = []
 
             Map panelAnnotations = getPanelAnnotations((String)info.gene)
 
@@ -198,9 +198,6 @@ class GapAnnotator extends RegulatingActor<CoverageBlock> {
 
                 transcriptAnnotations << transcriptAnnotation
             }
-            
-
-            
             
             annotations.addAll(transcriptAnnotations)
         }

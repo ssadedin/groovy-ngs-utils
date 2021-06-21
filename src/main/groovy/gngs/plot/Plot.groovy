@@ -208,7 +208,7 @@ class Histogram {
         double delta = (dataStats.max - dataStats.min + Double.MIN_VALUE) / (binCount-1);
         double halfDelta = delta/2d;
 
-        List breaks = []
+        List<Double> breaks = []
         double pos = dataStats.min - halfDelta
         for(int i=0; i<=binCount; ++i) {
             breaks.add(pos)
