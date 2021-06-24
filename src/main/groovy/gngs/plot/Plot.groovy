@@ -1,9 +1,11 @@
 package gngs.plot
 
+import java.awt.BasicStroke
 import java.awt.Color
 import java.awt.Graphics2D
 import java.awt.Paint
 import java.awt.RenderingHints
+import java.awt.Stroke
 import java.awt.geom.Rectangle2D
 import java.awt.image.BufferedImage
 
@@ -66,6 +68,8 @@ class XYItem extends PlotItem {
     Iterable<Object> x
     Iterable<Number> y
     
+    Object color
+    
     double maxX = Double.MIN_VALUE
     double maxY = Double.MIN_VALUE
     
@@ -100,11 +104,12 @@ class XYItem extends PlotItem {
 }
 
 class Lines extends XYItem {
+    double width
     
 }
 
 class Line extends XYItem {
-    
+    double width
 }
 
 class Points extends XYItem {
@@ -364,7 +369,15 @@ class Plot {
 
             if(xy instanceof Lines || xy instanceof Line) {
                 LineRenderer lines = new SmoothLineRenderer2D();
-                lines.setColor(palette.colors[ i % palette.colors.size()])
+
+                if(xy.width != null)
+                    lines.setStroke(new BasicStroke((float)xy.width))
+                    
+                if(xy.color)
+                    lines.setColor(new Color(xy.color.red, xy.color.green, xy.color.blue))
+                else
+                    lines.setColor(palette.colors[ i % palette.colors.size()])
+
                 xyPlot.setLineRenderers(dt, lines)
             }
             else
