@@ -124,4 +124,11 @@ class PlotTest {
         def line = new Density.Line(data:normals, displayName:'TestLine', color: com.twosigma.beakerx.chart.Color.blue)
         assert line.displayName  == 'TestLine'
     }
+    
+    @Test
+    void testColoredLines() {
+        Plot p = new Plot()
+        p << new Line(color: Color.red, x:[1,2,3], y:[4,5,6], width: 1)
+        p.save('test.line.png')
+    }
 }

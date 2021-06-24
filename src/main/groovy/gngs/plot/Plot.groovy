@@ -26,6 +26,7 @@ import de.erichseifert.gral.graphics.DrawingContext.Quality
 import de.erichseifert.gral.graphics.DrawingContext.Target
 import de.erichseifert.gral.graphics.Insets2D
 import de.erichseifert.gral.graphics.Label
+import de.erichseifert.gral.graphics.Location
 import de.erichseifert.gral.graphics.Orientation
 import de.erichseifert.gral.io.plots.DrawableWriter
 import de.erichseifert.gral.io.plots.DrawableWriterFactory
@@ -104,12 +105,12 @@ class XYItem extends PlotItem {
 }
 
 class Lines extends XYItem {
-    double width
+    Double width
     
 }
 
 class Line extends XYItem {
-    double width
+    Double width
 }
 
 class Points extends XYItem {
@@ -202,7 +203,7 @@ class Histogram {
         
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
-            PlotUtils.write(plot, w, 0,0, 1024, 800);
+            PlotUtils.write(plot, w, 0,0, 1024, 800, 0);
         }        
     }
 
@@ -236,6 +237,8 @@ class Plot {
     List xBound = null
     
     List yBound = null
+
+    String legendLocation = null // String 
     
     List texts = []
     
@@ -312,20 +315,16 @@ class Plot {
 
     BufferedImage getImage(int width, int height) {
 
+        int eastLegendWidth = 0
+        if(this.legendLocation in ["east","north_east","south_east"])
+            eastLegendWidth = 140 // hack / guess
+
         int rasterFormat = BufferedImage.TYPE_INT_RGB;
         BufferedImage image = new BufferedImage(
-                (int)Math.ceil(width), (int)Math.ceil(height), rasterFormat);
-        Graphics2D g = image.createGraphics();
-        g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        g.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-        g.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        
-        g.background = Color.white
-        g.fillRect(0, 0, width, height)
+                (int)Math.ceil(width + eastLegendWidth), (int)Math.ceil(height), rasterFormat);
 
-        DrawingContext context = new DrawingContext(g);
+        DrawingContext context = PlotUtils.createDrawingContext(image)
+
         DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
 
         XYPlot xyPlot = toXYPlot(width,height)
@@ -397,6 +396,10 @@ class Plot {
                 pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
                 xyPlot.setPointRenderers(dt, pointRenderer)
 
+                if(xy.color)
+                    pointRenderer.setColor(new Color(xy.color.red, xy.color.green, xy.color.blue))
+                else
+                    pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
             }
 //            xyPlot.setMapping(dt, xys[i].name, '')
             ++i
@@ -455,9 +458,13 @@ class Plot {
                 label.text = yLabel
         }
         
-        if(!(xyPlot instanceof BarPlot) && xys.any { it.displayName })
+        if(!(xyPlot instanceof BarPlot) && xys.any { it.displayName }) {
             xyPlot.setLegendVisible(true)
-  
+            
+            if(this.legendLocation) {
+                xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+            }
+        }
             
         double width = (double)imageWidth
         double height = (double)imageHeight
@@ -495,10 +502,14 @@ class Plot {
         
         
         XYPlot xyPlot = toXYPlot(width, height)
+        
+        int eastLegendWidth = 0
+        if(this.legendLocation in ["east","north_east","south_east"])
+            eastLegendWidth = 140 // hack / guess
 
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
-            PlotUtils.write(xyPlot, w, 0,0, width, height);
+            PlotUtils.write(xyPlot, w, 0,0, width, height, eastLegendWidth);
         } 
     }
     
@@ -527,20 +538,14 @@ class PlotUtils {
      * @throws IOException if writing to stream fails
      */
     static public void write(Drawable d, OutputStream destination,
-            double x, double y, double width, double height)
+            double x, double y, double width, double height, int legendWidth)
             throws IOException {
+
         int rasterFormat = BufferedImage.TYPE_INT_RGB;
         BufferedImage image = new BufferedImage(
-                (int)Math.ceil(width), (int)Math.ceil(height), rasterFormat);
-        Graphics2D imageGraphics = image.createGraphics();
-        imageGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        imageGraphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        imageGraphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
-        imageGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
-        imageGraphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
-        
-        DrawingContext context =
-            new DrawingContext(imageGraphics);
+                (int)Math.ceil(width + legendWidth), (int)Math.ceil(height), rasterFormat);
+
+        DrawingContext context = createDrawingContext(image)
 
         Iterator<ImageWriter> writers =
             ImageIO.getImageWritersByMIMEType('image/png');
@@ -559,5 +564,21 @@ class PlotUtils {
                 ios.close();
             }
         }
+    }
+    
+    static DrawingContext createDrawingContext(BufferedImage image) {
+        Graphics2D imageGraphics = image.createGraphics();
+        imageGraphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        imageGraphics.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        imageGraphics.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+        imageGraphics.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        imageGraphics.setRenderingHint(RenderingHints.KEY_FRACTIONALMETRICS, RenderingHints.VALUE_FRACTIONALMETRICS_ON);
+        
+        imageGraphics.background = Color.white
+        imageGraphics.fillRect(0, 0, image.width, image.height)
+        
+        DrawingContext context = new DrawingContext(imageGraphics);        
+        
+        return context
     }
 }
