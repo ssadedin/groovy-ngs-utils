@@ -40,6 +40,20 @@ class Delfin extends ToolBase {
     Matrix covs
     
     Map<String,Regions> results = new ConcurrentHashMap()
+    
+    /**
+     * row indices of the samples being tested for CNV calls in the matrix 
+     */
+    private List<Integer> testSampleIndices = null
+
+    /**
+     * row indices of the samples being used only as controls for CNV calls in the matrix 
+     */
+    private List<Integer> controlSampleIndices = null
+    
+    private String debugChr = null
+    
+    private int debugRegionIndex = -1
 
     static void main(args) {
         cli('-t <target regions bed> -cov <cov1> [-cov <cov2> ...] -o <deletions.tsv>', args) {
@@ -51,6 +65,7 @@ class Delfin extends ToolBase {
             s 'Samples to test for CNVs (all)', args:'*', required: false, type:String
             chr 'Process the given chromosome only (false, process all)', args: 1, required: false
             cov 'Coverage depth file, in GATK format, tab separated with a column of read count for each target region', args: '*', type: File, required: true
+            dr 'Debug region: output verbose statistics for given target region', args:1, required: false
         }
     }
 
@@ -61,6 +76,8 @@ class Delfin extends ToolBase {
         targets = new BED(opts.t).load(withExtra:true)
         
         log.info "Loaded ${targets.numberOfRanges} regions (${Utils.humanBp(targets.size())} from $opts.t"
+        
+        initialiseDebugRegion()
         
         covs = Matrix.concat(*opts.covs.collect { loadCoverage(it) })
         
@@ -77,6 +94,15 @@ class Delfin extends ToolBase {
         if(opts.maxpc) {
             this.maxPCAComponents = opts.maxpc
         }
+        
+        this.testSampleIndices = covs.sample.findIndexValues { it in opts.ss }
+
+        this.controlSampleIndices = covs.sample.findIndexValues { !(it in opts.ss) }
+        
+        if(!controlSampleIndices) {
+            log.info "There are no control samples so test samples are being used as controls"
+            this.controlSampleIndices = this.testSampleIndices
+        }
 
         List actors = chrs.collect { chr ->
             Actors.actor {  
@@ -92,6 +118,17 @@ class Delfin extends ToolBase {
         saveResults()
         
         log.info "Finished"
+    }
+
+    private initialiseDebugRegion() {
+        if(opts.dr) {
+            Region debugRegion = new Region(opts.dr)
+            debugRegionIndex = (targets.findAll { it.chr == debugRegion.chr }).findIndexOf { it.overlaps(debugRegion) }
+            if(debugRegionIndex<0)
+                throw new IllegalArgumentException("No overlap of debug region $debugRegion could be found with target regions in $opts.t")
+            debugChr = debugRegion.chr
+            log.info "Debug region $debugRegion identified at index $debugRegion in $debugChr"
+        }
     }
 
     private void saveResults() {
@@ -185,7 +222,7 @@ class Delfin extends ToolBase {
         }
 
 //        if(opts.lr) {
-//            Utils.writer("${opts.lr}.${chr}.tsv").withWriter { w -> 
+//            Utils.writer("${opts.lr}.${sample}.${chr}.tsv").withWriter { w -> 
 //                sampleLRs.save(w, r:true) 
 //            }
 //        }
@@ -225,14 +262,26 @@ class Delfin extends ToolBase {
             approxStd = std
         }
         
+        if(debugChr == chr) {
+            dumpDebug("Standardised values", approxStd)
+        }
+        
         // Diploid regions are by definition std dev 1 because the matrix was standardised
         FastNormal diploid = new FastNormal(0, 1)
 
          // For deletions we must calculate a separate estimated mean from each column because the 
         // standard deviation of each column is different
         List<FastNormal> deletions = scaled.columns.collect {  MatrixColumn c ->
-            Stats colStats = Stats.from(c)
-            new FastNormal(-0.5 * colStats.mean / colStats.standardDeviation, 1) 
+            Stats colStats = Stats.from((List<Double>)c[controlSampleIndices])
+            if(colStats.standardDeviation<0) {
+                log.info "Wot? $colStats.standardDeviation"
+            }
+
+            new FastNormal(-0.5 * colStats.mean / colStats.standardDeviation, colStats.standardDeviation) 
+        }
+        
+        if(debugChr == chr) {
+            logStats(sample, chr, approxStd, deletions, diploid)
         }
         
         Matrix lrs = approxStd.transform { double x, int i, int j -> deletions[j].logDensity(x) } - 
@@ -241,6 +290,35 @@ class Delfin extends ToolBase {
         lrs.@names = std.@names
         
         return lrs
+    }
+
+    private logStats(String sample, String chr, Matrix approxStd, List<FastNormal> deletions, FastNormal diploid) {
+        log.info "Deletion (mean, stddev) for $sample in $chr at $debugRegionIndex: " + [
+            deletions[debugRegionIndex].mean,
+            deletions[debugRegionIndex].standardDeviation
+        ].join(', ')
+            
+        double diploidDensity = diploid.logDensity(approxStd[((List<String>)approxStd.getProperty('sample')).indexOf(sample)][debugRegionIndex])
+        log.info "Diploid density = " + diploidDensity
+        
+        double deletionDensity = deletions[debugRegionIndex].logDensity(approxStd[((List<String>)approxStd.getProperty('sample')).indexOf(sample)][debugRegionIndex])
+        log.info "Deletion density = " + deletionDensity
+        log.info "Likelihood ratio = " + (deletionDensity - diploidDensity)
+        if((deletionDensity - diploidDensity) > this.deletionCallThreshold) {
+            log.info "Deletion call WILL be emitted for $opts.dr"
+        }
+        else {
+            log.info "Deletion call NOT emitted for $opts.dr"
+        }
+    }
+    
+    private dumpDebug(msg, Matrix approxStd) {
+        IntRange debugRange = (debugRegionIndex-5)..(debugRegionIndex+5)
+        Matrix subset = approxStd[][debugRange]
+        subset.@displayRows = 100
+        subset.sample = approxStd.sample
+        log.info("$msg at debug region $debugRegionIndex: \n" + subset)
+
     }
 
     private List<Region> mergeConsecutiveRegions(final Regions unmergedCNVs) {
