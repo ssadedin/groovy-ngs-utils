@@ -849,7 +849,11 @@ class RangeIndex implements Iterable<IntRange> {
      * Merge all overlapping ranges together to make simplified regions
      * representing all the ranges covered by any range in this RangeIndex.
      * 
-     * @return
+     * If a closure is provided, it is called whenever two regions need to be merged,
+     * providing both regions as arguments. The return value is set as the <code>extra</code>
+     * attribute on the resulting region.
+     * 
+     * @return  new RangeIndex with all overlapping regions reduced to single flattened regions
      */
     @CompileStatic
     RangeIndex reduce(Closure reducer = null) {
