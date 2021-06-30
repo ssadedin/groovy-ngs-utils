@@ -273,18 +273,20 @@ class Delfin extends ToolBase {
         // standard deviation of each column is different
         List<FastNormal> deletions = scaled.columns.collect {  MatrixColumn c ->
             Stats colStats = Stats.from((List<Double>)c[controlSampleIndices])
-            if(colStats.standardDeviation<0) {
-                log.info "Wot? $colStats.standardDeviation"
+            if(colStats.standardDeviation>0) {
+                new FastNormal(-0.5 * colStats.mean / colStats.standardDeviation, colStats.standardDeviation) 
             }
-
-            new FastNormal(-0.5 * colStats.mean / colStats.standardDeviation, colStats.standardDeviation) 
+            else {
+                // Most likely all zeros in the control samples
+                null
+            }
         }
         
         if(debugChr == chr) {
             logStats(sample, chr, approxStd, deletions, diploid)
         }
         
-        Matrix lrs = approxStd.transform { double x, int i, int j -> deletions[j].logDensity(x) } - 
+        Matrix lrs = approxStd.transform { double x, int i, int j -> if(deletions[j]!=null) deletions[j].logDensity(x) else Double.MIN_VALUE } - 
                      approxStd.transform { double x -> diploid.logDensity(x) }
 
         lrs.@names = std.@names
