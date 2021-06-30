@@ -547,12 +547,11 @@ class VCF implements Iterable<Variant> {
     }
     
     @CompileStatic
-    static VCF filter(Map options, String fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
+    static VCF filter(Map options=[:], String fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         new File(fileName).withReader { r ->
             parseImpl(options, r, true, null, c)
         }
     }
- 
     
     @CompileStatic
     static VCF filter(Map options=[:], Reader r, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
