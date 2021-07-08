@@ -396,6 +396,11 @@ class VCF implements Iterable<Variant> {
     static VCF parse(Map options=[:], String fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parse(options, fileName,null,c)
     }
+
+    @CompileStatic
+    static VCF parse(Map options=[:], File fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
+        parse(options, fileName.path, null,c)
+    }
     
     @CompileStatic
     static VCF parse(File f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
