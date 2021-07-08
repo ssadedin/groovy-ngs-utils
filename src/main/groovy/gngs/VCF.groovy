@@ -435,7 +435,12 @@ class VCF implements Iterable<Variant> {
     }
     
     @CompileStatic
-    static void filter(Map options=[:], File f, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
+    static void filter(Map options=[:], File f) {
+        filter(options, f,null,null)
+    }
+
+    @CompileStatic
+    static void filter(Map options=[:], File f, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         filter(options, f,null,c)
     }
     
@@ -557,7 +562,7 @@ class VCF implements Iterable<Variant> {
             parseImpl(options, r, true, null, c)
         }
     }
-    
+
     @CompileStatic
     static VCF filter(Map options=[:], Reader r, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parseImpl(options, r, true, null, c)
