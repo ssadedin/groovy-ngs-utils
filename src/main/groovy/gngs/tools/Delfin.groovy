@@ -30,10 +30,18 @@ class Delfin extends ToolBase {
     int maxPCAComponents = 20
     
     /**
-     * Treat more than this number of deletion calls within a chromosome as a sign that
-     * batch effects are creating artefactual CNVs
+     * An indicator of the number deletion calls expected per target region
+     * 
+     * (or, approximately, the probability any given target is deleted state, though
+     * that interpretation does not account for multi-target calls)
      */
-    int maxDeletionCallsPerChromosome = 30
+    double deletionRate = 30 / 7088
+    
+    /**
+     * The expected number of deletion calls is calculated from the per-target region rate
+     * but this can lead to an unreasonably low bar for small chromosomes
+     */
+    int minExpectedDeletionCallsPerChromosome = 5
     
     Regions targets
     
@@ -205,11 +213,22 @@ class Delfin extends ToolBase {
 
         // The index of the sample to call CNVS for in the main matrix
         int sampleIndex = covs.sample.findIndexOf { it == sample }
+        
+        // Deletion rate is expressed as prior probability that any specific region
+        // is deleted
+        int maxDeletionCalls = std.columnDimension * deletionRate
+
+        log.info "Expect $maxDeletionCalls calls based on deletionRate=$deletionRate and ${std.columnDimension} target regions in $chr"
+        
+        if(maxDeletionCalls < minExpectedDeletionCallsPerChromosome) {
+            log.info "Expected number of deletion calls adjusted up from $maxDeletionCalls to $minExpectedDeletionCallsPerChromosome to meet minimum threshold"
+            maxDeletionCalls = minExpectedDeletionCallsPerChromosome
+        }
 
         List lrs 
         int nComponentsToRemove = 0
         int cnvCount = 0
-        while(!lrs || cnvCount > maxDeletionCallsPerChromosome) {
+        while(!lrs || cnvCount > maxDeletionCalls) {
             lrs = computeLikelihoods(sample, chr, scaled, std, reduced, nComponentsToRemove)[sampleIndex] as List
             nComponentsToRemove++
             
