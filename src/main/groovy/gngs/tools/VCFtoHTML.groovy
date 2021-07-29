@@ -25,9 +25,12 @@ import org.codehaus.groovy.runtime.StackTraceUtils;
 import gngs.BED
 import gngs.Cli
 import gngs.CliOptions
+import gngs.FASTA
+import gngs.FASTAIndex
 import gngs.Pedigrees
 import gngs.ProgressCounter
 import gngs.Regions
+import gngs.RepeatMotif
 import gngs.SAM
 import gngs.Utils
 import gngs.VCF
@@ -239,6 +242,7 @@ class VCFtoHTML {
     
     double minROCSensitivity = 0.2
         
+    FASTA fasta
     
     List<Closure> parsedFilters = []
     
@@ -253,6 +257,12 @@ class VCFtoHTML {
                 new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
             }
         }
+        
+        if(opts.ref)
+            this.fasta = new FASTA(opts.ref)
+            
+        if(opts.norep && !opts.ref)
+            throw new IllegalArgumentException('If the norep argument is given, please also specify the reference using the "ref" option')
         
         if(opts.maxMaf)
             maxMaf=opts.maxMaf.toFloat()
@@ -313,6 +323,7 @@ class VCFtoHTML {
             f 'Comma separated list of families to export', args:1
             a 'comma separated aliases for samples in input VCF at corresponding -i position', args: Cli.UNLIMITED
             id 'Include variant ids in output'
+            ref 'Reference FASTA to look up repeat regions, required for norep option', args: 1
             target 'Variants must fall within this region to be included (multiple allowed)', args:Cli.UNLIMITED
             xtarget 'Exclude variants inside these target regions from the comparison', args:1
             genelist 'Add gene priorities based on two column, tab separated file', args:1
@@ -335,6 +346,7 @@ class VCFtoHTML {
             rocmetric 'Metric to use for calculating ROC (qual, depth)', args:1, required: false
             rocminsens 'Minimum sensitivity to plot for ROC (20%)', args:1, required: false
             title 'Title to apply in various reports that are output', args:1, required: false
+            norep 'Do not include variants in or adjacent to repeat regions', required: false
         }
         
         CliOptions opts = new CliOptions(opts:cli.parse(args))
@@ -945,6 +957,22 @@ class VCFtoHTML {
                 }
             }
             
+            if(opts.norep) {
+                String base = fasta.basesAt(v.chr, v.pos, v.pos)
+                if(base.toLowerCase() == base) {
+                    ++stats.excludeByRepeat
+                    return
+                }
+                
+                RepeatMotif rep = fasta.repeatAt(v.chr, v.pos)
+                if(rep) {
+                    if((rep.motif.size() == 1 && rep.repetitions>4) || (rep.motif.size()>1 && rep.repetitions>2)) {
+                        ++stats.excludeByRepeat
+                        return
+                    }
+                }
+            }
+            
 //            if(!filters.every { Eval.x(v, it) }) {
             if(!parsedFilters.every { it(v) }) {
                 ++stats.excludeByFilter
@@ -1103,7 +1131,7 @@ class VCFtoHTML {
             statsWriter = new File(opts.stats).newWriter()
             
         try {    
-            ["total", "excludeByPreFilter","excludeByDiff", "excludeByCons", "excludeByMaf", "excludeComplex", "excludeByMasked", "excludeByFilter", "excludeByTarget", "excludeNotPresent","totalIncluded"].each { prop ->
+            ["total", "excludeByPreFilter","excludeByDiff", "excludeByCons", "excludeByMaf", "excludeComplex", "excludeByMasked", "excludeByFilter", "excludeByTarget", "excludeByRepeat", "excludeNotPresent","totalIncluded"].each { prop ->
                 println prop.padLeft(20) + " :" + stats[prop]
                 if(opts.stats) {
                     statsWriter.println([prop,stats[prop]].join('\t'))

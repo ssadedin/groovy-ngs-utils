@@ -45,6 +45,8 @@ class VCFSummaryStats {
     int excludeByFilter = 0
     
     int excludeByMasked = 0
+
+    int excludeByRepeat = 0
     
     int totalIncluded
     
