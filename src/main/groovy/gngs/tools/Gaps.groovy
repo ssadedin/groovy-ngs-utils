@@ -286,24 +286,29 @@ class Gaps {
     }
     
     void run() {
-        List<Regions> allGaps = computeAllGaps()
-        
-        Regions unionGaps = computeGapUnion(allGaps)
-        
-        if(opts.diff) {
-            List<Region> oldGaps = computeDiffGaps()
+        try {
+            List<Regions> allGaps = computeAllGaps()
             
-            Regions unionDiffGaps = computeGapUnion(oldGaps)
-            writeDiffs(unionDiffGaps, unionGaps)
-        }
-        else {
-            log.info "Writing output ..."
-            if(opts.h)
-                writeTable(unionGaps)
-            else {
-                writeGaps(unionGaps)
-                log.info "Done."
+            Regions unionGaps = computeGapUnion(allGaps)
+            
+            if(opts.diff) {
+                List<Region> oldGaps = computeDiffGaps()
+                
+                Regions unionDiffGaps = computeGapUnion(oldGaps)
+                writeDiffs(unionDiffGaps, unionGaps)
             }
+            else {
+                log.info "Writing output ..."
+                if(opts.h)
+                    writeTable(unionGaps)
+                else {
+                    writeGaps(unionGaps)
+                    log.info "Done."
+                }
+            }
+        }
+        finally {
+            this.gapWriter.close()
         }
     }
     
