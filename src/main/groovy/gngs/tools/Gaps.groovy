@@ -308,6 +308,7 @@ class Gaps {
             }
         }
         finally {
+            this.gapWriter.flush()
             this.gapWriter.close()
         }
     }
