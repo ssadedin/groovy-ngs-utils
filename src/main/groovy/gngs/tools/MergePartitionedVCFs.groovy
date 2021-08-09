@@ -7,9 +7,12 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovyx.gpars.GParsPool
 
-
-
-
+/**
+ * A tool to merge together multiple VCFs that contain variants from distinct regions
+ * but which may be interleaved between different VCFs
+ * 
+ * @see gngs.tools.MergePartitionedVCFs
+ */
 @Log
 class MergePartitionedVCFs extends ToolBase {
     
