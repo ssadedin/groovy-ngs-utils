@@ -465,6 +465,11 @@ class VCF implements Iterable<Variant> {
     }
     
     @CompileStatic
+    static void filter(@ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
+        filter([:], "-",null,c)
+    }
+
+    @CompileStatic
     static void filter(Map options=[:], @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         filter(options, "-",null,c)
     }
@@ -608,7 +613,6 @@ class VCF implements Iterable<Variant> {
         
         Closure parseLastHeader =  {
             if(vcf.lastHeaderLine == null) {
-                    
                 vcf.parseLastHeaderLine()
                     
                 // Modify the header to include only samples selected

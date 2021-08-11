@@ -333,4 +333,9 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
         assert true
     }
     
+    @Test
+    void 'test filter from stdin'() {
+        VCF.filter('src/test/data/tmp.mini.vcf') { false }
+    }
+    
  }
