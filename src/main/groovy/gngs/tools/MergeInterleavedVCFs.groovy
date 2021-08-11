@@ -49,7 +49,7 @@ class MergeInterleavedVCFs extends ToolBase {
                 nextVariants.add(new VCFMergeSource(iter:iter, next: iter.next()))
         }
 
-        Utils.writer(opts.o).with { w ->
+        Utils.writer(opts.o).withWriter { w ->
             vcfs[0].printHeader(w)
             writeVariants(nextVariants, w)
         }
