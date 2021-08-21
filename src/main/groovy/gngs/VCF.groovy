@@ -353,7 +353,8 @@ class VCF implements Iterable<Variant> {
      * @return  the first non-header line
      */
     @CompileStatic
-    String readHeaders(Reader r) {
+    String readHeaders(final Reader r) {
+        this.headerLines = []
         String line = r.readLine();
         while(line != null) {
             if(line.startsWith('#')) {
