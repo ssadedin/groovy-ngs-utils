@@ -127,6 +127,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         }
         
         out.withWriter {
+
             printVCFHeader()
             
             out.flush()
@@ -147,6 +148,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
                 progress.count()
             }
             progress.end()
+            out.close()
         }
     }
     
@@ -245,7 +247,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      * Generate a header for the population VCF. This is accomplished by copying headers from the first VCF and
      * adding INFO declarations for the population statistics entries.
      */
-    private void printVCFHeader() {
+    void printVCFHeader() {
         VCF result = new VCF()
         result.headerLines = new VCF(opts.arguments()[0]).headerLines
         result.addInfoHeaders([
@@ -260,7 +262,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
     /**
      * Infer the sexes for the input VCFs
      */
-    private void inferSexes() {
+    void inferSexes() {
         
         Map<String,gngs.Sex> providedSexes = [:]
         if(opts.sexs)
