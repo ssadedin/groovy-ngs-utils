@@ -120,33 +120,34 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         }
         else
         if(opts.o) {
-            out = new PrintWriter(new File(opts.o))
+            out = Utils.writer(opts.o)
         }
         else {
             out = new PrintWriter(System.out)
         }
         
-        printVCFHeader()
-        
-        out.flush()
-        
-        inferSexes()
-        
-        // Since we end up with a sex inferred for every sample ...
-        numSamples = sampleSexes.size()
-        
-        VariantContext lastVariant = null
-        ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
-            "chr: $lastVariant.contig pos: $lastVariant.start (${lastVariant.genotypes[0].sampleName})"
-        })
-        VCFSiteWalker locusWalker = new VCFSiteWalker(opts.arguments())
-        locusWalker.walk { List<VariantContext> variants ->
-            lastVariant = variants[0]
-            processSite(variants)
-            progress.count()
+        out.withWriter {
+            printVCFHeader()
+            
+            out.flush()
+            
+            inferSexes()
+            
+            // Since we end up with a sex inferred for every sample ...
+            numSamples = sampleSexes.size()
+            
+            VariantContext lastVariant = null
+            ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
+                "chr: $lastVariant.contig pos: $lastVariant.start (${lastVariant.genotypes[0].sampleName})"
+            })
+            VCFSiteWalker locusWalker = new VCFSiteWalker(opts.arguments())
+            locusWalker.walk { List<VariantContext> variants ->
+                lastVariant = variants[0]
+                processSite(variants)
+                progress.count()
+            }
+            progress.end()
         }
-        progress.end()
-        out.close()
     }
     
     @CompileStatic
