@@ -13,6 +13,9 @@ import java.text.NumberFormat
 import java.util.logging.*
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+
+import org.yaml.snakeyaml.Yaml
+
 import java.io.Writer
 import java.nio.file.Files
 import java.nio.file.Path
@@ -655,5 +658,14 @@ class Utils {
             return x.toDouble()
         else
             return x
+    }
+    
+    /**
+     * Parse a YAML file using default settings
+     */
+    static Object yaml(def fileLike) {
+        Utils.reader(fileLike) {
+            return new Yaml().load(it)
+        }
     }
 }
