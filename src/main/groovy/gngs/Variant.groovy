@@ -1644,9 +1644,14 @@ class Variant implements IRegion {
     @CompileStatic
     float getMaxVepMaf() {
        def result = getVepInfo().collect { Map<String,Object> vep -> 
-           ((List<String>)[vep.EA_MAF, vep.ASN_MAF, vep.EUR_MAF]).collect { String maf->
+           
+           if(vep.containsKey('MAX_AF')) {
+               return ((String)vep.MAX_AF).isFloat() ? ((String)vep.MAX_AF).toFloat() : 0.0f
+           }
+           
+           ((List<String>)[vep.EA_AF, vep.EAS_AF, vep.AFR_AF, vep.AMR_AF, vep.EUR_AF]).collect { String maf->
                maf?maf.split('&'):[]
-           }.flatten().collect { Object maf -> ((String)maf).isFloat() ? ((String)maf).toFloat() : 0.0f }.max() ?: 0.0f }.max()
+       }.flatten().collect { Object maf -> ((String)maf).isFloat() ? ((String)maf).toFloat() : 0.0f }.max() ?: 0.0f }.max()
            
        return result ? (float)result : 0.0f
     }
