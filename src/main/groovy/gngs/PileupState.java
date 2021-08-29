@@ -93,6 +93,7 @@ public class PileupState {
         
         switch(cigar) {
             case D:
+            case N:
                 base = 0;
                 qual = 0;
                 break;
