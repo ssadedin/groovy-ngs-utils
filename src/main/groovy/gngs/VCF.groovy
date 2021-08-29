@@ -1639,13 +1639,23 @@ class VCF implements Iterable<Variant> {
     
     @CompileStatic
     List<Map<String,Object>> toListMap() {
-     (List<Map<String,Object>>)[
+        def result = (List<Map<String,Object>>)[
             this.toRegions().toListMap(), 
             this*.info, 
             this*.genoTypes*.getAt(0),
             this*.ref,
             this*.alt,
         ].transpose().collect { Object infosObj -> List infos = (List)infosObj;  ((Map)infos[0]) +  [Ref:infos[3], Alt: infos[4]] + ((Map)infos[1]) + ((Map)infos[2])}
+
+        if(this.hasVEP()) {
+            result = (List<Map<String,Object>>)[result,this*.maxVep].transpose().collect { v -> 
+                def x = ((List<Map>)v).sum(); 
+                ((Map)x).remove('ANN'); 
+                ((Map)x).remove('CSQ'); 
+                x
+            }
+        }
+        return result
     }
     
     private VCFIndex index
