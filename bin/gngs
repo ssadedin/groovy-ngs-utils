@@ -28,7 +28,8 @@ $cmd
 GNGS_END
 ) 
 
-GROOVY=groovy
+# Allow use of different groovy starter script
+: ${GROOVY:=groovy}
 
 which $GROOVY > /dev/null 2>/dev/null || {
 
