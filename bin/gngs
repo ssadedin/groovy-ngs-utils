@@ -41,4 +41,4 @@ which $GROOVY > /dev/null 2>/dev/null || {
 
 JAVA_OPTS="-Xmx$GNGS_MEM" $GROOVY -cp  \
       $GNGS/.eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar:$GROOVY_HOME'/lib/*' \
-      -e "import gngs.*; $SCRIPT" -- $*
+      -e "import gngs.*; $SCRIPT" -- "$@"
