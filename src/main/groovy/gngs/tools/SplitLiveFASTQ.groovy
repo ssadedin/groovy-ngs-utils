@@ -7,6 +7,18 @@ import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import htsjdk.samtools.util.BlockCompressedInputStream
 
+/**
+ * Splits FASTQ in block-gzipped files which can be written live simultaneously
+ * while this tool is streaming them out.
+ * <p>
+ * Since there is no intrinsic end point when the input FASTQs could be finished,
+ * the end point is flagged by a "stop file" that must be given by the user.
+ * The natural way to do that would be to put a "touch" command after the commands
+ * writing the FASTQ files finishes (eg: bcl2fastq) or alternatively use some file 
+ * that automatically is written at the end of the process.
+ * 
+ * @author Simon Sadedin
+ */
 @Log
 class SplitLiveFASTQ extends ToolBase {
     
