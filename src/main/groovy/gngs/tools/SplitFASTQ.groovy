@@ -107,7 +107,9 @@ class FASTQWriterActor extends RegulatingActor {
 }
 
 /**
- * Utility to split paired end FASTQ and write it out in interleaved format
+ * A flexible utility to "reshape" paired end fastq data for processing by merging and splitting 
+ * it and writing it out in interleaved format so that there is no need to store intermediate 
+ * files.
  * 
  * @author Simon Sadedin
  */
@@ -116,9 +118,9 @@ class SplitFASTQ extends ToolBase {
     
     static void main(String [] args) {
         cli('SplitFASTQ -s <Sharding Specification> -r1 <FASTQ R1> -r2 <FASTQ R2>', args) {
-            s 'Sharding specification in form n,m n=shard to output, n=total shards', args:1, required: true
-            r1 'FASTQ file read 1', args: 1, required: true
-            r2 'FASTQ file read 2', args: 1, required: false
+            s 'Sharding specification in form n,m n=shard to output, n=total shards', args:1, required: false
+            r1 'FASTQ file read 1, multiple files joined with comma', args: 1, required: true
+            r2 'FASTQ file read 2, multiple files joined with comma', args: 1, required: false
             o1 'Output file read 1', args: 1, required: false
             o2 'Output file read 2', args: 1, required: false
             f 'Downsampling factor (1.0)', args: 1, required: false
@@ -135,7 +137,7 @@ class SplitFASTQ extends ToolBase {
 
     @Override
     public void run() {
-        List shardParts = opts.s.tokenize(',')
+        List shardParts = opts.s ? opts.s.tokenize(',') : '0,1'
         int shardId = shardParts[0].toInteger()
         int numberOfShards = shardParts[1].toInteger()
         
@@ -180,42 +182,48 @@ class SplitFASTQ extends ToolBase {
     }
     
     @CompileStatic
-    public runNoDedupe(int shardId, int shards, Writer output1, Writer output2) {
+    public void runNoDedupe(int shardId, int shards, Writer output1, Writer output2) {
         int numberWritten = 0
         int numberProcessed = 0
-        String r1Path = (String)opts['r1']
-        String r2Path = (String)opts['r2']
+
+        List<String> r1Paths = (List<String>)((String)opts['r1']).tokenize(',')
+        List<String> r2Paths = opts['r2'] ? (List<String>)((String)opts['r2']).tokenize(',') : ["false"] * r1Paths.size()
+         
+        [r1Paths, r2Paths].transpose().each { String r1Path, String r2Path ->
+            
+            log.info "Processing FASTQ pair $r1Path, $r2Path"
         
-        if(r2Path != "false") {
-            FASTQ.filter(r1Path, r2Path, output1, output2) { FASTQRead r1, FASTQRead r2 ->
-                int hash = r1.name.hashCode()
-                int readShardId = Math.abs(hash % shards)
-                ++numberProcessed 
-                if(this.downsample) {
-                    if(this.downsampleRandomNumberGenerator.nextDouble()>this.downsampleFactor)
-                        return
-                }
-                if(readShardId == shardId) {
-                    ++numberWritten
-                   return true 
-                }
-                else {
-                   return false 
+             if(r2Path != "false") {
+                FASTQ.filter(r1Path, r2Path, output1, output2) { FASTQRead r1, FASTQRead r2 ->
+                    int hash = r1.name.hashCode()
+                    int readShardId = Math.abs(hash % shards)
+                    ++numberProcessed 
+                    if(this.downsample) {
+                        if(this.downsampleRandomNumberGenerator.nextDouble()>this.downsampleFactor)
+                            return
+                    }
+                    if(readShardId == shardId) {
+                        ++numberWritten
+                       return true 
+                    }
+                    else {
+                       return false 
+                    }
                 }
             }
-        }
-        else {
-            FASTQ.eachRead(r1Path) { FASTQRead r1 ->
-                int hash = r1.name.hashCode()
-                int readShardId = Math.abs(hash % shards)
-                ++numberProcessed 
-                if(this.downsample) {
-                    if(this.downsampleRandomNumberGenerator.nextDouble()>this.downsampleFactor)
-                        return
-                } 
-                if(readShardId == shardId) {
-                    ++numberWritten
-                    r1.write(output1)
+            else {
+                FASTQ.eachRead(r1Path) { FASTQRead r1 ->
+                    int hash = r1.name.hashCode()
+                    int readShardId = Math.abs(hash % shards)
+                    ++numberProcessed 
+                    if(this.downsample) {
+                        if(this.downsampleRandomNumberGenerator.nextDouble()>this.downsampleFactor)
+                            return
+                    } 
+                    if(readShardId == shardId) {
+                        ++numberWritten
+                        r1.write(output1)
+                    }
                 }
             }
         }
@@ -236,8 +244,14 @@ class SplitFASTQ extends ToolBase {
         
         AtomicInteger pending = new AtomicInteger(0)
         int i = 0
-        FASTQ.eachPair((String)opts['r1'], (String)opts['r2']) { FASTQRead r1, FASTQRead r2 ->
-            dedupers[++i % numDedupers].sendTo([r1,r2])
+        List<String> r1Paths = (List<String>)((String)opts['r1']).tokenize(',')
+        List<String> r2Paths = opts['r2'] ? (List<String>)((String)opts['r2']).tokenize(',') : ["false"] * r1Paths.size()
+         
+        [r1Paths, r2Paths].transpose().each { String r1Path, String r2Path ->
+         
+            FASTQ.eachPair(r1Path, r2Path) { FASTQRead r1, FASTQRead r2 ->
+                dedupers[++i % numDedupers].sendTo([r1,r2])
+            }
         }
         
         log.info "Stopping dedupers ...."
