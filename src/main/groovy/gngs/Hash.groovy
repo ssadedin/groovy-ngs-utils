@@ -40,7 +40,14 @@ class Hash {
         messageDigest.update(encoding ? value.getBytes(encoding) : value.getBytes() );
         return new BigInteger(1, messageDigest.digest()).toString(16).padLeft( 40, '0' )
     }
-    
+
+    @CompileStatic
+    static String sha256(String value, String encoding=null) {
+        def messageDigest = MessageDigest.getInstance("SHA-256")
+        messageDigest.update(encoding ? value.getBytes(encoding) : value.getBytes() );
+        return new BigInteger(1, messageDigest.digest()).toString(16).padLeft( 40, '0' )
+    }
+
     @CompileStatic
     static String md5(String value, String encoding=null) {
         def messageDigest = MessageDigest.getInstance("MD5")
