@@ -125,19 +125,7 @@ class Cov extends ToolBase {
         openStreams()
         
         if(opts.gaps) {
-            gapAnnotator = new GapAnnotator(new RefGenes((String)opts['refgene']))
-            gapAnnotator.start()
-            gapCalculator = new CoverageGaps()
-            gapCalculator.threshold = this.gapThreshold
-
-            if(opts.gaptarget) {
-                Regions gapRegions = new BED(opts.gaptarget).load()
-                gapCalculator.gapProcessor = new GapIntersector(downstream:gapAnnotator, targetRegions:gapRegions)
-                gapCalculator.gapProcessor.start()
-            }
-            else {
-                gapCalculator.gapProcessor = gapAnnotator
-            }
+            initGapCalculator()
         }
         
         int downsampleFactor = opts.downsampleFactor ?: 0
@@ -192,6 +180,22 @@ class Cov extends ToolBase {
         }
         if(opts.covo) {
             printCoverageJs(covStats, opts.covo)
+        }
+    }
+
+    private initGapCalculator() {
+        gapAnnotator = new GapAnnotator(new RefGenes((String)opts['refgene']))
+        gapAnnotator.start()
+        gapCalculator = new CoverageGaps()
+        gapCalculator.threshold = this.gapThreshold
+
+        if(opts.gaptarget) {
+            Regions gapRegions = new BED(opts.gaptarget).load()
+            gapCalculator.gapProcessor = new GapIntersector(downstream:gapAnnotator, targetRegions:gapRegions)
+            gapCalculator.gapProcessor.start()
+        }
+        else {
+            gapCalculator.gapProcessor = gapAnnotator
         }
     }
     
