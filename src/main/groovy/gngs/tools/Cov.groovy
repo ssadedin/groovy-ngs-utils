@@ -155,7 +155,7 @@ class Cov extends ToolBase {
             writerActor.join()
         }
         finally {
-            out.close()
+            out?.close()
             if(downsampledOut)
                 downsampledOut.close()
         }
@@ -229,7 +229,8 @@ class Cov extends ToolBase {
     }
 
     private openStreams() {
-        out = new AsciiWriter(Utils.outputStream(opts.o,10*1024*1024), 5*1024*1024)
+        if(opts.o)
+            out = new AsciiWriter(Utils.outputStream(opts.o,10*1024*1024), 5*1024*1024)
         if(opts.gaps) {
             if(!opts.refgene)
                 throw new IllegalArgumentException("If -gaps is specified then -refgene is required")
@@ -291,12 +292,14 @@ class Cov extends ToolBase {
                 }
 
                 covStats.addIntValue(cov)
-                out.write(contig)
-                out.write('\t')
-                out.write(String.valueOf(pos))
-                out.write('\t')
-                out.write(String.valueOf(cov))
-                out.write('\n')
+                if(!out.is(null)) {
+                    out.write(contig)
+                    out.write('\t')
+                    out.write(String.valueOf(pos))
+                    out.write('\t')
+                    out.write(String.valueOf(cov))
+                    out.write('\n')
+                }
                 ++offset
             }
             if(downsampleFactor>0 && offset<downsamplePoint) {
@@ -442,8 +445,8 @@ class Cov extends ToolBase {
     }
     
     static void main(String[] args) {
-        cli('Cov [-o] -L <target regions> <bam file>', args) {
-            o 'Output file to write to', args:1, required: true
+        cli('Cov [-o <per-base-output>] -L <target regions> <bam file>', args) {
+            o 'Output file to write to', args:1, required: false
             'do' 'Output file for downsampled output', args:1, required:false, longOpt: 'downsampleOutput', type: File
             'df' 'Factor to downsample by', args:1, required:false, longOpt: 'downsampleFactor', type: Integer
             minMQ 'Minimum mapping quality (1)', args:1, required: false
