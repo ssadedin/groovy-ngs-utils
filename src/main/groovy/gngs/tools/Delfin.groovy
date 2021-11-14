@@ -87,6 +87,7 @@ class Delfin extends ToolBase {
         cli('-t <target regions bed> -cov <cov1> [-cov <cov2> ...] -o <deletions.tsv>', args) {
             t 'Target region bed file', args:1, required: true, type: File, longOpt: 'targets'
             o 'Output TSV file containing deletions (stdout)', args:1, required: false, type: File
+            prior 'Prior probability that target region is deleted (0.004)', args: 1, required: false, type: Double
             lrt 'Likelihood ratio threshold to emit CNV calls at (3.5)', args:1, required: false, type: Double
             del_lrt 'Likelihood ratio threshold to emit deletion calls at (3.5)', args:1, required: false, type: Double
             dup_lrt 'Likelihood ratio threshold to emit duplication calls at (3.5)', args:1, required: false, type: Double
@@ -142,6 +143,9 @@ class Delfin extends ToolBase {
         if(opts.maxpc) {
             this.maxPCAComponents = opts.maxpc
         }
+        
+        if(opts.prior != false)
+            this.deletionRate = opts.prior
         
         this.testSampleIndices = covs.sample.findIndexValues { it in opts.ss }
 
