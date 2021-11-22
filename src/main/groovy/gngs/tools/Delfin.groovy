@@ -309,9 +309,13 @@ class Delfin extends ToolBase {
         }
 
         List deletionLRs 
+        List dupLRs 
         int nComponentsToRemove = 0
         int cnvCount = 0
+        int minCNVCount = 0
         List<Matrix> cnvLRs
+        List<Matrix> bestCnvLRs
+        int bestCount
         while(!deletionLRs || cnvCount > maxDeletionCalls) {
 
             cnvLRs = normaliseAndComputeLikelihoods(sample, chr, scaled, std, reduced, nComponentsToRemove)
@@ -319,15 +323,29 @@ class Delfin extends ToolBase {
             Matrix deletionMatrix = cnvLRs[0]
             
             deletionLRs = deletionMatrix[sampleIndex] as List
+            dupLRs = cnvLRs[1][sampleIndex] as List
 
             nComponentsToRemove++
             
-            cnvCount = deletionLRs.count { it > deletionCallThreshold} 
+            int delCount = deletionLRs.count { it > deletionCallThreshold}
+            int dupCount = dupLRs.count { it > duplicationCallThreshold }
             
-            log.info "Analysis for $sample/$chr with $nComponentsToRemove components removed produced $cnvCount calls"
+            cnvCount = delCount  + dupCount
+            
+            if(Math.abs(cnvCount - maxDeletionCalls) < (Math.abs(bestCount - maxDeletionCalls))) {
+                bestCount = cnvCount
+                bestCnvLRs = cnvLRs
+            }
+            
+            log.info "Analysis for $sample/$chr with $nComponentsToRemove components removed produced $cnvCount calls ($delCount dels, $dupCount dups)"
 
-            if(nComponentsToRemove>=maxPCAComponents)
+            if(nComponentsToRemove>=maxPCAComponents) {
+                log.info "Exceeded maximum $maxPCAComponents PCA components removed - using optimum result producing $bestCount calls (targeting $maxDeletionCalls calls)"
+                cnvLRs = bestCnvLRs
+                deletionLRs = cnvLRs[0][sampleIndex] as List
+                dupLRs = cnvLRs[1][sampleIndex] as List
                 break
+            }
         }
 
 //        if(opts.lr) {
@@ -341,7 +359,6 @@ class Delfin extends ToolBase {
         
         log.info "Deletion lrs are: \n$deletionCalls"
        
-        def dupLRs = cnvLRs[1][sampleIndex] as List
 
         def dupCalls = dupLRs.findIndexValues { it > duplicationCallThreshold }
 
