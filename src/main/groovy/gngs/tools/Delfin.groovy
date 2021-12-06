@@ -1,6 +1,7 @@
 package gngs.tools
 
 import java.util.concurrent.ConcurrentHashMap
+import java.util.logging.Level
 
 import org.apache.commons.math3.analysis.polynomials.PolynomialSplineFunction
 
@@ -155,9 +156,17 @@ class Delfin extends ToolBase {
             log.info "There are no control samples so test samples are being used as controls"
             this.controlSampleIndices = this.testSampleIndices
         }
+        
+        List<Exception> errors = []
 
         List actors = chrs.collect { chr ->
             Actors.actor {  
+                
+                delegate.metaClass.onException = { e ->
+                    log.log Level.SEVERE, "Error occurred processing $chr: ", e
+                    errors << e
+                }
+                
                 Regions chrResults = analyseChromosome(chr)
                 results[chr] = chrResults
             } 
@@ -166,6 +175,11 @@ class Delfin extends ToolBase {
         log.info "Started actors to process each chromosome"
         
         actors*.join()
+        
+        if(errors) {
+            log.severe "One or more errors occurred during analysis - exiting with error status"
+            System.exit(1)
+        }
         
         saveResults()
         
@@ -341,6 +355,10 @@ class Delfin extends ToolBase {
 
             if(nComponentsToRemove>=maxPCAComponents) {
                 log.info "Exceeded maximum $maxPCAComponents PCA components removed - using optimum result producing $bestCount calls (targeting $maxDeletionCalls calls)"
+                if(bestCnvLRs == null) {
+                    cnvLRs = bestCnvLRs
+                    bestCount = cnvCount
+                }
                 cnvLRs = bestCnvLRs
                 deletionLRs = cnvLRs[0][sampleIndex] as List
                 dupLRs = cnvLRs[1][sampleIndex] as List
