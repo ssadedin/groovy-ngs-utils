@@ -61,6 +61,8 @@ class Delfin extends ToolBase {
     
     Map<String,Regions> results = new ConcurrentHashMap()
     
+    Writer optimisationWriter
+    
     /**
      * row indices of the samples being tested for CNV calls in the matrix 
      */
@@ -98,6 +100,7 @@ class Delfin extends ToolBase {
             s 'Samples to test for CNVs (all)', args:'*', required: false, type:String
             chr 'Process the given chromosome only (false, process all)', args: 1, required: false
             cov 'Coverage depth file, in GATK format, tab separated with a column of read count for each target region', args: '*', type: File, required: true
+            optout 'File to save optimisation metrics to (disabled)', args:1, required: false, type: File
             dr 'Debug region: output verbose statistics for given target region', args:1, required: false
         }
     }
@@ -110,6 +113,9 @@ class Delfin extends ToolBase {
         
         log.info "Loaded ${targets.numberOfRanges} regions (${Utils.humanBp(targets.size())} from $opts.t"
         
+        if(opts.optout)
+            this.optimisationWriter = opts.optout.newWriter()
+
         initialiseDebugRegion()
        
         GParsPool.withPool(6) {
@@ -182,6 +188,9 @@ class Delfin extends ToolBase {
         }
         
         saveResults()
+        
+        if(this.optimisationWriter)
+            this.optimisationWriter.close()
         
         log.info "Finished"
     }
@@ -329,7 +338,7 @@ class Delfin extends ToolBase {
         int minCNVCount = 0
         List<Matrix> cnvLRs
         List<Matrix> bestCnvLRs
-        int bestCount
+        int bestCount = Integer.MAX_VALUE
         while(!deletionLRs || cnvCount > maxDeletionCalls) {
 
             cnvLRs = normaliseAndComputeLikelihoods(sample, chr, scaled, std, reduced, nComponentsToRemove)
@@ -350,16 +359,17 @@ class Delfin extends ToolBase {
                 bestCount = cnvCount
                 bestCnvLRs = cnvLRs
             }
-            
+           
             log.info "Analysis for $sample/$chr with $nComponentsToRemove components removed produced $cnvCount calls ($delCount dels, $dupCount dups)"
+            
+            if(this.optimisationWriter)
+                this.optimisationWriter.write("$cnvCount\t$maxDeletionCalls\t$nComponentsToRemove\t$deletionCallThreshold")
 
             if(nComponentsToRemove>=maxPCAComponents) {
                 log.info "Exceeded maximum $maxPCAComponents PCA components removed - using optimum result producing $bestCount calls (targeting $maxDeletionCalls calls)"
-                if(bestCnvLRs == null) {
+                if(bestCnvLRs != null) {
                     cnvLRs = bestCnvLRs
-                    bestCount = cnvCount
                 }
-                cnvLRs = bestCnvLRs
                 deletionLRs = cnvLRs[0][sampleIndex] as List
                 dupLRs = cnvLRs[1][sampleIndex] as List
                 break
