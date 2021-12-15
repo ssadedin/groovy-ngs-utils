@@ -1173,8 +1173,15 @@ class SAM {
      */
     @CompileStatic
     PileupIterator pileup(String chr, int start, int end) {
-        SamReader reader = newReader()
-        pileup(reader, chr, start, end)
+        SamReader reader
+        try {
+            reader = newReader()
+            return pileup(reader, chr, start, end)
+        }
+        catch(Exception e) {
+            reader.close()
+            throw e
+        }
     }
     
     @CompileStatic
