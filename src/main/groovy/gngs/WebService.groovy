@@ -59,9 +59,24 @@ class TwoLeggedOAuthAPI extends DefaultApi10a {
     }
 }
 
+/**
+ * API key credentials, eg: OAuth style
+ * 
+ * @author Simon Sadedin
+ */
 class WSCredentials  {
     String apiKey
     String apiSecret
+}
+
+/**
+ * Username / password for basic auth
+ * 
+ * @author Simon Sadedin
+ */
+class BasicCredentials {
+    String username
+    String password
 }
 
 class WebServiceException extends Exception {
@@ -103,6 +118,8 @@ class WebService {
     OAuth1AccessToken credentials
     
     WSCredentials apiCredentials
+    
+    BasicCredentials basicCredentials
     
     String secret
     
@@ -280,6 +297,9 @@ class WebService {
             doOutput = (data != null)
             useCaches = false
             setRequestProperty('Content-Type','application/json')
+            if(basicCredentials) {
+                setRequestProperty('Authorization','Basic ' + (basicCredentials.username + ':' + basicCredentials.password).bytes.encodeBase64())
+            }
             requestMethod = method
         }
         return connection
