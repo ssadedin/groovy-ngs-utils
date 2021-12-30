@@ -94,7 +94,8 @@ class MissingMateIndex {
            return
            
        long xPos = XPos.computePos(chr, pair.missingReadPosition)
-       matePositions.get(xPos,[]).add(pair)
+       List<SAMRecordPair> mpos = (List<SAMRecordPair>)matePositions.get(xPos,[])
+       mpos.add(pair)
     }
     
     synchronized SAMRecordPair getPair(String readName) {

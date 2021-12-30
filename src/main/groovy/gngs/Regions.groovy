@@ -907,8 +907,8 @@ class Regions implements Iterable<Region> {
             if(r instanceof GRange) {
                 GRange gr = ((GRange)r.range)
                 gr.extra = (Object)r;
-                result.addRegion(r)
-            }
+                result.addRegion((Region)r)
+           }
             else {
                 GRange gr = new GRange(r.from, r.to, null)
                 Region newRegion = new Region(r.chr, gr)

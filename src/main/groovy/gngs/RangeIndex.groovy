@@ -167,7 +167,7 @@ class RangeIndex implements Iterable<IntRange> {
        
         final int endPosition = newRange.to
         
-        final IntRange firstContainedRange = containedEntry.value[0]
+        final IntRange firstContainedRange // = containedEntry.value[0]
         
         // Note: boundaryPoint is -1 when the ranged overlapped is an "ending" range - one at the
         // border of a gap with no overlapping ranges. In that case we need to add ourselves to the
@@ -871,10 +871,10 @@ class RangeIndex implements Iterable<IntRange> {
             
             if(GRange.overlaps(r,currentRange)) { 
                 if(currentRange instanceof GRange) {
-                    Object newExtra = currentRange.getExtra()
+                    Object newExtra = ((GRange)currentRange).extra
                     if(r instanceof GRange) {
                         if(newExtra == null)
-                            newExtra = ((GRange)r).getExtra()
+                            newExtra = ((GRange)r).extra
                         else
                         if(reducer != null) { // Both are GRanges and both have extra values - they need to be merged
                             newExtra = reducer(currentRange, r)

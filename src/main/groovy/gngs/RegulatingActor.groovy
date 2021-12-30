@@ -4,6 +4,7 @@ import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FirstParam
 import groovy.transform.stc.FromAbstractTypeMethods
+import groovy.transform.stc.FromString
 import groovy.transform.stc.SimpleType
 import groovy.util.logging.Log
 import groovyx.gpars.MessagingRunnable
@@ -251,7 +252,7 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     }
     
     @CompileStatic
-    static <T> RegulatingActor<T> actor(@ClosureParams(value=FromAbstractTypeMethods) Closure c) {
+    static <T> RegulatingActor<T> actor(Closure c) {
         RegulatingActor ds = new RegulatingActor<T>() {
             @CompileStatic
             void process(T value) {

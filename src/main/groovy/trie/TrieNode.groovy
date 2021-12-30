@@ -139,7 +139,7 @@ class TrieNode<T> {
         if(query.insertions > 0)
              insertionResult = this.startsWith(subKey, query.insertion(pivot), maxValues)
        
-        List<TrieQuery<T>> finalResults = result + (List)insertionResult.take(maxValues - result.size())
+        List<TrieQuery<T>> finalResults = (List<TrieQuery<T>>)(result + (List)insertionResult.take(maxValues - result.size()))
              
         return (List<TrieQuery<T>>)finalResults.flatten()
     }
