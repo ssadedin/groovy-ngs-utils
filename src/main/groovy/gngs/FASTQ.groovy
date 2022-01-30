@@ -34,7 +34,7 @@ import groovy.transform.stc.SimpleType
  */
 @CompileStatic
 class FASTHRead {
-    
+
     /**
      * This constructor is really just for testing purposes.
      * However you can use it if you want to fake all the data except the bases.
@@ -113,7 +113,7 @@ class FASTHRead {
  */
 @CompileStatic
 class FASTQRead {
-    
+
     /**
      * This constructor is really just for testing purposes.
      * However you can use it if you want to fake all the data except the bases.
@@ -123,13 +123,14 @@ class FASTQRead {
     FASTQRead(String bases) {
         this.name = Hash.sha1(bases)
         this.bases = bases
+        this.sep = '+'
         this.quals = 'A' * bases.size()
         this.header = this.name
     }
-    
+
     FASTQRead(String header, String bases, String quals) {
         this.header = header
-        
+
         int slashIndex = header.indexOf('/')
         int spaceIndex = header.indexOf(' ')
         if(spaceIndex<0) {
@@ -141,11 +142,32 @@ class FASTQRead {
         }
         else
           this.name = header.subSequence(0, spaceIndex)
-            
+
         this.bases = bases
+        this.sep = '+'
         this.quals = quals
     }
-    
+
+    FASTQRead(String header, String bases, String sep, String quals) {
+        this.header = header
+
+        int slashIndex = header.indexOf('/')
+        int spaceIndex = header.indexOf(' ')
+        if(spaceIndex<0) {
+            this.name = slashIndex>0?header.subSequence(0, slashIndex):header
+        }
+        else // There is a space, but if a slash comes before use that
+        if(slashIndex>=0) {
+            this.name = header.subSequence(0, Math.min(spaceIndex,slashIndex))
+        }
+        else
+          this.name = header.subSequence(0, spaceIndex)
+
+        this.bases = bases
+        this.sep = sep
+        this.quals = quals
+    }
+
     FASTQRead trimEnd(int count, int countStart=0) {
         new FASTQRead(header, bases.substring(countStart,bases.size()-count), quals.substring(countStart,quals.size() - count))
     }
@@ -155,16 +177,16 @@ class FASTQRead {
         w.write('\n')
         w.write(bases)
         w.write('\n')
-        w.write("+")
+        w.write(sep)
         w.write('\n')
         w.write(quals)
         w.write('\n')
     }
-    
+
     int size() {
         bases.size()
     }
-    
+
     String header
     CharSequence name
     String bases
@@ -186,15 +208,15 @@ class FASTQRead {
  * @author Simon
  */
 class FASTQ {
-    
+
     final static long PRINT_INTERVAL_MS = 15000
-    
+
     @CompileStatic
     static void eachRead(@ClosureParams(value=SimpleType,options=['gngs.FASTQRead']) Closure c) {
         // Cheat, fails on windows
         eachRead("/dev/stdin",c)
     }
-    
+
     @CompileStatic
     static void eachFasthRecord(@ClosureParams(value=SimpleType,options=['gngs.FASTHRead']) Closure c) {
         //Cheat, fails on windows
@@ -217,9 +239,9 @@ class FASTQ {
                 filter(fileName1, fileName2, w1, w2, c)
             }
         }
-        
+
     }
-    
+
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * the output in interleaved format.
@@ -339,7 +361,7 @@ class FASTQ {
             }
         }
     }
-     
+
     /**
      * Filter paired reads from fileName1 and fileName2 and write them to 
      * uncompressed output files with extensions .filter.fastq based on the 
@@ -364,10 +386,10 @@ class FASTQ {
         }
     }
 
-  
+
     @CompileStatic
     static void eachPair(String fileName1, String fileName2, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead','gngs.FASTQRead']) Closure c) {
-        
+
         Utils.reader(fileName1) { Reader reader1 ->
           Utils.reader(fileName2) { Reader reader2 ->
             ProgressCounter counter = new ProgressCounter(withRate:true, withTime:true)
@@ -379,7 +401,7 @@ class FASTQ {
                     break
                   if(read2 == null) 
                       throw new IllegalStateException("Trailing reads found in $fileName2 that are not present in $fileName1")
-                      
+
                   if(read1.name != read2.name)
                       throw new IllegalStateException("Read $read1.name from $fileName1 is not matched by read at same line in $fileName2 ($read2.name). Reads need to be in same order in both files.")
                   c(read1,read2)
@@ -392,7 +414,7 @@ class FASTQ {
           }
         }
     }
-    
+
     @CompileStatic
     static void eachPairWithIndex(String fileName1, String fileName2, String fileName3, Closure c) {
 
@@ -435,25 +457,25 @@ class FASTQ {
           String bases = reader.readLine()
           if(bases == null)
               throw new ParseException("Incorrect FASTQ format: no bases after read name $name", -1)
-              
+
           String sep = reader.readLine()
           if(!sep.startsWith("+"))
               throw new ParseException("Incorrect FASTQ format: expected '+' on line after read name $name", -1)
           String quals = reader.readLine()
           if(quals == null)
               throw new ParseException("Incorrect FASTQ format: no quality socres after read name $name", -1)
-              
-          return new FASTQRead(name, bases, quals)
+
+          return new FASTQRead(name, bases, sep, quals)
     }
-    
+
     @CompileStatic
     static void eachRead(String fileName, @ClosureParams(value=SimpleType,options=['gngs.FASTQRead']) Closure c) {
         Utils.reader(fileName) { Reader reader ->
             iterateReader(reader,c)
         }
     }
-    
-    
+
+
     @CompileStatic
     private static void iterateReader(Reader reader, Closure c) {
         // Read the file 4 lines at a time
@@ -461,7 +483,7 @@ class FASTQ {
           final FASTQRead read = consumeRead(reader)
           if(read == null)
               return
-                  
+
           c(read)
         }
     }
