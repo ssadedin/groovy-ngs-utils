@@ -437,7 +437,7 @@ class FASTQ {
               throw new ParseException("Incorrect FASTQ format: no bases after read name $name", -1)
               
           String sep = reader.readLine()
-          if(sep != "+")
+          if(!sep.startsWith("+"))
               throw new ParseException("Incorrect FASTQ format: expected '+' on line after read name $name", -1)
           String quals = reader.readLine()
           if(quals == null)
