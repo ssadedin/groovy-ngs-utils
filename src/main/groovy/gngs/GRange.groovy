@@ -35,32 +35,31 @@ interface IRegion {
 }
 
 @CompileStatic
-class RegionComparator implements Comparator<Region> {
+class RegionComparator implements Comparator<IRegion> {
 
     @Override
-    public int compare(Region r1, Region r2) {
+    public int compare(IRegion r1, IRegion r2) {
       if(r1.chr != r2.chr)
         return -r2.chr.compareTo(r1.chr)
       
-      if(r1.from != r2.from)
-        return r1.from.compareTo(r2.from)
+      if(r1.range.from != r2.range.from)
+        return r1.range.from.compareTo(r2.range.from)
       
-      return r1.to.compareTo(r2.to)
+      return r1.range.to.compareTo(r2.range.to)
     }
     
 }
 
 @CompileStatic
-class NumericRegionComparator implements Comparator<Region> {
+class NumericRegionComparator implements Comparator<IRegion> {
 
     @Override
-    public int compare(Region r1, Region r2) {
-        int result = (int)Math.signum((long)XPos.computePos(r1.chr, r1.from) - XPos.computePos(r2.chr, r2.from))
+    public int compare(IRegion r1, IRegion r2) {
+        int result = (int)Math.signum((long)XPos.computePos(r1.chr, r1.range.from) - XPos.computePos(r2.chr, r2.range.from))
         return result
     }
     
 }
-
 
 
 /**
