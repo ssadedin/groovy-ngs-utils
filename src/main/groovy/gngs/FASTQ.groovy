@@ -191,6 +191,7 @@ class FASTQRead {
     CharSequence name
     String bases
     String quals
+    String sep
 }
 
 /**
