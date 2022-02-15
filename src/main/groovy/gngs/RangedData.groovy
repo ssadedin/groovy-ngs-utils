@@ -1,8 +1,12 @@
 package gngs
 import com.xlson.groovycsv.PropertyMapper;
-
+import graxxia.DirectReaderFactory
+import graxxia.ReaderFactory
+import graxxia.StringReaderFactory
 import graxxia.TSV
 import groovy.transform.CompileStatic
+import groovy.transform.stc.ClosureParams
+import groovy.transform.stc.SimpleType
 
 import java.util.zip.GZIPInputStream
 
@@ -46,7 +50,7 @@ import org.codehaus.groovy.runtime.StackTraceUtils;
  */
 class RangedData extends Regions {
     
-    Reader source = null
+    ReaderFactory source = null
     
     /**
      * Index of the column containing the reference sequence (or "chromosome")
@@ -75,6 +79,8 @@ class RangedData extends Regions {
     int genomeZeroOffset=0
     
     List<String> columns
+    
+    Closure regionParser = null
 
     public RangedData() {
     }
@@ -90,10 +96,19 @@ class RangedData extends Regions {
     }
     
     public RangedData(String sourceFile, int chrColumn, int startColumn, int endColumn) {
-        this(getReader(sourceFile), chrColumn, startColumn, endColumn)
+        this(new StringReaderFactory(source:sourceFile), chrColumn, startColumn, endColumn)
     }
     
     public RangedData(Reader reader, int chrColumn, int startColumn, int endColumn) {
+        this(new DirectReaderFactory(reader:reader), chrColumn, startColumn, endColumn)
+    }
+    
+    public RangedData(Reader reader, @ClosureParams(value=SimpleType, options=['com.xlson.groovycsv.PropertyMapper']) Closure regionParser) {
+        this(new DirectReaderFactory(reader:reader), -1, -1, -1)
+        this.regionParser = regionParser
+    }
+
+    public RangedData(ReaderFactory reader, int chrColumn, int startColumn, int endColumn) {
         source = reader
         this.chrColumn = chrColumn
         this.startColumn = startColumn
@@ -110,9 +125,13 @@ class RangedData extends Regions {
         // Some data files (looking at you UCSC) are zero-based instead of 1-based
         if(options.zeroBased)
             genomeZeroOffset=1
+            
+        if(options.regionParser) {
+            this.regionParser = (Closure) options.regionParser
+        }
         
         // Assume columns on first line
-        TSV tsv = new TSV(options, source)
+        TSV tsv = new TSV(options, source.newReader())
         PropertyMapper currentLine
         try {
             for(PropertyMapper line in tsv) {
@@ -122,13 +141,13 @@ class RangedData extends Regions {
                     continue
                 }
                     
-                Region r = parseRegion(line)
+                Region r = (regionParser.is(null) ? parseRegion(line) : (Region)regionParser(line))
+
                 if(stripChr && r.chr.startsWith('chr')) {
                     r.setChr(r.chr.substring(3)) // must call setChr due to expando
                 }
                     
                 ((GRange)r.range).extra = r
-                
                 
                 if(!columns) {
                     final Map<String,Object> cols = (Map<String,Object>)line.columns
