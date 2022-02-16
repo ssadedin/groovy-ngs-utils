@@ -23,6 +23,7 @@ package gngs
 import java.util.Iterator;
 
 import groovy.transform.CompileStatic;
+import groovy.xml.MarkupBuilder
 
 /**
  * A set of genomic regions, each indexed by chromosome, start and end position.
@@ -1023,5 +1024,39 @@ class Regions implements Iterable<Region> {
         }
         
         return [firstHalf, secondHalf]
+    }
+    
+    String toHTML() {
+        StringWriter sw = new StringWriter()
+        
+        if(this.numberOfRanges == 0) {
+            return '<table><tr><th>No data</th></tr></table>'
+        }
+        
+        List<String> props = this[0].properties*.key
+        
+        new MarkupBuilder(sw).span {
+            table {
+                tr { 
+                    th('Region') 
+                    props.each { k ->
+                        th(k)
+                    }
+                }
+                this.each { r ->
+                    tr {
+                        td {
+                            a(href:r.igv(), target: '_igv', r.toString())
+                        }
+                        
+                        props.each { k ->
+                          td(r[k])
+                        }
+                    }
+                }
+            }
+            iframe(name: '_igv', src:'about:blank', style: 'display: none')
+        }
+        return sw.toString()
     }
 }
