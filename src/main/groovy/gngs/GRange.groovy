@@ -406,7 +406,7 @@ class Region extends Expando implements IRegion, Serializable {
     }
     
     String igv() {
-        return "http://localhost:60151/load?locus=$chr:$from-$to"
+        return "http://localhost:60151/goto?locus=$chr:$from-$to"
     }
     
     @CompileStatic
