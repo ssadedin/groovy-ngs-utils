@@ -189,7 +189,7 @@ class WebService {
        URL url = encodeURL(params, method, payload)
        
        try {
-           if(credentials || credentialsPath) 
+           if(credentials)
                return this.executeOAuthRequest(params, url, method, payload)
            else {
                HttpURLConnection connection = configureConnection(url, method, data)
@@ -260,7 +260,7 @@ class WebService {
     }
 
     public void loadCredentials() {
-        if(this.apiCredentials != null) 
+        if((this.apiCredentials != null) || (this.basicCredentials != null))
             return 
             
         File credsFile 
@@ -286,12 +286,17 @@ class WebService {
         if(yaml.accessToken) {
             this.credentials = new OAuth1AccessToken(yaml.accessToken, yaml.accessSecret)
         }
+
+        if(yaml.username && yaml.password) {
+            this.basicCredentials = new BasicCredentials(username: yaml.username, password: yaml.password)
+        }
     }
     
     /**
      * Set up and return a connection configured to execute the given request
      */
     HttpURLConnection configureConnection(URL url, String method, Object data) {
+        loadCredentials()
         HttpURLConnection connection = url.openConnection()
         connection.with {
             doOutput = (data != null)
