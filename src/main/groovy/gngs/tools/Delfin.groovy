@@ -119,7 +119,8 @@ class Delfin extends ToolBase {
         initialiseDebugRegion()
        
         GParsPool.withPool(6) {
-            covs = Matrix.concat(*opts.covs.collectParallel { loadCoverage(it) })
+            List<Matrix> covList = opts.covs.collectParallel { loadCoverage(it) }
+            covs = Matrix.concat(covList)
         }
         
         log.info "Loaded ${covs.size()} coverage data sets"
