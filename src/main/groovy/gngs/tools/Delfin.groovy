@@ -246,6 +246,12 @@ class Delfin extends ToolBase {
         log.info "Std for $chr are:\n$std"
         
         log.info "Calculating PCA basis vectors on $chr ..."
+        
+        if(maxPCAComponents>subset.rowDimension) {
+            log.info "Too few samples to apply max pca componetns $maxPCAComponents: will reduce to ${subset.rowDimension-1}"
+            maxPCAComponents = subset.rowDimension-1
+        }
+        
         Matrix reduced = std.reduce(maxPCAComponents)
 
         // Note: important that samples listed in order they are found in cov matrix
