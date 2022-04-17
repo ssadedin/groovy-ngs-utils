@@ -412,5 +412,36 @@ class FASTA {
         }
         return best.repetitions>1 ? best : null
     }
-
+    
+    /**
+     * @return Map of contig name to size for all the contigs in this FASTA file
+     */
+    @CompileStatic
+    Map<String,Integer> getContigs() {
+        return this.indexedFastaFile
+                   .getSequenceDictionary()
+                   .getSequences()
+                   .collectEntries { seq ->
+                        [seq.sequenceName, seq.sequenceLength]
+                   }
+    }
+    
+    /**
+     * Infers the identity of the genome build used based on given contig sizes.
+     * 
+     * @return  String identifier for genome build
+     */
+    @CompileStatic
+    String sniffGenomeBuild() {
+        return GenomeInfo.sniffGenomeBuild(this.getContigs())
+    }
+    
+    /**
+     * @return 38, 37 or 18 indicating the coordinate system of the genome version 
+     *         for the given contig sizes
+     */
+    @CompileStatic
+    Integer humanGenomeCoordinateVersion() {
+        return GenomeInfo.humanGenomeCoordinateVersion(this.getContigs())
+    }
 }

@@ -1226,10 +1226,14 @@ class SAM {
      * 
      * @return
      */
+    @CompileStatic
     Regions getContigRegions() {
         getContigs().collect { new Region(it.key, 1, it.value) } as Regions
     }
     
+    /**
+     * @return Map of contig name to size for all the contigs in this SAM
+     */
     @CompileStatic
     Map<String, Integer> getContigs() {
         SamReader reader = newReader()
@@ -1247,6 +1251,7 @@ class SAM {
     /**
      * @return a list of contigs in the BAM file in sort order of the BAM file
      */
+    @CompileStatic
     List<String> getContigList() {
         SamReader reader = newReader()
         try {
@@ -1426,31 +1431,10 @@ class SAM {
      * @return
      */
     String sniffGenomeBuild() {
-        
+
         Map<String,Integer> contigs = getContigs()
         
-        Map hgMap = [
-            247249719 : "hg18",
-            249250621 : "hg19",
-            248956422 : "hg38"
-        ]
-        
-        Map grcMap = [
-            249250621 : "GRCh37",
-            248956422 : "GRCh38"
-        ]
-        
-        Map mouseMap = [
-            195471971 : "mm10",
-            197195432 : "mm9",
-            197069962 : "mm8",
-            194923535 : "mm7"
-        ]
-        
-        contigs.any { it.key.startsWith('chr') } ? 
-            hgMap[contigs['chr1']]
-        :
-            grcMap[contigs['1']]
+        return GenomeInfo.sniffGenomeBuild(contigs)
     }
     
     /*
