@@ -301,6 +301,7 @@ class WebService {
         connection.with {
             doOutput = (data != null)
             useCaches = false
+            setRequestProperty('Accept', 'application/json')
             setRequestProperty('Content-Type','application/json')
             if(basicCredentials) {
                 setRequestProperty('Authorization','Basic ' + (basicCredentials.username + ':' + basicCredentials.password).bytes.encodeBase64())
