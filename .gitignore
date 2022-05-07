@@ -3,3 +3,12 @@ build
 /eclipse-build/
 .idea
 *.iml
+commons-cli-*
+doc
+gradle-lib
+*.swk
+*.swl
+*.swm
+*.swn
+*.swo
+*.swp
