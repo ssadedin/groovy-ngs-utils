@@ -88,6 +88,8 @@ class SampleReadCount {
 @Log
 class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
+    static boolean verbose = false
+    
     AtomicInteger pending = new AtomicInteger(0)
     
     String currentChr
@@ -164,7 +166,6 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
     
 
     void onEnd() {
-        log.info "Flushing coverage actor"
         this.flushToEnd()
     }
     
@@ -201,7 +202,7 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
                 if(!nextRegion()) {
                     return
                 }
-                log.info "Transition to ${currentRegion} seeking read ${r}"
+//                log.info "Transition to ${currentRegion} seeking read ${r}"
             }
         }
         
@@ -335,9 +336,9 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
             
             QueryInterval[] optimizedIntervals = QueryInterval.optimizeIntervals(intervals as QueryInterval[])
             
-            log.info "Scanning ${optimizedIntervals.size()} optimized intervals"
+            if(verbose)
+                log.info "Scanning ${optimizedIntervals.size()} optimized intervals from $chr:$start-$end"
 
-            log.info "Scan $chr from $start to $end"
             bam.withReader { SamReader reader ->
                 try {
                     SAMRecordIterator iter = reader.query(optimizedIntervals, false)
@@ -360,7 +361,8 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
                 }
             }
         }
-        log.info "Sending stop message to CRA ${bam.samples[0]} ..."
+        if(verbose)
+            log.info "Sending stop message to CRA ${bam.samples[0]} ..."
         calculator << RegulatingActor.STOP
         calculator.join()
         if(failMQ) {
