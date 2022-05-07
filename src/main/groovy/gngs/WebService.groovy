@@ -59,14 +59,29 @@ class TwoLeggedOAuthAPI extends DefaultApi10a {
     }
 }
 
+interface WebServiceCredentials {
+}
+
 /**
  * API key credentials, eg: OAuth style
  * 
  * @author Simon Sadedin
  */
-class WSCredentials  {
+class OAuth10Credentials  implements WebServiceCredentials {
     String apiKey
     String apiSecret
+}
+
+class BearerTokenCredentials  implements WebServiceCredentials {
+    String token
+}
+
+class Headers {
+    Map values
+    
+    Headers(Map values) {
+        this.values = values
+    }
 }
 
 /**
@@ -74,7 +89,7 @@ class WSCredentials  {
  * 
  * @author Simon Sadedin
  */
-class BasicCredentials {
+class BasicCredentials implements WebServiceCredentials {
     String username
     String password
 }
@@ -115,9 +130,11 @@ class WebService {
     
     String api
     
-    OAuth1AccessToken credentials
+    OAuth1AccessToken oauth1AccessToken
     
-    WSCredentials apiCredentials
+    OAuth10Credentials apiCredentials
+    
+    BearerTokenCredentials bearerToken
     
     BasicCredentials basicCredentials
     
@@ -129,9 +146,11 @@ class WebService {
     
     boolean autoSlash = false
     
-    int maxBodyDumpSize = 1024
+    int maxBodyDumpSize = 4096
     
     String credentialsPath = null
+    
+    WebServiceCredentials webserviceCredentials
     
     /**
      * Create a web service to access the given api at the given end point
@@ -149,23 +168,35 @@ class WebService {
             this.api = ''
     }
     
-    Object post(Object data) {
-        request([:], 'POST', data)
+    Object post(Map data) {
+        request([:], 'POST', data, null)
+    }
+
+    Object postWithHeaders(Object data, Headers headers) {
+        request([:], 'POST', data, headers)
     }
   
     Object post(Map params, Object data) {
-        request(params, 'POST', data)
+        request(params, 'POST', data, null)
+    }
+
+    Object post(Map params, Object data, Headers headers) {
+        request(params, 'POST', data, headers)
     }
     
     Object get(Map params) {
-        request(params, 'GET', null)
+        request(params, 'GET', null, null)
+    }
+
+    Object getWithHeaders(Map params, Headers headers) {
+        request(params, 'GET', null, headers)
     }
     
     WebService path(String subPath) {
         WebService child = new WebService(endPoint, api + '/' + subPath)
         child.verbose = this.verbose
         child.dump = this.dump
-        child.credentials = this.credentials
+        child.oauth1AccessToken = this.oauth1AccessToken
         child.apiCredentials = this.apiCredentials
         child.autoSlash = this.autoSlash
         child.credentialsPath = this.credentialsPath
@@ -182,17 +213,31 @@ class WebService {
      *
      * @return an object representing the result.
      */
-    Object request(Map params, String method, Object data) {
+    Object request(Map params, String method, Object data, Headers headerValues=null) {
         
-       String payload = data != null ? JsonOutput.prettyPrint(JsonOutput.toJson(data)) : null
+       Map headers = headerValues?.values
+        
+       String payload 
+       if(headers?.'Content-Type' == 'application/x-www-form-urlencoded') {
+           assert data instanceof Map : 'Data must be a Map instance for urlencoded form data'
+           payload = urlEncode(data)
+       }
+       else {
+           payload = data != null ? JsonOutput.prettyPrint(JsonOutput.toJson(data)) : null
+       }
        
        URL url = encodeURL(params, method, payload)
        
        try {
-           if(credentials)
+           
+           if(credentialsPath && !webserviceCredentials)
+               loadCredentials()
+           
+           if(oauth1AccessToken)
                return this.executeOAuthRequest(params, url, method, payload)
            else {
-               HttpURLConnection connection = configureConnection(url, method, data)
+               log.info "Not OAuth 1.0 request"
+               HttpURLConnection connection = configureConnection(url, method, data, headers)
                return executeRequest(connection, payload)
            }
        }
@@ -232,10 +277,10 @@ class WebService {
         
         OAuth10aService service = buildOAuthService()
 
-        log.info "Sending URL $url"
+        log.info "Signing using OAuth10: $url"
         OAuthRequest request = new OAuthRequest(verb, url.toString());
         request.addHeader('Accept', 'application/json')
-        service.signRequest(credentials, request)
+        service.signRequest(oauth1AccessToken, request)
         if(data != null) {
             request.addHeader('Content-Type', 'application/json')
             request.setPayload(data)
@@ -280,30 +325,41 @@ class WebService {
         log.info "Loaded credentials from credentials file"
         
         if(yaml.apiKey) {
-            this.apiCredentials = new WSCredentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
+            this.apiCredentials = new OAuth10Credentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
+            this.webserviceCredentials = this.apiCredentials
         }
         
         if(yaml.accessToken) {
-            this.credentials = new OAuth1AccessToken(yaml.accessToken, yaml.accessSecret)
+            this.oauth1AccessToken = new OAuth1AccessToken(yaml.accessToken, yaml.accessSecret)
         }
 
         if(yaml.username && yaml.password) {
             this.basicCredentials = new BasicCredentials(username: yaml.username, password: yaml.password)
+            // Note: prefer OAuth to basic
+            if(!this.webserviceCredentials)
+                this.webserviceCredentials = this.basicCredentials
         }
     }
     
     /**
      * Set up and return a connection configured to execute the given request
      */
-    HttpURLConnection configureConnection(URL url, String method, Object data) {
+    HttpURLConnection configureConnection(URL url, String method, Object data, Map headers) {
         loadCredentials()
         HttpURLConnection connection = url.openConnection()
         connection.with {
             doOutput = (data != null)
             useCaches = false
-            setRequestProperty('Content-Type','application/json')
+            if(!headers?.containsKey('Content-Type'))
+                setRequestProperty('Content-Type','application/json')
             if(basicCredentials) {
                 setRequestProperty('Authorization','Basic ' + (basicCredentials.username + ':' + basicCredentials.password).bytes.encodeBase64())
+            }
+            if(bearerToken) {
+                setRequestProperty('Authorization','Bearer ' + bearerToken.token)
+            }
+            for(Map.Entry<String,String> header in headers) {
+                setRequestProperty(header.key, header.value)
             }
             requestMethod = method
         }
@@ -352,7 +408,7 @@ class WebService {
      *          indicated by the content-type header.
      */
     Object convertResponse(String contentType, String responseText) {
-        if(contentType == 'application/json') {
+        if(contentType.startsWith('application/json')) {
             try {
                 if(responseText.isEmpty())
                     return null
@@ -370,7 +426,7 @@ class WebService {
     URL encodeURL(Map params, String method, String payload) {
         String url = api ? "$endPoint/$api" : endPoint
         Map sigParams = [:]
-        if(credentials || credentialsPath) {
+        if(oauth1AccessToken || credentialsPath) {
             if(payload) {
                 sigParams.sig = Hash.sha1(payload, 'UTF-8')
             } 
@@ -388,11 +444,15 @@ class WebService {
             allParams += params
         
         if(allParams) {
-             url += "?" + allParams.collect { key, value ->
-                               URLEncoder.encode(key) + '=' + URLEncoder.encode(String.valueOf(value))
-                          }.join('&')
+             url += "?" + urlEncode(allParams)
         }
         new URL(url)
+    }
+    
+    String urlEncode(Map params) {
+        params.collect { key, value ->
+            URLEncoder.encode(key) + '=' + URLEncoder.encode(String.valueOf(value))
+        }.join('&')
     }
 }
 
