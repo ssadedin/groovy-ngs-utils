@@ -135,6 +135,7 @@ jar {
     exclude "META-INF/BCKEY*"
     exclude "org/bouncycastle/**"
     exclude "org/codehaus/mojo"
+    exclude "org/slf4j/impl/**"
 }
 
 groovydoc {
