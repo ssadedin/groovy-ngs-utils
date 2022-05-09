@@ -315,7 +315,7 @@ class WebService {
             credsFile = credsFiles.find { it.exists() }
         }
         if(!credsFile)
-            throw new IllegalStateException("API Credentials were not set explicitly and no credentials file could be found in ${credsFiles.join(', ')}")
+            return
 
         def yaml = new Yaml().load(credsFile.text)
         
