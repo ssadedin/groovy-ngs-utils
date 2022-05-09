@@ -350,6 +350,8 @@ class WebService {
         connection.with {
             doOutput = (data != null)
             useCaches = false
+            if(!headers?.containsKey('Accept'))
+                setRequestProperty('Accept','application/json')
             if(!headers?.containsKey('Content-Type'))
                 setRequestProperty('Content-Type','application/json')
             if(basicCredentials) {
