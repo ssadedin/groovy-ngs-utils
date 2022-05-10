@@ -30,8 +30,8 @@ repositories {
         url "http://www.biojava.org/download/maven/" 
     }
     maven {
-      name "gral" 
-      url "http://mvn.erichseifert.de/maven2"
+      name "ImageJ" 
+      url "http://maven.imagej.net/content/repositories/public/"
     }
 }
 
