@@ -6,7 +6,42 @@ import groovy.transform.CompileStatic
 
 import htsjdk.tribble.index.Index
 import htsjdk.tribble.readers.*
-
+/**
+ * Class implementing parsing of Gencode GFF3 format
+ * <p>
+ * This class passes a GFF3 file and creates a 3 level structure made up of
+ * {@link Gene}, {@link @Transcript} and {@link Exon} objects, representing
+ * the core elements within the GFF3. Sub elements of these within the file are
+ * ignored.
+ * <p>
+ * There are two basic ways of using the class, and which one is better depends on the
+ * kind of access you expect to make.
+ * <ul>
+ * <li>Fully parsing the file (requires significant memory, and takes quite a few seconds)
+ * <li>Indexed access to look up specific genes on the fly
+ * </u>
+ * Full parsing is executed by simply creating the Gencode object and calling the {@link load()}
+ * method to load it:
+ * <pre>
+ * def gencode = new Gencode()
+ * 
+ * </pre>
+ * 
+ * <p>To use indexed access, the gencode source file must be first sorted by position and then indexed using
+ * tabix. A suitable command to do that is as follows:
+ * <pre>
+ * (zgrep ^"#" gencode.v40.basic.annotation.gff3.gz; zgrep -v ^"#" gencode.v40.basic.annotation.gff3.gz | sort -k1,1 -k4,4n) | bgzip > gencode.v40.basic.annotation.gff3.bgz
+ * tabix -p gff gencode.v40.basic.annotation.gff3.bgz
+ * </pre>
+ * 
+ * <p>After sorting and indexing, you may load specific regions by using the {@link #loadRegion} method:</p>
+ * <pre>
+ *     Gencode gencode = new Gencode(gencode)
+ *     gencode.loadRegion(new Region('chr1:1335276-1349418'))
+ * </pre>
+ * 
+ * @author simon.sadedin
+ */
 class Gencode {
     
     private final static int EQUALS = '=' as char
@@ -79,12 +114,7 @@ class Gencode {
     @CompileStatic
     private Region addEntry(final Region region) {
         Map<String,Object> attributes = parseAttributes(region)
-        
-        println "Parse $region: " + attributes
-        if(region.from == 1335278) {
-            println "Found it: $region"
-        }
-        
+       
         final String type = region['type']
         Feature feature = null
         final String regionId = attributes['ID']
@@ -115,6 +145,7 @@ class Gencode {
         return region
     }
     
+    @CompileStatic
     private final void addToParent(final Feature feature, final Map<String, Object> attributes, final Region region) {
         String parentId = attributes['Parent']
         if(parentId.is(null)) 
@@ -132,6 +163,7 @@ class Gencode {
         }
     }
 
+    @CompileStatic
     private final static LinkedHashMap parseAttributes(Region region) {
         Map<String,Object> attributes = [:]
         String[] rawAttributes = ((String)region['attributes']).split(';')
