@@ -38,55 +38,6 @@ class TableOptions {
     String title
 }
 
-/**
- * The default Java log former uses a format that is too verbose, so
- * replace it with something more compact.
- */
-@CompileStatic
-public class SimpleLogFormatter extends Formatter {
-    
-    private static final String lineSep = System.getProperty("line.separator");
-    
-    private static final int DOT = (int)('.' as char)
-    
-    /**
-     * A Custom format implementation that is designed for brevity.
-     */
-    public String format(LogRecord record) {
-        
-        DateFormat format = new SimpleDateFormat("h:mm:ss");
-    
-        String loggerName = record.getLoggerName();
-        if(loggerName == null) {
-            loggerName = "root";
-        }
-        
-        int dotIndex = loggerName.lastIndexOf(DOT)
-        if(dotIndex>=0)
-            loggerName = loggerName.substring(dotIndex+1)
-            
-        StringBuilder output = new StringBuilder()
-            .append(loggerName)
-            .append("\t[")
-            .append(record.threadID)
-            .append("]\t")
-            .append(record.getLevel()).append("\t|")
-            .append(format.format(new Date(record.getMillis())))
-            .append(' ')
-            .append(record.getMessage()).append(' ')
-            .append(lineSep);
-            
-        if(record.getThrown()!=null) {
-            StringWriter w = new StringWriter()
-            record.getThrown().printStackTrace(new PrintWriter(w))
-            output.append("Exception:\n" + w.toString())
-        }    
-            
-        return output.toString();
-    }
-}
-
-
 
 /**
  * Miscellaneous utilities that I couldn't think to put anywhere else
