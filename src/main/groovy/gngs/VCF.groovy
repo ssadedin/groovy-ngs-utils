@@ -28,6 +28,7 @@ import java.awt.event.ItemEvent;
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
 import java.util.zip.GZIPInputStream;
+import java.util.regex.*
 
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
@@ -46,6 +47,12 @@ class FormatMetaData {
     Class type
     
     int number = -1
+}
+
+class ContigHeader {
+    String chr
+    Integer length
+    String assembly
 }
 
 class StopParsingVCFException extends Exception {
@@ -1008,7 +1015,30 @@ class VCF implements Iterable<Variant> {
                        return line.substring(idIndex, commaIndex).tokenize('=')[1].trim()
                    }.grep { it }
     }
+
     
+    final static Pattern CONTIG_HEADER_PATTERN = Pattern.compile('##contig=<(.*)>')
+    
+    @CompileStatic
+    Map<String,ContigHeader> getContigInfo() {
+    
+        // ##contig=<ID=chr17_gl000203_random,length=37498,assembly=hg19>
+        
+        return headerLines.grep { String line -> line.startsWith('##contig=') }
+                          .collect { String line ->
+                           parseContigHeader(line)
+                          }
+                          .collectEntries { ContigHeader header ->
+                               [ header.chr, header]
+                           }
+    }
+
+    ContigHeader parseContigHeader(final String line) {
+        String rawContigInfo = (line =~ CONTIG_HEADER_PATTERN)[0][1]
+        Map<String,String> info = rawContigInfo.tokenize(', ').collectEntries { it.tokenize('=') }
+        return new ContigHeader(chr: info.ID, length: info.length.toInteger(), assembly: info.assembly)
+    }
+     
     @CompileStatic
     Map<String,Object> getInfoMetaData(String id) {
         if(this.infoMetaDatas == null) {

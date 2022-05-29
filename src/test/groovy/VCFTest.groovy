@@ -1,7 +1,7 @@
 import static org.junit.Assert.*;
 
 import org.junit.Test;
-
+import gngs.ContigHeader
 import gngs.FormatMetaData
 import gngs.VCF
 import gngs.Variant
@@ -342,4 +342,18 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
     void 'test filter from vcf file name gzipped'() {
         VCF.filter('test.vcf.gz') { false }
     }
+	
+	@Test
+	void 'test parse contig header'() {
+        String header = '##contig=<ID=chr17_gl000203_random,length=37498,assembly=hg19>'
+		
+        VCF vcf = VCF.parse('test.lowdepth.vcf')
+		
+		ContigHeader headerInfo = vcf.parseContigHeader(header)
+		
+		assert headerInfo .assembly == 'hg19'
+		assert headerInfo.chr == 'chr17_gl000203_random'
+		assert headerInfo.length == 37498
+		
+	}
  }
