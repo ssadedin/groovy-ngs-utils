@@ -15,7 +15,12 @@ GNGS=$(dirname `dirname $0`)
 
 if [ -z "$GROOVY_HOME" ];
 then
-    GROOVY_BIN=`which groovy` || { echo "Could not find groovy in your path and GROOVY_HOME is not set. Please install groovy or set GROOVY_HOME."; exit 1; }
+    GROOVY_BIN=`command -v groovy`
+    if [ "x$GROOVY_BIN" == "x" ];
+    then
+        echo "Could not find groovy in your path and GROOVY_HOME is not set. Please install groovy or set GROOVY_HOME."
+        exit 1
+    fi
     
     GROOVY_HOME=`dirname $(dirname $GROOVY_BIN)`
 fi
