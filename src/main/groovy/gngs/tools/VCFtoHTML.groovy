@@ -137,7 +137,10 @@ class VCFtoHTML {
     private BED excludeRegions
     private Pedigrees pedigrees
     
+    private List<String> customInfos = []
+
     private NumberFormat THREE_DIGIT_PRECISION 
+    
     
     {
         THREE_DIGIT_PRECISION = NumberFormat.getNumberInstance()
@@ -288,6 +291,10 @@ class VCFtoHTML {
         if(this.opts.rocminsens) {
             this.minROCSensitivity = this.opts.rocminsens.toDouble()
         }
+        
+        if(this.opts.infos) {
+            this.customInfos = this.opts.infos
+        }
             
     }
     
@@ -347,6 +354,9 @@ class VCFtoHTML {
             rocminsens 'Minimum sensitivity to plot for ROC (20%)', args:1, required: false
             title 'Title to apply in various reports that are output', args:1, required: false
             norep 'Do not include variants in or adjacent to repeat regions', required: false
+            vcfjs 'Link to vcf javascript library instead of embedding', args:1, required: false, type: File
+            info 'Custom INFO field to include in the report (provide multiple times)', args:'*', required: false
+            hide 'Hide named columns from output in HTML', args: '*', required: false
         }
         
         CliOptions opts = new CliOptions(opts:cli.parse(args))
@@ -521,9 +531,13 @@ class VCFtoHTML {
 
         w.println """];"""
 
-        w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + exportSamples)};"
+        w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + customInfos + exportSamples )};"
+        w.println "var hiddenColumns = ${json(opts.hides?:[])};\n</script>"
+
+        injectVCFLibrary(w)
 
         w.println """
+            <script type='text/javascript'>
             var samples = ${json(exportSamples)};
 
             var pedigrees = ${pedigrees.toJson()};
@@ -537,7 +551,7 @@ class VCFtoHTML {
             </script>
 
             $DEFAULT_STYLES
-            """;
+        """;
 
 
         w.println """
@@ -981,9 +995,10 @@ class VCFtoHTML {
                         
             if(lastLines>0)
                 w.println ","
-                            
+
+            List customInfoValues = customInfos.collect { infoName ->  v.parsedInfo[infoName] }
             List vepInfo = consColumns.collect { name, func -> func(vep) }
-            w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+dosages + [ [refCount,altCount].transpose() ]))
+            w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+customInfoValues+dosages + [ [refCount,altCount].transpose() ] ))
             printed = true
             
             if(opts.tsv)
@@ -1034,6 +1049,8 @@ class VCFtoHTML {
                 
             if(opts.bams)
                 w.println "var bams = " + JsonOutput.toJson(opts.bams)  + ';'
+
+            w.println "var customInfos = " + JsonOutput.toJson(customInfos) + ";"
             
            w.println """
                 </script>
@@ -1041,20 +1058,26 @@ class VCFtoHTML {
         w.println css.collect{"<link rel='stylesheet' href='$it'/>"}.join("\n").stripIndent()
         w.println js.collect{"<script type='text/javascript' src='$it'></script>"}.join("\n").stripIndent()
 
-        // Embed the main vcf.js
-        def vcfjs
-        def fileVcfJsPath = "src/main/resources/vcf.js"
-        if(new File(fileVcfJsPath).exists())
-            vcfjs = new File(fileVcfJsPath).text
-        else
-            vcfjs = this.class.classLoader.getResourceAsStream("vcf.js").text
-
-        w.println "<script type='text/javascript'>\n$vcfjs\n</script>"
-
         w.println "<script type='text/javascript'>"
         
-
         w.println "var variants = ["
+    }
+
+    private void injectVCFLibrary(BufferedWriter w) {
+        if(opts.vcfjs) {
+            w.println "<script type='text/javascript' src='$opts.vcfjs'></script>"
+        }
+        else {
+            // Embed the main vcf.js
+            def vcfjs
+            def fileVcfJsPath = "src/main/resources/vcf.js"
+            if(new File(fileVcfJsPath).exists())
+                vcfjs = new File(fileVcfJsPath).text
+            else
+                vcfjs = this.class.classLoader.getResourceAsStream("vcf.js").text
+
+            w.println "<script type='text/javascript'>\n$vcfjs\n</script>"
+        }
     }
 
     void resolveExportSamples(List allSamples) {
@@ -1090,7 +1113,11 @@ class VCFtoHTML {
             }
         }
         
-        List<VCF> vcfs = ((List<String>)opts['is']).collect { String vcfPath ->
+        List<String> vcfPaths = (List<String>)opts['is']
+        
+        List<VCF> vcfs = []
+        
+        for(String vcfPath in vcfPaths) {
             
             log.info "Read $vcfPath ..."
             
@@ -1118,7 +1145,7 @@ class VCFtoHTML {
             }
             
             log.info "Retained ${vcf.size()} variants from $vcfPath"
-            return vcf
+            vcfs.add(vcf)
         }
         return vcfs
     }

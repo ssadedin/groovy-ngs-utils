@@ -83,7 +83,9 @@ var familyIndexes = {};
 var rowProperties = [];
 var highlightLink = null;
 var highlightTr = null;
-
+var columns = [];
+var visibleColumns = [];
+ 
 var enableGraying = false;
 
 /* Tag Support */
@@ -96,14 +98,54 @@ var userAnnotations = {
 
     var variantTable = null;
     var tableData = []
-    var columns = [];
-    
+   
     // Array of strings to 'eval' as filters
     var filters = [];
     var layout = null;
     var familyIndex = null;
     var familyNames = [];
     var myTableId = null;
+    
+    var indexCounter=0
+    
+    var TAG_INDEX=indexCounter;
+    
+    var ID_INDEX = -1
+    if(window.showId) {
+        ID_INDEX=++indexCounter
+    }
+    
+    var CHR_INDEX=++indexCounter;
+    var POS_INDEX=++indexCounter;
+    var REF_INDEX=++indexCounter;
+    var ALT_INDEX=++indexCounter;
+    var QUAL_INDEX=++indexCounter;
+    var DEPTH_INDEX=++indexCounter;
+    var VAF_INDEX=++indexCounter;
+    var FAMILIES_INDEX=++indexCounter;
+    var GQS_INDEX=++indexCounter;
+    var GENE_INDEX=++indexCounter;
+    var CONS_INDEX=++indexCounter;
+    var MAF_INDEX=++indexCounter;
+    var CUSTOMINFOS_INDEX=++indexCounter;
+    
+    
+    columns = columnNames.map(x =>  { 
+        return {
+            title: x,
+            className:'vcfcol',
+            visible: !hiddenColumns.includes(x) 
+        }; 
+    });
+    
+    // Redefine gene index to be the first visible column named "gene"
+    GENE_INDEX = columns.findIndex(c => c.title.toLowerCase() == 'gene')
+    
+    console.log('CUSTOMINFOS_INDEX=' +CUSTOMINFOS_INDEX)
+    
+    var nonSampleColumnCount = CUSTOMINFOS_INDEX+customInfos.length; // TODO - make this not hard coded!
+    var AD_INDEX = -1; // set later because sampleCount is not known until initialised
+    
     
     $.VariantTable = function(tableId, samples, variants) {
         
@@ -123,8 +165,7 @@ var userAnnotations = {
     
         console.log("init");
     
-        columns = columnNames.map(function(x) { return {title: x,className:'vcfcol'}; });
-        
+       
         $('#tableHolder').html('<table cellpadding="0" cellspacing="0" border="0" class="display" id="'+tableId+'"></table>' );
         
         console.log('creating table ...');
@@ -345,33 +386,6 @@ var userAnnotations = {
         return index;
     }
     
-    var indexCounter=0
-    
-    var TAG_INDEX=indexCounter;
-    
-    var ID_INDEX = -1
-    if(window.showId) {
-        ID_INDEX=++indexCounter
-    }
-    
-    var CHR_INDEX=++indexCounter;
-    var POS_INDEX=++indexCounter;
-    var REF_INDEX=++indexCounter;
-    var ALT_INDEX=++indexCounter;
-    var QUAL_INDEX=++indexCounter;
-    var DEPTH_INDEX=++indexCounter;
-    var VAF_INDEX=++indexCounter;
-    var FAMILIES_INDEX=++indexCounter;
-    var GQS_INDEX=++indexCounter;
-    var GENE_INDEX=++indexCounter;
-    var CONS_INDEX=++indexCounter;
-    var MAF_INDEX=++indexCounter;
-    
-    console.log('MAFINDEX=' + MAF_INDEX)
-    
-    var nonSampleColumnCount = MAF_INDEX+1; // TODO - make this not hard coded!
-    var AD_INDEX = -1; // set later because sampleCount is not known until initialised
-
     function findAffectedSamples(samps) {
         var affected = [];
     	for(var i=0; i<samps.length; ++i) {
@@ -567,6 +581,14 @@ var userAnnotations = {
                         console.log(e);
                     }
                     return dosage;
+                },i)
+            });
+        }
+
+        for(var i=0; i<customInfos.length;++i) {
+            Object.defineProperty(data,customInfos[i], { get:  partial(function(customInfoIndex) { 
+                    let value = rowSource[customInfoIndex+CUSTOMINFOS_INDEX]
+                    return value
                 },i)
             });
         }
@@ -766,7 +788,7 @@ var userAnnotations = {
             }
         });
 
-        var ads = data[MAF_INDEX+sampleCount+1].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
+        var ads = data[nonSampleColumnCount+sampleCount].map(function(ad) { return (ad[0] == null) ? "." : ad[0] + "/" + (ad[1]+ad[0]); }).join(", ");
         tds[DEPTH_INDEX].title = ads
 
         if(rowProperties[dataIndex]) {
@@ -785,11 +807,15 @@ var userAnnotations = {
         }
         
         var gene = tds[GENE_INDEX].innerHTML;
-        $(tds[GENE_INDEX]).html('<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene='+gene + '#diseases">'+gene+'</a>')
+        $(tds[GENE_INDEX]).html('<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene='+gene + '#diseases" target=genecards>'+gene+'</a>')
         
         let genePriority = genePriorities[gene]
         if(genePriority) {
            $(tds[GENE_INDEX]).addClass(`priority-${genePriority}`) 
+        }
+        
+        for(var i=0; i<customInfos.length; ++i) {
+            tds[CUSTOMINFOS_INDEX + i] = data[CUSTOMINFOS_INDEX+i]
         }
     }
     
