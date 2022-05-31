@@ -176,7 +176,7 @@ class VCFtoHTML {
                 font-size: 75%;
                 margin: 3px;
             }
-            .rowTagDiv { font-size: 55%; }
+            .rowTagDiv { font-size: 75%; }
             .tag0 { background-color: #33aa33; }
             .tag1 { background-color: #3333ff; }
             .tag2 { background-color: #aa33aa; }
@@ -567,7 +567,10 @@ class VCFtoHTML {
                     <div id=tableHolder>
                     </div>
                 </div>
-                <div class="ui-layout-south">Report created ${new Date()}</div>
+                <div id='south-pane' class="ui-layout-south">
+                    <div id='southContent'></div>
+                    <div>Report created ${new Date()}</div>
+                </div>
             </body>
             </html>
             """

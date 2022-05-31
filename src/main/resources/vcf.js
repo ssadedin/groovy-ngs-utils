@@ -129,7 +129,8 @@ var userAnnotations = {
     var MAF_INDEX=++indexCounter;
     var CUSTOMINFOS_INDEX=++indexCounter;
     
-    
+    var CUSTOMINFOS_TD_INDEX=CUSTOMINFOS_TD_INDEX
+   
     columns = columnNames.map(x =>  { 
         return {
             title: x,
@@ -139,7 +140,11 @@ var userAnnotations = {
     });
     
     // Redefine gene index to be the first visible column named "gene"
-    GENE_INDEX = columns.findIndex(c => c.title.toLowerCase() == 'gene')
+    GENE_INDEX = columns.filter(c => c.visible).findIndex(c => c.title.toLowerCase() == 'gene')
+    
+    if(customInfos.length>0) {
+        CUSTOMINFOS_TD_INDEX=columns.filter(c => c.visible).findIndex(c => c.title == customInfos[0])
+    }
     
     console.log('CUSTOMINFOS_INDEX=' +CUSTOMINFOS_INDEX)
     
@@ -186,6 +191,9 @@ var userAnnotations = {
           applyDefaultStyles: true
         });
         layout.sizePane("north",80);
+        
+        window.layout = layout;
+        
         $('#'+tableId).on('order.dt',  add_display_events);
     
         add_display_events();
@@ -780,7 +788,8 @@ var userAnnotations = {
         
         $(tds[0]).dblclick(partial(removeRowTags,dataIndex, tds[0]));
         $(tds[0]).click(function(evt) {
-            if(evt.altKey) {
+            console.log('Tag event:', evt)
+            if(evt.altKey || evt.metaKey) {
                 removeRowTags(dataIndex, tds[0], evt);
             }
             else {
@@ -798,6 +807,8 @@ var userAnnotations = {
                 }
             }
         }
+        
+/*        
         if(newTable[dataIndex][FAMILIES_INDEX] == 0) {
             var fc = familyNames.reduce(function(prev,curr) {
                 return prev + (familyIndexes[curr].members.every(function(sampleIndex) { return newTable[dataIndex][sampleIndex]==0;}) ? 0 : 1);
@@ -805,20 +816,22 @@ var userAnnotations = {
             newTable[dataIndex][FAMILIES_INDEX]=fc;
             tds[FAMILIES_INDEX].innerHTML = fc+"";
         }
-        
+ */       
         var gene = tds[GENE_INDEX].innerHTML;
-        $(tds[GENE_INDEX]).html('<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene='+gene + '#diseases" target=genecards>'+gene+'</a>')
+        $(tds[GENE_INDEX]).html(`<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene=${gene}#diseases" target=genecards onclick="return open_geneinfo('${gene}')">${gene}</a>`)
         
         let genePriority = genePriorities[gene]
         if(genePriority) {
            $(tds[GENE_INDEX]).addClass(`priority-${genePriority}`) 
         }
         
-        for(var i=0; i<customInfos.length; ++i) {
-            tds[CUSTOMINFOS_INDEX + i] = data[CUSTOMINFOS_INDEX+i]
-        }
+//        for(var i=0; i<customInfos.length; ++i) {
+//            console.log("yayyyyyyyy banna")
+//            tds[CUSTOMINFOS_TD_INDEX + i] = 'banana' // data[CUSTOMINFOS_INDEX+i]
+//        }
     }
     
+   
     function add_display_events() {
         // $(".cnvRow").unbind('click').click(function() {
     
@@ -870,3 +883,14 @@ var userAnnotations = {
 
     	 
 })( jQuery, window, document );
+
+function open_geneinfo(gene) {
+    console.log("Opening gene 2 " + gene)
+    $('#southContent').html(`
+        <iframe style='width: 100%; height: 100%;' src="http://www.genecards.org/cgi-bin/carddisp.pl?gene=${gene}#diseases"></iframe>
+    `)
+    layout.sizePane("south",500);
+    
+    return false
+}
+ 
