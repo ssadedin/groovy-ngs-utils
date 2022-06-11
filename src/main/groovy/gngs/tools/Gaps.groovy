@@ -271,7 +271,7 @@ class Gaps {
     Gaps(CliOptions opts) {
         this.opts = opts
         this.targetRegions = null
-        this.gapWriter = new PrintWriter(System.out)
+        this.gapWriter = getOutputWriter()
         if(opts.L) {
             this.targetRegions = new BED(opts.L,withExtra:true).load(withExtra:true).collect {
                 new Region(it.chr, it.from+1, it.to, id: it.range.extra)
@@ -399,6 +399,7 @@ class Gaps {
             a 'Write annotated report to separate file <arg>', args:1
             csv 'Write output comma separated instead of tab separated'
             h 'Output a human readable table'
+            o 'Output file to write to [stdout]', args:1, type: File
             p 'Set .tsv files [PanelClassName].tsv with Subclass names as headers', args:Cli.UNLIMITED, required:false
         }
 
@@ -487,14 +488,35 @@ class Gaps {
         }
     }
     
+    
+    
     void writeTable(Regions gaps) {
-        Utils.table(
-           ["Chr","Start","End","ID","Length","Min","Mean","Max"],
-           gaps.collect {  Region region ->
-               CoverageBlock block = region.extra
-               [block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max] 
-           }
-        )
+        
+       try {
+            Utils.table(out:outputWriter,
+               ["Chr","Start","End","ID","Length","Min","Mean","Max"],
+               gaps.collect {  Region region ->
+                   CoverageBlock block = region.extra
+                   [block.chr, block.start, block.end, block.id, block.end - block.start, (int)block.stats.min, block.stats.mean, (int)block.stats.max] 
+               }
+            )
+        }
+        finally {
+            if(opts.o)
+                w.close()
+        }
+    }
+
+    @Memoized
+    private Writer getOutputWriter() {
+        Writer w
+        if(opts.o) {
+            w = opts.o.newWriter()
+        }
+        else {
+            w = System.out.newWriter()
+        }
+        return w
     }
     
     void writeGaps(Regions gaps) {
@@ -518,7 +540,7 @@ class Gaps {
                 cols += panelClasses
             }
 
-            println(cols.join(','))
+            outputWriter.println(cols.join(','))
         }
         
         try {
