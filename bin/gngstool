@@ -40,4 +40,4 @@ fi
 
 CP="$GROOVY_ALL_JAR:$GNGS/eclipse-build:$GNGS/build/libs/groovy-ngs-utils.jar:$GNGS/groovy-ngs-utils.jar"
 
-java -Djsse.enableSNIExtension=false -Xmx${GNGS_MEM} -cp $CP:$GROOVY_HOME'/lib/*' gngs.tools.Toolbase9 ${cmd} $@
+java -Djsse.enableSNIExtension=false -Xmx${GNGS_MEM} -cp $CP:$GROOVY_HOME'/lib/*' gngs.tools.Toolbase9 ${cmd} "$@"
