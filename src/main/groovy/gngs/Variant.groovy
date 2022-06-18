@@ -1151,7 +1151,10 @@ class Variant implements IRegion {
     @CompileStatic
     boolean isSV() {
 //        return (alt == "DEL" || alt == "<DEL>" || alt == "DUP" || alt == "<DUP>" || alt == "INV" || alt == "<INV>") 
-        return (alt == "DEL" || alt == "DUP" || alt == "INV" || (alt.startsWith('<') && alt.endsWith('>'))) 
+        return (alt == "DEL" || alt == "DUP" || alt == "INV" || 
+            (alt.startsWith('<') && alt.endsWith('>')) || 
+            (alt.size()>1 && (alt[1] == '[' || alt[-2] == ']'))
+        )
     }
     
     Integer cachedSize = null
@@ -1177,12 +1180,15 @@ class Variant implements IRegion {
            }
                    
            String endValue = (String)this.getInfo().END
-           if(endValue) {
+           String chr2 = this.getInfo().CHR2
+
+           // Can only use END if on the same chromosome
+           if((chr2.is(null) || (chr2 == this.chr)) && endValue) {
                int end = Integer.parseInt(endValue)
                cachedSize = end - pos
                return cachedSize
            }
-           throw new RuntimeException("Variant is a structural variant but does not have SVLEN or END information in INFO field")
+           return 0
         }
         else
             return Math.abs(ref.size() - alt.size())

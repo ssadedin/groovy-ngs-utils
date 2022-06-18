@@ -416,7 +416,7 @@ class VariantTest {
     }
     
     @Test
-    void 'test that parsing a QUAL value of . works correctly'() {
+    void 'test that parsing a QUAL value of dot works correctly'() {
         v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   .   .   MQ=49.90    GT:AD:DP:GQ:PL  1/1:4,83,93:213:99:7597,4181,5801,3074,0,3833")
         
         println v.qual
@@ -441,6 +441,26 @@ class VariantTest {
         approx_equal v.getVaf(1,1), 0.5570469799
 
         approx_equal v.getVaf(1,2), 0.4705882353
+        
+    }
+    
+    @Test
+    void testParseBreakEnd() {
+        v = var('chr1   9061384 TRA_1   N   N[chr14:93246833[   999 PASS    SUPP=2;SUPP_VEC=011;SVLEN=0;SVTYPE=TRA;SVMETHOD=SURVIVOR1.0.7;CHR2=chr14;END=93246833;CIPOS=0,6;CIEND=-693,0;STRANDS=++;GENE=BTBD7  GT  0/1')
+        
+        assert v.pos == 9061384 
+        assert v.sampleDosage('JOHNSMITH') == 1
+//        assert v.sampleDosage(0) == 1
+        assert v.isSV()
+        assert v.size()== 0
+        
+        
+        v = var('chr1   9061384 TRA_1   N   N[chr1:93246833[   999 PASS    SUPP=2;SUPP_VEC=011;SVTYPE=TRA;SVMETHOD=SURVIVOR1.0.7;CHR2=chr1;END=93246833;CIPOS=0,6;CIEND=-693,0;STRANDS=++;GENE=BTBD7  GT  0/1')
+        
+        int sz = v.size()
+
+        println("SV size is " + v.size())
+        assert v.size() > 0
         
     }
 }
