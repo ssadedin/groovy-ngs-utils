@@ -22,20 +22,7 @@ package gngs.tools
 import gngs.VepConsequence
 import org.codehaus.groovy.runtime.StackTraceUtils;
 
-import gngs.BED
-import gngs.Cli
-import gngs.CliOptions
-import gngs.FASTA
-import gngs.FASTAIndex
-import gngs.Pedigrees
-import gngs.ProgressCounter
-import gngs.Regions
-import gngs.RepeatMotif
-import gngs.SAM
-import gngs.Utils
-import gngs.VCF
-import gngs.VCFSummaryStats
-import gngs.Variant
+import gngs.*
 import gngs.plot.Lines
 import gngs.plot.Plot
 import graxxia.Stats
@@ -53,19 +40,11 @@ import java.util.regex.Pattern
 
 import javax.swing.JFrame
 
-public class LinePlotTest extends JFrame {
-    public LinePlotTest(Drawable plot) {
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
-        setSize(800, 600);
-        getContentPane().add(new InteractivePanel(plot));
-    }
-
-    public static void main(String[] args) {
-        LinePlotTest frame = new LinePlotTest();
-        frame.setVisible(true);
-    }
+class CustomInfo {
+    String infoField
+    String type
+    String rendering
 }
-
 
 @CompileStatic
 @AutoClone
@@ -137,7 +116,9 @@ class VCFtoHTML {
     private BED excludeRegions
     private Pedigrees pedigrees
     
-    private List<String> customInfos = []
+    private List<CustomInfo> customInfos = []
+    
+    private Map<String,String> htmlFilters = [:]
 
     private NumberFormat THREE_DIGIT_PRECISION 
     
@@ -161,6 +142,8 @@ class VCFtoHTML {
             }
         
             td.vcfcol { text-align: center; }
+            td.vcfcol a.igvLink.wasVisited { color: purple !important; }
+
             tr.highlight, tr.highlighted, tr.highlight td.sorting_1 {
                 background-color: #ffeeee !important;
             }
@@ -187,6 +170,7 @@ class VCFtoHTML {
             td.priority-2  { font-weight: bold; color: #ffaa00 !important; }
             td.priority-3  { font-weight: bold; color: #ff6600 !important; }
             td.priority-4  { font-weight: bold; color: #ff0000 !important; }
+            div.reportDesc { font-weight: normal; font-size: 92%; margin-bottom: 5px; }
         </style>
     """.stripIndent()
 
@@ -293,9 +277,21 @@ class VCFtoHTML {
         }
         
         if(this.opts.infos) {
-            this.customInfos = this.opts.infos
+            this.customInfos = this.opts.infos.collect {
+                List parts = it.tokenize(':')
+                
+                CustomInfo info = new CustomInfo(infoField:parts[0])
+                if(parts.size()>1)
+                    info.type = parts[1]
+                if(parts.size()>2)
+                    info.rendering = parts[2]
+                return info
+            }
         }
-            
+        
+        if(this.opts.htmlFilters) {
+            this.htmlFilters = this.opts.htmlFilters.collectEntries { it.tokenize(':') }
+        }
     }
     
     def js = [
@@ -340,6 +336,7 @@ class VCFtoHTML {
             maxVep 'Only write a single line for each variant, containing the most severe consequence'
             allCons 'Do not filter by consequence (default: only variants with significant consequence included)'
             tsv 'Output TSV format with the same variants', args:1
+            htmlFilter 'An expression to add automatically to the HTML report as a filter', args: '*'
             filter 'A groovy expression to be used as a filter on variants before inclusion', args: Cli.UNLIMITED
             prefilter 'A groovy expression to be used as a pre-filter before any other steps', args: Cli.UNLIMITED
             nocomplex 'Ignore complex variants (regions where multiple variants overlap) in diff mode'
@@ -353,6 +350,7 @@ class VCFtoHTML {
             rocmetric 'Metric to use for calculating ROC (qual, depth)', args:1, required: false
             rocminsens 'Minimum sensitivity to plot for ROC (20%)', args:1, required: false
             title 'Title to apply in various reports that are output', args:1, required: false
+            desc 'Description to show in plain text under the title', args:1, required: false
             norep 'Do not include variants in or adjacent to repeat regions', required: false
             vcfjs 'Link to vcf javascript library instead of embedding', args:1, required: false, type: File
             info 'Custom INFO field to include in the report (provide multiple times)', args:'*', required: false
@@ -531,8 +529,12 @@ class VCFtoHTML {
 
         w.println """];"""
 
-        w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + customInfos + exportSamples )};"
-        w.println "var hiddenColumns = ${json(opts.hides?:[])};\n</script>"
+        w.println "var columnNames = ${json(baseColumns*.key + consColumns*.key + customInfos*.infoField + exportSamples )};"
+        w.println "var hiddenColumns = ${json(opts.hides?:['size'])};\n</script>"
+        if(opts.title)
+            w.println "<script type='text/javascript'>var customTitle = ${json(opts.title)};\n document.title=customTitle;</script>"
+
+        w.println "<script type='text/javascript'>var customDesc = ${opts.desc?json(opts.desc):'null'};</script>"
 
         injectVCFLibrary(w)
 
@@ -553,14 +555,19 @@ class VCFtoHTML {
             $DEFAULT_STYLES
         """;
 
+        
+        def reportTitle =  opts.title ?: """Variants ${opts.diff ? 'different between' : 'found in' } ${vcfs*.samples.flatten().unique().join(",")}"""
+        
+        def descElement = opts.desc ? "<div class='reportDesc'>$opts.desc</div>" : ""
 
         w.println """
             </head>
             <body>
             <p>Loading ...</p>
                 <div class="ui-layout-north">
-                    <h1>Variants ${opts.diff ? 'different between' : 'found in' } ${vcfs*.samples.flatten().unique().join(",")}</h1>
-                    <span id=filterOuter><span id=filters> </span></span>
+                    <h1>${reportTitle}</h1>
+                    ${descElement}
+                    <span id=filterOuter><span id=filterButtons></span>&nbsp;<span id=filters> </span></span>
                     <div id=filterHelp style='display:none'> </div>
                 </div>
                 <div class="ui-layout-center">
@@ -571,6 +578,7 @@ class VCFtoHTML {
                     <div id='southContent'></div>
                     <div>Report created ${new Date()}</div>
                 </div>
+                <iframe style='display:none' src='about:blank' id='igvframe' name='_igv'></iframe>
             </body>
             </html>
             """
@@ -662,8 +670,7 @@ class VCFtoHTML {
         
         String titleExtra = opts.title ? "($opts.title)" :  ""
         String rocJson = JsonOutput.prettyPrint(JsonOutput.toJson(points.collect { [ name: it.key, roc: it.value ]}))
-        return """
-            <html>
+        return """<!DOCTYPE html>\n<html>
             <head>
                 <script type='text/javascript'>
                 var rocData = ${rocJson};
@@ -850,6 +857,7 @@ class VCFtoHTML {
         baseColumns += [
             'chr' : {it.chr },
             'pos' : {it.pos },
+            'size' : {it.size()},
             'ref': {it.ref },
             'alt': {it.alt },
             'qual': {it.qual },
@@ -999,7 +1007,22 @@ class VCFtoHTML {
             if(lastLines>0)
                 w.println ","
 
-            List customInfoValues = customInfos.collect { infoName ->  v.parsedInfo[infoName] }
+            List customInfoValues = customInfos.collect { info ->  
+                def value = v.parsedInfo[info.infoField] 
+                if(!value)
+                    return null
+                if(info.type == 'list')
+                    value = value.tokenize(',').join(', ')
+                else
+                if(info.type == 'set')
+                    value = value.tokenize(',').unique().join(', ')
+                if(info.type == 'min') {
+                    if(!(value instanceof List))
+                        value = value.tokenize(',')
+                    value = value.min()
+                }
+                return value
+            }
             List vepInfo = consColumns.collect { name, func -> func(vep) }
             w.print(groovy.json.JsonOutput.toJson(baseInfo+vepInfo+customInfoValues+dosages + [ [refCount,altCount].transpose() ] ))
             printed = true
@@ -1041,8 +1064,7 @@ class VCFtoHTML {
     private printHeadContent(BufferedWriter w) {
         
 //        log.info "Sample map: " + Utils.table(sampleMap*.key, [sampleMap*.value])
-        w.println """
-            <html>
+        w.println """<!DOCTYPE html>\n<html>
                 <head>
                 <script type='text/javascript'>
             """
@@ -1054,6 +1076,7 @@ class VCFtoHTML {
                 w.println "var bams = " + JsonOutput.toJson(opts.bams)  + ';'
 
             w.println "var customInfos = " + JsonOutput.toJson(customInfos) + ";"
+            w.println "var htmlFilters = " + JsonOutput.toJson(htmlFilters) + ";"
             
            w.println """
                 </script>

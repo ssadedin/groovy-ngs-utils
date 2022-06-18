@@ -117,6 +117,7 @@ var userAnnotations = {
     
     var CHR_INDEX=++indexCounter;
     var POS_INDEX=++indexCounter;
+    var SIZE_INDEX=++indexCounter;
     var REF_INDEX=++indexCounter;
     var ALT_INDEX=++indexCounter;
     var QUAL_INDEX=++indexCounter;
@@ -129,7 +130,7 @@ var userAnnotations = {
     var MAF_INDEX=++indexCounter;
     var CUSTOMINFOS_INDEX=++indexCounter;
     
-    var CUSTOMINFOS_TD_INDEX=CUSTOMINFOS_TD_INDEX
+    var CUSTOMINFOS_TD_INDEX=CUSTOMINFOS_INDEX
    
     columns = columnNames.map(x =>  { 
         return {
@@ -140,10 +141,10 @@ var userAnnotations = {
     });
     
     // Redefine gene index to be the first visible column named "gene"
-    GENE_INDEX = columns.filter(c => c.visible).findIndex(c => c.title.toLowerCase() == 'gene')
+    GENE_INDEX = columns.filter(c => c.visible).findIndex(c => c.title.toLowerCase().endsWith('gene'))
     
     if(customInfos.length>0) {
-        CUSTOMINFOS_TD_INDEX=columns.filter(c => c.visible).findIndex(c => c.title == customInfos[0])
+        CUSTOMINFOS_TD_INDEX=columns.filter(c => c.visible).findIndex(c => c.title == customInfos[0].infoField)
     }
     
     console.log('CUSTOMINFOS_INDEX=' +CUSTOMINFOS_INDEX)
@@ -190,7 +191,7 @@ var userAnnotations = {
         layout = $('body').layout({ 
           applyDefaultStyles: true
         });
-        layout.sizePane("north",80);
+        layout.sizePane("north",120);
         
         window.layout = layout;
         
@@ -200,7 +201,7 @@ var userAnnotations = {
     
         // renderFilters();
     
-        with($('#filterOuter')) {
+        with($('#filterButtons')) {
             $button({id:'addFilter'}).$span('Add a filter');
             $button({id:'runFilters'}).$span('Run');
             with($button({id:'clearFilters'})) {
@@ -221,6 +222,32 @@ var userAnnotations = {
                     }
                 });
             }
+            
+            $button('Preload IGV').click(function() {
+                let filteredData = filterTable(tableId)
+                let regions = filteredData.map(variant => {
+                    let chr = variant[CHR_INDEX]
+                    let pos = variant[POS_INDEX]
+                    console.log(`Precache ${chr}:${pos}`)
+                    return computeIGVRegion(chr, pos, variant[SIZE_INDEX] * 2)
+                })
+                .join(' ')
+
+                let igvLink = "http://localhost:60151/execute?command=precache+" + encodeURIComponent(regions);
+                
+                document.getElementById('igvframe').src = igvLink
+            })
+            
+            
+            $span('&nbsp;&nbsp;')
+
+            Object.keys(htmlFilters).forEach( filterName => {
+                $button('Filter: ' + filterName).click(() => {
+                    filters.push({ expr: htmlFilters[filterName], id: filters.length})
+                    renderFilters(tableId)
+                    filterTable(tableId)
+                })
+            })
         }
     
         $('#addFilter').click(function() {
@@ -483,7 +510,7 @@ var userAnnotations = {
         $('input').bind('keydown keyup', editing_key_press);
         $('input').each(editing_key_press);
         layout.resizeAll();
-        layout.sizePane("north",100);
+        layout.sizePane("north",120);
     }
     
     function editing_key_press(e){
@@ -594,7 +621,7 @@ var userAnnotations = {
         }
 
         for(var i=0; i<customInfos.length;++i) {
-            Object.defineProperty(data,customInfos[i], { get:  partial(function(customInfoIndex) { 
+            Object.defineProperty(data,customInfos[i].infoField, { get:  partial(function(customInfoIndex) { 
                     let value = rowSource[customInfoIndex+CUSTOMINFOS_INDEX]
                     return value
                 },i)
@@ -747,33 +774,60 @@ var userAnnotations = {
     var highlightedRow = null;
     function highlightRow(tr) {
         console.log('addign highlight to ' + tr);
-        if(highlightedRow)
-            $(highlightedRow).removeClass('highlight');
-        $(tr).addClass('highlight');
+            $('.highlighted').removeClass('highlighted');
+        $(tr).addClass('highlighted');
         highlightedRow = tr;
     }
 
     var newTable = null;
-
+    
+    function computeIGVRegion(chr, pos, size) {
+         let region = `${chr}:${pos}`;
+        if(size>10) {
+            if(size<50000) {
+                region = chr + ':' + (pos - 50) + '-' + (pos + size + 50);
+            }
+            else {
+                // For very large events, just zoom to 100bp around the pos
+                region = chr + ':' + (pos - 50) + '-' + (pos + 50);
+            }
+        }       
+        else {
+            region = chr + ':' + (pos - 20) + '-' + (pos + size + 20);
+        }
+        return region;
+    }
+    
     function createVariantRow(tableId, row, data, dataIndex ) {
 //        console.log("create row, table id = " + tableId);
         var tds = row.getElementsByTagName('td');
         var igvLink 
+        let chr = tds[CHR_INDEX].innerHTML
+        let pos = parseInt(tds[POS_INDEX].innerHTML,10)
+        let size = 0;
+        try {
+            size = parseInt(tds[SIZE_INDEX].innerHTML, 10)
+        }
+        catch(e) {
+            // ignore
+        }
         
+        let region = computeIGVRegion(chr, pos , size)
+
         if(window.bams && window.bams.length>0) {
-            igvLink = "http://localhost:60151/load?locus="+tds[CHR_INDEX].innerHTML + ":" + tds[POS_INDEX].innerHTML;
+            igvLink = "http://localhost:60151/load?locus=" + region;
             igvLink += ('&' + bams.map(bam => {
                 return 'file=' + encodeURIComponent(bam)
             }).join('&'));
         }
         else {
-            igvLink =  "http://localhost:60151/goto?locus="+tds[CHR_INDEX].innerHTML + ":" + tds[POS_INDEX].innerHTML
+            igvLink =  "http://localhost:60151/goto?locus="+region
         }
         
         tds[POS_INDEX].innerHTML = 
-            "<a id='variant_"+dataIndex+"_detail' href='"+igvLink + "'>"+ tds[POS_INDEX].innerHTML + "</a>";
+            "<a id='variant_"+dataIndex+"_detail' class='igvLink' href='"+igvLink + "'>"+ tds[POS_INDEX].innerHTML + "</a>";
         
-        $(tds[POS_INDEX]).find('a').click(function(e) { e.stopPropagation(); highlightRow(row); });
+        $(tds[POS_INDEX]).find('a').click(function(e) { e.stopPropagation(); $(e.target).addClass('wasVisited'); highlightRow(row); });
         
         let ref = tds[REF_INDEX].innerHTML;
         if(ref.length>25)
@@ -817,6 +871,26 @@ var userAnnotations = {
             tds[FAMILIES_INDEX].innerHTML = fc+"";
         }
  */       
+        
+        for(var i=0; i<customInfos.length; ++i) {
+            if(customInfos[i].type == 'list') { 
+                let listValues = data[CUSTOMINFOS_INDEX+i] ? data[CUSTOMINFOS_INDEX+i].split(', ') : []
+                if(customInfos[i].rendering == 'label') { 
+                    tds[CUSTOMINFOS_TD_INDEX + i].innerHTML = 
+                        listValues.map( value => `<div style='display: inline-block;' class='rowTagDiv tag0'>${value}</div>`).join('<br>')
+                }
+                else {
+                    let ol = 
+                        '<ol>' + listValues.map(v => `<li>${v}</li>`).join('\n') + '</ol>'
+                    tds[CUSTOMINFOS_TD_INDEX + i].innerHTML = ol;
+                    tds[CUSTOMINFOS_TD_INDEX + i].style = 'text-align: left;'
+                }
+            }
+            else {
+                tds[CUSTOMINFOS_TD_INDEX + i].innerHTML = data[CUSTOMINFOS_INDEX+i]
+            }
+        }
+
         var gene = tds[GENE_INDEX].innerHTML;
         $(tds[GENE_INDEX]).html(`<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene=${gene}#diseases" target=genecards onclick="return open_geneinfo('${gene}')">${gene}</a>`)
         
@@ -824,11 +898,6 @@ var userAnnotations = {
         if(genePriority) {
            $(tds[GENE_INDEX]).addClass(`priority-${genePriority}`) 
         }
-        
-//        for(var i=0; i<customInfos.length; ++i) {
-//            console.log("yayyyyyyyy banna")
-//            tds[CUSTOMINFOS_TD_INDEX + i] = 'banana' // data[CUSTOMINFOS_INDEX+i]
-//        }
     }
     
    
@@ -841,8 +910,7 @@ var userAnnotations = {
             var variantIndex = parseInt($(this).find('a')[0].id.match(/variant_([0-9]*)_detail/)[1],10);
             console.log("Displaying variant " + variantIndex);
     
-            if(highlightTr)
-               $(highlightTr).removeClass('highlighted');
+           $('.highlighted').removeClass('highlighted');
     
             highlightTr = this;
             $(highlightTr).addClass('highlighted');
@@ -878,6 +946,8 @@ var userAnnotations = {
                                        createdRow: (row,data,dataIndex) => createVariantRow(tableId, row, data, dataIndex)
                                    });
         add_display_events();
+        
+        return newTable;
     };
     
 
