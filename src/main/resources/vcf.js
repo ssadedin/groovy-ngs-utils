@@ -782,18 +782,24 @@ var userAnnotations = {
     var newTable = null;
     
     function computeIGVRegion(chr, pos, size) {
-         let region = `${chr}:${pos}`;
-        if(size>10) {
+        let region = `${chr}:${pos}`;
+        let padding = (igvPadding > 0 ? igvPadding : 50)
+        if(size>50) {
             if(size<50000) {
-                region = chr + ':' + (pos - 50) + '-' + (pos + size + 50);
+                // For intermediate sized events, show the region around the event
+                // the value of 150 is chosen here because it roughly represents
+                // the length of reads so that the user will be able to fully see 
+                // most of the read pairs overlapping the event
+                region = chr + ':' + (pos - 150) + '-' + (pos + size + 150);
             }
             else {
                 // For very large events, just zoom to 100bp around the pos
-                region = chr + ':' + (pos - 50) + '-' + (pos + 50);
+                region = chr + ':' + (pos - igvPadding) + '-' + (pos + igvPadding);
             }
         }       
+        // For small events, show the user's preferred padding
         else {
-            region = chr + ':' + (pos - 20) + '-' + (pos + size + 20);
+            region = chr + ':' + (pos - igvPadding) + '-' + (pos + size + igvPadding);
         }
         return region;
     }

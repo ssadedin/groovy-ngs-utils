@@ -355,6 +355,7 @@ class VCFtoHTML {
             vcfjs 'Link to vcf javascript library instead of embedding', args:1, required: false, type: File
             info 'Custom INFO field to include in the report (provide multiple times)', args:'*', required: false
             hide 'Hide named columns from output in HTML', args: '*', required: false
+            igvPadding 'Padding to apply to IGV links in bp', args: 1, required: false, type: Integer
         }
         
         CliOptions opts = new CliOptions(opts:cli.parse(args))
@@ -535,6 +536,7 @@ class VCFtoHTML {
             w.println "<script type='text/javascript'>var customTitle = ${json(opts.title)};\n document.title=customTitle;</script>"
 
         w.println "<script type='text/javascript'>var customDesc = ${opts.desc?json(opts.desc):'null'};</script>"
+        w.println "<script type='text/javascript'>var igvPadding = ${opts.igvPadding?opts.igvPadding:-1};</script>"
 
         injectVCFLibrary(w)
 
