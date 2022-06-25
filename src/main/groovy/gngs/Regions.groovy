@@ -381,7 +381,7 @@ class Regions implements Iterable<Region> {
     @CompileStatic
     List<Region> subtractFrom(Region region) {
         subtractFrom(region.chr, region.from, region.to+1).collect {
-            new Region(region.chr, it.from..it.to)
+            new Region(region.chr, it.from..<it.to)
         }
     }
     

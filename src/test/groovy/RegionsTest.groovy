@@ -598,6 +598,25 @@ class RegionsTest {
          
          
      }
+     
+     @Test
+     void 'subtract with no overlap should return same region'() {
+         Regions regions = regions '''
+         chr1   10  20
+         chr1   40  50
+         chr1   100 120
+         '''
+         
+         Region r = new Region('chr1:30-35')
+         
+         Region s = regions.subtractFrom(r)
+         
+         println "Subtracted = $s"
+         
+         assert s.from == 30
+         assert s.to == 35 
+          
+     }
       
      // Simplistic but easy to use approximate equals
      void approx(double x1, double x2) {
