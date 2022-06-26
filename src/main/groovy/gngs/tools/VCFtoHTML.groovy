@@ -586,8 +586,9 @@ class VCFtoHTML {
                     </div>
                 </div>
                 <div id='south-pane' class="ui-layout-south">
-                    <div id='southContent' style='height: 100%'></div>
+                    <div id='southContent' style='height: 100%'>
                     <div style='font-size:80%; margin-top: 4px;'>Report created ${new Date()}</div>
+                    </div>
                 </div>
                 <iframe style='display:none' src='about:blank' id='igvframe' name='_igv'></iframe>
             </body>
