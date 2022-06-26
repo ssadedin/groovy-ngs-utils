@@ -313,6 +313,10 @@ class VCFtoHTML {
     ]
         
     List<String> excludedVEPConsequences = ["synonymous_variant","intron_variant","intergenic_variant","upstream_gene_variant","downstream_gene_variant","5_prime_UTR_variant"]
+    
+    List<String> diffSamples
+    
+    List<Integer> diffSampleIndexes
         
     static void main(String [] args) {
         
@@ -332,6 +336,7 @@ class VCFtoHTML {
             genelist 'Add gene priorities based on two column, tab separated file', args:1
             chr 'Confine analysis to chromosome', args:Cli.UNLIMITED
             diff 'Only output variants that are different between the samples'
+            diffSamples 'Samples to compare for diff operation (all)', args:1
             maxMaf 'Filter out variants above this MAF', args:1
             maxVep 'Only write a single line for each variant, containing the most severe consequence'
             allCons 'Do not filter by consequence (default: only variants with significant consequence included)'
@@ -390,7 +395,7 @@ class VCFtoHTML {
         }
         
         resolveExportSamples(allSamples)
-        
+
         if(opts.roc)
             referenceSample = opts.roc
         
@@ -454,6 +459,10 @@ class VCFtoHTML {
             sampleROCPoints = rocSamples.collectEntries { [it, []] }
         }
         
+        if(opts.diffSamples) {
+            this.diffSamples = opts.diffSamples.tokenize(',')
+            this.diffSampleIndexes = exportSamples.findIndexValues { it in diffSamples }
+        }
         
         log.info "Samples in vcfs are: " + vcfs.collect { vcf -> vcf.samples?.join(",") }.join(" ")
         log.info "Export samples are: " + exportSamples
@@ -916,7 +925,13 @@ class VCFtoHTML {
 //            return
 //        }
 //                        
-        if(opts.diff && dosages.clone().unique().size()==1)  {
+       
+        List diffDosages = dosages
+        if(diffSamples) {
+            diffDosages = dosages[diffSampleIndexes]
+        }
+
+        if(opts.diff && diffDosages.clone().unique().size()==1)  {
             ++stats.excludeByDiff
             updateROC(v)
             return
