@@ -87,6 +87,33 @@ class PlotTest {
     }
 
     Random r = new Random()
+    
+    @Test
+    void testHistogramMulti() {
+//        List<Double> data = (1..1000).collect { r.nextGaussian() }
+        
+        Map dataMap = [ (-3) : 3, (-2) : 5, (-1) : 10, 0 : 20, 1 : 10, 2 : 5, 3 : 3, 4 : 1 ]
+        Map dataMap2 = [ (-3) : 1, (-2) : 2, (-1) : 5, 0 : 7, 1 : 15, 2 : 12, 3 : 8, 4 : 3,  2: 1 ]
+        
+        List data = dataMap.collect { [it.key] * it.value }.sum() 
+        List data2 = dataMap2.collect { [it.key] * it.value }.sum() 
+
+        println "Data is: " + data
+        println "Data2 is: " + data2
+        
+        Histogram hist = 
+            new Histogram(
+                data:[data, data2], 
+                binCount:8, 
+                rangeMax: 3,
+                rangeMin: -2,
+                names: ['Reference', 'Evaluation'],
+                title:'Foos are really frogjible',
+                xLabel: 'Frobbles of the Fribfrob',
+                yLabel: 'Fringles of the funglefib')
+        hist.save('testhist2.png')
+    }
+ 
     @Test
     void testHistogram() {
 //        List<Double> data = (1..1000).collect { r.nextGaussian() }

@@ -31,9 +31,11 @@ import de.erichseifert.gral.graphics.Orientation
 import de.erichseifert.gral.io.plots.DrawableWriter
 import de.erichseifert.gral.io.plots.DrawableWriterFactory
 import de.erichseifert.gral.plots.BarPlot
+import de.erichseifert.gral.plots.BarPlot.BarPlotLegend
 import de.erichseifert.gral.plots.BarPlot.BarRenderer
 import de.erichseifert.gral.plots.XYPlot
 import de.erichseifert.gral.plots.axes.AxisRenderer
+import de.erichseifert.gral.plots.legends.Legend
 import de.erichseifert.gral.plots.lines.LineRenderer
 import de.erichseifert.gral.plots.lines.SmoothLineRenderer2D
 import de.erichseifert.gral.plots.points.DefaultPointRenderer2D
@@ -138,9 +140,12 @@ class Histogram {
     
     String title
     
-    Iterable<Double> data
+    /**
+     * Accept either Iterable<Double> or Iterable<Iterable<Dobule>>
+     */
+    def data
     
-    int binCount
+    int binCount = 10
     
     Palette palette = new DefaultPalette()
     
@@ -148,32 +153,39 @@ class Histogram {
     
     String yLabel
     
-    void save(final String fileName) {
-        
-        DataTable dt = new DataTable(1, Double)
-        for(double d in data) {
-            dt.add(d)
+    Double rangeMax = Double.POSITIVE_INFINITY
+
+    Double rangeMin = Double.NEGATIVE_INFINITY
+    
+    Iterable<String> names
+    
+    BarPlot createPlot() {
+
+        Iterable<Iterable<Double>> values
+        if(data[0] instanceof Iterable) {
+            values = data
+        }
+        else {
+            values = [data]
         }
         
-        assert dt.columnCount == 1
-        
-        List breaks = calculateBreaks()
+        List breaks = calculateBreaks(values)
         
         double width = breaks[1] - breaks[0]
         
-        // Create histogram from data
-        Histogram2D hist = new Histogram2D(dt, Orientation.VERTICAL, [breaks as Double[]] as Double[][]);
+        List nameList = names ? names as List : [null] * values.size()
+         
+        List<DataSource> histogram2ds = [values,nameList].transpose().collect { valueAndName ->
+            createHistogramDataSource(valueAndName[1], width, valueAndName[0], breaks)
+        }
         
-        // Create a second dimension (x axis) for plotting
-        DataSource histogram2d = new EnumeratedData(hist, breaks.min()+width/2, width);
-
         // Create new bar plot
-        BarPlot plot = new BarPlot(histogram2d);
+        BarPlot plot = new BarPlot(*histogram2ds);
         plot.setBarWidth(width*0.84)
         
         plot.setBackground(Color.white)
         plot.getTitle().setText(title)        
-        
+
 
         plot.getAxisRenderer(XYPlot.AXIS_X).with { 
             if(xLabel)
@@ -187,29 +199,95 @@ class Histogram {
         }
 
         plot.getAxis(XYPlot.AXIS_Y).with {
-            max = PlotUtils.roundUpToOOM(hist.getColumn(0).max())
+            max = PlotUtils.roundUpToOOM(histogram2ds*.max().max())
         }
         
-        PointRenderer barRenderer = plot.getPointRenderers(histogram2d).get(0);
-        barRenderer.setColor(GraphicsUtils.deriveWithAlpha(palette.colors[1], 128));
-//        barRenderer.setValueVisible(true);
-        
+        histogram2ds.eachWithIndex { h2d, i ->
+            PointRenderer barRenderer = plot.getPointRenderers(h2d).get(0);
+            barRenderer.setColor(GraphicsUtils.deriveWithAlpha(palette.colors[i+1], 128));
+        }
+       
         Insets2D.Double insets = new Insets2D.Double(40.0, 80.0, 80.0, 80.0)
         plot.setInsets(insets);
         
+        return plot
+    }
+    
+    BufferedImage getImage() {
+        getImage(800,600)
+    }
+
+    BufferedImage getImage(int width, int height) {
+        BarPlot plot = createPlot()
         BufferedImage bImage = new BufferedImage(1024, 800, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = (Graphics2D) bImage.getGraphics();
-        DrawingContext context = new DrawingContext(g2d, Quality.QUALITY, Target.BITMAP);
+        DrawingContext context = PlotUtils.createDrawingContext(bImage)
+        plot.setBounds(0, 0, width, height);
+        plot.draw(context)
+        drawHistogramLegend(plot, context)
+        return bImage
+     }
+    
+    void save(final String fileName) {
+        
+        BarPlot plot = createPlot()
+
+        // Unfortunately this results in a poor legend intended for something more
+        // like a categoryh plot because it contains every value
+        // plot.setLegendVisible(true)
         
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
-            PlotUtils.write(plot, w, 0,0, 1024, 800, 0);
+            PlotUtils.write(plot, w, 0,0, 1024, 800, 0) { DrawingContext ctx ->
+                drawHistogramLegend(plot, ctx)
+            }
         }        
+    }
+    
+    void drawHistogramLegend(BarPlot plot, DrawingContext ctx) {
+        Graphics2D g = ctx.getGraphics()
+        if(names) {
+            names.eachWithIndex { name, index ->
+                g.setFont(plot.getFont().deriveFont(80))
+                g.setColor(GraphicsUtils.deriveWithAlpha(palette.colors[index+1], 128))
+                g.drawString(name, 100, 120 + index * 36)
+            }
+        }
+    }
+    
+    DataSource createHistogramDataSource(String name, Double width, Iterable<Double> data, List breaks) {
+
+        DataTable dt = new DataTable(1, Double)
+        
+        for(double d in data) {
+            if(d >= rangeMin && d <= rangeMax)
+                dt.add(d)
+        }
+        
+        assert dt.columnCount == 1
+        
+        if(name != null)
+            dt.setName(name)
+       
+        // Create histogram from data
+        Histogram2D hist = new Histogram2D(dt, Orientation.VERTICAL, [breaks as Double[]] as Double[][]);
+        
+        // Create a second dimension (x axis) for plotting
+        DataSource histogram2d = new EnumeratedData(hist, breaks.min()+width/2, width);    
+        
+        return histogram2d
     }
 
     @CompileStatic
-    private List<Double> calculateBreaks() {
-        Stats dataStats = Stats.from(data)
+    private List<Double> calculateBreaks(Iterable<Iterable<Double>> datas) {
+        
+        Stats dataStats = new Stats()
+        for(Iterable<Double> data in datas) {
+            for(d in data) {
+                if(d >= rangeMin && d <= rangeMax)
+                    dataStats.addValue(d)
+            }
+        }
+
         double range = dataStats.max - dataStats.min
         double delta = (dataStats.max - dataStats.min + Double.MIN_VALUE) / (binCount-1);
         double halfDelta = delta/2d;
@@ -324,8 +402,6 @@ class Plot {
                 (int)Math.ceil(width + eastLegendWidth), (int)Math.ceil(height), rasterFormat);
 
         DrawingContext context = PlotUtils.createDrawingContext(image)
-
-        DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
 
         XYPlot xyPlot = toXYPlot(width,height)
         
@@ -538,7 +614,7 @@ class PlotUtils {
      * @throws IOException if writing to stream fails
      */
     static public void write(Drawable d, OutputStream destination,
-            double x, double y, double width, double height, int legendWidth)
+            double x, double y, double width, double height, int legendWidth, Closure then = null)
             throws IOException {
 
         int rasterFormat = BufferedImage.TYPE_INT_RGB;
@@ -558,6 +634,9 @@ class PlotUtils {
             d.setBounds(x, y, width, height);
             try {
                 d.draw(context);
+                if(then) {
+                    then(context)
+                }
                 writer.write(image);
             } finally {
                 d.setBounds(boundsOld);
