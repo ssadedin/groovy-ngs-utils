@@ -160,6 +160,9 @@ jar {
     exclude "org/bouncycastle/**"
     exclude "org/codehaus/mojo"
     exclude "org/slf4j/impl/**"
+    exclude "org/junit/**"
+    exclude "org/testing/**"
+    exclude "org/opentest4j/**"
 }
 
 groovydoc {
