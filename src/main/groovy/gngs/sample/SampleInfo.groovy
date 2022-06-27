@@ -153,20 +153,20 @@ class SampleInfo {
     
     String variantsFile
 
-    Map<String,String> fileMappings = [
-        cram : "cram",
-        bam : "bam",
-        fastq: "fastq.gz",
-        coverage: "exoncoverage.txt",
-        vcf : "vcf"
+    Map<String,List<String>> fileMappings = [
+        cram : ["cram"],
+        bam : ["bam"],
+        fastq: ["fastq.gz", "fq.gz"],
+        coverage: ["exoncoverage.txt"],
+        vcf : ["vcf"]
     ]
 
     void indexFileTypes() {
-        fileMappings.each { index, ending -> indexFileType(index,ending) }
+        fileMappings.each { index, endings -> indexFileType(index,endings) }
     }
 
-    void indexFileType(String index, String ending) {
-        def matchingFiles  = files.all.grep { it.endsWith(ending) }
+    void indexFileType(String index, List<String> endings) {
+        def matchingFiles  = files.all.grep { endings.any { String ending -> it.endsWith(ending) } }
         if(matchingFiles)
             this.files[index] = matchingFiles
     }
