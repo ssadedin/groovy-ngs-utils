@@ -139,6 +139,7 @@ jar {
     exclude "org/slf4j/impl/**"
     exclude "org/junit/**"
     exclude "org/testing/**"
+    exclude "org/opentest4j/**"
 }
 
 groovydoc {
