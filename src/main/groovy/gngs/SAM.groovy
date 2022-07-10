@@ -21,6 +21,7 @@ package gngs
 
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.Paths
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -152,9 +153,9 @@ class SAM {
 
     SamReader samFileReader;
 
-    File samFile
+    Path samFile
 
-    File indexFile
+    Path indexFile
     
     /**
      * List of samples in the BAM file. Note: this list can be overridden
@@ -192,34 +193,38 @@ class SAM {
     }
 
     SAM(String fileName) {
-        this(new File(fileName))
+        this(new File(fileName).toPath())
     }
 
     SAM(File file) {
+        this(file.toPath())
+    }
+
+    SAM(Path file) {
         this.samFile = file
-        if(!this.samFile.exists())
-            throw new FileNotFoundException("BAM/CRAM file could not be opened at ${samFile.absolutePath}")
+        if(!Files.exists(this.samFile))
+            throw new FileNotFoundException("BAM/CRAM file could not be opened at ${samFile.toAbsolutePath()}")
 
         String indexExt;
         String fileExt;
-        if(file.name.endsWith(".bam")) {
+        if(file.fileName.toString().endsWith(".bam")) {
             indexExt = ".bai"
             fileExt = ".bam"
         }
         else
-        if(file.name.endsWith(".cram")) {
+        if(file.fileName.toString().endsWith(".cram")) {
             indexExt = ".crai"
             fileExt = ".cram" 
         }
         else
             throw new IllegalArgumentException("This class only supports BAM or CRAM files. File type $file is not supported")
 
-        this.indexFile = new File(samFile.absolutePath + indexExt)
+        this.indexFile = samFile.parent.resolve(samFile.fileName.toString() + '.bai')
 
-        if(!indexFile.exists())
-            indexFile = new File(samFile.absolutePath.replaceAll("$fileExt\$",'')+indexExt)
+        if(!Files.exists(indexFile))
+            indexFile = samFile.parent.resolve(samFile.fileName.toString().replaceAll("$fileExt\$",'')+indexExt)
 
-        if(!indexFile.exists())
+        if(!Files.exists(indexFile))
             throw new FileNotFoundException("Please ensure your BAM / SAM / CRAM file is indexed. File $indexFile could not be found.")
 
         this.samFileReader = newReader()
@@ -312,10 +317,10 @@ class SAM {
         withWriter(outputFileName, true, c)
     }
     
-    def withWriter(String outputFileName, boolean sorted, Closure c) {
+    def withWriter(String outputFileName, boolean sorted, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMFileWriter']) Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = this.samFileReader.fileHeader
-        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
+        SAMFileWriter w = f.makeBAMWriter(header, sorted, Paths.get(outputFileName))
         try {
             return c(w)
         }
@@ -391,7 +396,7 @@ class SAM {
             header.readGroups[0].setSample(options.sampleId)
         }
         
-        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
+        SAMFileWriter w = f.makeBAMWriter(header, sorted, Paths.get(outputFileName))
         OrderedPairWriter opw = new OrderedPairWriter(w)
         try {
             return c(opw)
@@ -816,7 +821,7 @@ class SAM {
     
             SAMFileWriterFactory f = new SAMFileWriterFactory()
             SAMFileHeader header = reader.fileHeader
-            SAMFileWriter w = f.makeBAMWriter(header, !options.sort, new File(outputFile))
+            SAMFileWriter w = f.makeBAMWriter(header, !options.sort, Paths.get(outputFile))
             SAMRecordIterator i = reader.iterator()
             long lastPrintMs = System.currentTimeMillis()
             try {
