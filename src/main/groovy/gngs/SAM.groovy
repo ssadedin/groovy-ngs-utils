@@ -193,7 +193,12 @@ class SAM {
     }
 
     SAM(String fileName) {
-        this(new File(fileName).toPath())
+        if(fileName ==~ ~'[a-z]{1,}://.*$') {
+            this.init(Paths.get(URI.create(fileName))) 
+        }
+        else   {
+            this.init(Paths.get(fileName))
+        }
     }
 
     SAM(File file) {
@@ -201,6 +206,10 @@ class SAM {
     }
 
     SAM(Path file) {
+        this.init(file)
+    }
+    
+    void init(Path file) {
         this.samFile = file
         if(!Files.exists(this.samFile))
             throw new FileNotFoundException("BAM/CRAM file could not be opened at ${samFile.toAbsolutePath()}")
