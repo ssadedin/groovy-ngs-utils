@@ -61,7 +61,11 @@ class Utils {
     @CompileStatic
     static<T> T time(Map options=[:],String desc, Closure<T> c) {
         
-        Closure printMsg = options.log ? { ((Logger)options['log']).info(it.toString()) } : { System.err.println(it) }
+        Closure printMsg 
+        if(options.log) 
+            printMsg = { ((Logger)options['log']).info(it.toString()) } 
+        else
+            printMsg = { System.err.println(it) }
         
         if(!options.suppressStartMessage)
             printMsg((" Starting " + desc + " ").center(80, "="))
