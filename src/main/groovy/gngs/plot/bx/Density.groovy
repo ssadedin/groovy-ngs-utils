@@ -34,6 +34,8 @@ trait Density {
     
     double bw = 2.0d
     
+    double cutoff = 0.01
+    
     int segments = 100
     
     smile.stat.distribution.KernelDensity kd
@@ -132,7 +134,7 @@ trait Density {
         double tailing = plotMax + step
         while(true) {
             double density = kd.p(tailing)
-            if(density < 0.05 * maxDensity) {
+            if(density < cutoff * maxDensity) {
                 break
             }
             plotValues.add(new DensityPoint(y:density, x:tailing))
@@ -149,7 +151,7 @@ trait Density {
         double leading = plotMin - step
         while(true) {
             double density = kd.p(leading)
-            if(density < 0.05 * maxDensity) {
+            if(density < cutoff * maxDensity) {
                 break
             }
             plotValues.add(0, new DensityPoint(y:density, x:leading))

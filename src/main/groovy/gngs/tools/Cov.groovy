@@ -129,9 +129,11 @@ class Cov extends ToolBase {
         }
         
         int downsampleFactor = opts.downsampleFactor ?: 0
+
+        final boolean createRegionStats = opts['intervalsummary'] != false
         
         RegulatingActor writerActor = RegulatingActor.actor { contig, covs ->
-            writeCoverage(contig, covs, downsampleFactor)
+            writeCoverage(contig, covs, downsampleFactor, createRegionStats)
         }
         writerActor.start()
         
@@ -181,6 +183,10 @@ class Cov extends ToolBase {
         if(opts.covo) {
             printCoverageJs(covStats, opts.covo)
         }
+        
+        if(opts.intervalsummary) {
+            printIntervalStats(opts.intervalsummary)
+        }
     }
 
     private initGapCalculator() {
@@ -229,8 +235,9 @@ class Cov extends ToolBase {
     }
 
     private openStreams() {
-        if(opts.o)
+        if(opts.o && opts.o != '/dev/null')
             out = new AsciiWriter(Utils.outputStream(opts.o,10*1024*1024), 5*1024*1024)
+
         if(opts.gaps) {
             if(!opts.refgene)
                 throw new IllegalArgumentException("If -gaps is specified then -refgene is required")
@@ -261,14 +268,18 @@ class Cov extends ToolBase {
         downsampledOut.write(String.valueOf(stats.mean))
         downsampledOut.write('\n')
     }
+    
+    Map<String,IntegerStats> allRegionStats = [:]
    
     @CompileStatic
-    private final void writeCoverage(String contig, short [] covs, final int downsampleFactor) {
+    private final void writeCoverage(String contig, short [] covs, final int downsampleFactor, final boolean createRegionStats) {
         final Regions contigRegions = scanRegions.getContigRegions(contig)
+
         log.info "Write ${Utils.human(contigRegions.size())} coverage values for contig: $contig"
         
         IntegerStats downsampleStats = downsampleFactor>0 ? new IntegerStats(1000) : null
         for(Region r in contigRegions) {
+            IntegerStats regionStats = createRegionStats ? new IntegerStats(1000)  : null
             downsampleStats?.clear()
             final int start = r.from
             final int end = r.to
@@ -291,6 +302,9 @@ class Cov extends ToolBase {
                     }
                 }
 
+                if(createRegionStats)
+                    regionStats.addIntValue(cov)
+
                 covStats.addIntValue(cov)
                 if(!out.is(null)) {
                     out.write(contig)
@@ -302,6 +316,10 @@ class Cov extends ToolBase {
                 }
                 ++offset
             }
+            
+            if(createRegionStats)
+                allRegionStats[r.toString()] = regionStats
+            
             if(downsampleFactor>0 && offset<downsamplePoint) {
                 writeDownsampled(contig,start+offset,downsampleStats)
             }
@@ -443,9 +461,23 @@ class Cov extends ToolBase {
         }
         log.info "Wrote coverage stats to $fileName"
     }
+
+    private void printIntervalStats(File intervalStatsFile) {
+        intervalStatsFile.withWriter { w -> 
+            // Print the regions
+            w.write(
+                ['sample', *allRegionStats*.key].join("\t")
+            )
+            w.write('\n')
+            w.write(
+                [this.bam.samples[0], *allRegionStats*.value*.mean].join("\t")
+            )
+        }
+        log.info "Wrote interval summary to $intervalStatsFile"
+    }
     
     static void main(String[] args) {
-        cli('Cov [-o <per-base-output>] -L <target regions> <bam file>', args) {
+        cli('Cov [-o <per-base-output>] -L <target regions> <bam file>', 'Fast per-base coverage calculations with statistics output', args) {
             o 'Output file to write to', args:1, required: false
             'do' 'Output file for downsampled output', args:1, required:false, longOpt: 'downsampleOutput', type: File
             'df' 'Factor to downsample by', args:1, required:false, longOpt: 'downsampleFactor', type: Integer
@@ -457,6 +489,7 @@ class Cov extends ToolBase {
             gt 'Gap threshold - coverage level below which a region is considered a gap', args:1, required: false
             refgene 'Refgene database for annotating gaps (required if -gaps specified)', args:1, required: false
             om 'Overlap mode whether to count overlapping read fragments - one of none,half (default=none)', longOpt:'overlap-mode', args: 1
+            intervalsummary 'File to write interval statistics to', args:1, type: File, required: false
             'L' 'Regions over which to report coverage depth', args:1, required: true, longOpt: 'target'
         }
     }

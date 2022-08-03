@@ -73,6 +73,11 @@ class XYItem extends PlotItem {
     
     Object color
     
+    /**
+     * For compatability with BeakerX. Tooltip is ignored.
+     */
+    Object toolTip
+    
     double maxX = Double.MIN_VALUE
     double maxY = Double.MIN_VALUE
     
@@ -322,6 +327,12 @@ class Plot {
     
     Palette palette = new DefaultPalette()
     
+    /**
+     * For compatibility with BeakerX
+     */
+    int initWidth
+    int initHeight
+    
     Plot leftShift(PlotItem item) {
         this.items << item
         return this
@@ -346,6 +357,10 @@ class Plot {
         return plot
     }
     
+    static Plot from(gngs.plot.Plot other) {
+        return other
+    }
+
     static Plot from(com.twosigma.beakerx.chart.xychart.Plot bxPlot) {
         Plot p = new Plot(
             title:bxPlot.title,
