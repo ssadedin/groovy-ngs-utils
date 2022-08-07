@@ -30,6 +30,7 @@ import com.github.scribejava.core.model.Response
 import com.github.scribejava.core.model.Verb
 import com.github.scribejava.core.oauth.OAuth10aService
 
+import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
 import groovy.util.logging.Log
@@ -152,6 +153,8 @@ class WebService {
     
     WebServiceCredentials webserviceCredentials
     
+    JsonGenerator jsonConverter = new JsonGenerator.Options().build()
+    
     /**
      * Create a web service to access the given api at the given end point
      *
@@ -200,6 +203,7 @@ class WebService {
         child.apiCredentials = this.apiCredentials
         child.autoSlash = this.autoSlash
         child.credentialsPath = this.credentialsPath
+        child.jsonConverter = this.jsonConverter
         return child
     }
     
@@ -223,7 +227,7 @@ class WebService {
            payload = urlEncode(data)
        }
        else {
-           payload = data != null ? JsonOutput.prettyPrint(JsonOutput.toJson(data)) : null
+           payload = data != null ? JsonOutput.prettyPrint(jsonConverter.toJson(data)) : null
        }
        
        URL url = encodeURL(params, method, payload)
