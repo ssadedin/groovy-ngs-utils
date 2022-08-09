@@ -469,8 +469,10 @@ class Cov extends ToolBase {
                 ['sample', *allRegionStats*.key].join("\t")
             )
             w.write('\n')
+            
+            def safeMeans = allRegionStats*.value*.mean.collect { Double.isNaN(it) ? 0d : it }
             w.write(
-                [this.bam.samples[0], *allRegionStats*.value*.mean].join("\t")
+                [this.bam.samples[0], *safeMeans].join("\t")
             )
         }
         log.info "Wrote interval summary to $intervalStatsFile"
