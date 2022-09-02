@@ -966,6 +966,36 @@ class Regions implements Iterable<Region> {
         } as Regions
     }
     
+     /**
+     * The same as {@link #thin(int,int)} but returns the indices of the
+     * regions to keep.
+     */
+    @CompileStatic
+    List<Integer> thinnedIndices(int desiredRanges, int minRangesPerChromosme) {
+        int currentTotalRanges = this.numberOfRanges
+        
+        double proportionRetained = ((double)desiredRanges) / currentTotalRanges
+        if(proportionRetained == 0) 
+            throw new IllegalArgumentException("Proportion of regions retained is too small: $proportionRetained ($desiredRanges / $currentTotalRanges")
+            
+        int keepOneEvery = (int)(1 / proportionRetained)
+        int i=0
+       
+        List<Integer> indices = new ArrayList(desiredRanges)
+
+        this.each { Region r -> 
+            
+            if(this.index[r.chr].numRanges*proportionRetained < minRangesPerChromosme) {
+                return true
+            }
+            
+            if((++i) % keepOneEvery == 0)
+                indices << i
+        }
+        return indices
+    }
+ 
+    
     /**
      * Returns the total span from the beginning of the first region to the end of 
      * the last region on the given contig (chromosome).
