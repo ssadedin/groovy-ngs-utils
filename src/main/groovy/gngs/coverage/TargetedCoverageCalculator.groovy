@@ -38,7 +38,7 @@ class TargetedCoverageCalculator {
         List<String> chrs = chrCounts*.key
         
         log.info "Processing chromosomes $chrs"
-        log.info "Read counts are $chrCounts"
+        log.info "Target region counts are $chrCounts"
         
         int [] results = new int[(int)chrCounts*.value.sum()]
         
