@@ -2,6 +2,7 @@ package gngs.tools
 
 import gngs.*
 import graxxia.IntegerStats
+import graxxia.Matrix
 import groovy.json.JsonOutput
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
@@ -86,6 +87,10 @@ class Cov extends ToolBase {
     
     GapAnnotator gapAnnotator
     CoverageGaps gapCalculator
+    
+    Matrix kmerFactors
+    
+    double [] sampleKmerFactors
   
     @Override
     public void run() {
@@ -121,6 +126,10 @@ class Cov extends ToolBase {
             
         log.info "Analysing ${Utils.humanBp(scanRegions.size())} from ${opts.arguments()[0]}"
         log.info "Mapping quality threshold = $minimumMappingQuality"
+        
+        if(opts.kmer) {
+            this.initKmerProfile()
+        }
         
         openStreams()
         
@@ -187,6 +196,32 @@ class Cov extends ToolBase {
         if(opts.intervalsummary) {
             printIntervalStats(opts.intervalsummary)
         }
+    }
+    
+   
+    private void initKmerProfile() {
+        
+       log.info "Calculating kmer weightings based on kmer profile: $opts.kmer"
+       Matrix kmerCounts = Matrix.load(opts.kmer) 
+       Matrix norm = kmerCounts.normaliseRows().normaliseColumns()
+       this.kmerFactors = norm.transform { double value ->
+           if(value != 0) {
+               return 1.0d / value
+           }
+           else {
+               return 1.0d // multiplier will be 1.0d when factor cannot be calculated
+           }
+       }.fillna(1.0)
+       
+       this.sampleKmerFactors = this.kmerFactors.grep { sample == bam.samples[0] }.rawData[0]
+       this.kmerFactors.@displayColumns=10
+       this.kmerFactors.@displayPrecision=2
+       
+       if(opts.okmer) {
+           this.kmerFactors.save(opts.okmer, r:true)
+       }
+
+       log.info "Calculated kmer profile matrix:\n" + this.kmerFactors
     }
 
     private initGapCalculator() {
@@ -332,6 +367,8 @@ class Cov extends ToolBase {
         if(spans.count == 0)
             return [] as short[];
 
+        final boolean adjustForKmerProfile = (this.sampleKmerFactors != null)
+        
         int covSize = spans.intervals[spans.count-1][1]
         
         log.info "Allocate ${Utils.human(covSize*2)} bytes for coverage values for $contig"
@@ -351,7 +388,19 @@ class Cov extends ToolBase {
             final int start = intervals[i][0]
             while(pos < start) {
                 ot.removeNonOverlaps(pos)
-                covs[pos] = (short)ot.size()
+                if(adjustForKmerProfile) {
+                    double cov = 0.0d
+                    final int n = ot.size()
+                    for(int j=0; j<n; ++j) {
+                        // each kmer factor represents how much "one read" should count
+                        int kmerIndex = ot.reads[j][2]
+                        cov += this.sampleKmerFactors[kmerIndex]
+                    }
+                    covs[pos] = (short)cov
+                }
+                else {
+                    covs[pos] = (short)ot.size()
+                }
                 ++pos
             }
     
@@ -375,12 +424,14 @@ class Cov extends ToolBase {
             
             meta.getAlignedRecordCount()
         }
-
+        
         def intervals = new int[recordCount][] as int[][]
 
         Region region = new Region("$contig:0-${contigSizes[contig]}")
         bam.withIterator(region) {
             final byte com = coverageOverlapMode
+            final boolean addKmerinfo = (this.kmerFactors != null)
+
             while(it.hasNext()) {
                 SAMRecord r = it.next()
                 if(r.getReadUnmappedFlag())
@@ -417,7 +468,12 @@ class Cov extends ToolBase {
                     }
                 }
 
-                intervals[i] = [alignmentStart, alignmentEnd] as int[]
+                if(addKmerinfo) {
+                    intervals[i] = [alignmentStart, alignmentEnd, ShearingKmerCounter.computeKmer(r)] as int[]
+                }
+                else {
+                    intervals[i] = [alignmentStart, alignmentEnd] as int[]
+                }
                 ++i
             }
         }
@@ -425,6 +481,7 @@ class Cov extends ToolBase {
         return new ReadSpans(intervals:intervals, count:i)
     }
     
+   
     void writeSampleSummary(String outputFile, IntegerStats stats) {
 
         List<String> headers = ['Median Coverage', 'Mean Coverage', 'perc_bases_above_1', 'perc_bases_above_5', 'perc_bases_above_10', 'perc_bases_above_20', 'perc_bases_above_50']
@@ -490,6 +547,8 @@ class Cov extends ToolBase {
             gaptarget 'Regions over which to report gaps', args:1, required: false
             gt 'Gap threshold - coverage level below which a region is considered a gap', args:1, required: false
             refgene 'Refgene database for annotating gaps (required if -gaps specified)', args:1, required: false
+            kmer 'Use the given file of kmer counts to normalise based on kmer-prefix-bias', args:1, required: false
+            okmer 'Save computed normalised kmer profile', args:1, required: false
             om 'Overlap mode whether to count overlapping read fragments - one of none,half (default=none)', longOpt:'overlap-mode', args: 1
             intervalsummary 'File to write interval statistics to', args:1, type: File, required: false
             'L' 'Regions over which to report coverage depth', args:1, required: true, longOpt: 'target'
