@@ -23,7 +23,12 @@ class MergePartitionedVCFs extends ToolBase {
     @Override
     public void run() {
         
-        VCF headerVCF = new VCF(opts.i)
+        String headerVCFPath = opts.i
+        if(opts['e']) {
+           headerVCFPath = opts.is.find { p -> Utils.reader(p) { it.readLine() != null } }
+        }
+        
+        VCF headerVCF = new VCF(headerVCFPath)
         this.contigs = headerVCF.contigs as String[]
         
         log.info "Merging ${opts.is.join(',')}"
@@ -50,6 +55,13 @@ class MergePartitionedVCFs extends ToolBase {
     void readVCF(String vcfPath, int index) {
         
         AtomicInteger counter = new AtomicInteger(0)
+
+        if(Utils.reader(vcfPath) { it.readLine() } == null) {
+            if(opts['e']) {
+                log.info "VCF $vcfPath is empty - ignoring and treating as valid empty VCF"
+                return
+            }
+        }
         
         VCF.parse(vcfPath, progress:false) { Variant v -> 
             final int contigIndex = contigs.indexOf(v.chr)
@@ -62,6 +74,7 @@ class MergePartitionedVCFs extends ToolBase {
     
     public static void main(String [] args) {
         cli('MergePartitionedVCFs -i <vcf1> -i <vcf2> ... -o <vcf>', args) {
+            e 'Allow empty files as input: treat as empyt VCF'
             i 'Input VCF', args: Cli.UNLIMITED, required: true
             o 'Output VCF', args: 1, required:false
         }
