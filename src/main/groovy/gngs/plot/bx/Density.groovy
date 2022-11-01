@@ -1,5 +1,7 @@
 package gngs.plot.bx
 
+import org.apache.commons.math3.stat.StatUtils
+
 import com.twosigma.beakerx.chart.Color
 import com.twosigma.beakerx.chart.xychart.plotitem.XYGraphics
 import groovy.transform.CompileStatic
@@ -80,9 +82,20 @@ trait Density {
         if(!('data' in attributes)) 
             throw new IllegalArgumentException('Please provide a data attribute with values to display')
             
-        double [] values = attributes.data as double[]
-        double min = ((List)attributes.data).min()
-        double max = ((List)attributes.data).max()
+        Iterable valuesIterable
+        double [] values 
+        double min
+        double max
+        if(attributes.data instanceof double[]) {
+            values = attributes.data
+            max = StatUtils.max(values)
+            min = StatUtils.min(values)
+        }
+        else {
+            values = attributes.data as double[]
+            min = ((Iterable)attributes.data).min()
+            max = ((Iterable)attributes.data).max()
+        }
         
         initXYValues(min, max, values)
     }    
