@@ -36,6 +36,7 @@ import htsjdk.samtools.ValidationStringency
 
 import com.xlson.groovycsv.CsvIterator;
 import com.xlson.groovycsv.CsvParser;
+import com.xlson.groovycsv.PropertyMapper
 
 
 /**
@@ -152,6 +153,11 @@ class SampleInfo {
 	String analysisContact
     
     String variantsFile
+    
+    /**
+     * Recognised alternative identifiers for the sample
+     */
+    List<String> altIds
 
     Map<String,List<String>> fileMappings = [
         cram : ["cram"],
@@ -237,52 +243,81 @@ class SampleInfo {
 
         int lineCount = 0
         CsvIterator parser = CsvParser.parseCsv(new StringReader(lines.join("\n")), columnNames: columns, readFirstLine: true, separator: '\t')
-        def sample_info = parser.collect { fields ->
+        def sample_info = parser.collect { PropertyMapper fields ->
             //				println "Found sample " + fields.Sample_ID
+
+            String sampleId = fields.Sample_ID.tokenize(':')[0]
+            
+            List<String> altIds = fields.Identifiers.tokenize(':')
 
             try {
                 def si = new SampleInfo(
-                        sample: fields.Sample_ID,
+                        sample: sampleId,
                         target: fields.Cohort,
                         sampleType: SampleType.decode(fields.Sample_Type),
                         geneCategories:  [:],
                         batch: fields.Batch,
-                        pedigree: fields.Pedigree_File
+                        pedigree: fields.Pedigree_File,
+                        altIds: altIds
                         )
 
                 si.sex = Sex.decode(fields.Sex)
                 si.consanguinity = Consanguinity.decode(fields.Consanguinity)
-                si.ethnicity  = Ethnicity.decode(fields.Ethnicity)
-                if(fields.DNA_Date)
+                
+                def if_field = { name, then_do ->
+                    if(columns.contains(name) && fields[name])
+                        then_do()
+                }
+                
+                if_field('Ethnicity') {
+                    si.ethnicity  = Ethnicity.decode(fields.Ethnicity)
+                }
+                
+                if_field('DNA_Date') {
                     si.dnaDates = fields.DNA_Date?.split(",")*.trim().collect { parseDate(it) }
-                if(fields.Capture_Date)
+                }
+
+                if_field('Capture_Date') {
                     si.captureDates = fields.Capture_Date.split(",")*.trim().collect { parseDate(it) }
-                if(fields.Sequencing_Date)
+                }
+
+                if_field('Sequencing_Date') {
                     si.sequencingDates = fields.Sequencing_Date?.split(",")*.trim().collect { parseDate(it) }
+                }
 
-                if(fields.DNA_Concentration)
+                if_field('DNA_Concentration') {
                     si.dnaConcentrationNg = fields.DNA_Concentration?.toFloat()
-                if(fields.DNA_Quality)
+                }
+                if_field('DNA_Quality') {
                     si.dnaQuality = fields.DNA_Quality?.toFloat()
-                if(fields.DNA_Quantity)
+                }
+                if_field('DNA_Quantity') {
                     si.dnaQuantity = fields.DNA_Quantity?.toFloat()
-                if(fields.Mean_Coverage)
+                }
+                if_field('Mean_Coverage') {
                     si.meanCoverage = fields.Mean_Coverage?.toFloat()
-                if(fields.Variants_File)
+                }
+                if_field('Variants_File') {
                     si.variantsFile = fields.Variants_File
-                if(fields.Machine_ID)
+                }
+                if_field('Machine_ID') {
                     si.machineIds = fields.Machine_ID?.split(",")*.trim() as List
+                }
 
-
-                si.sequencingContact = fields.Sequencing_Contact
-                si.analysisContact = fields.Pipeline_Contact
-                si.institution = fields.Hospital_Centre
-
+                if_field('Sequencing_Contact') {
+                    si.sequencingContact = fields.Sequencing_Contact
+                }
+                if_field('Pipeline_Contact') {
+                    si.analysisContact = fields.Pipeline_Contact
+                }
+                if_field('Hospital_Centre') {
+                    si.institution = fields.Hospital_Centre
+                }
                 si.files.all = fields.Fastq_Files.split(",")*.trim().collect {new File(it).parentFile?it:"../data/$it"}
                 si.indexFileTypes()
 
                 // Index category to gene
-                if(fields.Prioritised_Genes) {
+                if_field('Prioritised_Genes') {
                     def genes = fields.Prioritised_Genes.split(" ")*.split(":").collect {
                         // HACK: Excel is exporting weird white space characters that are not
                         // trimmed
