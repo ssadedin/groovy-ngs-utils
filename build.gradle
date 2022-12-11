@@ -150,7 +150,12 @@ groovydoc {
     }
 }
 
+// println "The gradle version is: " + project.gradle.gradleVersion
 
+compileGroovy {
+    if(project.gradle.gradleVersion.tokenize('.')[0].toInteger() > 5 )
+        groovyOptions.parameters = true
+}
 
 test {
     filter {
