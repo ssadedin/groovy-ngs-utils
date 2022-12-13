@@ -27,11 +27,11 @@ repositories {
     mavenCentral()
     maven { 
         name "biojava"
-        url "http://www.biojava.org/download/maven/" 
+        url "https://www.biojava.org/download/maven/" 
     }
     maven {
       name "ImageJ" 
-      url "http://maven.imagej.net/content/repositories/public/"
+      url "https://maven.imagej.net/content/repositories/public/"
     }
 }
 
