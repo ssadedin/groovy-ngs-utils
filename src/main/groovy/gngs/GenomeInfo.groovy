@@ -7,6 +7,7 @@ import groovy.transform.CompileStatic
  * 
  * @author simon.sadedin
  */
+@CompileStatic
 class GenomeInfo {
         static Map hgMap = [
             247249719 : "hg18",
@@ -31,7 +32,6 @@ class GenomeInfo {
          * @return 38, 37 or 18 indicating the coordinate system of the genome version 
          *         for the given contig sizes
          */
-        @CompileStatic
         static Integer humanGenomeCoordinateVersion(final Map<String, Integer> contigSizes) {
             String build = sniffGenomeBuild(contigSizes)
             if(build in ["hg38", "GRCh38"])
@@ -52,7 +52,6 @@ class GenomeInfo {
          * @param contigSizes
          * @return  String identifier for genome build
          */
-        @CompileStatic
         static String sniffGenomeBuild(final Map<String, Integer> contigSizes) {
             contigSizes.any { it.key.startsWith('chr') } ? 
                 hgMap.getOrDefault(contigSizes['chr1'], mouseMap[contigSizes['chr1']])
