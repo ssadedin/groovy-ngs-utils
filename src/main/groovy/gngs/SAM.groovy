@@ -45,63 +45,6 @@ import htsjdk.samtools.SamInputResource
 import htsjdk.samtools.ValidationStringency;
 
 
-/*
- * An alternate alignment for a read. 
- * eg: constructed from the XA tag as output by bwa aln.
- * 
- * @author Simon
- */
-class XA {
-    String chr
-    int pos
-    String cigar
-    int nm
-
-    public String toString() {
-        "[$chr:$pos $cigar NM=$nm]"
-    }
-}
-
-class SAMRecordCategory {
-    @CompileStatic
-    static List<XA> getAlternateAlignments(BAMRecord record) {
-        String xas = record.getAttribute("XA")
-        if(!xas)
-            return null
-        return xas.split(';').collect { String xa ->
-            String [] parts = xa.split(',')
-            new XA( chr: parts[0], pos: parts[1].substring(1) as Integer, cigar:parts[2],  nm : parts[-1] as Integer)
-        }
-    }
-    
-    @CompileStatic
-    static Object asType(SAMRecord r, Class clazz) {
-        new Region(r.referenceName, Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
-    }
-    
-    @CompileStatic
-    static Object asType(BAMRecord r, Class clazz) {
-        new Region(r.referenceName, Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
-    } 
-    
-    @CompileStatic
-    static Object toRegion(BAMRecord r) {
-        new Region(r.referenceName, Math.min(r.alignmentStart, r.alignmentEnd)..Math.max(r.alignmentStart, r.alignmentEnd))
-    }  
-}
-
-@CompileStatic
-class ReadWindow {
-    
-    int pos
-    
-    TreeMap<Integer, List<SAMRecord>> window = new TreeMap()
-    
-    String toString() {
-        "Reads at ${window.count { it.value.size() > 1 }} positions: " + 
-            window.grep { Map.Entry e -> ((List)e.value).size() > 1 }
-    }
-}
 
 /**
  * Adds various Groovy idioms and convenience features to the 
@@ -109,10 +52,11 @@ class ReadWindow {
  * <p>
  * There are three major classes of functionality supported:
  * 
- * <li>Iterating through and filtering reads in various ways
- * <li>Generating pileups and calculating read depth / coverage
- * <li>Accessing meta data (read groups, sample information, etc)
+ * <li>Iterating through and filtering reads in various ways</li>
+ * <li>Generating pileups and calculating read depth / coverage</li>
+ * <li>Accessing meta data (read groups, sample information, etc)</li>
  * 
+ * <p>
  * For simple looping, the {@link #eachRead(Closure)} static method
  * can be used without creating a SAM object at all:
  * <pre> SAM.eachRead { SAMRecord r -> println r.readName } </pre>
