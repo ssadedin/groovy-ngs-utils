@@ -248,7 +248,13 @@ class SampleInfo {
 
             String sampleId = fields.Sample_ID.tokenize(':')[0]
             
-            List<String> altIds = fields.Identifiers.tokenize(':')
+            def if_field = { name, then_do ->
+                if(columns.contains(name) && fields[name])
+                    then_do()
+            }
+
+            List<String> altIds = []
+            if_field('Identifiers') fields.Identifiers.tokenize(':')
 
             try {
                 def si = new SampleInfo(
@@ -263,11 +269,6 @@ class SampleInfo {
 
                 si.sex = Sex.decode(fields.Sex)
                 si.consanguinity = Consanguinity.decode(fields.Consanguinity)
-                
-                def if_field = { name, then_do ->
-                    if(columns.contains(name) && fields[name])
-                        then_do()
-                }
                 
                 if_field('Ethnicity') {
                     si.ethnicity  = Ethnicity.decode(fields.Ethnicity)
