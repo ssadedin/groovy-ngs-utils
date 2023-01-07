@@ -254,7 +254,9 @@ class SampleInfo {
             }
 
             List<String> altIds = []
-            if_field('Identifiers') fields.Identifiers.tokenize(':')
+            if_field('Identifiers')  { 
+                fields.Identifiers.tokenize(':') 
+            }
 
             try {
                 def si = new SampleInfo(
