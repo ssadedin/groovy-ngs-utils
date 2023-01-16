@@ -29,10 +29,7 @@ repositories {
         name "biojava"
         url "https://www.biojava.org/download/maven/" 
     }
-    maven {
-      name "ImageJ" 
-      url "https://maven.imagej.net/content/repositories/public/"
-    }
+    maven { url 'https://jitpack.io' }
 }
 
 configurations {
