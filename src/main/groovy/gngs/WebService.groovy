@@ -201,6 +201,7 @@ class WebService {
         child.dump = this.dump
         child.oauth1AccessToken = this.oauth1AccessToken
         child.apiCredentials = this.apiCredentials
+        child.bearerToken = this.bearerToken
         child.autoSlash = this.autoSlash
         child.credentialsPath = this.credentialsPath
         child.jsonConverter = this.jsonConverter
