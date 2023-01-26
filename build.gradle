@@ -61,7 +61,14 @@ dependencies {
      compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
      compile group: 'commons-cli', name: 'commons-cli', version: '1.4'
 
-    compile group:'org.slf4j', name:'slf4j-jdk14', version: '1.7.5'
+     if(GROOVY_VERSION.startsWith("3.")) {
+	 compile 'javax.xml.bind:jaxb-api:2.3.0'
+	 compile 'com.sun.xml.bind:jaxb-core:2.3.0.1'
+	 compile 'com.sun.xml.bind:jaxb-impl:2.3.0.1'
+	 compile 'javax.activation:activation:1.1.1'
+     }
+
+     compile group:'org.slf4j', name:'slf4j-jdk14', version: '1.7.5'
      
      // compile group: 'com.github.samtools', name: 'htsjdk', version: '1.141'
      // compile 'org.utgenome.thirdparty:picard:1.102.0'
