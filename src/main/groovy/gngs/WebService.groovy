@@ -149,7 +149,7 @@ class WebService {
     
     int maxBodyDumpSize = 4096
     
-    String credentialsPath = null
+    String credentialsPath = '.netrc'
     
     WebServiceCredentials webserviceCredentials
     
@@ -233,11 +233,10 @@ class WebService {
        
        URL url = encodeURL(params, method, payload)
        
+       if(credentialsPath && !webserviceCredentials)
+           loadCredentials()
+
        try {
-           
-           if(credentialsPath && !webserviceCredentials)
-               loadCredentials()
-           
            if(oauth1AccessToken)
                return this.executeOAuthRequest(params, url, method, payload)
            else {
@@ -309,40 +308,77 @@ class WebService {
             .build(new TwoLeggedOAuthAPI()) 
     }
 
+    /**
+     * Example .netrc :
+     *
+     * machine https://example.com:8443 login fred password bluebonnet
+     */
+    public Map<String,String> parseNetrc(File netrcFile) {
+        Map result = [:]
+        def entries = netrcFile.text.trim().tokenize('\n')*.tokenize()
+        for(def i = 0; i < entries.size(); i++) {
+            if(entries[i].size() != 6)
+                continue
+            if(!this.endPoint.startsWith(entries[i][1]))
+                continue
+            if((entries[i][0] != 'machine') && (entries[i][2] != 'login') && (entries[i][4] != 'password'))
+                continue
+            result << ['login': entries[i][3]]
+            result << ['password': entries[i][5]]
+        }
+        return result ?: null
+    }
+
     public void loadCredentials() {
         if((this.apiCredentials != null) || (this.basicCredentials != null))
             return 
             
-        File credsFile 
+        File credsFile
         List<File> credsFiles = []
         if(credentialsPath)  {
             credsFiles =[new File(credentialsPath), new File(System.properties['user.home'],credentialsPath) ]
             credsFile = credsFiles.find { it.exists() }
         }
-        if(!credsFile)
+        if(!credsFile) {
+            log.info("Can't find netrc or credentials file")
             return
+	}
 
-        def yaml = new Yaml().load(credsFile.text)
-        
-        if(!(yaml instanceof Map)) 
-            throw new ParseException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
-        
-        log.info "Loaded credentials from credentials file"
-        
-        if(yaml.apiKey) {
-            this.apiCredentials = new OAuth10Credentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
-            this.webserviceCredentials = this.apiCredentials
-        }
-        
-        if(yaml.accessToken) {
-            this.oauth1AccessToken = new OAuth1AccessToken(yaml.accessToken, yaml.accessSecret)
-        }
+	if(credentialsPath.endsWith('netrc')) {
+	    def creds = parseNetrc(credsFile)
 
-        if(yaml.username && yaml.password) {
-            this.basicCredentials = new BasicCredentials(username: yaml.username, password: yaml.password)
-            // Note: prefer OAuth to basic
-            if(!this.webserviceCredentials)
+	    if(!(creds instanceof Map))
+	        throw new ParseException("Bad format of .netrc file", 0)
+
+            log.info "Loaded .netrc credentials"
+
+            if(creds.login && creds.password) {
+                this.basicCredentials = new BasicCredentials(username: creds.login, password: creds.password)
                 this.webserviceCredentials = this.basicCredentials
+            }
+        } else {
+	    def yaml = new Yaml().load(credsFile.text)
+
+            if(!(yaml instanceof Map)) 
+                throw new ParseException("Bad format of credentials file. Please use YAML style syntax to define key value pairs", 0)
+
+            log.info "Loaded credentials from credentials file"
+
+            if(yaml.apiKey) {
+                this.apiCredentials = new OAuth10Credentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
+                this.webserviceCredentials = this.apiCredentials
+            }
+
+            if(yaml.accessToken) {
+                this.oauth1AccessToken = new OAuth1AccessToken(yaml.accessToken, yaml.accessSecret)
+            }
+
+            if(yaml.username && yaml.password) {
+                this.basicCredentials = new BasicCredentials(username: yaml.username, password: yaml.password)
+                // Note: prefer OAuth to basic
+                if(!this.webserviceCredentials)
+                    this.webserviceCredentials = this.basicCredentials
+            }
         }
     }
     
