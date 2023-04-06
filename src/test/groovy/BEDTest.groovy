@@ -283,7 +283,7 @@ class BEDTest {
         
         assert b.endingAt("chrX", 8503981).size() == 1
         
-        Regions u = b.unique()
+        Regions u = b.uniquify()
         assert u.endingAt("chrX", 8503981).size() == 1
     }
 	
