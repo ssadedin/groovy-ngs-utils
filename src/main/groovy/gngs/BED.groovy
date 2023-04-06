@@ -36,6 +36,11 @@ import groovy.transform.CompileStatic;
  * <p>
  * Note that the constructor does <i>not</i> load the contents of the BED
  * file. To actually load the BED file you need to call {@link #load()}.
+ * <p>
+ * The fourth column of the BED file is referred to as the <code>extra</code>
+ * attribute. This is not loaded by default. You can request that it be loaded
+ * by adding the option <code>withExtra</code> to either the constructor or
+ * the {@link #load()} method.
  * 
  * @author simon.sadedin@mcri.edu.au
  */
@@ -98,7 +103,8 @@ class BED extends Regions {
         this.bedFileStream = new FileInputStream(file)
     }
     
-    BED(InputStream inStream, Closure c = null) {
+    BED(Map attributes=[:], InputStream inStream, Closure c = null) {
+        this(attributes)
         this.bedFileStream = inStream
     }
     
@@ -298,6 +304,10 @@ class BED extends Regions {
      */
     @CompileStatic
     BED load(Map options=[:]) {
+        
+        if(options.containsKey('withExtra'))
+            this.withExtra = options.withExtra
+        
         if(!withExtra) {
           eachRange(options) { String chr, int start, int end ->
               add(chr,start,end)

@@ -359,4 +359,25 @@ class BEDTest {
       assert b[2,3][1].from == 300
       assert b[3,4][1].from == 500
     }
+    
+    @Test
+    void testWithExtra() {
+        BED b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120\tA
+          chr1\t140\t210\tB
+          """.stripIndent().trim().bytes
+        )).load(withExtra: true)
+        
+        assert b[0].extra == 'A'
+        
+        b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120\tA
+          chr1\t140\t210\tB
+          """.stripIndent().trim().bytes
+        ), withExtra:true).load()
+        
+        assert b[0].extra == 'A'
+    }
 }
