@@ -34,9 +34,11 @@ trait Density {
     
     final static List DENSITY_ATTRIBUTES = ['data','segments','bw']
     
-    double bw = 2.0d
+    Double bw = null
     
     double cutoff = 0.01
+    
+    boolean cumulative = false
     
     int segments = 100
     
@@ -60,7 +62,7 @@ trait Density {
     
     void init(Map attributes) {
         
-        this.bw = attributes.get('bw',bw).toDouble()
+        this.bw = attributes.get('bw',bw)?.toDouble()
         this.segments = attributes.get('segments',segments).toInteger()
         
         def me = this
@@ -103,7 +105,10 @@ trait Density {
     @CompileStatic
     void initXYValues(double min, double max, double[] values) {
         
-        kd = new smile.stat.distribution.KernelDensity(values, bw)
+        kd = (bw != null ? 
+            new smile.stat.distribution.KernelDensity(values, bw) : 
+            new smile.stat.distribution.KernelDensity(values)) 
+             
         step = (max - min) / segments
         
         // This is a bit arbitrary, but if all the values are the same, we will just show
@@ -134,7 +139,7 @@ trait Density {
     double computeCoreValues(double plotMin, double plotMax, List plotValues) {
         double maxDensity = 0.0d
         for(double value = plotMin; value < plotMax; value += step) {
-            double density = kd.p(value)
+            double density = cumulative ? kd.cdf(value) : kd.p(value)
             plotValues <<  new DensityPoint(y:density, x:value)
             if(density > maxDensity)
                 maxDensity = density
@@ -146,7 +151,7 @@ trait Density {
     void expandTrailing(final double plotMax, final double maxDensity, final List plotValues) {
         double tailing = plotMax + step
         while(true) {
-            double density = kd.p(tailing)
+            double density = cumulative ? kd.cdf(tailing) : kd.p(tailing)
             if(density < cutoff * maxDensity) {
                 break
             }
@@ -159,11 +164,11 @@ trait Density {
     void expandLeading(final double plotMin, final double maxDensity, final List plotValues) {
 
         // Problem: density plots usually spill pass the edge of the sampled data points
-        // therefore we keep steping backwards until the tail is below 5% of the max
+        // therefore we keep stepping backwards until the tail is below 5% of the max
         // which ensures the distribution does not get too clipped at the end
         double leading = plotMin - step
         while(true) {
-            double density = kd.p(leading)
+            double density = cumulative ? kd.cdf(leading) : kd.p(leading)
             if(density < cutoff * maxDensity) {
                 break
             }
