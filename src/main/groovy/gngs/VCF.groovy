@@ -827,82 +827,11 @@ class VCF implements Iterable<Variant> {
         List<String> samples = this.samples + other.samples
         for(Region r in allVariants) {
             
-            Variant v = r.extra
-            
+            Variant v = (Variant)r.extra
             if(result.find(v))
                 continue
                 
-            List fields = (v.line.split("\t") as List)
-            
-            // If the variant is already in this VCF, then just add the sample genotype / dosage
-            Variant myVariant = this.find(v)
-            Variant otherVariant = other.find(v)
-            
-            String [] mySplit = myVariant?.line?.tokenize("\t")
-            String [] otherSplit = otherVariant?.line?.tokenize("\t")
-            List<String> myGtFields 
-            List<String> otherGtFields 
-            
-            
-            List commonGtFields
-            List<String> allGTFields = []
-            if(myVariant && !otherVariant) {
-                myGtFields = mySplit[8].tokenize(':')
-                commonGtFields = myGtFields
-                allGTFields.addAll(myGtFields)
-            }
-            else
-            if(!myVariant && otherVariant) {
-                otherGtFields = otherSplit[8].tokenize(':')
-                commonGtFields = otherGtFields
-                allGTFields.addAll(otherGtFields)
-            }
-            else {
-                // Variant in both - find the common set
-                if(mySplit[8] == otherSplit[8]) { // hopefully this is most of the time!
-                    myGtFields = otherGtFields = commonGtFields = mySplit[8].tokenize(':')
-                    allGTFields.addAll(myGtFields)
-                }
-                else {
-                    myGtFields = mySplit[8].tokenize(':')
-                    otherGtFields = otherSplit[8].tokenize(':')
-                    commonGtFields = myGtFields.intersect(otherGtFields)
-                }
-                allGTFields = (myGtFields + otherGtFields).unique()
-            }
-            
-//            int numGtFields = commonGtFields.size()
-            int numGtFields = allGTFields.size()
-            
-            List newLine = fields[0..7] + [allGTFields.join(":")]
-                
-            if(myVariant) {
-                // The variant is in my VCF - use the genotypes from there
-                def gts = mySplit[SAMPLE_COLUMN_INDEX..-1]
-                newLine.addAll(gts.collect { gt ->
-                    buildGtFieldValue(gt, myGtFields, allGTFields)
-                })
-            }
-            else { 
-                // Add null genotypes from our sample
-                newLine.addAll(this.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(':') })
-            }
-            
-            if(otherVariant) {
-                // The variant is in the other VCF - use the genotypes from there
-                // TODO: if different number of alleles in other sample, this will not work!
-                String [] otherSplit2 = otherVariant.line.split("\t")
-                if(otherSplit2.size()<=SAMPLE_COLUMN_INDEX)
-                    print "WTF?"
-                def gts = otherSplit2[SAMPLE_COLUMN_INDEX..-1]
-                newLine.addAll(gts.collect { gt ->
-                    buildGtFieldValue(gt, otherGtFields, allGTFields)
-                }) 
-            }
-            else {
-                // Add null genotypes from the other samples
-                newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(":") })
-            }
+            List<String> newLine = calculateMergedGenotypes(v, other)
             
             Variant resultVariant 
             try {
@@ -915,6 +844,90 @@ class VCF implements Iterable<Variant> {
             result.add(resultVariant)
         }
         return result
+    }
+
+    /**
+     * Search for this variant in the other VCF and then provide a new
+     * variant line that contains both the original variant and the merged one
+     * 
+     * @param v     variant to search for
+     * @param other the other VCF to search for a matching variant in
+     * @return  full list of fields from the original variant but with additional genotype column representing other sample
+     */
+    @CompileStatic
+    private List calculateMergedGenotypes(Variant v, VCF other) {
+        List fields = (v.line.split("\t") as List)
+
+        // If the variant is already in this VCF, then just add the sample genotype / dosage
+        Variant myVariant = this.find(v)
+        Variant otherVariant = other.find(v)
+
+        String [] mySplit = myVariant?.line?.tokenize("\t")
+        String [] otherSplit = otherVariant?.line?.tokenize("\t")
+
+        List<String> myGtFields
+        List<String> otherGtFields
+        List commonGtFields
+        List<String> allGTFields = []
+        final int formatColumnIndex = (int)Variant.FORMAT_FIELD_INDEX
+        if(myVariant && !otherVariant) {
+            myGtFields = mySplit[formatColumnIndex].tokenize(':')
+            commonGtFields = myGtFields
+            allGTFields.addAll(myGtFields)
+        }
+        else
+        if(!myVariant && otherVariant) {
+            otherGtFields = otherSplit[formatColumnIndex].tokenize(':')
+            commonGtFields = otherGtFields
+            allGTFields.addAll(otherGtFields)
+        }
+        else {
+            // Variant in both - find the common set
+            if(mySplit[formatColumnIndex] == otherSplit[formatColumnIndex]) { // hopefully this is most of the time!
+                // Same format field, just copy information
+                myGtFields = otherGtFields = commonGtFields = mySplit[formatColumnIndex].tokenize(':')
+                allGTFields.addAll(myGtFields)
+            }
+            else {
+                myGtFields = mySplit[formatColumnIndex].tokenize(':')
+                otherGtFields = otherSplit[formatColumnIndex].tokenize(':')
+                commonGtFields = myGtFields.intersect(otherGtFields)
+            }
+            allGTFields = (myGtFields + otherGtFields).unique()
+        }
+
+        int numGtFields = allGTFields.size()
+
+        List newLine = fields[0..7] + [allGTFields.join(":")]
+
+        if(myVariant) {
+            // The variant is in my VCF - use the genotypes from there
+            def gts = mySplit[SAMPLE_COLUMN_INDEX..-1]
+            newLine.addAll(gts.collect { gt ->
+                buildGtFieldValue(gt, myGtFields, allGTFields)
+            })
+        }
+        else {
+            // Add null genotypes from our sample
+            newLine.addAll(this.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(':') })
+        }
+
+        if(otherVariant) {
+            // The variant is in the other VCF - use the genotypes from there
+            // Note: if different number of alleles in other sample, this will not work!
+            // hence here is one place we depend on the VCF being composed of primitives
+            String [] otherSplit2 = otherVariant.line.split("\t")
+            assert otherSplit2.size()>SAMPLE_COLUMN_INDEX
+            def gts = otherSplit2[SAMPLE_COLUMN_INDEX..-1]
+            newLine.addAll(gts.collect { gt ->
+                buildGtFieldValue(gt, otherGtFields, allGTFields)
+            })
+        }
+        else {
+            // Add null genotypes from the other samples
+            newLine.addAll(other.samples.collect { (["0/0"] + ["."] * (numGtFields-1)).join(":") })
+        }
+        return newLine
     }
     
     @CompileStatic
