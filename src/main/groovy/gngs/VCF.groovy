@@ -1276,7 +1276,7 @@ class VCF implements Iterable<Variant> {
             
             // Note that it's "in" there if any of the ALT's match, we don't require all of them
             return variantsAtPos?.any { 
-                it.ref == v.ref && it.alts.any { it == v.alt }
+                it.ref.equalsIgnoreCase(v.ref) && it.alts.any { it.equalsIgnoreCase(v.alt) }
             }
         }
     }
@@ -1306,10 +1306,10 @@ class VCF implements Iterable<Variant> {
         if(!candidates)
             return null
             
-        candidates.grep { Variant vc -> vc.ref == v.ref }.find { 
+        candidates.grep { Variant vc -> vc.ref.equalsIgnoreCase(v.ref) }.find { 
             it.alleles.any { myAllele -> 
                 v.alleles.any { 
-                    otherAllele -> myAllele.alt == otherAllele.alt && myAllele.start == otherAllele.start  
+                    otherAllele -> myAllele.alt.equalsIgnoreCase(otherAllele.alt) && myAllele.start == otherAllele.start  
                 } 
             }
         }
