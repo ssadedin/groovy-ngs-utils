@@ -313,6 +313,9 @@ class Variant implements IRegion {
     
     static final NumberFormat QUAL_FORMATTER = NumberFormat.getInstance()
     
+    final static int FORMAT_FIELD_INDEX = 8
+    final static int FIRST_GENOTYPE_INDEX = 9
+    
     static {
         QUAL_FORMATTER.maximumFractionDigits = 2
         QUAL_FORMATTER.groupingUsed = false
@@ -545,8 +548,8 @@ class Variant implements IRegion {
         // These lines are setting up default values to handle a "sites only" VCF without lots of special
         // downstream handling for the case where there is no genotype / sample
         boolean dirty = false
-        if(fields[8] == null) { 
-            fields[8] = 'GT'
+        if(fields[FORMAT_FIELD_INDEX] == null) { 
+            fields[FORMAT_FIELD_INDEX] = 'GT'
             dirty = true
         }
             
@@ -568,13 +571,13 @@ class Variant implements IRegion {
     
     @CompileStatic
     private void parseGenotypes(List<String> fields) {
-        if(fields.size() > 8) {
+        if(fields.size() > FORMAT_FIELD_INDEX) {
             
           if(genoTypeFields == null)
-              genoTypeFields = fields[8].tokenize(':')
+              genoTypeFields = fields[FORMAT_FIELD_INDEX].tokenize(':')
           
           // Split the genoTypes field into separate values and parse them out
-          if(fields.size()>9) {
+          if(fields.size()>FIRST_GENOTYPE_INDEX) {
               genoTypes = fields[9..-1].collect { String gt -> 
                   parseGenoTypeFields(gt)
               } 
@@ -723,7 +726,7 @@ class Variant implements IRegion {
             rebuildGenotypes(fields)
         }
         
-        fields[8] = genoTypeFields?.join(':')?:''
+        fields[FORMAT_FIELD_INDEX] = genoTypeFields?.join(':')?:''
         
         line = fields.collect { it?:'' }.join('\t')
         
@@ -804,7 +807,7 @@ class Variant implements IRegion {
     void fixGenoTypeOrder() {
         def fields = line.split('[\t ]{1,}')
         
-        def gtFields = fields[8]
+        def gtFields = fields[FORMAT_FIELD_INDEX]
         def gtInfo = fields[9]
         if(!gtFields.startsWith('GT:')) {
             def gtInfos = [gtFields.split(':'),gtInfo.split(':')].transpose().collectEntries { it }
