@@ -147,11 +147,29 @@ trait Density {
         return maxDensity
     }
     
+    final int maxZeroGradientSteps = 10
+    
     @CompileStatic
     void expandTrailing(final double plotMax, final double maxDensity, final List plotValues) {
         double tailing = plotMax + step
+
+        // Need to handle problem when gradient is zero: in that case
+        // we will never converge to a value that satisfies the criteria
+        int zeroGradientSteps = 0
+        double lastDensity = Double.POSITIVE_INFINITY
+
         while(true) {
             double density = cumulative ? kd.cdf(tailing) : kd.p(tailing)
+            if(density-lastDensity == 0.0d) {
+                ++zeroGradientSteps
+                if(zeroGradientSteps > maxZeroGradientSteps)
+                    break
+            }
+            else {
+                zeroGradientSteps = 0
+            }
+            lastDensity = density
+
             if(density < cutoff * maxDensity) {
                 break
             }
@@ -167,8 +185,23 @@ trait Density {
         // therefore we keep stepping backwards until the tail is below 5% of the max
         // which ensures the distribution does not get too clipped at the end
         double leading = plotMin - step
+        
+        // Need to handle problem when gradient is zero: in that case
+        // we will never converge to a value that satisfies the criteria
+        int zeroGradientSteps = 0
+        double lastDensity = Double.POSITIVE_INFINITY
         while(true) {
             double density = cumulative ? kd.cdf(leading) : kd.p(leading)
+            if(density-lastDensity == 0.0d) {
+                ++zeroGradientSteps
+                if(zeroGradientSteps > maxZeroGradientSteps)
+                    break
+            }
+            else {
+                zeroGradientSteps = 0
+            }
+            lastDensity = density
+            
             if(density < cutoff * maxDensity) {
                 break
             }
