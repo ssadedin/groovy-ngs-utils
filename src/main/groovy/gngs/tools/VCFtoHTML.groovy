@@ -496,16 +496,16 @@ class VCFtoHTML {
         VCF merged = vcfs[0]
 
         if(vcfs.size()>1) {
-            vcfs[1..-1].eachWithIndex { vcf, vcfIndex ->
+            vcfs[1..-1].eachWithIndex { vcf, int vcfIndex ->
                 Utils.time("Merge VCF $vcfIndex") {
-                    merged = merged.merge(vcf)
+                    merged = merged.merge((VCF)vcf)
                 }
             }
         }
 
         log.info "Merged samples are " + merged.samples
 
-        if(opts.tsv)
+        if(opts['tsv'])
             tsvWriter.writeNext((baseColumns*.key+ consColumns*.key +exportSamples) as String[])
 
         printHeadContent(w)
@@ -523,7 +523,7 @@ class VCFtoHTML {
                 processVariant(v, vcfRegions, w)
             }
             catch(Exception e) {
-                Exception e2 = new Exception("Failed to process variant " + current, e)
+                Throwable e2 = new Exception("Failed to process variant " + current, e)
                 e2 = StackTraceUtils.sanitize(e2)
                 throw e2
             }
