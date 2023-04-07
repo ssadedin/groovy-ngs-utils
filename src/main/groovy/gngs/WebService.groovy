@@ -325,7 +325,7 @@ class WebService {
         def yaml = new Yaml().load(credsFile.text)
         
         if(!(yaml instanceof Map)) 
-            throw new ParseException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
+            throw new IllegalArgumentException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
         
         log.info "Loaded credentials from credentials file"
         
