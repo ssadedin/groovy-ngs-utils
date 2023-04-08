@@ -5,14 +5,12 @@ A toolkit for working with next genomic sequencing data in Groovy.
 GNGS aims unlock the power of the JVM for working with genomic data through highly accessible
 scripting style use. 
 
-
-
 GNGS works at three levels:
 
  * Directly as tools on the command line
  * For writing simple scripts (bash-style)
  * As a library of classes for building full-scale applications
-
+ 
 Examples of functionality supported are:
 
   * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP
@@ -22,6 +20,10 @@ Examples of functionality supported are:
   * A range of statistical operations including R-like data frames and linear modeling constructs
   * Many many more useful operations
  
+For more information see:
+
+- the [reference documentation](http://ssadedin.github.io/groovy-ngs-utils/doc/overview-summary.html)
+
 ## Build
 
 Clone the repository:
