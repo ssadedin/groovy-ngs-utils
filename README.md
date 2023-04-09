@@ -1,17 +1,19 @@
 # Groovy NGS ![Tests](https://github.com/ssadedin/groovy-ngs-utils/actions/workflows/ci-build.yml/badge.svg)
 
-A toolkit for working with next genomic sequencing data in Groovy.
+A toolkit for working with genomic sequencing data in Groovy.
 
-GNGS aims unlock the power of the JVM for working with genomic data through highly accessible
-scripting style use. 
+The JVM is an incredible platform for data analysis, offering high performance, extraordinary library and platform
+support and rock solid industry support when it comes time to scale up and productionise your work.
+Groovy NGS aims to unlock the power of the JVM by enabling it to be used with the versatile and
+highly productive Groovy programming language.
 
-GNGS works at three levels:
+Groovy NGS can be used at three levels:
 
- * Directly as tools on the command line
+ * Directly as pre-written tools on the command line
  * For writing simple scripts (bash-style)
  * As a library of classes for building full-scale applications
  
-Examples of functionality supported are:
+Examples of supported functionality are:
 
   * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP
   * Working with Genomic Ranges - full set of operation as well as higher level reading, processing and filtering 
