@@ -4,14 +4,19 @@ A toolkit for working with genomic sequencing data in Groovy.
 
 The JVM is an incredible platform for data analysis, offering high performance, extraordinary library and platform
 support and rock solid industry support when it comes time to scale up and productionise your work.
-Groovy NGS aims to unlock the power of the JVM by enabling it to be used with the versatile and
-highly productive Groovy programming language.
+Groovy NGS aims to unlock the power of the JVM for working with genomic sequencing data by enabling it 
+to be used with the versatile and highly productive Groovy programming language.
 
 Groovy NGS can be used at three levels:
 
  * Directly as pre-written tools on the command line
- * For writing simple scripts (bash-style)
+ * For writing simple scripts (bash-style) or interactive analysis in 
+   [Jupyter Notebooks](https://github.com/ssadedin/beakerx)
  * As a library of classes for building full-scale applications
+ 
+Under the hood, Groovy NGS is built on the widely used [HTSJDK](https://github.com/samtools/htsjdk). However
+Groovy NGS makes it much easier to work with these libraries by adding idiomatic Groovy 
+language constructs and filling in important commonly used missing features.
  
 Examples of supported functionality are:
 
