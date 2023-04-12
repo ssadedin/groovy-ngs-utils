@@ -380,4 +380,42 @@ class BEDTest {
         
         assert b[0].extra == 'A'
     }
+    
+    @Test
+    void testFull() {
+        BED b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120\tA
+          chr1\t140\t210\tB
+          """.stripIndent().trim().bytes
+        )).load(full: true)
+        
+        assert b[0] instanceof Region
+        
+        assert b[0].hashCode() == b[0].hashCode() // iterator is not dynamically creating regions
+
+        assert b[0].id == 'A'
+        assert b[1].id == 'B'
+        
+        b = new BED(new ByteArrayInputStream(
+          """
+          chr1\t100\t120\tA
+          chr1\t140\t210\tB
+          """.stripIndent().trim().bytes
+        ), full:true).load()
+        
+        assert b[0].id == 'A'
+        assert b[1].id == 'B'
+    }
+    
+    @Test
+    void testLoadFromFile() {
+        
+        def bed = new BED('src/test/data/test.bed').load(full:true)
+        assert bed[0].from == 100
+        assert bed[0].to == 150
+        assert bed[0].id == 'r1'
+    }
+
+    
 }
