@@ -27,7 +27,7 @@ import groovy.transform.CompileStatic;
 /**
  * Support for parsing, filtering, and manipuulating BED files.
  * <p>
- * This class provides and implementation for {@link Regions} that is backed
+ * This class extends the {@link Regions} class with an implementation backed
  * by a file in BED format.
  * <p>
  * Some methods hit the file directly, while others rely on reading it 
@@ -57,16 +57,17 @@ class BED extends Regions {
      * Use 'extra' field to allow additional data to be attached to ranges in the bed file
      */
     boolean withExtra = false
+
+    /**
+     * Load a full Region object for each range, assigning the `id` property with the fourth
+     * column value from the BED file
+     */
+    boolean full = false
     
     /**
      * The stream from which bed line will be read
      */
     InputStream bedFileStream = null
-    
-    /**
-     * File from which bed is read
-     */
-    File bedFile
     
     /**
      * Columns for reading the position data - these can be overridden to allow
@@ -89,23 +90,15 @@ class BED extends Regions {
      * Empty bed file
      */
     BED(Map attributes=[:]) {
-        if(attributes && attributes.withExtra != null)
+        if(attributes?.withExtra != null)
             this.withExtra = attributes.withExtra
+        if(attributes?.full != null)
+            this.full = attributes.full
     }
-    
-    BED(Map attributes=[:], String fileName) {
-        this(attributes, new File(fileName))
-    }
-    
-    BED(Map attributes=[:], File file, Closure c = null) {
+   
+    BED(Map attributes=[:], Object fileLike, Closure c = null) {
         this(attributes)
-        this.bedFile = file
-        this.bedFileStream = new FileInputStream(file)
-    }
-    
-    BED(Map attributes=[:], InputStream inStream, Closure c = null) {
-        this(attributes)
-        this.bedFileStream = inStream
+        this.bedFileStream = Utils.createStream(fileLike)
     }
     
     /**
@@ -137,27 +130,9 @@ class BED extends Regions {
         int count = 0
         def includeInfo = c.getMaximumNumberOfParameters()>3;
         
-        try {
-            if(bedFileStream == null || bedFileStream.available()<0) {
-                if(bedFile != null) {
-                  if(bedFile.name.endsWith(".gz")) {
-                      bedFileStream = new GZIPInputStream(new FileInputStream(bedFile))
-                  }
-                  else
-                      bedFileStream = new FileInputStream(bedFile)
-                }
-                else
-                try { bedFileStream.reset() } catch(Exception e) {}
-            }
+        if(bedFileStream.available()<0) {
+            bedFileStream.reset()
         }
-        catch(IOException ex) {
-            try { bedFileStream.reset() } catch(Exception e) {}
-            if(bedFile != null) 
-                  bedFileStream = new FileInputStream(bedFile)
-         }
-        
-        if(bedFileStream == null)
-            return
         
         HashSet processed = new HashSet()
         boolean unique = options.unique?true:false
@@ -296,9 +271,12 @@ class BED extends Regions {
     /**
      * Load the data for this BED file into memory.
      * <p>
-     * If withExtra is false, only the range data will be loaded. This is very compact and fast.
+     * If <code>withExtra</code> is false, only the range data will be loaded. This is very compact and fast.
      * Otherwise, the optional 4th column will be loaded as well and stored in memory too,
      * as the 'extra' attribute on the GRange objects.
+     * <p>
+     * if <code>full</code> is true, the ranges will be loaded as full Region objects and the `id` attribute will
+     * be set with the contents of the fourth column.
      * <p>
      * Note: this method returns the same BED object as a result to enable chaining
      */
@@ -308,6 +286,16 @@ class BED extends Regions {
         if(options.containsKey('withExtra'))
             this.withExtra = options.withExtra
         
+        if(options.containsKey('full'))
+            this.full = options.full
+
+        if(full) {
+          eachRange(options) { String chr, int start, int end, String extra ->
+              Region r = new Region(chr, start, end, id:extra)
+              addRegion(r)
+          }
+        }
+        else
         if(!withExtra) {
           eachRange(options) { String chr, int start, int end ->
               add(chr,start,end)
