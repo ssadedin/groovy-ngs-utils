@@ -11,7 +11,7 @@ The core class for interacting with alignment files is the [SAM](https://ssadedi
 class. This class *only* works with indexed BAM, CRAM or SAM files. It provides a wealth of functions that allow
 highly efficient, streamlined access to reads within these formats.
 
-To creater a `SAM` object, just use the constructor:
+To create a `SAM` object, just use the constructor:
 
 ```groovy
 bam = new SAM("test.bam")

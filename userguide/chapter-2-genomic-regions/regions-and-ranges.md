@@ -38,8 +38,10 @@ index that enables efficient lookup. Unlike the commonly used approach of applyi
 an [Interval Tree](https://en.wikipedia.org/wiki/Interval_tree), Groovy-NGS uses
 a boundary index. That is, when a new range is inserted, the two end points are inserted
 into a tree map ordered on position, specific to the chromosome / contig. At places where
-the range overlaps existing ranges already in the index, breakpoint entries are already
-inserted. This functionality is supported by the [RangeIndex](https://ssadedin.github.io/groovy-ngs-utils/doc/gngs/RangeIndex.html) class.
+the range overlaps existing ranges already in the index, breakpoint entries are 
+inserted. In this way, every boundary is represented in the index, enabling O(1) lookup
+of which entries overlap a given position. This functionality is supported by the 
+[RangeIndex](https://ssadedin.github.io/groovy-ngs-utils/doc/gngs/RangeIndex.html) class.
 
 Note: the breakpoint index design allows for extremely rapid local lookup, but
 creates

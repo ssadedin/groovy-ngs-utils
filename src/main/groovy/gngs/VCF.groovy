@@ -381,7 +381,9 @@ class VCF implements Iterable<Variant> {
     }
     
     /**
-     * Convenience method to accept string for parsing file
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
      */
     @CompileStatic
     static VCF parse(Map options=[:], String fileName, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
@@ -400,21 +402,41 @@ class VCF implements Iterable<Variant> {
         }
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(Map options=[:], String fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parse(options, fileName,null,c)
     }
 
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(Map options=[:], File fileName, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c) {
         parse(options, fileName.path, null,c)
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(File f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse([:], f, peds, c)
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(Map options,File f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         (VCF)Utils.reader(f.absolutePath) { r ->
@@ -422,21 +444,41 @@ class VCF implements Iterable<Variant> {
         }
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(@ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse("-",null,c)
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(List<Pedigree> peds, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse(System.in,peds,c)
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(InputStream f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parse([:],f,peds,c)
     }
     
+    /**
+     * Parse a given VCF, loading variants into memory
+     * 
+     * @param c     Closure which, if provided is used to determine which variants are retained (only those returning true)
+     */
     @CompileStatic
     static VCF parse(Map options, InputStream f, List<Pedigree> peds = null, @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
         parseImpl(options,f,false, peds,c)

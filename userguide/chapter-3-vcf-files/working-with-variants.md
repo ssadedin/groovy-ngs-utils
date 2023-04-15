@@ -1,7 +1,7 @@
 # General Notes
 
 Variants are one of the core focuses of many genomic analysis, so Groovy NGS goes to significant effort to
-streamline and optimise access to variant information. This is one of the exceptions, where 
+streamline and optimise access to variant information. This is one of the exceptions where, 
 even though HTSJDK does provide a [VariantContext](https://samtools.github.io/htsjdk/javadoc/htsjdk/htsjdk/variant/variantcontext/VariantContext.html) class,
 Groovy NGS provides a different, substitute class as a complementary option. This is because  HTSJDK focuses on completely 
 representing all features from the VCF specification and also ensuring high levels of safety and robustness in how it is used.
@@ -97,7 +97,7 @@ use of the `in` keyword. Hence we can query if a VCF contains a particular varia
 vcf = VCF.parse('test.vcf')
 variant = vcf[0]
 if(variant in vcf)
-    println "Variant $v is in the VCF!"
+    println "Variant $variant is in the VCF!"
 ```
 
 Note: in testing whether a variant is "in" a VCF, the position and allele are compared. However, the dosage (zygosity)
