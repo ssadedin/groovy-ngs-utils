@@ -29,7 +29,7 @@ Examples of supported functionality are:
  
 For more information see:
 
-- the [user guide](https://ssadedin.github.io/groovy-ngs-utils/userguide/chapter-3-vcf-files/working-with-variants) for general overview and examples
+- the [user guide](https://ssadedin.github.io/groovy-ngs-utils/userguide/) for general overview and examples
 - the [reference documentation](http://ssadedin.github.io/groovy-ngs-utils/doc/overview-summary.html) for full details
 
 ## Build
