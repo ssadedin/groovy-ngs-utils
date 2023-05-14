@@ -74,7 +74,7 @@ class MergePartitionedVCFs extends ToolBase {
     
     public static void main(String [] args) {
         cli('MergePartitionedVCFs -i <vcf1> -i <vcf2> ... -o <vcf>', args) {
-            e 'Allow empty files as input: treat as empyt VCF'
+            e 'Allow empty files as input: treat as empty VCF'
             i 'Input VCF', args: Cli.UNLIMITED, required: true
             o 'Output VCF', args: 1, required:false
         }
