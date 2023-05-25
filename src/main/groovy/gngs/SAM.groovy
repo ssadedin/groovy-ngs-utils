@@ -27,6 +27,8 @@ import groovy.transform.CompileStatic;
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.FirstParam
 import groovy.transform.stc.SimpleType
+import htsjdk.samtools.BAMIndex
+import htsjdk.samtools.BAMIndexMetaData
 import htsjdk.samtools.BAMIndexer
 import htsjdk.samtools.BAMRecord;
 import htsjdk.samtools.QueryInterval
@@ -191,7 +193,7 @@ class SAM {
     }
     
     @CompileStatic
-    def withReader(Closure c) {
+    def withReader(@ClosureParams(value=SimpleType, options=['htsjdk.samtools.SamReader']) Closure c) {
         SamReader r = newReader()
         try {
             c(r)
@@ -1397,6 +1399,24 @@ class SAM {
         regions.collect { Region region ->
             new QueryInterval(dict.getSequenceIndex(region.chr), region.from, region.to)
         }
+    }
+    
+    @CompileStatic
+    long getRecordCount(String chromosome) {
+        SAMSequenceRecord sequenceRecord = this.samFileReader.fileHeader.sequenceDictionary.sequences.find { SAMSequenceRecord ssr ->
+            ssr.contig == chromosome
+        }
+        
+        if(sequenceRecord == null)
+            return 0
+            
+        return getRecordCount(sequenceRecord.sequenceIndex)
+    }
+            
+    long getRecordCount(int sequenceIndex) {
+        BAMIndex index = this.samFileReader.index
+        BAMIndexMetaData meta = index.getMetaData(sequenceIndex)
+        return meta.alignedRecordCount + meta.unalignedRecordCount + meta.noCoordinateRecordCount
     }
     
     /**
