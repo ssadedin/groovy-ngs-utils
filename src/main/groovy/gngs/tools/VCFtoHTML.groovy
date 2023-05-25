@@ -580,6 +580,7 @@ class VCFtoHTML {
                     ${descElement}
                     <span id=filterOuter><span id=filterButtons></span>&nbsp;<span id=filters> </span></span>
                     <div id=filterHelp style='display:none'> </div>
+                    <div id=activeGeneLists></div>
                 </div>
                 <div class="ui-layout-center">
                     <div id=tableHolder>
@@ -1084,6 +1085,15 @@ class VCFtoHTML {
 //        log.info "Sample map: " + Utils.table(sampleMap*.key, [sampleMap*.value])
         w.println """<!DOCTYPE html>\n<html>
                 <head>
+                <style type='text/css'>
+                .genelist_hd { font-size: 8px; margin-left: 5px; border-radius: 3px; color: white; padding: 2px 4px; background-color: gray; display: inline-block; white-space: nowrap; margin-bottom: -3px;}
+                .genelist { font-size: 7px; margin-left: 5px; border-radius: 3px; color: white; padding: 2px 4px; background-color: gray; text-overflow: ellipsis; max-width: 7em; display: inline-block; overflow: hidden; white-space: nowrap; margin-bottom: -3px;}
+                .genelist0 { background-color: #75aa75; }
+                .genelist1 { background-color: orange; }
+                .genelist2 { background-color: red; }
+                .genelist3 { background-color: blue; }
+                 #activeGeneLists {   float: right; position: relative; top: -2em; }
+                </style>
                 <script type='text/javascript'>
             """
         

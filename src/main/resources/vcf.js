@@ -64,6 +64,81 @@
 })( jQuery, window, document );
 
 
+/**************************** PanelApp API Wrapper ******************************/
+
+class PanelAppApi {
+  constructor(api_url = "https://panelapp.agha.umccr.org/api/v1/") {
+    this.api_url = new URL(api_url);
+    this.panel_infos = [];
+  }
+
+  concatted_url(suffix) {
+    return new URL(suffix, this.api_url.href).href;
+  }
+
+  async get_all_page_items(uri) {
+    let data = [];
+    // Need to keep iterating the pages until we get a 404
+    let currPage = 1;
+    while (true) {
+      try {
+        let response = await $.get(uri);
+        data.push(...response.results);
+        if(!response.next)
+           break
+        uri = response.next
+
+      } catch (err) {
+        // Exit once we hit the page that can't give us data
+        console.log(err)
+        break;
+      }
+      currPage += 1;
+    }
+    return data;
+  }
+
+  async get_panel_infos() {
+    if (this.panel_infos.length > 0) {
+      return this.panel_infos;
+    }
+    let uri = this.concatted_url("panels/");
+    this.panel_infos = await this.get_all_page_items(uri);
+    return this.panel_infos;
+  }
+  
+  get_inheritance(moi) {
+    if(moi.includes('MONOALLELIC')) {
+        return 'AD'
+    }
+    else
+    if(moi.includes('BIALLELIC')) {
+        return 'AR'
+    }
+    else
+    if(moi.includes('X-LINKED')) {
+        return 'XL'
+    }
+  }
+
+  async get_panel_genes(panel_pk) {
+    let uri = this.concatted_url(`panels/${panel_pk}/genes/`);
+    let genes = await this.get_all_page_items(uri);
+    let gene_names = [];
+    for (let gene_obj of genes) {
+      // Extract just the essential info we need
+      gene_names.push(
+        {
+            gene_symbol : gene_obj.gene_data.gene_symbol,
+            confidence_level : gene_obj.confidence_level,
+            inheritance: this.get_inheritance(gene_obj.mode_of_inheritance)
+        });
+    }
+    return [gene_names, uri];
+  }
+}
+
+
 /**************************** Begin VCF.js ******************************/
 
 function partial(fn) {
@@ -74,6 +149,51 @@ function partial(fn) {
         args = args.concat(new_args);
         return fn.apply(window, args);
     };
+}
+
+
+var geneListGenes = {}
+var geneLists = {}
+
+async function addGeneList(geneListName) {
+    $('#panelAppDialog').dialog('close') 
+
+    console.log("Adding genes for gene list name ", geneListName)
+    let gl = api.panel_infos.find(gl => gl.name == geneListName)
+    
+    geneLists[gl.id] = gl
+    let genes_info = await api.get_panel_genes(gl.id)
+    for(gene_info of genes_info[0]) {
+        var geneListObj = geneListGenes[gene_info.gene_symbol] || {}
+        gene_info.gene_list_id = gl.id
+        geneListObj[gl.id] = gene_info
+        geneListGenes[gene_info.gene_symbol] = geneListObj
+    }
+    filterTable('variantTable')
+    renderFilters()
+}
+
+async function selectPanel() {
+    window.api = new PanelAppApi()
+    
+    var gene_lists = await api.get_panel_infos()
+    
+    console.log("got back gene lists", gene_lists)
+    
+    $('#panelAppDialog').dialog({
+        buttons:[{
+                    text: "OK",
+                    click: () => {
+                        addGeneList()
+                    }
+                }]
+    })
+    
+    $( "#panelBox" ).autocomplete({
+          source: gene_lists.map(gl => gl.name),
+          change: (event, gl) =>  { addGeneList($('#panelBox')[0].value) },
+          close: (event, gl) =>  { addGeneList($('#panelBox')[0].value) },
+    })
 }
 
 var sampleSubjects  = {};
@@ -94,7 +214,8 @@ var userAnnotations = {
     tags : {} 
 };
 
-(function ($, window, document, undefined ) {
+
+// (function ($, window, document, undefined ) {
 
     var variantTable = null;
     var tableData = []
@@ -237,6 +358,14 @@ var userAnnotations = {
                 
                 document.getElementById('igvframe').src = igvLink
             })
+
+            $button('PanelApp').click(function() {
+                selectPanel()
+            })
+            
+            with($div({id:'panelAppDialog', title: "Select a Panel from PanelApp", style: "display:none"})) {
+                $input({id:'panelBox', style:'width:20em'})
+            }
             
             
             $span('&nbsp;&nbsp;')
@@ -249,7 +378,8 @@ var userAnnotations = {
                 })
             })
         }
-    
+        
+   
         $('#addFilter').click(function() {
             filters.push({ expr: '', id: filters.length});
             renderFilters(tableId);
@@ -284,6 +414,7 @@ var userAnnotations = {
                 filterTable(tableId);
             });
         });
+        
         
         initSettings(tableId);
         
@@ -509,6 +640,14 @@ var userAnnotations = {
         
         $('input').bind('keydown keyup', editing_key_press);
         $('input').each(editing_key_press);
+        
+        
+        $('#activeGeneLists').html(
+            Object.values(geneLists).map((gl,i) => { 
+                return `<div class="genelist_hd genelist${i}">${gl.name}</div>`
+            })
+        )
+       
         layout.resizeAll();
         layout.sizePane("north",120);
     }
@@ -898,7 +1037,9 @@ var userAnnotations = {
         }
 
         var gene = tds[GENE_INDEX].innerHTML;
-        $(tds[GENE_INDEX]).html(`<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene=${gene}#diseases" target=genecards onclick="return open_geneinfo('${gene}')">${gene}</a>`)
+        let geneCardsLink = `<a href="http://www.genecards.org/cgi-bin/carddisp.pl?gene=${gene}#diseases" target=genecards_win>${gene}</a>`
+        let geneListTags = geneListGenes[gene] ? Object.values(geneListGenes[gene]).map((gl,i) => `<span class='genelist${i} genelist'>` + geneLists[gl.gene_list_id].name + '</span>').join('') : ''
+        $(tds[GENE_INDEX]).html(geneCardsLink + geneListTags)
         
         let genePriority = genePriorities[gene]
         if(genePriority) {
@@ -958,7 +1099,7 @@ var userAnnotations = {
     
 
     	 
-})( jQuery, window, document );
+// })( jQuery, window, document );
 
 function open_geneinfo(gene) {
     console.log("Opening gene 2 " + gene)
@@ -969,4 +1110,4 @@ function open_geneinfo(gene) {
     
     return false
 }
- 
+
