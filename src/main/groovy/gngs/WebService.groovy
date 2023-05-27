@@ -33,6 +33,7 @@ import com.github.scribejava.core.oauth.OAuth10aService
 import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovy.transform.ToString
 import groovy.util.logging.Log
 import java.text.ParseException
 
@@ -61,6 +62,8 @@ class TwoLeggedOAuthAPI extends DefaultApi10a {
 }
 
 interface WebServiceCredentials {
+
+    void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers)
 }
 
 /**
@@ -71,10 +74,27 @@ interface WebServiceCredentials {
 class OAuth10Credentials  implements WebServiceCredentials {
     String apiKey
     String apiSecret
+
+    @Override
+    public void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        // Has to be done by OAuth code
+    }
+
+    OAuth10aService buildOAuthService() {
+        new ServiceBuilder(this.apiKey)
+            .apiSecret(this.apiSecret)
+            .build(new TwoLeggedOAuthAPI()) 
+    }
 }
 
 class BearerTokenCredentials  implements WebServiceCredentials {
+
     String token
+
+    @Override
+    public void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        connection.setRequestProperty('Authorization','Bearer ' + token)
+    }
 }
 
 class Headers {
@@ -90,9 +110,16 @@ class Headers {
  * 
  * @author Simon Sadedin
  */
+@ToString(excludes=['password'])
 class BasicCredentials implements WebServiceCredentials {
+
     String username
     String password
+
+    @Override
+    public void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        connection.setRequestProperty('Authorization','Basic ' + (username + ':' + password).bytes.encodeBase64())
+    }
 }
 
 class WebServiceException extends Exception {
@@ -104,7 +131,7 @@ class WebServiceException extends Exception {
     }
     
     public WebServiceException(Throwable t) {
-        super('Unknown error occurred executing request', t)
+        super('Error occurred executing request: ' + t.getMessage(), t)
     }
     
     int code
@@ -266,7 +293,7 @@ class WebService {
        }
        catch(Exception e) {
            log.severe "Request to URL $url failed. Payload: \n$payload"
-           throw new WebServiceException(e)
+           throw e
        }
     }
     
@@ -281,7 +308,7 @@ class WebService {
             case "DELETE": verb = Verb.DELETE; break
         }
         
-        OAuth10aService service = buildOAuthService()
+        OAuth10aService service = apiCredentials.buildOAuthService()
 
         log.info "Signing using OAuth10: $url"
         OAuthRequest request = new OAuthRequest(verb, url.toString());
@@ -301,14 +328,6 @@ class WebService {
         return convertResponse(response.getHeader('Content-Type'), responseText)
     }
     
-    OAuth10aService buildOAuthService() {
-        
-        loadCredentials()
-
-        new ServiceBuilder(this.apiCredentials.apiKey)
-            .apiSecret(this.apiCredentials.apiSecret)
-            .build(new TwoLeggedOAuthAPI()) 
-    }
 
     public void loadCredentials() {
         if((this.apiCredentials != null) || (this.basicCredentials != null))
@@ -354,18 +373,22 @@ class WebService {
         loadCredentials()
         HttpURLConnection connection = url.openConnection()
         connection.with {
+            
             doOutput = (data != null)
             useCaches = false
             if(!headers?.containsKey('Accept'))
                 setRequestProperty('Accept','application/json')
+
             if(!headers?.containsKey('Content-Type'))
                 setRequestProperty('Content-Type','application/json')
-            if(basicCredentials) {
-                setRequestProperty('Authorization','Basic ' + (basicCredentials.username + ':' + basicCredentials.password).bytes.encodeBase64())
+
+            for(WebServiceCredentials creds in [webserviceCredentials, bearerToken, basicCredentials]) {
+                if(creds) {
+                    log.info "Configuring authorization using : " + creds
+                    creds.configure(connection, url, method, data, headers)
+                }
             }
-            if(bearerToken) {
-                setRequestProperty('Authorization','Bearer ' + bearerToken.token)
-            }
+
             for(Map.Entry<String,String> header in headers) {
                 setRequestProperty(header.key, header.value)
             }
