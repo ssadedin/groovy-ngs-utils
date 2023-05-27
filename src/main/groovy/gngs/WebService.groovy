@@ -341,6 +341,12 @@ class WebService {
         }
         if(!credsFile)
             return
+            
+        if(credentialsPath.endsWith('netrc')) {
+            BasicCredentials creds = parseNetrc(credsFile)
+            if(creds)
+                this.webserviceCredentials = creds
+        }
 
         def yaml = new Yaml().load(credsFile.text)
         
@@ -484,6 +490,31 @@ class WebService {
         params.collect { key, value ->
             URLEncoder.encode(key) + '=' + URLEncoder.encode(String.valueOf(value))
         }.join('&')
+    }
+    
+    /**
+     * Attempts to parse the given file as a .netrc file
+     * 
+     * Example .netrc :
+     *
+     * machine https://example.com:8443 login fred password bluebonnet
+     */
+    public BasicCredentials parseNetrc(File netrcFile) {
+        Map result = [:]
+        def entries = netrcFile.text.trim().readLines()*.tokenize()
+        for(def i = 0; i < entries.size(); i++) {
+            if(entries[i].size() != 6)
+                continue
+            if(!this.endPoint.startsWith(entries[i][1]))
+                continue
+            if((entries[i][0] != 'machine') && (entries[i][2] != 'login') && (entries[i][4] != 'password'))
+                continue
+
+            result.login = entries[i][3]
+            result.password = entries[i][5]
+        }
+
+        return result ? new BasicCredentials(username: result.login, password: result.password) : null
     }
 }
 
