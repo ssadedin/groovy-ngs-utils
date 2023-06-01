@@ -768,7 +768,7 @@ class Variant implements IRegion {
      * @return
      */
     @CompileStatic
-    List<Genotype> getSampleGenotypes(){
+    private List<Genotype> getSampleGenotypes(){
         if(sampleGenotypes != null)
             return sampleGenotypes
 
@@ -801,9 +801,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHet() {
-        if(this.getSampleGenotypes()[0] == Genotype.Het)
-                return true
-        return false
+        return isHet(0)
         }
 
     /**
@@ -813,12 +811,11 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHet(int sampleIndex) {
-        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Het)
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Het)
             return true
         return false
     }
-
-            
+     
 
     /**
      * tests the genotype of the variant in the specified sample
@@ -831,9 +828,7 @@ class Variant implements IRegion {
             throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
         int sampleIndex = header.samples.indexOf(sampleName)
 
-        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Het)
-            return true
-        return false
+        return isHet(sampleIndex)
     }
     
     /**
@@ -843,7 +838,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHom() {
-        if(this.getSampleGenotypes()[0] == Genotype.Hom)
+        if(getSampleGenotypes()[0] == Genotype.Hom)
             return true
         return false
     }
@@ -855,7 +850,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHom(int sampleIndex) {
-        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Hom)
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Hom)
                 return true
         return false
     }
@@ -871,10 +866,47 @@ class Variant implements IRegion {
             throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
         int sampleIndex = header.samples.indexOf(sampleName)
         
-        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Hom)
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Hom)
             return true
         return false
     }
+
+    /**
+     * tests the genotype of the variant in the first sample
+     * 
+     * @return true if variant call showed two identical alleles
+     */
+    @CompileStatic
+    boolean isHemi() {
+        return isHemi(0)
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     * 
+     * @return true if variant call showed two identical alleles
+     */
+    @CompileStatic
+    boolean isHemi(int sampleIndex) {
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Hemi)
+                return true
+        return false
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHemi(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+
+        return isHemi(sampleIndex)
+    }
+
 
 
     /**
@@ -884,7 +916,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHemiOrHom() {
-        return this.isHet() || this.isHom()
+        return isHemiOrHom(0)
     }
 
     /**
@@ -894,7 +926,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHemiOrHom(int sampleIndex) {
-        return this.isHet(sampleIndex) || this.isHom(sampleIndex)
+        return isHemi(sampleIndex) || isHom(sampleIndex)
     } 
 
     /**
@@ -908,7 +940,7 @@ class Variant implements IRegion {
             throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
         int sampleIndex = header.samples.indexOf(sampleName)
 
-        return this.isHet(sampleIndex) || this.isHom(sampleIndex)
+        return isHemiOrHom(sampleIndex)
     } 
 
     /**
