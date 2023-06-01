@@ -73,6 +73,24 @@ chr1\t38098177\trs5773597\tCA\tC\t1179.73\t.\tAC=2;AF=1.00;AN=2;DB;DP=27;FS=0.00
         }
     }
     
+
+    @Test
+    void testFindWithDifferentCase() {
+        VCF vcf = new VCF()
+        Variant v1 = new Variant(chr:"chr1", pos:10, ref:"C",  alt:"A", alts:["A","G"])
+        vcf.add(v1) 
+        assert v1 in vcf
+
+        Variant v2 = new Variant(chr:"chr1", pos:10, ref:"c",  alt:"A", alts:["A","G"])
+        assert v2 in vcf
+        assert vcf.find(v2) != null
+        
+        Variant v3 = new Variant(chr:"chr1", pos:10, ref:"C",  alt:"a", alts:["a","G"])
+        assert v3 in vcf
+        assert vcf.find(v3) != null
+        
+    }
+    
     @Test
     void testSelectSample() {
         VCF vcf = VCF.parse(samples: ["NA12878"], new ByteArrayInputStream(testVCF.bytes) )

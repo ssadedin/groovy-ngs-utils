@@ -40,6 +40,16 @@ import gngs.IRegion
  * @author simon
  */
 class Drawing extends graxxia.Drawing {
+    
+    public Drawing(String fileName, int width, int height, double minX, double minY, double maxX, double maxY) {
+        super(fileName, width, height, minX, minY, maxX, maxY);
+    }
+    public Drawing(String fileName, int width, int height, List minX, double minY, List maxX, double maxY) {
+        super(fileName, width, height, minX, minY, maxX, maxY);
+    }
+    public Drawing(String fileName, int width, int height) {
+        super(fileName, width, height);
+    }
     Drawing bar(IRegion region, def y, String overText=null, String underText=null) {
         bar(region.range,y,overText,underText)
     }

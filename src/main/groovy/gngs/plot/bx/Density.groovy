@@ -1,5 +1,7 @@
 package gngs.plot.bx
 
+import org.apache.commons.math3.stat.StatUtils
+
 import com.twosigma.beakerx.chart.Color
 import com.twosigma.beakerx.chart.xychart.plotitem.XYGraphics
 import groovy.transform.CompileStatic
@@ -32,9 +34,11 @@ trait Density {
     
     final static List DENSITY_ATTRIBUTES = ['data','segments','bw']
     
-    double bw = 2.0d
+    Double bw = null
     
     double cutoff = 0.01
+    
+    boolean cumulative = false
     
     int segments = 100
     
@@ -58,7 +62,7 @@ trait Density {
     
     void init(Map attributes) {
         
-        this.bw = attributes.get('bw',bw).toDouble()
+        this.bw = attributes.get('bw',bw)?.toDouble()
         this.segments = attributes.get('segments',segments).toInteger()
         
         def me = this
@@ -80,9 +84,20 @@ trait Density {
         if(!('data' in attributes)) 
             throw new IllegalArgumentException('Please provide a data attribute with values to display')
             
-        double [] values = attributes.data as double[]
-        double min = ((List)attributes.data).min()
-        double max = ((List)attributes.data).max()
+        Iterable valuesIterable
+        double [] values 
+        double min
+        double max
+        if(attributes.data instanceof double[]) {
+            values = attributes.data
+            max = StatUtils.max(values)
+            min = StatUtils.min(values)
+        }
+        else {
+            values = attributes.data as double[]
+            min = ((Iterable)attributes.data).min()
+            max = ((Iterable)attributes.data).max()
+        }
         
         initXYValues(min, max, values)
     }    
@@ -90,7 +105,10 @@ trait Density {
     @CompileStatic
     void initXYValues(double min, double max, double[] values) {
         
-        kd = new smile.stat.distribution.KernelDensity(values, bw)
+        kd = (bw != null ? 
+            new smile.stat.distribution.KernelDensity(values, bw) : 
+            new smile.stat.distribution.KernelDensity(values)) 
+             
         step = (max - min) / segments
         
         // This is a bit arbitrary, but if all the values are the same, we will just show
@@ -121,7 +139,7 @@ trait Density {
     double computeCoreValues(double plotMin, double plotMax, List plotValues) {
         double maxDensity = 0.0d
         for(double value = plotMin; value < plotMax; value += step) {
-            double density = kd.p(value)
+            double density = cumulative ? kd.cdf(value) : kd.p(value)
             plotValues <<  new DensityPoint(y:density, x:value)
             if(density > maxDensity)
                 maxDensity = density
@@ -129,11 +147,29 @@ trait Density {
         return maxDensity
     }
     
+    final int maxZeroGradientSteps = 10
+    
     @CompileStatic
     void expandTrailing(final double plotMax, final double maxDensity, final List plotValues) {
         double tailing = plotMax + step
+
+        // Need to handle problem when gradient is zero: in that case
+        // we will never converge to a value that satisfies the criteria
+        int zeroGradientSteps = 0
+        double lastDensity = Double.POSITIVE_INFINITY
+
         while(true) {
-            double density = kd.p(tailing)
+            double density = cumulative ? kd.cdf(tailing) : kd.p(tailing)
+            if(density-lastDensity == 0.0d) {
+                ++zeroGradientSteps
+                if(zeroGradientSteps > maxZeroGradientSteps)
+                    break
+            }
+            else {
+                zeroGradientSteps = 0
+            }
+            lastDensity = density
+
             if(density < cutoff * maxDensity) {
                 break
             }
@@ -146,11 +182,26 @@ trait Density {
     void expandLeading(final double plotMin, final double maxDensity, final List plotValues) {
 
         // Problem: density plots usually spill pass the edge of the sampled data points
-        // therefore we keep steping backwards until the tail is below 5% of the max
+        // therefore we keep stepping backwards until the tail is below 5% of the max
         // which ensures the distribution does not get too clipped at the end
         double leading = plotMin - step
+        
+        // Need to handle problem when gradient is zero: in that case
+        // we will never converge to a value that satisfies the criteria
+        int zeroGradientSteps = 0
+        double lastDensity = Double.POSITIVE_INFINITY
         while(true) {
-            double density = kd.p(leading)
+            double density = cumulative ? kd.cdf(leading) : kd.p(leading)
+            if(density-lastDensity == 0.0d) {
+                ++zeroGradientSteps
+                if(zeroGradientSteps > maxZeroGradientSteps)
+                    break
+            }
+            else {
+                zeroGradientSteps = 0
+            }
+            lastDensity = density
+            
             if(density < cutoff * maxDensity) {
                 break
             }

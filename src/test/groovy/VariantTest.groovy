@@ -463,4 +463,19 @@ class VariantTest {
         assert v.size() > 0
         
     }
+    
+    @Test
+    void testUpdateGenotype() {
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   53   .   MQ=49.90    GT:AF:AD:DP:GQ:PL  1/1:.:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        
+        assert v.genoTypes[0].AF == "."
+        
+        v.update {
+            v.genoTypes[0].AF = "0.3" 
+        }
+
+        assert v.genoTypes[0].AF == "0.3"
+        println v.line
+        
+    }
 }

@@ -1,23 +1,22 @@
-<h1>Groovy NGS Utils</h1>
+<h1>Groovy NGS</h1>
 
-<p>A set of Groovy and scripting support for working with Next Generation Sequencing data.<p>
+<p>Welcome to Groovy NGS!</p>
 
-<p>
-   Groovy NGS Utils is designed to support easy creation of small to medium size 
-   scripts that work with modern high throughput sequencing data, while still 
-   maintaining high levels of performance.
-</p>
-<p>There are classes supporting a wide range of functionality including:
-<ul>
-    <li>Parsing VCF files and working with the variants inside them, including annotations
-    <li>Parsing SAM and BAM files and working with reads
-    <li>Parsing BED files and other formats representable as genomic intervals,
-        and performing operations on these intervals
-    <li>Working with FASTA, FASTQ and related formats
-    <li>Many other miscellaneous functions!
+<p dir="auto">GNGS is toolkit for working with next genomic sequencing data in Groovy.</p>
+<p dir="auto">GNGS aims unlock the power of the JVM for working with genomic data through highly accessible
+scripting style use.</p>
+<p dir="auto">GNGS works at three levels:</p>
+<ul dir="auto">
+    <li>Directly as tools on the command line</li>
+    <li>For writing simple scripts (bash-style)</li>
+    <li>As a library of classes for building full-scale applications</li>
 </ul>
-
-<p>Apart from providing all these individual classes, an important aspect is that
-   all of these classes and interfaces interoperate. For example, a <code>Variant</code>
-   implements the <code>IRegion</code> interface, and thus can be used with most of the
-   APIs related to genomic intervals, etc</p>
+<p dir="auto">Examples of functionality supported are:</p>
+<ul dir="auto">
+    <li>Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP</li>
+    <li>Working with Genomic Ranges - full set of operation as well as higher level reading, processing and filtering</li>
+    <li>Reading, processing and performing logical operations with pedigree (PED) files and family structures</li>
+    <li>Working with BAM/SAM/CRAM files (including, generating and working with Pileups)</li>
+    <li>A range of statistical operations including R-like data frames and linear modeling constructs</li>
+    <li>Many many more useful operations</li>
+</ul>

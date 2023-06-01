@@ -123,6 +123,8 @@ class PairScanner {
      */
     int shuffleBufferSize = 5000
     
+    boolean addPosition = false
+    
     /**
      * The tag from which to extract base quality scores (use actual base qualities if null)
      */
@@ -165,6 +167,9 @@ class PairScanner {
         
         this.formatterGroup = new DefaultPGroup(numFormatters+1)
         this.formatters*.parallelGroup = this.formatterGroup
+        
+        if(this.addPosition)
+            this.formatters*.addPosition = true
         
         this.shufflers = this.formatters.collect { new Shuffler(it, shuffleBufferSize) }
         this.shufflerPGroup = new DefaultPGroup(this.shufflers.size()+1)

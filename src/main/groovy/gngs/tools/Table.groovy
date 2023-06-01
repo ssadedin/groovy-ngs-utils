@@ -95,9 +95,12 @@ class Table {
         }
        
         if(opts.filters) {
+            List<Closure> parsedFilters = opts.filters.collect { 
+                new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
+            }
             data = data.grep { row ->
-                opts.filters.every { f ->
-                    Eval.x(row, f)
+               parsedFilters.every { f ->
+                    f(row)
                 }
             }
         }

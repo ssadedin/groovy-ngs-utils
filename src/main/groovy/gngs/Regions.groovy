@@ -222,6 +222,14 @@ class Regions implements Iterable<Region> {
         this.intersect(other)
     }
     
+    /**
+     * Returns a set of regions representing each region in this Regions
+     * intersected (ie: containing only shared portions of) with the <code>other</code>
+     * region provided.
+     * 
+     * @param other the region to intersect with
+     * @return a new {@link Regions} object containing new Region objects representing intersections
+     */
     @CompileStatic
     Regions intersectRegion(Region other) {
         Regions result = new Regions()
@@ -231,13 +239,11 @@ class Regions implements Iterable<Region> {
         return result
     }
     
+    /**
+     * @see {@link #intersect(Regions other)}
+     */
     @CompileStatic
     Regions intersect(BED other) {
-        this.intersectImpl(other)
-    }
-    
-    @CompileStatic
-    Regions intersect(Regions other) { 
         this.intersectImpl(other)
     }
     
@@ -252,6 +258,11 @@ class Regions implements Iterable<Region> {
      * For a "flat" intersection of the two Regions, you should use {@link #reduce()} to
      * flatten the source and target first before calling this method.
      */
+    @CompileStatic
+    Regions intersect(Regions other) { 
+        this.intersectImpl(other)
+    }
+    
     @CompileStatic
     Regions intersectImpl(Regions other) {
         Regions result = new Regions()
@@ -278,7 +289,7 @@ class Regions implements Iterable<Region> {
      * {@link gngs.Region#getOverlapRegions()}.
      * 
      * @see         gngs.Region#getOverlapRegions()
-     * @param       the region to locate overlaps for0
+     * @param  r    the region to locate overlaps for
      */
     @CompileStatic
     List<IntRange> getOverlaps(IRegion r) {
@@ -965,6 +976,36 @@ class Regions implements Iterable<Region> {
             return (++i) % keepOneEvery == 0 
         } as Regions
     }
+    
+     /**
+     * The same as {@link #thin(int,int)} but returns the indices of the
+     * regions to keep.
+     */
+    @CompileStatic
+    List<Integer> thinnedIndices(int desiredRanges, int minRangesPerChromosme) {
+        int currentTotalRanges = this.numberOfRanges
+        
+        double proportionRetained = ((double)desiredRanges) / currentTotalRanges
+        if(proportionRetained == 0) 
+            throw new IllegalArgumentException("Proportion of regions retained is too small: $proportionRetained ($desiredRanges / $currentTotalRanges")
+            
+        int keepOneEvery = (int)(1 / proportionRetained)
+        int i=0
+       
+        List<Integer> indices = new ArrayList(desiredRanges)
+
+        this.each { Region r -> 
+            
+            if(this.index[r.chr].numRanges*proportionRetained < minRangesPerChromosme) {
+                return true
+            }
+            
+            if((++i) % keepOneEvery == 0)
+                indices << i
+        }
+        return indices
+    }
+ 
     
     /**
      * Returns the total span from the beginning of the first region to the end of 

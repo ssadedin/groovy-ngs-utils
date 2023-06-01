@@ -1,0 +1,14 @@
+chapter-one
+    introduction
+    how-to-use-groovy-NGS
+chapter-2-genomic-regions
+    regions-and-ranges
+    common-operations
+    loading-and-saving
+chapter-3-vcf-files
+     parsing-vcf-files
+     working-with-variants
+chapter-4-alignment-files
+     opening-and-reading-alignment-files
+chapter-5-miscellaneous-utilities    
+     miscellaneous-utilities

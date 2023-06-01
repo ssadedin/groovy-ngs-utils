@@ -152,7 +152,7 @@ class Utils {
      * billions (g) etc.
      */        
     static String human(Number number) {
-        humanBp(number,['','k','m','g','p'])
+        humanBp(number,['','k','m','g','t','p'])
     }
     
     

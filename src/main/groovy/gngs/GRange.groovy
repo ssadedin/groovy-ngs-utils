@@ -34,6 +34,10 @@ interface IRegion {
 	IntRange getRange()
 }
 
+/**
+ * Region comparator that orders regions first lexically on the contig/chr name
+ * then numerically on the positional columns.
+ */
 @CompileStatic
 class RegionComparator implements Comparator<IRegion> {
 
@@ -50,6 +54,11 @@ class RegionComparator implements Comparator<IRegion> {
     
 }
 
+/**
+ * Region comparator that orders regions first numerically on the contig/chr name
+ * (stripping any non-numeric prefix from `chr` and using special handling for 
+ * common chromosomes such as <code>chrX</code>, then numerically on the positional columns).
+ */
 @CompileStatic
 class NumericRegionComparator implements Comparator<IRegion> {
 
@@ -112,6 +121,11 @@ class Region extends Expando implements IRegion, Serializable {
         setProps(props)
     }
     
+    /**
+     * Create region on the given chromosome spanning from the given
+     * <code>from</code> position to the given <code>to</code> position
+     * inclusive.
+     */
     Region(Map props=null, String chr, int from, int to) {
         this.chr = chr
         this.range = new GRange(from, to, this)

@@ -1,30 +1,43 @@
-# Groovy NGS Utils ![Tests](https://github.com/ssadedin/groovy-ngs-utils/actions/workflows/ci-build.yml/badge.svg)
+# Groovy NGS ![Tests](https://github.com/ssadedin/groovy-ngs-utils/actions/workflows/ci-build.yml/badge.svg)
 
-A library for working with next generation (MPS) sequencing data in Groovy.
+A toolkit for working with genomic sequencing data in Groovy.
 
-The kind of operations supported are:
+The JVM is an incredible platform for data analysis, offering high performance, extraordinary library and platform
+support and rock solid industry support when it comes time to scale up and productionise your work.
+Groovy NGS aims to unlock the power of the JVM for working with genomic sequencing data by enabling it 
+to be used with the versatile and highly productive Groovy programming language.
 
-  * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP, Annovar and SnpEFF
-  * Reading, processing and filtering BED files or any source of genomic ranges
-  * Reading, processing and performing logical operations with pedigree (PED) files and family structures
-  * Working with BAM/SAM/CRAM files (particularly, generating and working with Pileups)
-  * Predicting Restriction Enzyme cut sites
-  * A range of statistical operations including R-like data frames and linear modeling constructs
+Groovy NGS can be used at three levels:
 
-The code in this library is usable in three different ways:
-
- * Directly as tools on the command line
- * For writing simple scripts (bash-style)
+ * Directly as pre-written tools on the command line
+ * For writing simple scripts (bash-style) or interactive analysis in 
+   [Jupyter Notebooks](https://github.com/ssadedin/beakerx)
  * As a library of classes for building full-scale applications
+ 
+Under the hood, Groovy NGS is built on the widely used [HTSJDK](https://github.com/samtools/htsjdk). However
+Groovy NGS makes it much easier to work with these libraries by adding idiomatic Groovy 
+language constructs and filling in important commonly used missing features.
+ 
+Examples of supported functionality are:
 
+  * Reading, processing and filtering VCF files, including integration with common annotation sources such as VEP
+  * Working with Genomic Ranges - full set of operation as well as higher level reading, processing and filtering 
+  * Reading, processing and performing logical operations with pedigree (PED) files and family structures
+  * Working with BAM/SAM/CRAM files (including, generating and working with Pileups)
+  * A range of statistical operations including R-like data frames and linear modeling constructs
+  * Many many more useful operations
+ 
+For more information see:
+
+- the [user guide](https://ssadedin.github.io/groovy-ngs-utils/userguide/) for general overview and examples
+- the [reference documentation](http://ssadedin.github.io/groovy-ngs-utils/doc/overview-summary.html) for full details
 
 ## Build
 
 Clone the repository:
 
 ```
-    git clone git@github.com:ssadedin/groovy-ngs-utils.git
-    git submodule update --init
+    git clone --recursive git@github.com:ssadedin/groovy-ngs-utils.git
 ```
 
 Run gradle:
@@ -42,14 +55,16 @@ Note: if behind a proxy, you can specify it like so:
 
 ## Install
 
-GNGS doesn't actually need any installation. However, since it is using groovy,
-you need Groovy 2.4.x installed. Although other 2.4 versions should
-work, I suggest using 2.4.10 since that version is what GNGS is tested
-with currently. You can install it easily without any administrative
+GNGS doesn't need any installation itself. However, since it is using groovy,
+you need Groovy installed. The groovy version is controlled in the 
+`gradle.properties`. You should check the current version in there and ensure it
+matches the version of groovy available in your environment.
+
+If you don't have the right groovy version, you can install it easily
 using [SDK man](http://sdkman.io/). With SDKMan, it is just:
 
 ```
-sdk install groovy 2.4.10
+sdk install groovy 3.0.10
 ```
 
 Once groovy is available and the build instructions have worked, the `gngs` and `gngstool` scripts

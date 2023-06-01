@@ -30,8 +30,10 @@ import com.github.scribejava.core.model.Response
 import com.github.scribejava.core.model.Verb
 import com.github.scribejava.core.oauth.OAuth10aService
 
+import groovy.json.JsonGenerator
 import groovy.json.JsonOutput
 import groovy.json.JsonSlurper
+import groovy.transform.ToString
 import groovy.util.logging.Log
 import java.text.ParseException
 
@@ -60,6 +62,8 @@ class TwoLeggedOAuthAPI extends DefaultApi10a {
 }
 
 interface WebServiceCredentials {
+
+    void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers)
 }
 
 /**
@@ -70,10 +74,27 @@ interface WebServiceCredentials {
 class OAuth10Credentials  implements WebServiceCredentials {
     String apiKey
     String apiSecret
+
+    @Override
+    public void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        // Has to be done by OAuth code
+    }
+
+    OAuth10aService buildOAuthService() {
+        new ServiceBuilder(this.apiKey)
+            .apiSecret(this.apiSecret)
+            .build(new TwoLeggedOAuthAPI()) 
+    }
 }
 
 class BearerTokenCredentials  implements WebServiceCredentials {
+
     String token
+
+    @Override
+    public void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        connection.setRequestProperty('Authorization','Bearer ' + token)
+    }
 }
 
 class Headers {
@@ -89,9 +110,16 @@ class Headers {
  * 
  * @author Simon Sadedin
  */
+@ToString(excludes=['password'])
 class BasicCredentials implements WebServiceCredentials {
+
     String username
     String password
+
+    @Override
+    public void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        connection.setRequestProperty('Authorization','Basic ' + (username + ':' + password).bytes.encodeBase64())
+    }
 }
 
 class WebServiceException extends Exception {
@@ -103,7 +131,7 @@ class WebServiceException extends Exception {
     }
     
     public WebServiceException(Throwable t) {
-        super('Unknown error occurred executing request', t)
+        super('Error occurred executing request: ' + t.getMessage(), t)
     }
     
     int code
@@ -152,6 +180,8 @@ class WebService {
     
     WebServiceCredentials webserviceCredentials
     
+    JsonGenerator jsonConverter = new JsonGenerator.Options().build()
+    
     /**
      * Create a web service to access the given api at the given end point
      *
@@ -198,8 +228,11 @@ class WebService {
         child.dump = this.dump
         child.oauth1AccessToken = this.oauth1AccessToken
         child.apiCredentials = this.apiCredentials
+        child.basicCredentials = this.basicCredentials
+        child.bearerToken = this.bearerToken
         child.autoSlash = this.autoSlash
         child.credentialsPath = this.credentialsPath
+        child.jsonConverter = this.jsonConverter
         return child
     }
     
@@ -223,7 +256,7 @@ class WebService {
            payload = urlEncode(data)
        }
        else {
-           payload = data != null ? JsonOutput.prettyPrint(JsonOutput.toJson(data)) : null
+           payload = data != null ? JsonOutput.prettyPrint(jsonConverter.toJson(data)) : null
        }
        
        URL url = encodeURL(params, method, payload)
@@ -236,7 +269,7 @@ class WebService {
            if(oauth1AccessToken)
                return this.executeOAuthRequest(params, url, method, payload)
            else {
-               log.info "Not OAuth 1.0 request"
+               log.fine "Not OAuth 1.0 request"
                HttpURLConnection connection = configureConnection(url, method, data, headers)
                return executeRequest(connection, payload)
            }
@@ -260,7 +293,7 @@ class WebService {
        }
        catch(Exception e) {
            log.severe "Request to URL $url failed. Payload: \n$payload"
-           throw new WebServiceException(e)
+           throw e
        }
     }
     
@@ -275,7 +308,7 @@ class WebService {
             case "DELETE": verb = Verb.DELETE; break
         }
         
-        OAuth10aService service = buildOAuthService()
+        OAuth10aService service = apiCredentials.buildOAuthService()
 
         log.info "Signing using OAuth10: $url"
         OAuthRequest request = new OAuthRequest(verb, url.toString());
@@ -295,14 +328,6 @@ class WebService {
         return convertResponse(response.getHeader('Content-Type'), responseText)
     }
     
-    OAuth10aService buildOAuthService() {
-        
-        loadCredentials()
-
-        new ServiceBuilder(this.apiCredentials.apiKey)
-            .apiSecret(this.apiCredentials.apiSecret)
-            .build(new TwoLeggedOAuthAPI()) 
-    }
 
     public void loadCredentials() {
         if((this.apiCredentials != null) || (this.basicCredentials != null))
@@ -316,11 +341,17 @@ class WebService {
         }
         if(!credsFile)
             return
+            
+        if(credentialsPath.endsWith('netrc')) {
+            BasicCredentials creds = parseNetrc(credsFile)
+            if(creds)
+                this.webserviceCredentials = creds
+        }
 
         def yaml = new Yaml().load(credsFile.text)
         
         if(!(yaml instanceof Map)) 
-            throw new ParseException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
+            throw new IllegalArgumentException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
         
         log.info "Loaded credentials from credentials file"
         
@@ -348,18 +379,22 @@ class WebService {
         loadCredentials()
         HttpURLConnection connection = url.openConnection()
         connection.with {
+            
             doOutput = (data != null)
             useCaches = false
             if(!headers?.containsKey('Accept'))
                 setRequestProperty('Accept','application/json')
+
             if(!headers?.containsKey('Content-Type'))
                 setRequestProperty('Content-Type','application/json')
-            if(basicCredentials) {
-                setRequestProperty('Authorization','Basic ' + (basicCredentials.username + ':' + basicCredentials.password).bytes.encodeBase64())
+
+            for(WebServiceCredentials creds in [webserviceCredentials, bearerToken, basicCredentials]) {
+                if(creds) {
+                    log.info "Configuring authorization using : " + creds
+                    creds.configure(connection, url, method, data, headers)
+                }
             }
-            if(bearerToken) {
-                setRequestProperty('Authorization','Bearer ' + bearerToken.token)
-            }
+
             for(Map.Entry<String,String> header in headers) {
                 setRequestProperty(header.key, header.value)
             }
@@ -455,6 +490,31 @@ class WebService {
         params.collect { key, value ->
             URLEncoder.encode(key) + '=' + URLEncoder.encode(String.valueOf(value))
         }.join('&')
+    }
+    
+    /**
+     * Attempts to parse the given file as a .netrc file
+     * 
+     * Example .netrc :
+     *
+     * machine https://example.com:8443 login fred password bluebonnet
+     */
+    public BasicCredentials parseNetrc(File netrcFile) {
+        Map result = [:]
+        def entries = netrcFile.text.trim().readLines()*.tokenize()
+        for(def i = 0; i < entries.size(); i++) {
+            if(entries[i].size() != 6)
+                continue
+            if(!this.endPoint.startsWith(entries[i][1]))
+                continue
+            if((entries[i][0] != 'machine') && (entries[i][2] != 'login') && (entries[i][4] != 'password'))
+                continue
+
+            result.login = entries[i][3]
+            result.password = entries[i][5]
+        }
+
+        return result ? new BasicCredentials(username: result.login, password: result.password) : null
     }
 }
 
