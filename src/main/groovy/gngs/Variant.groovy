@@ -243,6 +243,18 @@ class VEPConsequences {
        ]
 }
 
+/**
+ * Represents the diploid states of a variant.
+ * Variants can only be in the `HEMI` state on the sex chromosomes.
+ * 
+ */
+enum Genotype {
+  Het,
+  Hemi,
+  Hom,
+  Missing,
+}
+
 
 /**
  * Represents the genetic state at a specific locus in a genome
@@ -478,6 +490,13 @@ class Variant implements IRegion {
      */
     List<Integer> dosages
     
+    /**
+     * cached set of genotypes for the first sample.
+     *
+     */
+
+    List<Genotype> variantGenotypes
+
     Set<Pedigree> pedigrees
     
     List<Map<String,Object>> genoTypes
@@ -744,32 +763,110 @@ class Variant implements IRegion {
     }
     
     /**
-     * Note: this returns true if any sample in the VCF is het,
-     * for multisample VCFs check the dosage of the specific sample 
-     * directly.
+     * Return list of genotypes (state of variant) for 
+     * each sample
+     * @return
+     */
+    @CompileStatic
+    List<Genotype> getVariantGenotypes{
+        if(variantGenotypes != null)
+            return variantGenotypes
+
+        List<String> gts = (List<String>)genoTypes*.GT
+        List<Genotype> result = (List<Integer>)gts.collect{
+            if(it.isInteger()){
+                return Genotype.Hemi
+            }else{
+                split = PIPE_OR_SLASH_SPLIT.split(it)
+                if(split[0] == split[1]){
+                    if(split[0]=="."){
+                        return Genotype.Missing
+                    }
+                    return Genotype.Hom
+                }else{
+                    return Genotype.Het
+                }
+            }
+        }
+        
+        variantGenotypes = result
+            
+        return result
+    }
+
+    /**
+     * checks if the variant is heterozygous for the first sample
      * 
-     * @return true if at least 1 allele is present with 1 copy
+     * @return true if the variant call showed two distinct alleles
      */
     @CompileStatic
     boolean isHet() {
-        for(int d : this.getDosages()) {
-            if(d == 1)
+        if(this.getVariantGenotypes()[0] == Genotype.Het)
                 return true
+        return false
         }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHet(sampleIndex) {
+        if(this.getVariantGenotypes()[sampleIndex] == Genotype.Het)
+            return true
         return false
     }
     
     /**
-     * @return true if at least 1 allele is present with 2 copies
+     * tests the genotype of the variant in the first sample
+     * 
+     * @return true if variant call showed two identical alleles
      */
     @CompileStatic
     boolean isHom() {
-        for(int d : this.getDosages()) {
-            if(d == 2)
-                return true
-        }
+        if(this.getVariantGenotypes()[0] == Genotype.Hom)
+            return true
         return false
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     * 
+     * @return true if variant call showed two identical alleles
+     */
+    @CompileStatic
+    boolean isHom(sampleIndex) {
+        if(this.getVariantGenotypes()[sampleIndex] == Genotype.Hom)
+                return true
+        return false
+    }
+
+
+    /**
+     * tests the genotype of the variant in the first sample
+     *
+     * @return true if variant call showed two identical alleles or only one allele
+     */
+    @CompileStatic
+    boolean isHemiOrHom() {
+        if(this.getVariantGenotypes()[0] == Genotype.Het)
+            return false
+        return True
+        }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if variant call showed two identical alleles or only one allele
+     */
+    @CompileStatic
+    boolean isHemiOrHom(sampleIndex) {
+        if(this.getVariantGenotypes()[sampleIndex] == Genotype.Het)
+        return false
+        return True
     } 
+
 
     /**
      * Update the per-sample genotype info fields by rebuilding them
