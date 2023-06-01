@@ -495,7 +495,7 @@ class Variant implements IRegion {
      *
      */
 
-    List<Genotype> variantGenotypes
+    List<Genotype> sampleGenotypes
 
     Set<Pedigree> pedigrees
     
@@ -768,16 +768,16 @@ class Variant implements IRegion {
      * @return
      */
     @CompileStatic
-    List<Genotype> getVariantGenotypes{
-        if(variantGenotypes != null)
-            return variantGenotypes
+    List<Genotype> getSampleGenotypes(){
+        if(sampleGenotypes != null)
+            return sampleGenotypes
 
         List<String> gts = (List<String>)genoTypes*.GT
-        List<Genotype> result = (List<Integer>)gts.collect{
+        List<Genotype> result = (List<Genotype>)gts.collect{
             if(it.isInteger()){
                 return Genotype.Hemi
             }else{
-                split = PIPE_OR_SLASH_SPLIT.split(it)
+                String[] split = PIPE_OR_SLASH_SPLIT.split(it)
                 if(split[0] == split[1]){
                     if(split[0]=="."){
                         return Genotype.Missing
@@ -789,7 +789,7 @@ class Variant implements IRegion {
             }
         }
         
-        variantGenotypes = result
+        sampleGenotypes = result
             
         return result
     }
@@ -801,7 +801,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHet() {
-        if(this.getVariantGenotypes()[0] == Genotype.Het)
+        if(this.getSampleGenotypes()[0] == Genotype.Het)
                 return true
         return false
         }
@@ -812,8 +812,26 @@ class Variant implements IRegion {
      * @return true if the variant call showed two distinct alleles
      */
     @CompileStatic
-    boolean isHet(sampleIndex) {
-        if(this.getVariantGenotypes()[sampleIndex] == Genotype.Het)
+    boolean isHet(int sampleIndex) {
+        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Het)
+            return true
+        return false
+    }
+
+            
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHet(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+
+        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Het)
             return true
         return false
     }
@@ -825,7 +843,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHom() {
-        if(this.getVariantGenotypes()[0] == Genotype.Hom)
+        if(this.getSampleGenotypes()[0] == Genotype.Hom)
             return true
         return false
     }
@@ -836,9 +854,25 @@ class Variant implements IRegion {
      * @return true if variant call showed two identical alleles
      */
     @CompileStatic
-    boolean isHom(sampleIndex) {
-        if(this.getVariantGenotypes()[sampleIndex] == Genotype.Hom)
+    boolean isHom(int sampleIndex) {
+        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Hom)
                 return true
+        return false
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHom(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+        
+        if(this.getSampleGenotypes()[sampleIndex] == Genotype.Hom)
+            return true
         return false
     }
 
@@ -850,10 +884,8 @@ class Variant implements IRegion {
      */
     @CompileStatic
     boolean isHemiOrHom() {
-        if(this.getVariantGenotypes()[0] == Genotype.Het)
-            return false
-        return True
-        }
+        return this.isHet() || this.isHom()
+    }
 
     /**
      * tests the genotype of the variant in the specified sample
@@ -861,12 +893,23 @@ class Variant implements IRegion {
      * @return true if variant call showed two identical alleles or only one allele
      */
     @CompileStatic
-    boolean isHemiOrHom(sampleIndex) {
-        if(this.getVariantGenotypes()[sampleIndex] == Genotype.Het)
-        return false
-        return True
+    boolean isHemiOrHom(int sampleIndex) {
+        return this.isHet(sampleIndex) || this.isHom(sampleIndex)
     } 
 
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if variant call showed two identical alleles or only one allele
+     */
+    @CompileStatic
+    boolean isHemiOrHom(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+
+        return this.isHet(sampleIndex) || this.isHom(sampleIndex)
+    } 
 
     /**
      * Update the per-sample genotype info fields by rebuilding them
