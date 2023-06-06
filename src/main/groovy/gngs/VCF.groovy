@@ -1651,15 +1651,15 @@ class VCF implements Iterable<Variant> {
         if(xVariants.size() < minFinalVariantsForSexEstimation)
             throw new IllegalStateException("Too few variants available to use for estimation")
         
-        Map<Integer, Integer> dosages = xVariants.countBy { it.getDosages(0)[sampleIndex] }
+        Map<Boolean, Integer> hemiHom_counts = xVariants.countBy { it.isHemiOrHom(sampleIndex) }
         
         // No heterozygotes
-        if(dosages[1] == null) {
+        if(hemiHom_counts[false] == null) {
             return Sex.MALE
         }
         
         // No homozygotes 
-        if(dosages[2] == null) {
+        if(hemiHom_counts[true] == null) {
             if(xVariants.size()>100) // make sure we sampled enough
                 return Sex.FEMALE
             else
@@ -1667,7 +1667,7 @@ class VCF implements Iterable<Variant> {
         }
          
         // Excess of homozygous?
-        if(dosages[2] > dosages[1] * 2)
+        if(hemiHom_counts[true] > hemiHom_counts[false] * 2)
             return Sex.MALE
         else
             return Sex.FEMALE
