@@ -104,13 +104,22 @@ class Cov extends ToolBase {
         
         this.contigs = scanRegions.index*.key
         
-        this.bam = new SAM(opts.arguments()[0])
+        if(opts.reference){
+            this.bam = new SAM(opts.arguments()[0], opts.reference)
+        }else{
+            if(opts.arguments()[0].endsWith(".cram")){
+                log.severe "CRAM file specified (${opts.arguments()[0]}) but no reference specified"
+                System.exit(1)
+            }else{
+                this.bam = new SAM(opts.arguments()[0])
+            }
+        }
         
         this.contigSizes = bam.contigs
         
         if(opts.gt) 
             this.gapThreshold = Integer.parseInt(opts.gt)
-            
+
         if(opts.gaps) {
             log.info "Will calculate gaps based on coverage depth threshold of $gapThreshold"
         }
@@ -424,8 +433,11 @@ class Cov extends ToolBase {
             
             meta.getAlignedRecordCount()
         }
-        
-        def intervals = new int[recordCount][] as int[][]
+        // if we have a cram, aligned read numbers arent stored so we assign a high enough initial capacity so we almost
+        // are using an array
+        if(recordCount ==0)
+            recordCount = 1000000000
+        ArrayList<int[]>  intervals = new ArrayList<int[]>(recordCount)
 
         Region region = new Region("$contig:0-${contigSizes[contig]}")
         bam.withIterator(region) {
@@ -469,16 +481,16 @@ class Cov extends ToolBase {
                 }
 
                 if(addKmerinfo) {
-                    intervals[i] = [alignmentStart, alignmentEnd, ShearingKmerCounter.computeKmer(r)] as int[]
+                    intervals.add([alignmentStart, alignmentEnd, ShearingKmerCounter.computeKmer(r)] as int[])
                 }
                 else {
-                    intervals[i] = [alignmentStart, alignmentEnd] as int[]
+                    intervals.add([alignmentStart, alignmentEnd] as int[])
                 }
                 ++i
             }
         }
         log.info "Scanned ${Utils.human(i)} reads from $bam.samFile"
-        return new ReadSpans(intervals:intervals, count:i)
+        return new ReadSpans(intervals:intervals.toArray(new int[0][]), count:i)
     }
     
    
@@ -552,6 +564,7 @@ class Cov extends ToolBase {
             om 'Overlap mode whether to count overlapping read fragments - one of none,half (default=none)', longOpt:'overlap-mode', args: 1
             intervalsummary 'File to write interval statistics to', args:1, type: File, required: false
             'L' 'Regions over which to report coverage depth', args:1, required: true, longOpt: 'target'
+            reference 'Reference to use when decoding crams', args:1, required: false, type:File
         }
     }
     
