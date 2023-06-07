@@ -99,6 +99,8 @@ class SAM {
     File samFile
 
     File indexFile
+
+    File referenceFile
     
     /**
      * List of samples in the BAM file. Note: this list can be overridden
@@ -170,6 +172,27 @@ class SAM {
 
     }
 
+    SAM(File file, File reference){
+
+        this(file)
+        
+        this.referenceFile = reference
+        if(!this.referenceFile.exists())
+            throw new FileNotFoundException("Reference file could not be opened at ${samFile.absolutePath}")
+
+        //open this another time, because we now specified the reference
+        this.samFileReader = newReader()
+
+    }
+
+    SAM(String fileName, String reference){
+        this(new File(fileName), new File(reference))
+    }
+
+    SAM(String fileName, File reference){
+        this(new File(fileName), reference)
+    }
+
     @CompileStatic
     SamReader newReader(Map options = [:]) {
         
@@ -185,6 +208,10 @@ class SAM {
         if(!useMemoryMapping)
             samReaderFactory.enable(SamReaderFactory.Option.DONT_MEMORY_MAP_INDEX)
             
+        if(referenceFile != null){
+            samReaderFactory.referenceSequence(referenceFile)
+        }
+
         if(samStream == null) {
             return samReaderFactory.open(samFile)
         }
