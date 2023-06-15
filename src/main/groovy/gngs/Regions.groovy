@@ -1067,12 +1067,14 @@ class Regions implements Iterable<Region> {
         return [firstHalf, secondHalf]
     }
     
-    String toHTML() {
+    String toHTML(Map options=[:]) {
         StringWriter sw = new StringWriter()
         
         if(this.numberOfRanges == 0) {
             return '<table><tr><th>No data</th></tr></table>'
         }
+        
+        int padding = options.padding ?: 0
         
         List<String> props = this[0].properties*.key
         
@@ -1087,7 +1089,7 @@ class Regions implements Iterable<Region> {
                 this.each { r ->
                     tr {
                         td {
-                            a(href:r.igv(), target: '_igv', r.toString())
+                            a(href:r.widen(padding).igv(), target: '_igv', r.toString())
                         }
                         
                         props.each { k ->
