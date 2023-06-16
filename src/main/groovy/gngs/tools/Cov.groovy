@@ -435,8 +435,12 @@ class Cov extends ToolBase {
         }
         // if we have a cram, aligned read numbers arent stored so we assign a high enough initial capacity so we almost
         // are using an array
-        if(recordCount ==0)
-            recordCount = 1000000000
+        if(recordCount ==0) {
+            // we estimate 200M reads as a reasonable higher of a "normal" number of reads we might
+            // observe in practice on a whole genome
+            recordCount = 200000000
+        }
+
         ArrayList<int[]>  intervals = new ArrayList<int[]>(recordCount)
 
         Region region = new Region("$contig:0-${contigSizes[contig]}")
