@@ -5,6 +5,8 @@ import static org.junit.Assert.*
 import org.junit.Test
 
 class PubmedTest {
+    
+    private static final boolean testActualLoad = false
 
     @Test
     public void testLoadPubmed() {
@@ -38,6 +40,10 @@ class PubmedTest {
     
     @Test
     public void testLoadArticle() {
+
+        // Disable this test by default because we don't want actual Pubmed getting spammed by testing
+        if(!testActualLoad)
+            return
 
         PubMed pubmed = new PubMed('src/test/data/pubmed_gene_info.test.tsv','src/test/data/gene2pubmed.test.tsv')
         pubmed.load()
