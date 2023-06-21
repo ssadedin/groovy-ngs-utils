@@ -514,10 +514,14 @@ class WebService {
     public BasicCredentials parseNetrc(File netrcFile) {
         Map result = [:]
         def entries = netrcFile.text.trim().readLines()*.tokenize()
+        
+        String endPointMachine = new URL(this.endPoint).host
+        
         for(def i = 0; i < entries.size(); i++) {
             if(entries[i].size() != 6)
                 continue
-            if(!this.endPoint.startsWith(entries[i][1]))
+            String configMachine = entries[i][1]
+            if(!this.endPoint.startsWith(configMachine) && !endPointMachine.startsWith(configMachine))
                 continue
             if((entries[i][0] != 'machine') && (entries[i][2] != 'login') && (entries[i][4] != 'password'))
                 continue
