@@ -67,6 +67,8 @@ import groovy.xml.slurpersupport.GPathResult
  */
 @Log
 class PubMed {
+
+    private static final long serialVersionUID = 1L;
     
     int queryBatchSize = 50
     
