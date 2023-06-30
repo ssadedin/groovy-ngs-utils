@@ -24,9 +24,15 @@ import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
 import groovy.xml.slurpersupport.GPathResult
 
+/**
+ * Data structure representing key fields found in PubMed articles and books
+ * 
+ * @author simon.sadedin
+ */
 @Canonical
 @CompileStatic
 class PubMedArticle {
+    Long id
     String publication
     String title
     String authors
@@ -36,12 +42,52 @@ class PubMedArticle {
     String doi
     String pmidInfo
     
+    /**
+     * Convert a Groovy XML result from PubMed to a PubMedArticle object
+     * 
+     * Parses both articles or books, representing them using the same
+     * structure.
+     * 
+     * @param xml   abstract XML from the PubMed efetch API
+     * @return  list of PubMedArticle objects representing articles and books found in the 
+     *          given XML
+     */
     @CompileDynamic
-    static PubMedArticle fromXML(GPathResult xml) {
-        def article = xml.PubmedArticle.MedlineCitation.Article
-        return new PubMedArticle(
-            title: article.ArticleTitle.text(),
-            text: article.Abstract.AbstractText.text(),
-        )
+    static List<PubMedArticle> fromXML(GPathResult xml) {
+        
+        def topLevelArticles
+        if(xml.MedlineCitation.size()>0) {
+            topLevelArticles = [xml]
+        }
+        else
+        if(xml.BookDocument.size()>0) {
+            return xml.BookDocument.collect { bookXML ->
+                new PubMedArticle(
+                    id: bookXML.PMID.text().toLong(),
+                    text : bookXML.Abstract.AbstractText.text()
+                )
+            }
+        }
+        else {
+            topLevelArticles = xml.children()
+        }
+
+        return topLevelArticles.collect { topLevelArticle ->
+            if(topLevelArticle.MedlineCitation.size()>0) {
+                def article = topLevelArticle.MedlineCitation.Article
+                return new PubMedArticle(
+                    id : topLevelArticle.MedlineCitation.PMID.text().toLong(),
+                    title: article.ArticleTitle.text(),
+                    text: article.Abstract.AbstractText.text(),
+                )
+            }
+            else {
+                def bookXML = topLevelArticle.BookDocument
+                return new PubMedArticle(
+                    id: bookXML.PMID.text().toLong(),
+                    text : bookXML.Abstract.AbstractText.text()
+                )
+            }
+        }
     }
 }
