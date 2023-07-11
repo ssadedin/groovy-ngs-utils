@@ -243,6 +243,18 @@ class VEPConsequences {
        ]
 }
 
+/**
+ * Represents the diploid states of a variant.
+ * Variants can only be in the `HEMI` state on the sex chromosomes.
+ * 
+ */
+enum Genotype {
+  Het,
+  Hemi,
+  Hom,
+  Missing,
+}
+
 
 /**
  * Represents the genetic state at a specific locus in a genome
@@ -478,6 +490,13 @@ class Variant implements IRegion {
      */
     List<Integer> dosages
     
+    /**
+     * cached set of genotypes for the first sample.
+     *
+     */
+
+    List<Genotype> sampleGenotypes
+
     Set<Pedigree> pedigrees
     
     List<Map<String,Object>> genoTypes
@@ -744,31 +763,184 @@ class Variant implements IRegion {
     }
     
     /**
-     * Note: this returns true if any sample in the VCF is het,
-     * for multisample VCFs check the dosage of the specific sample 
-     * directly.
+     * Return list of genotypes (state of variant) for 
+     * each sample
+     * @return
+     */
+    @CompileStatic
+    private List<Genotype> getSampleGenotypes(){
+        if(sampleGenotypes != null)
+            return sampleGenotypes
+
+        List<String> gts = (List<String>)genoTypes*.GT
+        List<Genotype> result = (List<Genotype>)gts.collect{
+            if(it.isInteger()){
+                return Genotype.Hemi
+            }else{
+                String[] split = PIPE_OR_SLASH_SPLIT.split(it)
+                if(split[0] == split[1]){
+                    if(split[0]=="."){
+                        return Genotype.Missing
+                    }
+                    return Genotype.Hom
+                }else{
+                    return Genotype.Het
+                }
+            }
+        }
+        
+        sampleGenotypes = result
+            
+        return result
+    }
+
+    /**
+     * checks if the variant is heterozygous for the first sample
      * 
-     * @return true if at least 1 allele is present with 1 copy
+     * @return true if the variant call showed two distinct alleles
      */
     @CompileStatic
     boolean isHet() {
-        for(int d : this.getDosages()) {
-            if(d == 1)
-                return true
+        return isHet(0)
         }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHet(int sampleIndex) {
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Het)
+            return true
         return false
+    }
+     
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHet(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+
+        return isHet(sampleIndex)
     }
     
     /**
-     * @return true if at least 1 allele is present with 2 copies
+     * tests the genotype of the variant in the first sample
+     * 
+     * @return true if variant call showed two identical alleles
      */
     @CompileStatic
     boolean isHom() {
-        for(int d : this.getDosages()) {
-            if(d == 2)
-                return true
-        }
+        if(getSampleGenotypes()[0] == Genotype.Hom)
+            return true
         return false
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     * 
+     * @return true if variant call showed two identical alleles
+     */
+    @CompileStatic
+    boolean isHom(int sampleIndex) {
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Hom)
+                return true
+        return false
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHom(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+        
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Hom)
+            return true
+        return false
+    }
+
+    /**
+     * tests the genotype of the variant in the first sample
+     * 
+     * @return true if variant call showed two identical alleles
+     */
+    @CompileStatic
+    boolean isHemi() {
+        return isHemi(0)
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     * 
+     * @return true if variant call showed two identical alleles
+     */
+    @CompileStatic
+    boolean isHemi(int sampleIndex) {
+        if(getSampleGenotypes()[sampleIndex] == Genotype.Hemi)
+                return true
+        return false
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if the variant call showed two distinct alleles
+     */
+    @CompileStatic
+    boolean isHemi(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+
+        return isHemi(sampleIndex)
+    }
+
+
+
+    /**
+     * tests the genotype of the variant in the first sample
+     *
+     * @return true if variant call showed two identical alleles or only one allele
+     */
+    @CompileStatic
+    boolean isHemiOrHom() {
+        return isHemiOrHom(0)
+    }
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if variant call showed two identical alleles or only one allele
+     */
+    @CompileStatic
+    boolean isHemiOrHom(int sampleIndex) {
+        return isHemi(sampleIndex) || isHom(sampleIndex)
+    } 
+
+    /**
+     * tests the genotype of the variant in the specified sample
+     *
+     * @return true if variant call showed two identical alleles or only one allele
+     */
+    @CompileStatic
+    boolean isHemiOrHom(String sampleName) {
+        if(this.header == null)
+            throw new IllegalStateException("Variant must have a header to query genotypes by sample name")
+        int sampleIndex = header.samples.indexOf(sampleName)
+
+        return isHemiOrHom(sampleIndex)
     } 
 
     /**

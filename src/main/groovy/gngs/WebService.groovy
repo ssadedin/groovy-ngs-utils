@@ -339,19 +339,29 @@ class WebService {
             credsFiles =[new File(credentialsPath), new File(System.properties['user.home'],credentialsPath) ]
             credsFile = credsFiles.find { it.exists() }
         }
+
+        if(!credsFile) {
+            File homeNetRC = new File(System.properties['user.home'],'.netrc')
+            if(homeNetRC.exists()) {
+                credsFile = homeNetRC
+            }
+        }
+
         if(!credsFile)
             return
-            
-        if(credentialsPath.endsWith('netrc')) {
+
+        if(credsFile.name.endsWith('netrc')) {
             BasicCredentials creds = parseNetrc(credsFile)
-            if(creds)
+            if(creds) {
                 this.webserviceCredentials = creds
+                return
+            }
         }
 
         def yaml = new Yaml().load(credsFile.text)
         
         if(!(yaml instanceof Map)) 
-            throw new IllegalArgumentException("Bad format of credentials file. Please use YAML style syntax to define key value pairs")
+            throw new IllegalArgumentException("Bad format of credentials file ${credsFile.absolutePath}. Please use YAML style syntax to define key value pairs")
         
         log.info "Loaded credentials from credentials file"
         
@@ -498,14 +508,20 @@ class WebService {
      * Example .netrc :
      *
      * machine https://example.com:8443 login fred password bluebonnet
+     * <p>
+     * NOTE: only single line format of .netrc is supported
      */
     public BasicCredentials parseNetrc(File netrcFile) {
         Map result = [:]
         def entries = netrcFile.text.trim().readLines()*.tokenize()
+        
+        String endPointMachine = new URL(this.endPoint).host
+        
         for(def i = 0; i < entries.size(); i++) {
             if(entries[i].size() != 6)
                 continue
-            if(!this.endPoint.startsWith(entries[i][1]))
+            String configMachine = entries[i][1]
+            if(!this.endPoint.startsWith(configMachine) && !endPointMachine.startsWith(configMachine))
                 continue
             if((entries[i][0] != 'machine') && (entries[i][2] != 'login') && (entries[i][4] != 'password'))
                 continue

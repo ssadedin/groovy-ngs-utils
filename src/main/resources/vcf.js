@@ -755,7 +755,8 @@ var userAnnotations = {
                         console.log(e);
                     }
                     return dosage;
-                },i)
+                },i),
+                configurable: true
             });
         }
 
@@ -763,7 +764,8 @@ var userAnnotations = {
             Object.defineProperty(data,customInfos[i].infoField, { get:  partial(function(customInfoIndex) { 
                     let value = rowSource[customInfoIndex+CUSTOMINFOS_INDEX]
                     return value
-                },i)
+                },i),
+                configurable: true
             });
         }
         

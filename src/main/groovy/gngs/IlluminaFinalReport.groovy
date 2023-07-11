@@ -4,6 +4,9 @@ import groovy.transform.CompileStatic
 
 @CompileStatic
 class IlluminaSNPData implements IRegion {
+    
+    final static char NEG_STRAND = '-' as char
+    
     String snpName
     String chr
     int pos
@@ -27,11 +30,10 @@ class IlluminaSNPData implements IRegion {
      double theta
 
      double R
+     
+     char strand
 
-    @Override
-    public IntRange getRange() {
-        return pos..(pos+60) // hack - should use probe direction and real length of probe 
-    }
+    IntRange getRange() { strand == NEG_STRAND ?  (pos..<(pos+50)) :  (pos-50)..pos}
 }
 
 
@@ -43,14 +45,17 @@ class IlluminaFinalReport {
         "IlluminaFinalReport(${data.size()} probes)"
     }
 
-    static IlluminaFinalReport parse(path) {
+    static IlluminaFinalReport parse(String path, IlluminaArrayManifest manifest = null) {
         Utils.reader(path) {
-            parseReader(it)
+            parseReader(it, manifest)
         }
     }
+    
+    final static char TOP_STRAND = 't' as char
+    final static char BOT_STRAND = 'b' as char
 
     @CompileStatic
-    static IlluminaFinalReport parseReader(Reader r) {
+    static IlluminaFinalReport parseReader(Reader r, IlluminaArrayManifest manifest = null) {
         
         String line = null
         try {
@@ -93,11 +98,13 @@ class IlluminaFinalReport {
             int thetaPos = hds.indexOf('Theta')
             int rPos = hds.indexOf('R')
             int logRPos = hds.indexOf('Log R Ratio')
+            int strandPos = hds.indexOf('Customer Strand')
 
             // Finally, read the data
             while((line = r.readLine()) != null) {
                 String [] fields = line.split('\t')
                 IlluminaSNPData data = new IlluminaSNPData()
+                data.snpName = fields[snpNamePos]
                 data.chr = 'chr' + fields[chrPos]
                 data.pos = fields[posPos].toInteger()
                 data.allele1 = fields[allele1Pos]
@@ -107,7 +114,10 @@ class IlluminaFinalReport {
                 data.theta = fields[thetaPos].toDouble()
                 data.logR = fields[logRPos].isEmpty() ? Double.NaN : fields[logRPos].toDouble()
                 data.R = fields[rPos].toDouble()
+                data.strand = (manifest?.probes?.getAt(data.snpName)?.RefStrand?:'u') as char
+                
                 ifr.data.add(data)
+                
             }
             
             return ifr
