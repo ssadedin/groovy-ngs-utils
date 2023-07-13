@@ -253,9 +253,9 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         VCF result = new VCF()
         result.headerLines = new VCF(opts.arguments()[0]).headerLines
         result.addInfoHeaders([
-            '##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">',
+            '##INFO=<ID=AC,Number=1,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">',
             '##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">',
-            '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele frequency, AC/AN">',
+            '##INFO=<ID=AF,Number=1,Type=Float,Description="Allele frequency, AC/AN">',
             '##INFO=<ID=GTC,Number=G,Type=Integer,Description="GenoType Counts. For each ALT allele in the same order as listed = 0/0,0/1,1/1,0/2,1/2,2/2,0/3,1/3,2/3,3/3">'
         ])
         result.headerLines[-1] = result.headerLines[-1].tokenize('\t')[0..7].join('\t')
