@@ -170,8 +170,10 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             VariantContext v0 = allele[0]
             int ac = computeAlleleCount(allele)
             int an = computeAlleleNumber(v0.contig)
+            BigDecimal af = (ac == 0 || an == 0) ? 0.0 : (ac / an)
+
             int gtc = numSamples // todo: check this is right
-            printVCFSite(v0, ac, an, gtc)
+            printVCFSite(v0, ac, an, af, gtc)
         }
     }
     
@@ -189,7 +191,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      * @param an
      */
     @CompileStatic
-    protected void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
+    protected void printVCFSite(VariantContext v0, int ac, int an, BigDecimal af, int gtc) {
         out.println([
             v0.contig,
             v0.start,
@@ -198,7 +200,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             v0.alternateAlleles[0],
             '.',
             '.',
-            "AC=$ac;AN=$an;GTC=$gtc"
+            "AC=$ac;AN=$an;AF=${af?.toPlainString() ?: 0};GTC=$gtc"
         ].join('\t'))
     }
     
@@ -249,10 +251,13 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      */
     void printVCFHeader() {
         VCF result = new VCF()
-        result.headerLines = new VCF(opts.arguments()[0]).headerLines
+        List<String> currentHeaderLines = new VCF(opts.arguments()[0]).headerLines
+        result.headerLines = currentHeaderLines
+                .findAll { !it.startsWith('##INFO=<ID=AC,') && !it.startsWith('##INFO=<ID=AN,') && !it.startsWith('##INFO=<ID=AF,') && !it.startsWith('##INFO=<ID=GTC,') }
         result.addInfoHeaders([
-            '##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">',
+            '##INFO=<ID=AC,Number=1,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">',
             '##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">',
+            '##INFO=<ID=AF,Number=1,Type=Float,Description="Allele frequency, AC/AN">',
             '##INFO=<ID=GTC,Number=G,Type=Integer,Description="GenoType Counts. For each ALT allele in the same order as listed = 0/0,0/1,1/1,0/2,1/2,2/2,0/3,1/3,2/3,3/3">'
         ])
         result.headerLines[-1] = result.headerLines[-1].tokenize('\t')[0..7].join('\t')
