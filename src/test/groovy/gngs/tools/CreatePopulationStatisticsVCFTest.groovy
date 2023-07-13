@@ -12,8 +12,8 @@ class CreatePopulationStatisticsVCFTest {
         
         List<Map> results = []
         CreatePopulationStatisticsVCF cpsv = new CreatePopulationStatisticsVCF() {
-            void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
-                results << [vc: v0, ac: ac, an: an, gtc: gtc]
+            void printVCFSite(VariantContext v0, int ac, int an, BigDecimal af, int gtc) {
+                results << [vc: v0, ac: ac, an: an, af: af, gtc: gtc]
             }
         }
         
@@ -42,6 +42,7 @@ class CreatePopulationStatisticsVCFTest {
             Map v4 = results.find { it.vc.start == 21154426 } // chrY
             assert v4.ac == 1
             assert v4.an == 1
+            assert v4.af == 1
             assert v4.gtc == 3
              
         }
