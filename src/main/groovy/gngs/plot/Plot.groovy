@@ -34,8 +34,11 @@ import de.erichseifert.gral.plots.BarPlot
 import de.erichseifert.gral.plots.BarPlot.BarPlotLegend
 import de.erichseifert.gral.plots.BarPlot.BarRenderer
 import de.erichseifert.gral.plots.XYPlot
+import de.erichseifert.gral.plots.areas.AreaRenderer
+import de.erichseifert.gral.plots.areas.DefaultAreaRenderer2D
 import de.erichseifert.gral.plots.axes.AxisRenderer
 import de.erichseifert.gral.plots.legends.Legend
+import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D
 import de.erichseifert.gral.plots.lines.LineRenderer
 import de.erichseifert.gral.plots.lines.SmoothLineRenderer2D
 import de.erichseifert.gral.plots.points.DefaultPointRenderer2D
@@ -99,6 +102,8 @@ class XYItem extends PlotItem {
         
         List<Column> cols = [xColumn, yColumn]
         
+        minX = x.min()
+        minY = y.min()
         maxX = x.max()
         maxY = y.max()
 
@@ -120,8 +125,10 @@ class Line extends XYItem {
     Double width
 }
 
+class Area extends XYItem {
+}
+
 class Points extends XYItem {
-    
 }
 
 
@@ -316,7 +323,7 @@ class Plot {
     String yLabel = null
     
     List<PlotItem> items = []
-    
+
     List xBound = null
     
     List yBound = null
@@ -337,6 +344,20 @@ class Plot {
         this.items << item
         return this
     }
+    
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Area item) {
+        
+        Color color = new Color(item.color.RGB)
+        
+        this.items << new Area(
+            x: item.x,
+            y: item.y,
+            displayName: item.displayName,
+            color: color
+        )
+        return this
+    }
+     
     
     Plot leftShift(Text item) {
         this.texts << item
@@ -469,6 +490,26 @@ class Plot {
                     lines.setColor(palette.colors[ i % palette.colors.size()])
 
                 xyPlot.setLineRenderers(dt, lines)
+            }
+            else
+            if(xy instanceof Area) {
+                AreaRenderer area = new DefaultAreaRenderer2D();
+                area.color = GraphicsUtils.deriveWithAlpha(xy.color, 115)
+                area.setGapRounded(true)
+                
+                PointRenderer point = new DefaultPointRenderer2D();
+                point.setColor(area.color);
+                xyPlot.setPointRenderers(dt, point);
+                    
+                
+                LineRenderer line = new DefaultLineRenderer2D();
+                line.setColor(xy.color);
+                line.setGap(0);
+                xyPlot.setLineRenderers(dt, line);
+                
+                
+                
+                xyPlot.setAreaRenderers(dt, area)
             }
             else
             if(xy instanceof Bars) {
@@ -613,7 +654,7 @@ class PlotUtils {
         if(x == 0d)
             return 1d
         int oom = (int)Math.floor(Math.log10(x)) 
-        int interval = (int)Math.pow(10,oom)
+        double interval = Math.pow(10,oom)
         double rounded = Math.floor(x/interval) * interval  + interval
         return rounded
     }

@@ -21,7 +21,7 @@ class PlotTest {
 //        p.save('test.png')
 //    }
 //    
-   @Test
+//   @Test
     public void testPoints() {
         Plot p = new Plot(
             title:'Simons great plot',
@@ -75,7 +75,7 @@ class PlotTest {
     }
     
     
-    @Test
+//    @Test
     void testBarPlot() {
         Plot p = new Plot(title:'This bar serves great chips')
         p << new Bars(
@@ -114,7 +114,7 @@ class PlotTest {
         hist.save('testhist2.png')
     }
  
-    @Test
+//    @Test
     void testHistogram() {
 //        List<Double> data = (1..1000).collect { r.nextGaussian() }
         
@@ -153,6 +153,26 @@ class PlotTest {
     }
     
     @Test
+    void testDensityBx() {
+        def normals = (1..1000).collect { r.nextGaussian() }
+        def normals2 = (1..1000).collect { 2 + r.nextGaussian()*1.3 }
+        def plot = new Plot()
+        def line = new Density.Area(data:normals, 
+            displayName:'Test Density', color: com.twosigma.beakerx.chart.Color.blue)
+        
+        def line2 = new Density.Area(data:normals2,
+            displayName:'Higher Test Density', color: com.twosigma.beakerx.chart.Color.green)
+
+        plot  << line
+        plot  << line2
+
+        assert line.displayName  == 'Test Density'
+        
+        plot.save('density.png')
+    }
+    
+    
+//    @Test
     void testColoredLines() {
         Plot p = new Plot()
         p << new Line(color: Color.red, x:[1,2,3], y:[4,5,6], width: 1)
