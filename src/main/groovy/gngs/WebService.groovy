@@ -354,8 +354,8 @@ class WebService {
             BasicCredentials creds = parseNetrc(credsFile)
             if(creds) {
                 this.webserviceCredentials = creds
-                return
             }
+            return
         }
 
         def yaml = new Yaml().load(credsFile.text)
