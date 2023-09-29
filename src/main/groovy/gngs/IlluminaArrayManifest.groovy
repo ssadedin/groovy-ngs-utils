@@ -21,6 +21,7 @@ class IlluminaProbe implements IRegion {
     int MapInfo
     String RefStrand
     boolean Intensity_Only
+    byte type
     
     String getChr() { Chr }
     IntRange getRange() { RefStrand == '-' ?  MapInfo..<(MapInfo+AlleleA_ProbeSeq.size()) :  (MapInfo-AlleleA_ProbeSeq.size())..MapInfo}
@@ -107,7 +108,8 @@ class IlluminaArrayManifest {
                     Chr : chr.startsWith('chr') ? chr : 'chr'+chr,
                     MapInfo: fields[headers.MapInfo].toInteger(),
                     RefStrand: fields[headers.RefStrand],
-                    Intensity_Only : fields[headers.Intensity_Only] != "0"
+                    Intensity_Only : fields[headers.Intensity_Only] != "0",
+                    type : fields[headers.AddressB_ID] ? 1 : 2
                 )
                 Region region = new Region(probe.chr, probe.range, probe:probe)
                 regions.addRegion(region)
