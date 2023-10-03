@@ -402,6 +402,10 @@ class Plot {
             if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Line) {
                 item = new Lines()
             }
+            else
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Area) {
+                item = new Area()
+            }
             
             if(!item)
                 return
