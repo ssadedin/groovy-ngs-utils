@@ -66,6 +66,8 @@ class Cov extends ToolBase {
     Map<String,Integer> contigSizes
     
     IntegerStats covStats = new IntegerStats(1000)
+
+    boolean allowDuplicates = false
     
     SAM bam 
     
@@ -132,9 +134,13 @@ class Cov extends ToolBase {
         
         if(opts.minMQ)
             this.minimumMappingQuality = opts.minMQ.toInteger()
+
+        if(opts.allowDuplicates)
+            this.allowDuplicates = opts.allowDuplicates
             
         log.info "Analysing ${Utils.humanBp(scanRegions.size())} from ${opts.arguments()[0]}"
         log.info "Mapping quality threshold = $minimumMappingQuality"
+        log.info "Duplicates allowed = $allowDuplicates"
         
         if(opts.kmer) {
             this.initKmerProfile()
@@ -456,6 +462,8 @@ class Cov extends ToolBase {
                     continue
                 if(r.mappingQuality<minimumMappingQuality)
                     continue
+                if(r.getDuplicateReadFlag() && ! allowDuplicates)
+                    continue
                     
                 final int mateStart = r.getMateAlignmentStart();
                 int alignmentEnd = r.alignmentEnd
@@ -569,6 +577,7 @@ class Cov extends ToolBase {
             intervalsummary 'File to write interval statistics to', args:1, type: File, required: false
             'L' 'Regions over which to report coverage depth', args:1, required: true, longOpt: 'target'
             reference 'Reference to use when decoding crams', args:1, required: false, type:File
+            a 'Flag to not discard reads which are considered duplicates', longOpt: 'allowDuplicates', args:0, required: false, type:boolean
         }
     }
     
