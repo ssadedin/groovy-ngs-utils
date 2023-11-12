@@ -393,7 +393,7 @@ class Gaps {
         Cli cli = new Cli(usage: "Gaps <BEDTools coverage file>")
         cli.with {
             t 'Coverage threshold', longOpt: 'threshold', args:1, required:false
-            diff 'Show only gaps not occurring in file(s)', args:1, required:false
+            diff 'Show only gaps not occurring in coverage file(s)', args:1, required:false
             'L' 'Only output results for <bed file> regions', longOpt: 'regions', args:1, required:false
             n 'Concurrency to use', args:1, required:false
             m 'Input file is multicov format, not BEDTools'
@@ -402,6 +402,7 @@ class Gaps {
             csv 'Write output comma separated instead of tab separated'
             h 'Output a human readable table'
             o 'Output file to write to [stdout]', args:1, type: File
+            'do' 'Output file to write gap diffs to[stdout]', args:1, type: File
             p 'Set .tsv files [PanelClassName].tsv with Subclass names as headers', args:Cli.UNLIMITED, required:false
         }
 
@@ -476,16 +477,20 @@ class Gaps {
         log.info "Detected ${diffs.numberOfRanges} different gaps ($introducedGaps.numberOfRanges introduced, $eliminatedGaps.numberOfRanges eliminated)"
         log.info "Size of differences: ${diffs.size()}, Size of introduced: ${introducedGaps.size()}, Size of eliminated: ${eliminatedGaps.size()}"
         
-        if(opts.h) {
-            Utils.table(
-               ["Chr","Start","End","Length","Difference"],
-               diffs.collect {  Region block ->
-                   [block.chr, block.from, block.to, block.size(), block.type] 
-               }
-        )}
-        else {
-            for(Region diff in diffs) {
-                println([diff.chr, diff.from, diff.to, diff.size(), diff.type].join('\t'))
+        PrintWriter diffWriter = opts.do ? new PrintWriter(opts.do.newWriter()) : System.out
+        diffWriter.withWriter { w ->
+            if(opts.h) {
+                Utils.table(out: w,
+                   ["Chr","Start","End","Length","Difference"],
+                   diffs.collect {  Region block ->
+                       [block.chr, block.from, block.to, block.size(), block.type] 
+                   }
+                )
+            }
+            else {
+                for(Region diff in diffs) {
+                    w.println([diff.chr, diff.from, diff.to, diff.size(), diff.type].join('\t'))
+                }
             }
         }
     }
@@ -513,7 +518,7 @@ class Gaps {
     private Writer getOutputWriter() {
         Writer w
         if(opts.o) {
-            w = opts.o.newWriter()
+            w = Utils.writer(opts.o)
         }
         else {
             w = System.out.newWriter()
