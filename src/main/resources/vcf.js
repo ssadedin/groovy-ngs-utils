@@ -855,7 +855,7 @@ var userAnnotations = {
                             if(otherIndex == index)
                                 ++otherIndex;
                             
-                            console.log("Other index = " + otherIndex + " / index = " + index + " / " + variantData.length);
+                            // console.log("Other index = " + otherIndex + " / index = " + index + " / " + variantData.length);
                             otherRowSource = variantData[otherIndex];
                         } while(isPhase2 && otherReferenced && otherIndex<variantData.length);
 
