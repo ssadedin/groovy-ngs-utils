@@ -296,6 +296,8 @@ class Gaps {
                 
                 Regions unionDiffGaps = computeGapUnion(oldGaps)
                 writeDiffs(unionDiffGaps, unionGaps)
+                writeGaps(unionGaps)
+                log.info "Done."
             }
             else {
                 log.info "Writing output ..."
