@@ -935,12 +935,12 @@ var userAnnotations = {
             }
             else {
                 // For very large events, just zoom to 100bp around the pos
-                region = chr + ':' + (pos - igvPadding) + '-' + (pos + igvPadding);
+                region = chr + ':' + (pos - padding) + '-' + (pos + padding);
             }
         }       
         // For small events, show the user's preferred padding
         else {
-            region = chr + ':' + (pos - igvPadding) + '-' + (pos + size + igvPadding);
+            region = chr + ':' + (pos - padding) + '-' + (pos + size + padding);
         }
         return region;
     }
@@ -954,10 +954,16 @@ var userAnnotations = {
         let size = 0;
         try {
             size = parseInt(tds[SIZE_INDEX].innerHTML, 10)
+            
+            if(isNaN(size))
+                size = Math.abs(ref.length - alt.length)
+             
         }
         catch(e) {
             // ignore
+            size = 0
         }
+           
         
         let region = computeIGVRegion(chr, pos , size)
 
