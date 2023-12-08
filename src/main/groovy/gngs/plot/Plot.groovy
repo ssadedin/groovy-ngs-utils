@@ -337,8 +337,8 @@ class Plot {
     /**
      * For compatibility with BeakerX
      */
-    int initWidth
-    int initHeight
+    Integer initWidth = null
+    Integer initHeight = null
     
     Plot leftShift(PlotItem item) {
         this.items << item
@@ -359,11 +359,19 @@ class Plot {
     }
      
     
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Text item) {
+        Text gngsItem = new Text(x:item.x, y:item.y, text: item.text)
+        if(item.color)
+            gngsItem.color = new Color(item.color.RGB)
+        this.texts << gngsItem
+        return this
+    }
+
     Plot leftShift(Text item) {
         this.texts << item
         return this
     }
-    
+     
     static Object saveAs(def plot, String fileName) {
         if(plot instanceof com.twosigma.beakerx.chart.xychart.Plot) {
             from(plot).save(fileName)
@@ -428,7 +436,7 @@ class Plot {
     }
     
     BufferedImage getImage() {
-        getImage(800,600)
+        getImage(initWidth?:800,initHeight?:600)
     }
 
     BufferedImage getImage(int width, int height) {
@@ -629,19 +637,20 @@ class Plot {
         return xyPlot
     }
     
-    void save(final String fileName) {
+    void save(Map options=null, final String fileName) {
         
         assert fileName.endsWith('.png')
 
-        int width = 1024
-        int height = 800
-        
+        options = options?:[:]
+
+        int width = options.width?:initWidth?:1024
+        int height = options.height?:initHeight?:800
         
         XYPlot xyPlot = toXYPlot(width, height)
         
         int eastLegendWidth = 0
         if(this.legendLocation in ["east","north_east","south_east"])
-            eastLegendWidth = 140 // hack / guess
+            eastLegendWidth = (int)(140 * (initWidth/1024)) // hack / guess, use about 15% of width
 
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
