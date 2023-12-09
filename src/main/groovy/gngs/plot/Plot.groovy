@@ -34,10 +34,12 @@ import de.erichseifert.gral.plots.BarPlot
 import de.erichseifert.gral.plots.BarPlot.BarPlotLegend
 import de.erichseifert.gral.plots.BarPlot.BarRenderer
 import de.erichseifert.gral.plots.XYPlot
+import de.erichseifert.gral.plots.XYPlot.XYLegend
 import de.erichseifert.gral.plots.areas.AreaRenderer
 import de.erichseifert.gral.plots.areas.DefaultAreaRenderer2D
 import de.erichseifert.gral.plots.axes.AxisRenderer
 import de.erichseifert.gral.plots.legends.Legend
+import de.erichseifert.gral.plots.legends.SeriesLegend
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D
 import de.erichseifert.gral.plots.lines.LineRenderer
 import de.erichseifert.gral.plots.lines.SmoothLineRenderer2D
@@ -420,7 +422,10 @@ class Plot {
             if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Area) {
                 item = new Area()
             }
-            
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Bars) {
+                item = new Bars()
+            }
+    
             if(!item)
                 return
  
