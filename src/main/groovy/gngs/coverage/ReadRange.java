@@ -35,7 +35,7 @@ public class ReadRange {
         final int mateStart = r.getMateAlignmentStart();
         
         // Avoid double counting if two reads from the same fragment will overlap
-        if(countFragments && (r.getFirstOfPairFlag() && mateStart >= this.alignmentStart && mateStart <= alignmentEnd)) {
+        if(countFragments && (r.getReadPairedFlag() &&  r.getFirstOfPairFlag() && (mateStart >= this.alignmentStart) && (mateStart <= alignmentEnd))) {
             alignmentEnd = mateStart;
         }
         this.referenceName = r.getReferenceName();
