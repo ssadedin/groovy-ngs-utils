@@ -397,9 +397,13 @@ class Plot {
             title:bxPlot.title,
             xLabel: bxPlot.xLabel,
             yLabel: bxPlot.yLabel,
-            xBound: [bxPlot.xLowerBound, bxPlot.xUpperBound],
-            yBound: [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()],
         )
+        
+        if(!bxPlot.xAutoRange)
+            p.xBound = [bxPlot.xLowerBound, bxPlot.xUpperBound]
+
+        if(!bxPlot.yAutoRange)
+            p.yBound = [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()]
         
         bxPlot.graphics.each { XYGraphics g ->
             
