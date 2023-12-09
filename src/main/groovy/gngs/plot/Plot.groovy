@@ -347,13 +347,15 @@ class Plot {
     
     Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Area item) {
         
-        Color color = new Color(item.color.RGB)
-        
+        Map optionalAttributes = [:]
+        if(item.color)
+            optionalAttributes.color = new Color(item.color.RGB) 
+
         this.items << new Area(
             x: item.x,
             y: item.y,
             displayName: item.displayName,
-            color: color
+            * : optionalAttributes
         )
         return this
     }
