@@ -53,7 +53,7 @@ class PlotTest {
 //        p.save('testpoints.png')
     }
     
-//    @Test
+    @Test
     public void testBars() {
         Plot p = new Plot(title:'Simons great plot') << \
             new Bars(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], displayName: 'Bananas') << \
