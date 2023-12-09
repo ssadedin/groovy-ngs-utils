@@ -492,23 +492,22 @@ class Plot {
         
         [xys,datas].transpose().each { xy, dt ->
 
+            def color = convertColor(xy.color, i)
+
             if(xy instanceof Lines || xy instanceof Line) {
                 LineRenderer lines = new SmoothLineRenderer2D();
 
                 if(xy.width != null)
                     lines.setStroke(new BasicStroke((float)xy.width))
-                    
-                if(xy.color)
-                    lines.setColor(new Color(xy.color.red, xy.color.green, xy.color.blue))
-                else
-                    lines.setColor(palette.colors[ i % palette.colors.size()])
 
+                lines.setColor(color)
                 xyPlot.setLineRenderers(dt, lines)
             }
             else
             if(xy instanceof Area) {
+
                 AreaRenderer area = new DefaultAreaRenderer2D();
-                area.color = GraphicsUtils.deriveWithAlpha(xy.color, 115)
+                area.color = GraphicsUtils.deriveWithAlpha(color, 115)
                 area.setGapRounded(true)
                 
                 PointRenderer point = new DefaultPointRenderer2D();
@@ -520,15 +519,12 @@ class Plot {
                 line.setColor(xy.color);
                 line.setGap(0);
                 xyPlot.setLineRenderers(dt, line);
-                
-                
-                
                 xyPlot.setAreaRenderers(dt, area)
             }
             else
             if(xy instanceof Bars) {
                 List<BarRenderer> bars = xyPlot.getPointRenderers(dtArray[0])
-                bars*.setColor(palette.colors[ i % palette.colors.size()])
+                bars*.setColor(color)
                 if(xy.width != null)
                     xyPlot.setBarWidth(xy.width)
                     
@@ -541,11 +537,8 @@ class Plot {
                 PointRenderer pointRenderer = new DefaultPointRenderer2D()
                 pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
                 xyPlot.setPointRenderers(dt, pointRenderer)
+                pointRenderer.setColor(color)
 
-                if(xy.color)
-                    pointRenderer.setColor(new Color(xy.color.red, xy.color.green, xy.color.blue))
-                else
-                    pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
             }
 //            xyPlot.setMapping(dt, xys[i].name, '')
             ++i
@@ -637,6 +630,24 @@ class Plot {
         }
         
         return xyPlot
+    }
+    
+    /**
+     * Convert to Gral compatible object, using palette for item index if not
+     * explicitly specified
+     * 
+     * @param color color object to convert, may be null
+     * @param i index to select from palette if color is null
+     * @return  Gral compatible color object
+     */
+    Color convertColor(def color, int i) {
+        
+        if(color)
+            // This slightly awkward way works regardless of the type of color object passed in
+            // ie: AWT, BeakerX, etc
+            return new Color(color.red, color.green, color.blue)
+        else
+            return palette.colors[ i % palette.colors.size()]
     }
     
     void save(Map options=null, final String fileName) {
