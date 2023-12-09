@@ -494,6 +494,8 @@ class Plot {
             :
                 new XYPlot(dtArray)
                 
+        XYPlot legendPlot = new XYPlot(dtArray)
+
         Insets2D.Double insets = new Insets2D.Double(40.0, 80.0, 80.0, 80.0)
         xyPlot.setInsets(insets);
         
@@ -532,10 +534,12 @@ class Plot {
             }
             else
             if(xy instanceof Bars) {
-                List<BarRenderer> bars = xyPlot.getPointRenderers(dtArray[0])
+                List<BarRenderer> bars = xyPlot.getPointRenderers(dtArray[i])
                 bars*.setColor(color)
                 if(xy.width != null)
                     xyPlot.setBarWidth(xy.width)
+                    
+                legendPlot.getPointRenderers(dtArray[i])*.setColor(color)
                     
                 if(xy.labels != null) {
                     bars*.setValueColumn(2)
@@ -606,11 +610,30 @@ class Plot {
                 label.text = yLabel
         }
         
-        if(!(xyPlot instanceof BarPlot) && xys.any { it.displayName }) {
-            xyPlot.setLegendVisible(true)
+        if(xys.any { it.displayName }) {
             
-            if(this.legendLocation) {
-                xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+            if(xyPlot instanceof BarPlot) {
+                // noop
+                // default legend doesn't work here because it displays
+                // a legend entry for each bar rather than each series
+                // which is the default for bar plots.
+                // Need to replace with a SeriesLegend, but it seems like
+                
+                if(xys.size() > 1) {
+                    SeriesLegend legend = new XYLegend(legendPlot)
+                    xyPlot.setLegend(legend)
+                    xyPlot.setLegendVisible(true)
+                    if(this.legendLocation) {
+                        xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+                    }
+                }
+            }
+            else {
+                xyPlot.setLegendVisible(true)
+                
+                if(this.legendLocation) {
+                    xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+                }
             }
         }
             
