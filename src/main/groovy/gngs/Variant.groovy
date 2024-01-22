@@ -321,7 +321,9 @@ enum Genotype {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Variant implements IRegion {
+class Variant implements IRegion, Serializable {
+    
+    private static final long serialVersionUID = 1L;
     
     static final NumberFormat QUAL_FORMATTER = NumberFormat.getInstance()
     
@@ -342,7 +344,7 @@ class Variant implements IRegion {
      * @author simon.sadedin@mcri.edu.au
      */
     @CompileStatic
-    final public class Allele {
+    final public class Allele implements Serializable {
         
         public Allele(int index, int start, int end, String alt, String type) {
             this.index = index;

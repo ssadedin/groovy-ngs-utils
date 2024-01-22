@@ -243,7 +243,7 @@ class VCFIterator implements Iterator<Variant>, Closeable {
  *
  * @author simon.sadedin@mcri.edu.au
  */
-class VCF implements Iterable<Variant> {
+class VCF implements Iterable<Variant>, Serializable {
     
     List<String> headerLines = []
     
