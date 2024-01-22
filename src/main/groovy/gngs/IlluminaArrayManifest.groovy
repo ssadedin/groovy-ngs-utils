@@ -69,7 +69,7 @@ class IlluminaArrayManifest {
         String line = ""
         int lociCount = -1
         int lineCount = 0
-        while(line != "[Assay]" && line != null) {
+        while(line != null && !line.startsWith("[Assay]")) {
             line = r.readLine()
             if(line.startsWith("Loci Count")) {
                 lociCount = line.tokenize(',')[-1].toInteger()
@@ -83,8 +83,8 @@ class IlluminaArrayManifest {
         line = r.readLine()
         ++lineCount
         
-        Map<String,Integer> headers = line.tokenize(',').indexed().collectEntries { [it.value, it.key] }
-        if(!headers.containsKey('IlmnID'))
+        Map<String,Integer> headers = line.tokenize(',').indexed().collectEntries { [it.value.toLowerCase(), it.key] }
+        if(!headers.containsKey('ilmnid'))
             throw new IllegalStateException("Expected header IlmnID not found in array manifest header line: $line. Please check file format is correct")
         
         Regions regions = new Regions()
@@ -99,17 +99,21 @@ class IlluminaArrayManifest {
                 
                 ++lineCount
                 String [] fields = line.split(',')
-                final String chr = fields[headers.Chr]
+                
+                if(fields.size() < 15)
+                    continue
+                    
+                final String chr = fields[headers.chr]
                 IlluminaProbe probe = new IlluminaProbe(
-                    IlmnID: fields[headers.IlmnID],
-                    Name: fields[headers.Name],
-                    SNP: fields[headers.SNP],
-                    AlleleA_ProbeSeq : fields[headers.AlleleA_ProbeSeq],
+                    IlmnID: fields[headers.ilmnid],
+                    Name: fields[headers.name],
+                    SNP: headers.snp != null ? fields[headers.snp] : null, 
+                    AlleleA_ProbeSeq : fields[headers.allelea_probeseq],
                     Chr : chr.startsWith('chr') ? chr : 'chr'+chr,
-                    MapInfo: fields[headers.MapInfo].toInteger(),
-                    RefStrand: fields[headers.RefStrand],
-                    Intensity_Only : fields[headers.Intensity_Only] != "0",
-                    type : fields[headers.AddressB_ID] ? 1 : 2
+                    MapInfo: fields[headers.mapinfo].toInteger(),
+                    RefStrand: headers.refstrand ? fields[headers.refstrand] : (fields[headers.strand_fr] == "F" ? "+" : "-"),
+                    Intensity_Only : headers.intensity_only ? fields[headers.intensity_only] != "0" : null,
+                    type : fields[headers.addressb_id] ? 1 : 2
                 )
                 Region region = new Region(probe.chr, probe.range, probe:probe)
                 regions.addRegion(region)
