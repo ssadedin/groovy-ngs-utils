@@ -1066,8 +1066,10 @@ class SAM {
         def bases = this.basesAt(chr, pos)
         int total = bases.total
     
-        Collection<Map.Entry> alleles = bases.sort { -it.value }.grep { Map.Entry e  -> e.key != 'total' && e.key != 'D' }.take(2)
-    
+        Collection<Map.Entry<String,Integer>> alleles = 
+            (Collection<Map.Entry<String,Integer>> )bases
+                .sort { -it.value }
+                .grep { Map.Entry e  -> e.key != 'total' && e.key != 'D' }.take(2)
     
         Map.Entry<String,Integer> allele1 = alleles[0]
         Map.Entry<String,Integer> allele2 = alleles[1]

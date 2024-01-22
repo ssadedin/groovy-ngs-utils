@@ -56,13 +56,13 @@ class OrderedPairReader implements Closeable {
      */
     List<SAMRecordPair> writeSpool = new LinkedList()
     
-    Set<String> preprocessedReads = Collections.synchronizedSet(new HashSet())
+    Set<String> preprocessedReads = Collections.synchronizedSet(new HashSet<String>())
     
     /**
      * To contain memory consumption, preprocessed reads are cleared every chromosome.
      * We can't, however, do that for chimeric reads since they span chromosomes
      */
-    Set<String> chimericPreprocessedReads = Collections.synchronizedSet(new HashSet())
+    Set<String> chimericPreprocessedReads = Collections.synchronizedSet(new HashSet<String>())
     
     MissingMateIndex missingMates
     

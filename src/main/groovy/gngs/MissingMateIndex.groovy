@@ -49,7 +49,7 @@ class MissingMateIndex {
     /**
      * Counts of read pairs we are indexing, keyed on missing mate position
      */
-    SortedMap<Long,List<SAMRecordPair>> matePositions = Collections.synchronizedSortedMap(new TreeMap())
+    SortedMap<Long,List<SAMRecordPair>> matePositions = Collections.synchronizedSortedMap(new TreeMap<Long, List<SAMRecordPair>>())
     
     /**
      * Read pairs we are indexing, keyed on name

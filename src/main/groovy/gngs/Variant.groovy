@@ -1014,7 +1014,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     static Map<String,Object> parseInfoString(final String value) {
-        Map result = [:]
+        Map<String,Object> result = [:]
         if((value != null) && (value != '.')) {
             for(String s in value.tokenize(';')) {
                 int i = s.indexOf('=')

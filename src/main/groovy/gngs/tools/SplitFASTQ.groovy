@@ -189,7 +189,12 @@ class SplitFASTQ extends ToolBase {
         List<String> r1Paths = (List<String>)((String)opts['r1']).tokenize(',')
         List<String> r2Paths = opts['r2'] ? (List<String>)((String)opts['r2']).tokenize(',') : ["false"] * r1Paths.size()
          
-        [r1Paths, r2Paths].transpose().each { String r1Path, String r2Path ->
+        [r1Paths, r2Paths].transpose().each { values ->
+            
+            List<String> listValues = (List<String>)values
+            
+            String r1Path = listValues[0]
+            String r2Path = listValues[1]
             
             log.info "Processing FASTQ pair $r1Path, $r2Path"
         
@@ -247,9 +252,16 @@ class SplitFASTQ extends ToolBase {
         List<String> r1Paths = (List<String>)((String)opts['r1']).tokenize(',')
         List<String> r2Paths = opts['r2'] ? (List<String>)((String)opts['r2']).tokenize(',') : ["false"] * r1Paths.size()
          
-        [r1Paths, r2Paths].transpose().each { String r1Path, String r2Path ->
+        [r1Paths, r2Paths].transpose().each { values ->
          
+            List<String> listValues = (List<String>)values
+            
+            String r1Path = listValues[0]
+            String r2Path = listValues[1]
+
             FASTQ.eachPair(r1Path, r2Path) { FASTQRead r1, FASTQRead r2 ->
+                
+                
                 dedupers[++i % numDedupers].sendTo([r1,r2])
             }
         }

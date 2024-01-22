@@ -308,7 +308,10 @@ class CoverageSummarizer extends RegulatingActor<PositionCounts> {
         if(sampleRegionStats != null) {
             String targetValue = currentTarget?.toString()
             this.sampleRegionStatsRegions << targetValue
-            [samples,sampleRegionStats].transpose().each { String sample, Stats stats -> 
+            [samples,sampleRegionStats].transpose().each { obs ->
+                List values = (List)obs
+                String sample = (String)values[0]
+                Stats stats = (Stats)values[1]
                 this.sampleRegionMeans[sample] << (Short)Math.round(stats.mean)
             }
         }
