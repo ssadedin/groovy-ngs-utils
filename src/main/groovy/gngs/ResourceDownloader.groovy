@@ -50,21 +50,30 @@ class ResourceDownloader {
     
     GenomeResource download(String genomeVersion="hg19") {
         
-        Map<String,String> genomeMap = [
+        Map<String,String> grchToUCSC = [
             "GRCh37" : "hg19",
             "GRCh38" : "hg38"
         ]
+        
+        Map<String,String> ucscToGRCh = grchToUCSC.collectEntries { [ it.value, it.key.replaceAll('GRCh','') ] }
         
         boolean stripChr = false
         
         // Map to appropriate UCSC genome and strip chr if necessary
         String ucscGenomeVersion = genomeVersion
-        if(genomeVersion in genomeMap) {
-            ucscGenomeVersion = genomeMap[genomeVersion]
+        if(genomeVersion in grchToUCSC) {
+            ucscGenomeVersion = grchToUCSC[genomeVersion]
             stripChr = true
         }
         
-        String fileName = urlPattern.tokenize('/')[-1].replaceAll('\\.(.*)$', '.' + ucscGenomeVersion + '.$1')
+        String grchVersion
+        if(genomeVersion in ucscToGRCh) {
+            grchVersion = ucscToGRCh[grchVersion]
+        }
+        
+        String fileName = genomeVersion ? 
+            urlPattern.tokenize('/')[-1].replaceAll('\\.(.*)$', '.' + ucscGenomeVersion + '.$1') : 
+            urlPattern.tokenize('/')[-1].replaceAll('\\.(.*)$','.$1') 
         
         File outputFile = new File(fileName)
         List<File> tried = [outputFile]
@@ -79,8 +88,10 @@ class ResourceDownloader {
             }
             
             if(!outputFile.exists()) {
-                String ucscUrl = urlPattern.replaceAll('##genomeVersion##',ucscGenomeVersion)
-                new URL(ucscUrl).withInputStream { urlStream ->
+                String resourceUrl = urlPattern.replaceAll('##genomeVersion##',ucscGenomeVersion)
+                if(grchVersion)
+                    resourceUrl = resourceUrl.replaceAll('##grchVersion##',grchVersion)
+                new URL(resourceUrl).withInputStream { urlStream ->
                     Files.copy(urlStream, outputFile.toPath())
                 }
             }
