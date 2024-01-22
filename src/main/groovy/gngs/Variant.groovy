@@ -776,7 +776,12 @@ class Variant implements IRegion {
         List<Genotype> result = (List<Genotype>)gts.collect{
             if(it.isInteger()){
                 return Genotype.Hemi
-            }else{
+            }
+            else
+            if(it.equals(".")) {
+                return Genotype.Missing
+            }
+            else {
                 String[] split = PIPE_OR_SLASH_SPLIT.split(it)
                 if(split[0] == split[1]){
                     if(split[0]=="."){
