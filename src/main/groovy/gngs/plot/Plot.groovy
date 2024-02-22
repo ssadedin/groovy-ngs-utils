@@ -694,8 +694,12 @@ class Plot {
         XYPlot xyPlot = toXYPlot(width, height)
         
         int eastLegendWidth = 0
-        if(this.legendLocation in ["east","north_east","south_east"])
-            eastLegendWidth = (int)(140 * (initWidth/1024)) // hack / guess, use about 15% of width
+        
+
+        if(this.legendLocation in ["east","north_east","south_east"]) {
+            int maxDisplayNameLength = this.items*.displayName.collect { it?.size()?:0 }.max()
+            eastLegendWidth = (int)(maxDisplayNameLength*10 * (width/1024)) // hack / guess, use about 15% of width
+        }
 
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
