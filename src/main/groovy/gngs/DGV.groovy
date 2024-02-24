@@ -66,7 +66,7 @@ class DGV extends CNVDatabase {
      * @param r
      * @return
      */
-    List<Region> queryOverlapping(Region r) {
+    List<Region> queryOverlapping(IRegion r) {
        return dgv.getOverlaps(r)*.extra
     }
     
@@ -77,7 +77,7 @@ class DGV extends CNVDatabase {
      * @param region    region to search
      * @return  maximum frequency, or zero if no CNVs found
      */
-    double maxFreq(Map options=[:], Region region) {
+    double maxFreq(Map options=[:], IRegion region) {
         int minSampleSize = options.minSampleSize?:10
         List<Region> overlappingEntries = this.queryOverlapping(region)
         

@@ -45,12 +45,14 @@ class GnomADCNVDatabase extends CNVDatabase {
     
 
     @Override
-    public double maxFreq(Map options, final Region region) {
+    public double maxFreq(Map options, final IRegion region) {
         String contigNoChr = convertChr(region)
         
+        Region rRegion = new Region(region)
+        
         Variant maxFreqVariant = 
-            (Variant)gnomad.iterator(contigNoChr, region.from, region.to)
-                  .grep { Variant v -> included(v) && region.mutualOverlap(v) > mutualOverlapFraction }
+            (Variant)gnomad.iterator(contigNoChr, region.range.from, region.range.to)
+                  .grep { Variant v -> included(v) && rRegion.mutualOverlap(v) > mutualOverlapFraction }
                   .max { v -> ((String)((Variant)v).info.POPMAX_AF).toDouble() }
         
         if(maxFreqVariant == null)          
@@ -60,9 +62,9 @@ class GnomADCNVDatabase extends CNVDatabase {
     }
 
     @Override
-    public List<Region> queryOverlapping(Region r) { 
+    public List<Region> queryOverlapping(IRegion r) { 
         final String contigNorm = convertChr(r)
-        final List<Region> variants = gnomad.iterator(contigNorm, r.from, r.to).grep { Variant v ->
+        final List<Region> variants = gnomad.iterator(contigNorm, r.range.from, r.range.to).grep { Variant v ->
             included(v)
         }.collect { v ->
             createRegion((Variant)v)
@@ -101,11 +103,11 @@ class GnomADCNVDatabase extends CNVDatabase {
     }
 
     @Override
-    public double maxFreq(final Region region) {
+    public double maxFreq(final IRegion region) {
         return maxFreq(null, region)
     }
 
-    private final String convertChr(final Region region) {
+    private final String convertChr(final IRegion region) {
         return region.chr.startsWith('chr') ? region.chr : 'chr' + region.chr
     }
     

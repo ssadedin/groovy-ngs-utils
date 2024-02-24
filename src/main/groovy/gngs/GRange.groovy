@@ -180,11 +180,17 @@ class Region extends Expando implements IRegion, Serializable {
     
     String chr
     
+    /**
+     * The start position of the range represented by this region
+     */
     @CompileStatic
     Integer getFrom() {
         return range.from
     }
     
+    /**
+     * The end position of the range represented by this region
+     */
     @CompileStatic
     Integer getTo() {
         return range.to
