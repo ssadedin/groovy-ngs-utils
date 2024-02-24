@@ -94,16 +94,21 @@ class TargetedCNVAnnotator {
    
    double mutualOverlapThreshold = 0.5
    
+   /**
+    * Annotate the given region for the given variant type with information from
+    * the givenCNVdatabase
+    * 
+    * @param db
+    * @param v
+    * @param type
+    * @return
+    */
    CNVFrequency annotateFromDatabase(CNVDatabase db, IRegion v, String type) {
        
        boolean debug = false
-//       if(v.range.from == 20710747) {
-//           log.info "debug: $v"
-//           debug = true
-//       }
-//       
+
        // Look for "crossing" CNVs
-       List<Region> spanning = db.queryOverlapping(v).grep { Region r ->
+       List<Region> spanning = db.queryOverlapping((Region)v).grep { Region r ->
            boolean result = r.spans(v) || r.mutualOverlap(v) > mutualOverlapThreshold
            if(debug && !result)
                log.info "No span of $r of $v : mutal overlap: " + r.mutualOverlap(v)
@@ -119,7 +124,7 @@ class TargetedCNVAnnotator {
            }
        }
            
-       List matchedSpanning = filterByType(type, spanning)
+       List<Region> matchedSpanning = filterByType(type, spanning)
 
        if(debug && (matchedSpanning.size()<spanning.size())) {
            log.info "${spanning.size() -matchedSpanning.size()} CNVs removed by matching on type $type (types were: ${spanning*.varType.unique().join(',')})"
