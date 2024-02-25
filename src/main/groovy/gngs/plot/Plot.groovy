@@ -57,7 +57,7 @@ class Palette {
 
 class DefaultPalette extends Palette {
     DefaultPalette() {
-       colors = [new Color(20,30,100), Color.red, Color.blue, Color.green, Color.orange, new Color(100,0,100)] 
+       colors = [new Color(20,30,100), Color.red, Color.blue, Color.green, Color.orange, new Color(100,0,100), Color.cyan, Color.pink, Color.yellow, Color.magenta ] 
     }
 }
 
