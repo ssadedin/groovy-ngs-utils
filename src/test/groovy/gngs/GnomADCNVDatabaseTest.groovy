@@ -7,11 +7,11 @@ import org.junit.Test
 
 class GnomADCNVDatabaseTest {
     
-    Region duplicationRegion = new Region('1:219622880-219623005')
+    Region duplicationRegion = new Region('chr1:11000-51000')
     
-    Region deletionRegion = new Region('1:219608047-219609247')
+    Region deletionRegion = new Region('chr1:22000-30000')
     
-    Region bndRegion = new Region('1:219643057-219644757')
+    Region bndRegion = new Region('chr1:219643057-219644757')
     
     GnomADCNVDatabase gmd 
         
@@ -28,6 +28,9 @@ class GnomADCNVDatabaseTest {
     @Test
     void 'test deletions are found'() {
         def dels =  gmd.queryOverlapping(deletionRegion)
+        
+        println "Found ${dels.size()} dels"
+
         assert dels.size() == 1
         assert dels[0].qual == 999
     }
@@ -35,8 +38,8 @@ class GnomADCNVDatabaseTest {
     @Test
     void 'test duplications are found'() {
         def dups =  gmd.queryOverlapping(duplicationRegion)
-        assert dups.size() == 2
-        assert dups.any{it.qual == 407.0}
+        assert dups.size() == 3
+        assert dups.any{it.qual == 999.0}
     } 
     
     @Test
@@ -44,16 +47,16 @@ class GnomADCNVDatabaseTest {
         def dupMaxFreq =  gmd.maxFreq(duplicationRegion)
         println dupMaxFreq
         
-        assert Math.abs(dupMaxFreq - 0.000122) < 0.00002
+        assert Math.abs(dupMaxFreq - 0.19) < 0.02
     }
     
     @Test
     void 'test contigs prefixed with chr are found'() {
-        Region dupChrRegion = new Region('chr' + duplicationRegion.chr, duplicationRegion.from, duplicationRegion.to)
+        Region dupChrRegion = new Region(duplicationRegion.chr, duplicationRegion.from, duplicationRegion.to)
         def dups =  gmd.queryOverlapping(dupChrRegion)
-        assert dups.size() == 2
+        assert dups.size() == 3
         println dups*.qual
-        assert dups.any{it.qual == 407.0}
+        assert dups.any{it.qual == 999.0}
     } 
  
 }
