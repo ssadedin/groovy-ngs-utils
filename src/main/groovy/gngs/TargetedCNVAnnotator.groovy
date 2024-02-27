@@ -111,13 +111,13 @@ class TargetedCNVAnnotator {
        List<Region> spanning = db.queryOverlapping((Region)v).grep { Region r ->
            boolean result = r.spans(v) || r.mutualOverlap(v) > mutualOverlapThreshold
            if(debug && !result)
-               log.info "No span of $r of $v : mutal overlap: " + r.mutualOverlap(v)
+               log.info "No span of $r of $v in ${db} : mutal overlap: " + r.mutualOverlap(v)
            return result
        }
        
        if(debug) {
            if(spanning.size() > 0) {
-               log.info "There were ${spanning.size()} cnvs spanning $v"
+               log.info "There were ${spanning.size()} cnvs spanning $v in ${db}"
            }
            else {
                log.info "No cnvs spanning $v"
@@ -143,6 +143,9 @@ class TargetedCNVAnnotator {
                
            (float)cnvCount / cnv.sampleSize.toFloat()
        }.max()?:0.0f
+       
+       if(debug)
+           log.info "After removing based on sample size: " + matchedSpanning.grep {it.sampleSize>5}.size()
    
 //       if(verbose)
 //           System.err.println "Found ${matchedSpanning.size()} plausible known database variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 
