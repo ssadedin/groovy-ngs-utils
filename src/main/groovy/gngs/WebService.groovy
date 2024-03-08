@@ -198,6 +198,10 @@ class WebService {
             this.api = ''
     }
     
+    Object post(List data) {
+        request([:], 'POST', data, null)
+    }
+
     Object post(Map data) {
         request([:], 'POST', data, null)
     }
