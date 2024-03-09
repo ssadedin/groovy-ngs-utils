@@ -17,7 +17,7 @@ class GnomADCNVDatabaseTest {
         
     @Before
     void loadCNVs() {
-        gmd = new GnomADCNVDatabase(new VCFIndex('src/test/data/gnomad_sv_test.vcf.gz'))
+        gmd = new GnomADCNVDatabase('src/test/data/gnomad_sv_test.vcf.gz')
     }
 
     @Test
