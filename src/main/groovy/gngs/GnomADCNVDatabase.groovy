@@ -83,7 +83,7 @@ class GnomADCNVDatabase extends CNVDatabase {
     public List<Region> queryOverlapping(IRegion r) { 
         final String contigNorm = convertChr(r)
 
-        final List<Region> variants = contigTrees[r.chr].overlappers((int)r.range.from, (int)r.range.to).grep { IntervalTree.Node<Variant> node ->
+        final List<Region> variants = contigTrees[r.chr]?.overlappers((int)r.range.from, (int)r.range.to).grep { IntervalTree.Node<Variant> node ->
             included((Variant)node.value)
         }
         .collect { v ->
