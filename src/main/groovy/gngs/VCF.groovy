@@ -845,6 +845,7 @@ class VCF implements Iterable<Variant>, Serializable {
      *          the same variant is in both VCFs, and null genotype information when it is missing in one
      *          or both VCFs.
      */
+    @CompileStatic
     VCF merge(VCF other) {
         
         // Start by copying this VCF
