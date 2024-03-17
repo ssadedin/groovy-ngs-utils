@@ -1,16 +1,18 @@
 package gngs
+import java.util.zip.GZIPInputStream
+
+import org.codehaus.groovy.runtime.StackTraceUtils;
+
 import com.xlson.groovycsv.PropertyMapper;
+
 import graxxia.DirectReaderFactory
 import graxxia.ReaderFactory
 import graxxia.StringReaderFactory
 import graxxia.TSV
+import groovy.json.JsonSlurper
 import groovy.transform.CompileStatic
 import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
-
-import java.util.zip.GZIPInputStream
-
-import org.codehaus.groovy.runtime.StackTraceUtils;
 
 /**
  * RangedData represents a set of genomic regions with data attached. The data is
@@ -113,6 +115,30 @@ class RangedData extends Regions {
         this.chrColumn = chrColumn
         this.startColumn = startColumn
         this.endColumn = endColumn
+    }
+    
+    @CompileStatic
+    public static  Regions loadJSON(def source) {
+        List<Map> data = (List<Map>)Utils.reader(source) { Reader r ->
+            new JsonSlurper().parse(r)
+        }
+        
+        Regions regions = new Regions()
+        for(Map<String,Object> d in data) {
+            if(!d.containsKey('chr') || !d.containsKey('start') || !d.containsKey('end'))   
+                throw new IllegalArgumentException("No 'chr' column in data : please supply JSON format with chr,start,end attributes")
+
+            Region r = new Region((String)d.chr, (int)d.start, (int)d.end)
+            d.each { String k, Object v ->
+                if(k != 'chr') {
+                    r[k] = v
+                }
+            }
+            
+            regions.addRegion(r)
+        }
+        
+        return regions
     }
     
     @CompileStatic
