@@ -86,7 +86,7 @@ class DecipherCNVs extends CNVDatabase {
      * @return
      */
     @Override
-    List<Region> queryOverlapping(Region r) {
+    List<Region> queryOverlapping(IRegion r) {
        return ddd.getOverlaps(r)*.extra
     }
     
@@ -98,7 +98,7 @@ class DecipherCNVs extends CNVDatabase {
      * @return  maximum frequency, or zero if no CNVs found
      */
     @Override
-    double maxFreq(Map options=[:], Region region) {
+    double maxFreq(Map options=[:], IRegion region) {
         int minSampleSize = options.minSampleSize?:10
         List<Region> overlappingEntries = this.queryOverlapping(region)
         

@@ -243,7 +243,7 @@ class VCFIterator implements Iterator<Variant>, Closeable {
  *
  * @author simon.sadedin@mcri.edu.au
  */
-class VCF implements Iterable<Variant> {
+class VCF implements Iterable<Variant>, Serializable {
     
     List<String> headerLines = []
     
@@ -845,6 +845,7 @@ class VCF implements Iterable<Variant> {
      *          the same variant is in both VCFs, and null genotype information when it is missing in one
      *          or both VCFs.
      */
+    @CompileStatic
     VCF merge(VCF other) {
         
         // Start by copying this VCF

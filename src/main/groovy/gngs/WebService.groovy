@@ -198,6 +198,10 @@ class WebService {
             this.api = ''
     }
     
+    Object post(List data) {
+        request([:], 'POST', data, null)
+    }
+
     Object post(Map data) {
         request([:], 'POST', data, null)
     }
@@ -354,8 +358,8 @@ class WebService {
             BasicCredentials creds = parseNetrc(credsFile)
             if(creds) {
                 this.webserviceCredentials = creds
-                return
             }
+            return
         }
 
         def yaml = new Yaml().load(credsFile.text)
@@ -400,7 +404,8 @@ class WebService {
 
             for(WebServiceCredentials creds in [webserviceCredentials, bearerToken, basicCredentials]) {
                 if(creds) {
-                    log.info "Configuring authorization using : " + creds
+                    if(verbose)
+                        log.info "Configuring authorization using : " + creds
                     creds.configure(connection, url, method, data, headers)
                 }
             }
@@ -419,6 +424,10 @@ class WebService {
      *          decoded content. Otherwise, the object is a string.
      */
     Object executeRequest(HttpURLConnection connection, String body) {
+        
+        if(verbose)
+            log.info "Writing body:\n" + body
+        
         connection.connect()
         if(body != null) {
             connection.outputStream.withWriter { writer ->

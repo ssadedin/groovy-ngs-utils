@@ -21,6 +21,7 @@ package gngs
 
 import groovy.transform.CompileDynamic
 import groovy.transform.CompileStatic
+import htsjdk.samtools.util.IntervalTree
 
 /**
  * A {@link CNVDatabase} implementation for CNVs from the gnomAD
@@ -38,6 +39,23 @@ class GnomADCNVDatabase extends CNVDatabase {
     
     double mutualOverlapFraction = 0.5d
 
+    Map<String, IntervalTree<Variant>> contigTrees = [:]
+        
+    public GnomADCNVDatabase(String path) {
+        super();
+        
+        this.gnomad = new VCFIndex(path)
+
+        VCF.parse(path) { Variant v ->
+            IntervalTree<Variant> tree = contigTrees[v.chr]
+            if(tree == null) {
+                tree = contigTrees[v.chr] = new IntervalTree()
+            }
+            tree.put(v.pos, v.pos + v.size(), v)
+            false
+        }
+    }
+ 
     public GnomADCNVDatabase(VCFIndex gnomad) {
         super();
         this.gnomad = gnomad;
@@ -45,12 +63,14 @@ class GnomADCNVDatabase extends CNVDatabase {
     
 
     @Override
-    public double maxFreq(Map options, final Region region) {
+    public double maxFreq(Map options, final IRegion region) {
         String contigNoChr = convertChr(region)
         
+        Region rRegion = new Region(region)
+        
         Variant maxFreqVariant = 
-            gnomad.iterator(contigNoChr, region.from, region.to)
-                  .grep { Variant v -> included(v) && region.mutualOverlap(v) > mutualOverlapFraction }
+            (Variant)gnomad.iterator(contigNoChr, region.range.from, region.range.to)
+                  .grep { Variant v -> included(v) && rRegion.mutualOverlap(v) > mutualOverlapFraction }
                   .max { v -> ((String)((Variant)v).info.POPMAX_AF).toDouble() }
         
         if(maxFreqVariant == null)          
@@ -60,12 +80,14 @@ class GnomADCNVDatabase extends CNVDatabase {
     }
 
     @Override
-    public List<Region> queryOverlapping(Region r) { 
-        final String contigNoChr = convertChr(r)
-        final List<Region> variants = gnomad.iterator(contigNoChr, r.from, r.to).grep { Variant v ->
-            included(v)
-        }.collect { v ->
-            createRegion((Variant)v)
+    public List<Region> queryOverlapping(IRegion r) { 
+        final String contigNorm = convertChr(r)
+
+        final List<Region> variants = contigTrees[r.chr]?.overlappers((int)r.range.from, (int)r.range.to).grep { IntervalTree.Node<Variant> node ->
+            included((Variant)node.value)
+        }
+        .collect { v ->
+            createRegion(((IntervalTree.Node<Variant>)v).value)
         }
         return variants
     }
@@ -80,7 +102,7 @@ class GnomADCNVDatabase extends CNVDatabase {
        
        assert isDup || isDel
         
-       new Region('chr' + v.chr, v.pos, v.pos + v.size(), 
+       new Region(v.chr, v.pos, v.pos + v.size(), 
 //           variant: v,  
            sampleSize:an,
            duplication_frequency: isDup ?  ac/an : 0,
@@ -101,12 +123,12 @@ class GnomADCNVDatabase extends CNVDatabase {
     }
 
     @Override
-    public double maxFreq(final Region region) {
+    public double maxFreq(final IRegion region) {
         return maxFreq(null, region)
     }
 
-    private final String convertChr(final Region region) {
-        return region.chr.startsWith('chr') ? region.chr.substring(3) : region.chr
+    private final String convertChr(final IRegion region) {
+        return region.chr.startsWith('chr') ? region.chr : 'chr' + region.chr
     }
     
     private final boolean included(final Variant v) {

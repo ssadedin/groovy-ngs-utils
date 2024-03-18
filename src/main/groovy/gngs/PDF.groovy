@@ -78,7 +78,7 @@ class PDF {
         document(file.absolutePath,c)
     }
     
-	void document(String fileName, Closure c) {
+	void document(String fileName, @DelegatesTo(PDF) Closure c) {
 		Document document = new Document();
 		PdfWriter.getInstance(document, new FileOutputStream(fileName));
 		document.open();

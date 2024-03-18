@@ -94,32 +94,37 @@ class TargetedCNVAnnotator {
    
    double mutualOverlapThreshold = 0.5
    
+   /**
+    * Annotate the given region for the given variant type with information from
+    * the givenCNVdatabase
+    * 
+    * @param db
+    * @param v
+    * @param type
+    * @return
+    */
    CNVFrequency annotateFromDatabase(CNVDatabase db, IRegion v, String type) {
        
        boolean debug = false
-//       if(v.range.from == 20710747) {
-//           log.info "debug: $v"
-//           debug = true
-//       }
-//       
+
        // Look for "crossing" CNVs
-       List<Region> spanning = db.queryOverlapping(v).grep { Region r ->
+       List<Region> spanning = db.queryOverlapping((Region)v).grep { Region r ->
            boolean result = r.spans(v) || r.mutualOverlap(v) > mutualOverlapThreshold
            if(debug && !result)
-               log.info "No span of $r of $v : mutal overlap: " + r.mutualOverlap(v)
+               log.info "No span of $r of $v in ${db} : mutal overlap: " + r.mutualOverlap(v)
            return result
        }
        
        if(debug) {
            if(spanning.size() > 0) {
-               log.info "There were ${spanning.size()} cnvs spanning $v"
+               log.info "There were ${spanning.size()} cnvs spanning $v in ${db}"
            }
            else {
                log.info "No cnvs spanning $v"
            }
        }
            
-       List matchedSpanning = filterByType(type, spanning)
+       List<Region> matchedSpanning = filterByType(type, spanning)
 
        if(debug && (matchedSpanning.size()<spanning.size())) {
            log.info "${spanning.size() -matchedSpanning.size()} CNVs removed by matching on type $type (types were: ${spanning*.varType.unique().join(',')})"
@@ -138,6 +143,9 @@ class TargetedCNVAnnotator {
                
            (float)cnvCount / cnv.sampleSize.toFloat()
        }.max()?:0.0f
+       
+       if(debug)
+           log.info "After removing based on sample size: " + matchedSpanning.grep {it.sampleSize>5}.size()
    
 //       if(verbose)
 //           System.err.println "Found ${matchedSpanning.size()} plausible known database variants for ${v}, and ${spanning.size()} spanning CNVs (max freq = $spanningFreq)" 

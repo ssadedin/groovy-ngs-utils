@@ -45,7 +45,7 @@ abstract class CNVDatabase {
      * 
      * @return list of CNVS overlapping the specified region
      */ 
-    abstract List<Region> queryOverlapping(Region r) 
+    abstract List<Region> queryOverlapping(IRegion r) 
     
     /**
      * Find the maximum frequency of this CNV within any study within the database
@@ -54,5 +54,5 @@ abstract class CNVDatabase {
      * @param   region  region to search
      * @return  maximum frequency, or zero if no CNVs found
      */
-    abstract double maxFreq(Map options=[:], Region region) 
+    abstract double maxFreq(Map options=[:], IRegion region) 
 }

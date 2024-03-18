@@ -945,7 +945,7 @@ class Regions implements Iterable<Region> {
                 start: r.from,
                 end: r.to,
                 span: r.size()
-            ] + r.properties.grep { Map.Entry e -> (e.value instanceof String) || (e.value instanceof Number) }.collectEntries()
+            ] + r.properties.grep { Map.Entry e -> (e.value instanceof String) || (e.value instanceof Number) || (e.value instanceof Boolean) }.collectEntries()
         }
     }
     

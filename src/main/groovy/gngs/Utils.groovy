@@ -36,6 +36,7 @@ class TableOptions {
     Appendable out
     String border
     String title
+    Map<String,Integer> columnWidths
 }
 
 
@@ -279,7 +280,10 @@ class Utils {
         else {
             headers.each { columnWidths[it] = it.size() }
         }
-        
+
+        if(options.columnWidths) {
+            columnWidths = columnWidths + options.columnWidths
+        }
         
            
         // Now render the table

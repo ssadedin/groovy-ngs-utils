@@ -72,6 +72,10 @@ trait Density {
                 if(k == 'color' && (v instanceof Color)) {
                     me.setColor(v)
                 }
+                else
+                if(k == 'color' && (v instanceof java.awt.Color)) {
+                    me.setColor(new Color(v.RGB))
+                }
                 else {
                     String method = 'set' + k.capitalize()
                     me.invokeMethod(method,[v])

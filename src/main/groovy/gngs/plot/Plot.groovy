@@ -34,8 +34,13 @@ import de.erichseifert.gral.plots.BarPlot
 import de.erichseifert.gral.plots.BarPlot.BarPlotLegend
 import de.erichseifert.gral.plots.BarPlot.BarRenderer
 import de.erichseifert.gral.plots.XYPlot
+import de.erichseifert.gral.plots.XYPlot.XYLegend
+import de.erichseifert.gral.plots.areas.AreaRenderer
+import de.erichseifert.gral.plots.areas.DefaultAreaRenderer2D
 import de.erichseifert.gral.plots.axes.AxisRenderer
 import de.erichseifert.gral.plots.legends.Legend
+import de.erichseifert.gral.plots.legends.SeriesLegend
+import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D
 import de.erichseifert.gral.plots.lines.LineRenderer
 import de.erichseifert.gral.plots.lines.SmoothLineRenderer2D
 import de.erichseifert.gral.plots.points.DefaultPointRenderer2D
@@ -52,7 +57,7 @@ class Palette {
 
 class DefaultPalette extends Palette {
     DefaultPalette() {
-       colors = [new Color(20,30,100), Color.red, Color.blue, Color.green, Color.orange, new Color(100,0,100)] 
+       colors = [new Color(20,30,100), Color.red, Color.blue, Color.green, Color.orange, new Color(100,0,100), Color.cyan, Color.pink, Color.yellow, Color.magenta ] 
     }
 }
 
@@ -99,6 +104,8 @@ class XYItem extends PlotItem {
         
         List<Column> cols = [xColumn, yColumn]
         
+        minX = x.min()
+        minY = y.min()
         maxX = x.max()
         maxY = y.max()
 
@@ -120,8 +127,10 @@ class Line extends XYItem {
     Double width
 }
 
+class Area extends XYItem {
+}
+
 class Points extends XYItem {
-    
 }
 
 
@@ -316,7 +325,7 @@ class Plot {
     String yLabel = null
     
     List<PlotItem> items = []
-    
+
     List xBound = null
     
     List yBound = null
@@ -330,19 +339,43 @@ class Plot {
     /**
      * For compatibility with BeakerX
      */
-    int initWidth
-    int initHeight
+    Integer initWidth = null
+    Integer initHeight = null
     
     Plot leftShift(PlotItem item) {
         this.items << item
         return this
     }
     
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Area item) {
+        
+        Map optionalAttributes = [:]
+        if(item.color)
+            optionalAttributes.color = new Color(item.color.RGB) 
+
+        this.items << new Area(
+            x: item.x,
+            y: item.y,
+            displayName: item.displayName,
+            * : optionalAttributes
+        )
+        return this
+    }
+     
+    
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Text item) {
+        Text gngsItem = new Text(x:item.x, y:item.y, text: item.text)
+        if(item.color)
+            gngsItem.color = new Color(item.color.RGB)
+        this.texts << gngsItem
+        return this
+    }
+
     Plot leftShift(Text item) {
         this.texts << item
         return this
     }
-    
+     
     static Object saveAs(def plot, String fileName) {
         if(plot instanceof com.twosigma.beakerx.chart.xychart.Plot) {
             from(plot).save(fileName)
@@ -366,9 +399,13 @@ class Plot {
             title:bxPlot.title,
             xLabel: bxPlot.xLabel,
             yLabel: bxPlot.yLabel,
-            xBound: [bxPlot.xLowerBound, bxPlot.xUpperBound],
-            yBound: [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()],
         )
+        
+        if(!bxPlot.xAutoRange)
+            p.xBound = [bxPlot.xLowerBound, bxPlot.xUpperBound]
+
+        if(!bxPlot.yAutoRange)
+            p.yBound = [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()]
         
         bxPlot.graphics.each { XYGraphics g ->
             
@@ -381,7 +418,14 @@ class Plot {
             if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Line) {
                 item = new Lines()
             }
-            
+            else
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Area) {
+                item = new Area()
+            }
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Bars) {
+                item = new Bars()
+            }
+    
             if(!item)
                 return
  
@@ -403,7 +447,7 @@ class Plot {
     }
     
     BufferedImage getImage() {
-        getImage(800,600)
+        getImage(initWidth?:800,initHeight?:600)
     }
 
     BufferedImage getImage(int width, int height) {
@@ -450,6 +494,8 @@ class Plot {
             :
                 new XYPlot(dtArray)
                 
+        XYPlot legendPlot = new XYPlot(dtArray)
+
         Insets2D.Double insets = new Insets2D.Double(40.0, 80.0, 80.0, 80.0)
         xyPlot.setInsets(insets);
         
@@ -457,25 +503,43 @@ class Plot {
         
         [xys,datas].transpose().each { xy, dt ->
 
+            def color = convertColor(xy.color, i)
+
             if(xy instanceof Lines || xy instanceof Line) {
                 LineRenderer lines = new SmoothLineRenderer2D();
 
                 if(xy.width != null)
                     lines.setStroke(new BasicStroke((float)xy.width))
-                    
-                if(xy.color)
-                    lines.setColor(new Color(xy.color.red, xy.color.green, xy.color.blue))
-                else
-                    lines.setColor(palette.colors[ i % palette.colors.size()])
 
+                lines.setColor(color)
                 xyPlot.setLineRenderers(dt, lines)
             }
             else
+            if(xy instanceof Area) {
+
+                AreaRenderer area = new DefaultAreaRenderer2D();
+                area.color = GraphicsUtils.deriveWithAlpha(color, 115)
+                area.setGapRounded(true)
+                
+                PointRenderer point = new DefaultPointRenderer2D();
+                point.setColor(area.color);
+                xyPlot.setPointRenderers(dt, point);
+                    
+                
+                LineRenderer line = new DefaultLineRenderer2D();
+                line.setColor(xy.color);
+                line.setGap(0);
+                xyPlot.setLineRenderers(dt, line);
+                xyPlot.setAreaRenderers(dt, area)
+            }
+            else
             if(xy instanceof Bars) {
-                List<BarRenderer> bars = xyPlot.getPointRenderers(dtArray[0])
-                bars*.setColor(palette.colors[ i % palette.colors.size()])
+                List<BarRenderer> bars = xyPlot.getPointRenderers(dtArray[i])
+                bars*.setColor(color)
                 if(xy.width != null)
                     xyPlot.setBarWidth(xy.width)
+                    
+                legendPlot.getPointRenderers(dtArray[i])*.setColor(color)
                     
                 if(xy.labels != null) {
                     bars*.setValueColumn(2)
@@ -486,11 +550,8 @@ class Plot {
                 PointRenderer pointRenderer = new DefaultPointRenderer2D()
                 pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
                 xyPlot.setPointRenderers(dt, pointRenderer)
+                pointRenderer.setColor(color)
 
-                if(xy.color)
-                    pointRenderer.setColor(new Color(xy.color.red, xy.color.green, xy.color.blue))
-                else
-                    pointRenderer.setColor(palette.colors[ i % palette.colors.size()])
             }
 //            xyPlot.setMapping(dt, xys[i].name, '')
             ++i
@@ -549,11 +610,30 @@ class Plot {
                 label.text = yLabel
         }
         
-        if(!(xyPlot instanceof BarPlot) && xys.any { it.displayName }) {
-            xyPlot.setLegendVisible(true)
+        if(xys.any { it.displayName }) {
             
-            if(this.legendLocation) {
-                xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+            if(xyPlot instanceof BarPlot) {
+                // noop
+                // default legend doesn't work here because it displays
+                // a legend entry for each bar rather than each series
+                // which is the default for bar plots.
+                // Need to replace with a SeriesLegend, but it seems like
+                
+                if(xys.size() > 1) {
+                    SeriesLegend legend = new XYLegend(legendPlot)
+                    xyPlot.setLegend(legend)
+                    xyPlot.setLegendVisible(true)
+                    if(this.legendLocation) {
+                        xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+                    }
+                }
+            }
+            else {
+                xyPlot.setLegendVisible(true)
+                
+                if(this.legendLocation) {
+                    xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
+                }
             }
         }
             
@@ -584,19 +664,42 @@ class Plot {
         return xyPlot
     }
     
-    void save(final String fileName) {
+    /**
+     * Convert to Gral compatible object, using palette for item index if not
+     * explicitly specified
+     * 
+     * @param color color object to convert, may be null
+     * @param i index to select from palette if color is null
+     * @return  Gral compatible color object
+     */
+    Color convertColor(def color, int i) {
+        
+        if(color)
+            // This slightly awkward way works regardless of the type of color object passed in
+            // ie: AWT, BeakerX, etc
+            return new Color(color.red, color.green, color.blue)
+        else
+            return palette.colors[ i % palette.colors.size()]
+    }
+    
+    void save(Map options=null, final String fileName) {
         
         assert fileName.endsWith('.png')
 
-        int width = 1024
-        int height = 800
-        
+        options = options?:[:]
+
+        int width = options.width?:initWidth?:1024
+        int height = options.height?:initHeight?:800
         
         XYPlot xyPlot = toXYPlot(width, height)
         
         int eastLegendWidth = 0
-        if(this.legendLocation in ["east","north_east","south_east"])
-            eastLegendWidth = 140 // hack / guess
+        
+
+        if(this.legendLocation in ["east","north_east","south_east"]) {
+            int maxDisplayNameLength = this.items*.displayName.collect { it?.size()?:0 }.max()
+            eastLegendWidth = (int)(maxDisplayNameLength*10 * (width/1024)) // hack / guess, use about 15% of width
+        }
 
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
@@ -613,7 +716,7 @@ class PlotUtils {
         if(x == 0d)
             return 1d
         int oom = (int)Math.floor(Math.log10(x)) 
-        int interval = (int)Math.pow(10,oom)
+        double interval = Math.pow(10,oom)
         double rounded = Math.floor(x/interval) * interval  + interval
         return rounded
     }

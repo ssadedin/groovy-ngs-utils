@@ -20,6 +20,7 @@
 package gngs
 
 import graxxia.TSV
+
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import groovy.xml.slurpersupport.GPathResult
@@ -210,8 +211,10 @@ class PubMed {
             Long pmId = (pma.MedlineCitation.PMID.text() ?: pma.BookDocument.PMID.text()).toLong()
             String cacheXML = groovy.xml.XmlUtil.serialize(pma)
             File cacheFile = getCacheFile(pmId)
-            log.info "Caching article $pmId to ${cacheFile.absolutePath}"
-            getCacheFile(pmId).text = cacheXML
+            if(cacheFile) {
+                log.info "Caching article $pmId to ${cacheFile.absolutePath}"
+                getCacheFile(pmId).text = cacheXML
+            }
         }
         xml.PubmedArticle.each(cacheResult)
         xml.PubmedBookArticle.each(cacheResult)
@@ -225,10 +228,11 @@ class PubMed {
      * @return  
      */
     Map<Long, PubMedArticle> queryArticlesFromCache(List<Long> pubmedIds) {
+        
         pubmedIds.collectEntries { pubmedId ->
                     File cacheFilePath = getCacheFile(pubmedId)
                     
-                    if(!cacheFilePath.exists())
+                    if(!cacheFilePath || !cacheFilePath.exists())
                         return [ pubmedId, null ] 
                         
                     GPathResult xml = parseAbstractXML(cacheFilePath.text)
@@ -250,7 +254,10 @@ class PubMed {
     
     @CompileStatic
     File getCacheFile(Long pubmedId) {
-        if(!this.cacheDir)
+        if(this.cacheDir == null)
+            return null
+
+        if(!this.cacheDir.exists())
             this.cacheDir.mkdirs()
 
         new File(this.cacheDir, String.valueOf(pubmedId))

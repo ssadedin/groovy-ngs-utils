@@ -321,7 +321,9 @@ enum Genotype {
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class Variant implements IRegion {
+class Variant implements IRegion, Serializable {
+    
+    private static final long serialVersionUID = 1L;
     
     static final NumberFormat QUAL_FORMATTER = NumberFormat.getInstance()
     
@@ -342,7 +344,7 @@ class Variant implements IRegion {
      * @author simon.sadedin@mcri.edu.au
      */
     @CompileStatic
-    final public class Allele {
+    final public class Allele implements Serializable {
         
         public Allele(int index, int start, int end, String alt, String type) {
             this.index = index;
@@ -776,7 +778,12 @@ class Variant implements IRegion {
         List<Genotype> result = (List<Genotype>)gts.collect{
             if(it.isInteger()){
                 return Genotype.Hemi
-            }else{
+            }
+            else
+            if(it.equals(".")) {
+                return Genotype.Missing
+            }
+            else {
                 String[] split = PIPE_OR_SLASH_SPLIT.split(it)
                 if(split[0] == split[1]){
                     if(split[0]=="."){
@@ -1009,7 +1016,7 @@ class Variant implements IRegion {
      */
     @CompileStatic
     static Map<String,Object> parseInfoString(final String value) {
-        Map result = [:]
+        Map<String,Object> result = [:]
         if((value != null) && (value != '.')) {
             for(String s in value.tokenize(';')) {
                 int i = s.indexOf('=')
