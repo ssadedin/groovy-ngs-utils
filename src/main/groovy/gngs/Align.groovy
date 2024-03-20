@@ -21,6 +21,7 @@ package gngs
 
 import org.biojava.nbio.alignment.NeedlemanWunsch;
 import org.biojava.nbio.alignment.SimpleGapPenalty;
+import org.biojava.nbio.alignment.SmithWaterman
 import org.biojava.nbio.core.alignment.matrices.SubstitutionMatrixHelper;
 import org.biojava.nbio.alignment.template.Aligner;
 import org.biojava.nbio.alignment.template.GapPenalty;
@@ -131,6 +132,35 @@ class Align {
                       }.transpose()
                       *.join('')
                       .join('\n')
+    }
+    
+    /**
+     * Perform local alignment between the query and reference string
+     * 
+     * Local alignment means both the query and reference strings are allowed
+     * penalty free clipping of their start and end sequence.
+     * 
+     * @param params
+     * @param queryString
+     * @param referenceString
+     * 
+     * @return aligner with profile computed, use Aligner.profile to access result
+     */
+    static Aligner local(Map params=[:], String queryString, String referenceString) {
+        
+        // Override defaults with any parameters passed in
+        Map actualParams = ALIGNMENT_DEFAULTS + params
+        
+        DNASequence query = new DNASequence(queryString);
+        DNASequence reference = new DNASequence(referenceString);
+        
+        GapPenalty gapPenalty = new SimpleGapPenalty((short)5,(short)1);
+        
+        SmithWaterman<DNASequence, NucleotideCompound> aligner = new SmithWaterman<DNASequence, NucleotideCompound>(query, reference, gapPenalty, actualParams.substitutionMatrix);
+        
+        Profile<DNASequence, NucleotideCompound> profile = aligner.getProfile();
+        
+        return aligner
     }
 
 }
