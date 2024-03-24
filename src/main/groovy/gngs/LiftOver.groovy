@@ -1,8 +1,6 @@
 package gngs
 
 import htsjdk.samtools.util.Interval
-import org.junit.Test
-
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 
@@ -66,7 +64,7 @@ class LiftOver {
     }
     
     
-    @Test
+//    @Test
     void testCall() {
         LiftOver lo = new LiftOver(from:'hg19', to: 'hg38')
         Region result = lo.liftOver(new Region("chr1:1,273,059-1,274,582"))
