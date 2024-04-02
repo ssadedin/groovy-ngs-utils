@@ -44,7 +44,7 @@ Run gradle:
 
 ```
     cd groovy-ngs-utils
-    ./gradlew clean jar
+    ./gradlew clean shadowJar
 ```
 
 Note: if behind a proxy, you can specify it like so:
