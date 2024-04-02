@@ -1,4 +1,8 @@
-apply plugin: 'groovy'
+
+plugins {
+    id("groovy") 
+    id("com.github.johnrengelman.shadow") version "7.1.2"
+}
 
 
 project.ext {
@@ -188,6 +192,14 @@ test {
 */
 }
 
+shadowJar {
+    mergeServiceFiles()
+    mergeGroovyExtensionModules()
+
+    archiveFileName = 'groovy-ngs-utils.jar'
+
+    zip64 = true
+}
 
 if (rootProject == project) {
     wrapper {
