@@ -21,7 +21,7 @@ package gngs
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-
+import java.util.stream.Stream
 import gngs.coverage.CoverageCalculatorActor
 import groovy.transform.CompileStatic;
 import groovy.transform.stc.ClosureParams
@@ -1176,24 +1176,41 @@ class SAM {
      * @return Map with keys on_target: reads overlapping target region, and bp_on_target: number of base pairs
      *         sequenced that overlap the target region, total: total count of reads.
      */
+    @CompileStatic
     Map<String,Long> countOnTarget(Regions targets) {
         
         long total = 0
-        def on_target = this.stream {
-          map { it as Region }.filter { ++total; targets.overlaps(it) }.count { 1 }
-        }
-        
-
         long totalBp = 0
-        this.stream {
-          map { it as Region }.map { targets.intersect(it)[0] }.filter { it != null }.each { totalBp += it.size() }
+        def on_target = this.withStream { s ->
+          s.map { new Region((SAMRecord)it) }.filter { totalBp += it.size();  ++total; targets.overlaps(it) }.count()
+        }
+
+        long ontargetBp = 0
+        this.withStream { s ->
+          s.map { new Region((SAMRecord)it) }.map { targets.intersect(it)[0] }.filter { it != null }.each { ontargetBp += ((GRange)it).size() }
         }
         
-        [
+        Map result = [
           total: total,
-          bp_on_target: totalBp,
+          bp_on_target: ontargetBp,
+          bp_total: totalBp,
           on_target: on_target
         ]
+        
+        return (Map<String,Long>)result
+    }
+    
+    @CompileStatic
+    def withStream(@ClosureParams(value=SimpleType, options=['java.util.stream.Stream']) Closure  c) {
+       withIterator { i -> 
+           Stream s = i.stream()
+           try {
+               c(s)
+           }
+           finally {
+               s.close()
+           }
+       } 
     }
     
     /**
