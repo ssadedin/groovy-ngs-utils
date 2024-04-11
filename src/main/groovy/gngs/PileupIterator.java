@@ -187,7 +187,7 @@ public class PileupIterator implements Iterator<PileupIterator.Pileup> {
                   r = (SAMRecord)readIterator.next();
                   
                   // Ignore reads that are unmapped or mapped below the threshold set
-                  if(r != null && (r.getReadUnmappedFlag() || r.getMappingQuality()<this.minMappingQuality))
+                  if(r != null && (r.getReadUnmappedFlag() || r.getMappingQuality()<this.minMappingQuality) || r.getReadBases().length == 0)
                       r = null;
               }
 
