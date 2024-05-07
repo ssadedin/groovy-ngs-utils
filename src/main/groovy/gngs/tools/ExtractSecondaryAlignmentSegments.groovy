@@ -151,7 +151,7 @@ class SASegment {
             // sum length of all the CIGAR elements that represent reference sequence span
             rlen : cig.grep { it[1] == 'M' || it[1] == 'D' }.sum { it[0] }?:0,
 
-            // sum length of all the CIGAR elements that represent reference sequence span
+            // sum length of all the CIGAR elements that represent query sequence span
             qlen  : cig.grep { it[1] == 'M' || it[1] == 'I' }.sum { it[0] }?:0,
 
             // length of any leading clipped sequence
