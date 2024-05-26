@@ -48,6 +48,9 @@ class SampleInfo {
 
     /** Sample name */
     String  sample
+    
+    /** Identifier for test on sample */
+    String test_id
 
     /** 
      * List of files containing data specific to this sample, indexed by file types:
@@ -315,6 +318,9 @@ class SampleInfo {
                 }
                 if_field('Hospital_Centre') {
                     si.institution = fields.Hospital_Centre
+                }
+                if_field('Test_ID') {
+                    si.test_id = fields.Test_ID
                 }
                 si.files.all = fields.Fastq_Files.split(",")*.trim().collect {new File(it).parentFile?it:"../data/$it"}
                 si.indexFileTypes()
