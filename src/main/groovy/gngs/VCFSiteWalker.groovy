@@ -161,7 +161,10 @@ class VCFSiteWalker {
     @CompileStatic
     private void processByAllele(List<VariantContext> variants, @ClosureParams(value=FromString, options='java.util.List<htsjdk.variant.variantcontext.VariantContext>') Closure callback) {
         Map<String, List<VariantContext>> alleles = variants.groupBy { VariantContext ctx ->
-            ctx.getReference().baseString + '/' + ctx.getAlternateAllele(0).baseString
+            if(ctx.isVariant())
+                ctx.getReference().baseString + '/' + ctx.getAlternateAllele(0).baseString
+            else
+                ctx.getReference().baseString + '/' + ctx.getReference().baseString
         }
 
         alleles.each { String bases, List<VariantContext> alleleVariants ->
