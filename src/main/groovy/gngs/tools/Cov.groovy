@@ -469,6 +469,10 @@ class Cov extends ToolBase {
                 int alignmentEnd = r.alignmentEnd
                 final int alignmentStart = r.alignmentStart
 
+                if(!r.readPairedFlag) {
+                    // Do nothing - no need to take overlaps into account
+                } 
+                else
                 if(com == COVERAGE_MODE_NO_COUNT_OVERLAPS) {
                     // Don't double count if reads overlap
                     if(r.getFirstOfPairFlag() && mateStart == alignmentStart) { 
