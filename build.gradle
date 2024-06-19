@@ -1,7 +1,7 @@
 
 plugins {
     id("groovy") 
-    id("com.github.johnrengelman.shadow") version "7.1.2"
+    id("com.github.johnrengelman.shadow") version "4.0.4"
 }
 
 
@@ -197,6 +197,7 @@ shadowJar {
     mergeGroovyExtensionModules()
 
     archiveFileName = 'groovy-ngs-utils.jar'
+    duplicatesStrategy = 'exclude'
 
     zip64 = true
 }
