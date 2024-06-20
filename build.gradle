@@ -203,6 +203,17 @@ shadowJar {
     duplicatesStrategy = 'exclude'
 
     zip64 = true
+
+    exclude "org/codehaus/**"
+    exclude "META-INF/groovy*"
+    exclude "META-INF/**/*groovy*"
+    exclude "META-INF/BCKEY*"
+    exclude "org/bouncycastle/**"
+    exclude "org/codehaus/mojo"
+    exclude "org/slf4j/impl/**"
+    exclude "org/junit/**"
+    exclude "org/testing/**"
+    exclude "org/opentest4j/**"
 }
 
 if (rootProject == project) {
