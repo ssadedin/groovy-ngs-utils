@@ -13,6 +13,8 @@ import org.junit.Test
 class GencodeTest {
     
     String gencode = 'src/test/data/gencode.test.gff3.gz'
+    
+    Region DVL1 = new Region('chr1:1335276-1349418')
 
     @Test
     public void readGencode() {
@@ -26,7 +28,7 @@ class GencodeTest {
 
         println "Read: $gencode"
         
-        def dvl1 = gencode.getGeneRegion("DVL1")
+        def dvl1 = gencode.getGeneFeature("DVL1")
         
         println "DVL1 location = $dvl1 with id $dvl1.id" 
         
@@ -52,7 +54,7 @@ class GencodeTest {
     void 'read indexed file'() {
         Gencode gencode = new Gencode(gencode)
         
-        gencode.loadRegion(new Region('chr1:1335276-1349418'))
+        gencode.loadRegion(DVL1)
 
         def dvl1 = gencode.genes['DVL1']
         
@@ -70,6 +72,41 @@ class GencodeTest {
 
         assert dvl1.children[0].children.size() == 17
         assert dvl1.children[1].children.size() == 17
+    }
+    
+    
+    @Test
+    void 'gene symbols are resolved correctly'() {
+        Gencode gencode = new Gencode(gencode).load()
+        
+        List<String> overlappingGenes = gencode.getGenes(DVL1)
+
+        println "Gene symbols overlapping $DVL1 are " + overlappingGenes
+        
+        assert ['TAS1R3', 'DVL1', 'MIR6808'].every { overlappingGenes.contains(it) }
+    }
+    
+    @Test
+    void 'flattened exons are resolved correctly'() {
+        Gencode gencode = new Gencode(gencode).load()
+        Regions exons = gencode.getExons('DVL1')
+        assert exons.numberOfRanges == 15
+    }
+    
+    @Test
+    void 'cds calculated correctly'() {
+        Gencode gencode = new Gencode(gencode).load()
+        
+        def cds = gencode.getCDS(DVL1)
+        
+        println "CDS for DVL1 is $cds"
+        
+        def expected = [TAS1R3:0, DVL1:2103, MIR6808:0]
+        assert cds.size() == 3
+        assert cds.DVL1 == 2103
+        assert cds.TAS1R3 == 0
+        assert cds.MIR6808 == 0
+        
     }
 
 //    Only works on the full gencode

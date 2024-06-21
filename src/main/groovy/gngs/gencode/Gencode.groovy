@@ -42,7 +42,7 @@ import htsjdk.tribble.readers.*
  * 
  * @author simon.sadedin
  */
-class Gencode {
+class Gencode implements GeneAnnotationSource {
     
     private final static int EQUALS = '=' as char
 
@@ -128,6 +128,8 @@ class Gencode {
         // UNLESS they are part of the UTR
         if(type == 'CDS' || type == 'three_prime_UTR' || type == 'five_prime_UTR') {
             feature = new Exon(region, regionId)
+            if(type == 'CDS')
+                feature.coding = true
         }
         else
         if(type == 'transcript') {
@@ -137,6 +139,8 @@ class Gencode {
             // This must be a non-exon / transcript / gene 
             return 
         }
+
+        region['feature'] = feature
 
         this.features[regionId] = feature
 
@@ -205,7 +209,44 @@ class Gencode {
         }
     }
     
-    Gene getGeneRegion(String geneSymbol) {
+    @CompileStatic
+    Gene getGeneFeature(String geneSymbol) {
         return genes[geneSymbol]
+    }
+    
+    List<Gene> getGeneFeatures(IRegion region) {
+         this.geneRegions.getOverlapRegions(region)*.feature       
+    }
+    
+    @CompileStatic
+    List<String> getGenes(IRegion region)  {
+        List<Gene> genes = getGeneFeatures(region)
+        return genes*.symbol
+    }
+    
+    @CompileStatic
+    Regions getExons(String geneSymbol, boolean codingOnly=true) {
+        Gene gene = getGeneFeature(geneSymbol)
+        List<IRegion> allRegions = (List<IRegion>)gene.children.collect { Feature transcript ->
+            transcript*.children
+        }.flatten()
+        
+        if(codingOnly)
+            allRegions.removeIf { Feature exonFeature -> !((Exon)exonFeature).coding }
+
+        Regions allExons = new Regions(allRegions)
+        return allExons.reduce()
+    }
+    
+    Map<String,Integer> getCDS(final IRegion region)  {
+        List<Gene> genes = getGeneFeatures(region)
+        return genes.collectEntries {gene -> 
+            List<Exon> allCodingExons = gene.children*.children.flatten().grep { it.coding }
+            Regions exonRegions = new Regions(allCodingExons)
+            [
+                gene.symbol,
+                exonRegions.reduce().intersect(region)*.size().sum()?:0
+            ]
+        }
     }
 }

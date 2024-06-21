@@ -37,7 +37,7 @@ import groovy.util.logging.Log;
  * @author simon
  */
 @Log
-class RefGenes {
+class RefGenes implements GeneAnnotationSource {
     
     RangedData refData = null
     

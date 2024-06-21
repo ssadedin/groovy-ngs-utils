@@ -6,12 +6,12 @@ import gngs.IRegion
 import groovy.transform.CompileStatic
 
 @CompileStatic
-class Feature implements IRegion {
+class Feature<CHILD_TYPE extends Feature> implements IRegion {
     String chr
     IntRange range
     String id
     Feature parent
-    List<Feature> children
+    List<CHILD_TYPE> children
     
     Feature(IRegion region, String id, Feature parent) {
         this.chr = region.chr
@@ -28,9 +28,13 @@ class Feature implements IRegion {
     }
     
     List<Feature> getChildren() {
-        if(this.children.isEmpty())
+        if(!this.children || this.children.isEmpty())
             return Collections.emptyList()
         return this.children
+    }
+    
+    int size() {
+        return range.size()
     }
     
     String toString() {
@@ -39,9 +43,9 @@ class Feature implements IRegion {
 }
 
 @CompileStatic
-class Gene extends Feature {
+class Gene extends Feature<Transcript> {
     String symbol
-    Transcript transcript
+//    Transcript transcript
     public Gene(IRegion region, String id, String symbol) {
         super(region, id, null);
         this.symbol = symbol
@@ -49,7 +53,7 @@ class Gene extends Feature {
 }
 
 @CompileStatic
-class Transcript extends Feature {
+class Transcript extends Feature<Exon> {
     public Transcript(IRegion region, String id) {
         super(region, id, null);
     }
@@ -59,6 +63,7 @@ class Transcript extends Feature {
 class Exon extends Feature {
     int exonNumber
     Gene gene
+    boolean coding
     public Exon(IRegion region, String id) {
         super(region, id, null);
     }
