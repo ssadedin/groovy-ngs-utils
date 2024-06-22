@@ -120,7 +120,13 @@ class Gencode implements GeneAnnotationSource {
         final String regionId = attributes['ID']
         if(type == 'gene') {
             region.properties.remove('attributes')
-            this.genes[(String)attributes.gene_name] = feature = new Gene(region, regionId, (String)attributes.gene_name)
+            Gene gene = new Gene(region, regionId, (String)attributes.gene_name)
+            if(attributes.hgnc_id)
+                gene.hgnc_id = ((String)attributes.hgnc_id).split(':')[-1]
+            gene.type = (String)attributes.gene_type
+            
+            feature = gene
+            this.genes[(String)attributes.gene_name] = feature
             this.geneRegions.addRegion(region)
         }
         else

@@ -45,6 +45,9 @@ class Feature<CHILD_TYPE extends Feature> implements IRegion {
 @CompileStatic
 class Gene extends Feature<Transcript> {
     String symbol
+    String hgnc_id
+    String type
+    
 //    Transcript transcript
     public Gene(IRegion region, String id, String symbol) {
         super(region, id, null);
