@@ -238,7 +238,7 @@ class Gencode implements GeneAnnotationSource {
         }.flatten()
         
         if(codingOnly)
-            allRegions.removeIf { Feature exonFeature -> !((Exon)exonFeature).coding }
+            allRegions.removeIf { exonFeature -> !((Exon)exonFeature).coding }
 
         Regions allExons = new Regions(allRegions)
         return allExons.reduce()
