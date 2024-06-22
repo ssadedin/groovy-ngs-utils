@@ -175,18 +175,19 @@ class RangedData extends Regions {
                     
                 ((GRange)r.range).extra = r
                 
+                final Map<String,Object> cols = (Map<String,Object>)line.columns
                 if(!columns) {
-                    final Map<String,Object> cols = (Map<String,Object>)line.columns
                     columns = cols*.key
                 }
-                    
-                line.columns.each { Map.Entry<String,Integer> e ->
-                    final String columnName = e.key
-                    final int index = e.value
+                
+                for(Map.Entry<String, Integer> e : cols.entrySet()) {
+                    final String columnName = e.getKey();
+                    final int index = e.getValue();
                     if(index != startColumn && index != endColumn && index != chrColumn) {
-                        r.setProperty(columnName, ((List)line.values)[index])
+                        r.setProperty(columnName, ((List)line.values)[index]);
                     }
                 }
+
                 if(c != null) {
                     if(c(r)==false)
                         continue
@@ -212,11 +213,20 @@ class RangedData extends Regions {
         this.collect {  [chr: it.chr, start: it.from, end: it.to] + it.properties }
     }
 
-    protected Region parseRegion(PropertyMapper line) {
-        int startPosition = line.values[startColumn].toInteger()+genomeZeroOffset
-        int endPosition = line.values[endColumn].toInteger()+genomeZeroOffset
-        Region r = new Region(String.valueOf(line.values[chrColumn]),
-                        new GRange(startPosition,endPosition,null))
+    @CompileStatic
+    protected Region parseRegion(final PropertyMapper line) {
+        final List<String> lineValues = (List<String>)line.values
+        final int startPosition = Integer.parseInt(lineValues[startColumn])+genomeZeroOffset
+        final int endPosition = Integer.parseInt(lineValues[endColumn])+genomeZeroOffset
+        
+        // Manually construct this because in profiling it is a hotspot where groovy
+        // spends time choosing the right constructor dynamically
+        Region r = new Region()
+        r.chr = lineValues[chrColumn]
+        GRange range = new GRange(startPosition, endPosition, null)
+        range.extra = r
+        r.range = range
+        
         return r
     }
     
