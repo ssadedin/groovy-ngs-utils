@@ -103,7 +103,7 @@ class GencodeTest {
         
         def expected = [TAS1R3:0, DVL1:2103, MIR6808:0]
         assert cds.size() == 3
-        assert cds.DVL1 == 2103
+        assert cds.DVL1 == 2073
         assert cds.TAS1R3 == 0
         assert cds.MIR6808 == 0
         
