@@ -905,8 +905,8 @@ class VCF implements Iterable<Variant>, Serializable {
         Variant myVariant = this.find(v)
         Variant otherVariant = other.find(v)
 
-        String [] mySplit = myVariant?.line?.tokenize("\t")
-        String [] otherSplit = otherVariant?.line?.tokenize("\t")
+        List<String> mySplit = myVariant?.line?.tokenize("\t")
+        List<String> otherSplit = otherVariant?.line?.tokenize("\t")
 
         List<String> myGtFields
         List<String> otherGtFields
