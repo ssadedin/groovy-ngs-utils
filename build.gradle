@@ -1,8 +1,19 @@
 
-plugins {
-    id("groovy") 
-    id("com.github.johnrengelman.shadow") version "4.0.4"
+buildscript {
+      repositories {
+              maven {
+                        url "https://plugins.gradle.org/m2/"
+                                }
+                }
+        dependencies {
+                classpath "io.github.goooler.shadow:shadow-gradle-plugin:8.1.7"
+                      }
 }
+
+apply plugin: "io.github.goooler.shadow"
+apply plugin: "groovy"
+
+
 
 
 project.ext {
