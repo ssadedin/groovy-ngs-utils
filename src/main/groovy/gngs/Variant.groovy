@@ -712,6 +712,10 @@ class Variant implements IRegion, Serializable {
      * the closure exits, other internal fields that are impacted by your changes
      * will be synchronized with the changes you made. 
      * <p>
+     * Note that if you wish to update the <code>alt</code> field,
+     * you should set the whole <code>alts</code> array, and not the 
+     * convenience <code>alt</code> attribute.
+     * <p>
      * Not all fields are supported! see the ones that are set below.
      * <p>
      * The only update to snpEFF information is to remove individual 
