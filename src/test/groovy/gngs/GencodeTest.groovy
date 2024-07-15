@@ -43,11 +43,17 @@ class GencodeTest {
         println "Exons of the main transcript: "
         
         dvl1.children[0].children.each {
-            println "Exon $it"
+            println "Exon $it ($it.exonNumber, coding=$it.coding)"
         }
         
+        assert dvl1.strand == '-'
         assert dvl1.children[0].children.size() == 17
         assert dvl1.children[1].children.size() == 17
+        
+        // DVL a case where coding sequence ends within the exon,
+        // hence exon 15 represented twice, once with coding sequence,
+        // once without
+        assert dvl1.children[0].children[0].exonNumber == 15
     }
     
     @Test
@@ -70,6 +76,7 @@ class GencodeTest {
 //            dvl_regions.save("dvl_regions_${i}.bed", extra: { tx.id })
 //        }
 
+        assert dvl1.strand == '-'
         assert dvl1.children[0].children.size() == 17
         assert dvl1.children[1].children.size() == 17
     }
@@ -101,9 +108,9 @@ class GencodeTest {
         
         println "CDS for DVL1 is $cds"
         
-        def expected = [TAS1R3:0, DVL1:2103, MIR6808:0]
+        def expected = [TAS1R3:0, DVL1:2073, MIR6808:0]
         assert cds.size() == 3
-        assert cds.DVL1 == 2073
+        assert cds.DVL1 == expected.DVL1
         assert cds.TAS1R3 == 0
         assert cds.MIR6808 == 0
         

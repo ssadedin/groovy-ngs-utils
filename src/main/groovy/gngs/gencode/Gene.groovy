@@ -47,11 +47,13 @@ class Gene extends Feature<Transcript> {
     String symbol
     String hgnc_id
     String type
+    char strand
     
 //    Transcript transcript
-    public Gene(IRegion region, String id, String symbol) {
+    public Gene(IRegion region, String id, String symbol, char strand) {
         super(region, id, null);
         this.symbol = symbol
+        this.strand = strand
     }
 }
 
@@ -67,7 +69,8 @@ class Exon extends Feature {
     int exonNumber
     Gene gene
     boolean coding
-    public Exon(IRegion region, String id) {
+    public Exon(IRegion region, String id, int exonNumber) {
         super(region, id, null);
+        this.exonNumber = exonNumber
     }
 }

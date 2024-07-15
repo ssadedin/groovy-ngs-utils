@@ -120,7 +120,7 @@ class Gencode implements GeneAnnotationSource {
         final String regionId = attributes['ID']
         if(type == 'gene') {
             region.properties.remove('attributes')
-            Gene gene = new Gene(region, regionId, (String)attributes.gene_name)
+            Gene gene = new Gene(region, regionId, (String)attributes.gene_name, region['strand'] as char)
             if(attributes.hgnc_id)
                 gene.hgnc_id = ((String)attributes.hgnc_id).split(':')[-1]
             gene.type = (String)attributes.gene_type
@@ -133,7 +133,8 @@ class Gencode implements GeneAnnotationSource {
         // coding exons appear both with the exon and CDS designation
         // UNLESS they are part of the UTR
         if(type == 'CDS' || type == 'three_prime_UTR' || type == 'five_prime_UTR') {
-            feature = new Exon(region, regionId)
+            int exonNumber = Integer.parseInt((String)attributes.exon_number)
+            feature = new Exon(region, regionId, exonNumber)
             if(type == 'CDS')
                 feature.coding = true
         }
