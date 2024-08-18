@@ -1492,7 +1492,8 @@ class SAM {
         int totalRecords = 0;
             
         // create and write the content
-        for (SAMRecord rec : reader) {
+        Iterator<SAMRecord> iter = reader.iterator()
+        iter.each { rec ->
             indexer.processAlignment(rec);
         }
         indexer.finish();
