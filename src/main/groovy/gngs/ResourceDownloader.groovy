@@ -51,8 +51,8 @@ class ResourceDownloader {
     GenomeResource download(String genomeVersion="hg19") {
         
         Map<String,String> grchToUCSC = [
-            "GRCh37" : "hg19",
-            "GRCh38" : "hg38"
+            'GRCh37' : 'hg19',
+            'GRCh38' : 'hg38'
         ]
         
         Map<String,String> ucscToGRCh = grchToUCSC.collectEntries { [ it.value, it.key.replaceAll('GRCh','') ] }
@@ -68,7 +68,7 @@ class ResourceDownloader {
         
         String grchVersion
         if(genomeVersion in ucscToGRCh) {
-            grchVersion = ucscToGRCh[grchVersion]
+            grchVersion = ucscToGRCh[genomeVersion]
         }
         
         String fileName = genomeVersion ? 
@@ -88,7 +88,10 @@ class ResourceDownloader {
             }
             
             if(!outputFile.exists()) {
-                String resourceUrl = urlPattern.replaceAll('##genomeVersion##',ucscGenomeVersion)
+                String resourceUrl = urlPattern
+                if(ucscGenomeVersion)
+                    resourceUrl.replaceAll('##genomeVersion##',ucscGenomeVersion)
+                    
                 if(grchVersion)
                     resourceUrl = resourceUrl.replaceAll('##grchVersion##',grchVersion)
                 new URL(resourceUrl).withInputStream { urlStream ->
