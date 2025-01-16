@@ -280,13 +280,27 @@ class SAM {
      * @return SAMFileWriter
      */
     def withWriter(String outputFileName, Closure c) {
-        withWriter(outputFileName, true, c)
+        withWriter([:], outputFileName, true, c)
     }
     
     def withWriter(String outputFileName, boolean sorted, Closure c) {
+        withWriter([:], outputFileName, sorted, c)
+    }
+
+    @CompileStatic
+    def withWriter(Map options, String outputFileName, boolean sorted, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMFileWriter']) Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
+        
+        if(options.createIndex == true)
+            f.createIndex = true
+
         SAMFileHeader header = this.samFileReader.fileHeader
         SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
+        
+        if(options.sampleId) {
+            header.readGroups.each { it.setSample((String)options.sampleId) }
+        }
+ 
         try {
             return c(w)
         }
