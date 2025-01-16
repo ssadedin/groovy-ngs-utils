@@ -258,7 +258,7 @@ class SampleInfo {
 
             List<String> altIds = []
             if_field('Identifiers')  { 
-                fields.Identifiers.tokenize(':') 
+                altIds = fields.Identifiers.tokenize(':') 
             }
 
             try {
