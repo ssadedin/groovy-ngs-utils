@@ -295,12 +295,14 @@ class SAM {
             f.createIndex = true
 
         SAMFileHeader header = this.samFileReader.fileHeader
-        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
         
         if(options.sampleId) {
             header.readGroups.each { it.setSample((String)options.sampleId) }
         }
- 
+         
+        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
+        
+
         try {
             return c(w)
         }
