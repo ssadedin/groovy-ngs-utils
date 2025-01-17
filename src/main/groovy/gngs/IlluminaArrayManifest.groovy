@@ -103,6 +103,20 @@ class IlluminaArrayManifest {
                 if(fields.size() < 15)
                     continue
                     
+                // Why is strand encoded with all these different headers?
+                String strand
+                if(headers.refstrand) {
+                    strand = fields[headers.refstrand]
+                }
+                else
+                if(headers.strand_fr) {
+                    strand = fields[headers.strand_fr] == "F" ? "+" : "-"
+                }
+                else
+                if(headers.strand) {
+                    strand = fields[headers.strand]
+                }
+                    
                 final String chr = fields[headers.chr]
                 IlluminaProbe probe = new IlluminaProbe(
                     IlmnID: fields[headers.ilmnid],
@@ -111,7 +125,7 @@ class IlluminaArrayManifest {
                     AlleleA_ProbeSeq : fields[headers.allelea_probeseq],
                     Chr : chr.startsWith('chr') ? chr : 'chr'+chr,
                     MapInfo: fields[headers.mapinfo].toInteger(),
-                    RefStrand: headers.refstrand ? fields[headers.refstrand] : (fields[headers.strand_fr] == "F" ? "+" : "-"),
+                    RefStrand: strand,
                     Intensity_Only : headers.intensity_only ? fields[headers.intensity_only] != "0" : null,
                     type : fields[headers.addressb_id] ? 1 : 2
                 )
