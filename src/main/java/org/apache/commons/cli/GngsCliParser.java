@@ -86,7 +86,7 @@ public class GngsCliParser extends DefaultParser
         // add the default options
         handleProperties(properties);
 
-        checkRequiredOptions();
+        checkRequiredOptionsOverride();
 
         return cmd;
     }
@@ -150,7 +150,7 @@ public class GngsCliParser extends DefaultParser
      * @throws MissingOptionException if any of the required Options
      * are not present.
      */
-    private void checkRequiredOptions() throws MissingOptionException
+    private void checkRequiredOptionsOverride() throws MissingOptionException
     {
         // if there are required options that have not been processed
         if (!expectedOpts.isEmpty())

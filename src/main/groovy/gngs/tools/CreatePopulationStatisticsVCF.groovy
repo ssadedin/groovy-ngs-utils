@@ -168,10 +168,10 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         
         for(List<VariantContext> allele : alleles.values()) {
             VariantContext v0 = allele[0]
-            int ac = computeAlleleCount(allele)
+            PopulationAlleleCounts pac = computeAlleleCount(allele)
             int an = computeAlleleNumber(v0.contig)
             int gtc = numSamples // todo: check this is right
-            printVCFSite(v0, ac, an, gtc)
+            printVCFSite(v0, pac, an, gtc)
         }
     }
     
@@ -189,7 +189,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      * @param an
      */
     @CompileStatic
-    protected void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
+    protected void printVCFSite(VariantContext v0, PopulationAlleleCounts ac, int an, int gtc) {
         out.println([
             v0.contig,
             v0.start,
@@ -198,7 +198,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             v0.alternateAlleles[0],
             '.',
             '.',
-            "AC=$ac;AN=$an;GTC=$gtc"
+            "AC=$ac.ac;AN=$an;GTC=$gtc;HOM=$ac.hom;HET=$ac.het;HEMI=0"
         ].join('\t'))
     }
     
@@ -209,14 +209,14 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      *          and the sex of the respective samples
      */
     @CompileStatic
-    int computeAlleleCount(List<VariantContext> variants) {
+    PopulationAlleleCounts computeAlleleCount(List<VariantContext> variants) {
         Set<String> samples = new HashSet(numSamples*2)
-        int ac = (int)variants.sum { VariantContext vc -> // sum across VCFs
+        PopulationAlleleCounts ac = (PopulationAlleleCounts)variants.sum { VariantContext vc -> // sum across VCFs
             vc.genotypes.collect { Genotype gt ->         // sum across samples within this vcf
                 
                 // Make us robust to samples being provided twice
                 if(samples.contains(gt.sampleName in samples))
-                    return 0
+                    return PopulationAlleleCounts.ZERO_COUNTS
                 
                 samples.add(gt.sampleName)
                 
@@ -224,20 +224,20 @@ class CreatePopulationStatisticsVCF extends ToolBase {
                 int sampleAN = AlleleNumber.getAlleleNumber(sex, vc.contig)
                 GenotypesContext ctx = vc.genotypes
                 if(gt.het) {
-                    return 1
+                    return new PopulationAlleleCounts(1,0,1)
                 }
                 else
                 if(gt.homVar) {
-                    return sampleAN
+                    return new PopulationAlleleCounts(sampleAN,1,0)
                 }
                 else 
                 if(gt.homRef) {
-                    return 0
+                    return PopulationAlleleCounts.ZERO_COUNTS
                 }
                 else {
 //                    assert false : "Unexpected / invalid genotype at position $vc.start ($vc)"
                     // This occurs if the genotype is './.' which means unascertained
-                    return 0
+                    return PopulationAlleleCounts.ZERO_COUNTS
                 }
             }.sum()
         } 
@@ -296,4 +296,23 @@ class CreatePopulationStatisticsVCF extends ToolBase {
         }
     }
 
+}
+
+@CompileStatic
+class PopulationAlleleCounts {
+    int ac
+    int hom
+    int het
+    
+    final static ZERO_COUNTS = new PopulationAlleleCounts(0,0,0)
+    
+    PopulationAlleleCounts(final int an, final int hom, final int het) {
+        this.ac = an; this.hom = hom; this.het = het;
+    }
+    
+    PopulationAlleleCounts plus(PopulationAlleleCounts other) {
+        if(other.is(ZERO_COUNTS))
+            return this
+        new PopulationAlleleCounts(ac+other.ac, hom+other.hom, het+other.het)
+    }
 }
