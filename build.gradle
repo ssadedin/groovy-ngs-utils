@@ -73,6 +73,14 @@ dependencies {
      implementation group: 'com.github.haifengl', name: 'smile-netlib', version: '2.4.0'
      implementation group: 'com.github.haifengl', name: 'smile-data', version: SMILE_VERSION
      
+     // parquet support
+     if(ENABLE_PARQUET == "true") {
+         implementation 'org.apache.parquet:parquet-avro:1.12.3'
+         implementation 'org.apache.avro:avro:1.11.1'
+         implementation 'org.apache.hadoop:hadoop-common:3.4.1'
+         implementation 'org.apache.hadoop:hadoop-mapreduce-client-core:3.4.1'
+     }
+     
      if(GROOVY_VERSION.startsWith("3.")) {
          implementation 'javax.xml.bind:jaxb-api:2.3.0'
          implementation 'com.sun.xml.bind:jaxb-core:2.3.0.1'
@@ -101,6 +109,15 @@ dependencies {
         testImplementation('org.spockframework:spock-core:2.3-groovy-3.0')
      else
         testImplementation('org.spockframework:spock-core:1.3-groovy-2.5')
+}
+
+tasks.named('compileGroovy') {
+    doFirst {
+        if(ENABLE_PARQUET != "true") {
+            def excludeFile = project.file('src/main/groovy/gngs/tools/ConvertPopulationStatisticsVCFs.groovy')
+            exclude { it.file == excludeFile }
+        }
+    }
 }
 
 // Bundle all dependencies into output library
