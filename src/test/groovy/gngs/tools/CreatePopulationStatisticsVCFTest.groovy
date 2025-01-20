@@ -12,8 +12,8 @@ class CreatePopulationStatisticsVCFTest {
         
         List<Map> results = []
         CreatePopulationStatisticsVCF cpsv = new CreatePopulationStatisticsVCF() {
-            void printVCFSite(VariantContext v0, int ac, int an, int gtc) {
-                results << [vc: v0, ac: ac, an: an, gtc: gtc]
+            void printVCFSite(VariantContext v0, PopulationAlleleCounts ac, int an, int gtc) {
+                results << [vc: v0, ac: ac.ac, an: an, gtc: gtc]
             }
         }
         
