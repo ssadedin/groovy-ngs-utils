@@ -40,8 +40,7 @@ import static gngs.Sex.*
  * convert them to Parquet format, combining them at the same time.
  * <p>
  * NOTE: this class depends on parquet-avro which is NOT bundled with GNGS by default as it 
- * brings in significant additional dependencies. To enable parquet support and building of this
- * tool, set ENABLE_PARQUET=true in gradle.properties
+ * brings in significant additional dependencies.
  * 
  * @author Simon Sadedin
  */
@@ -51,9 +50,43 @@ class ConvertPopulationStatisticsVCFs extends ToolBase {
     private ParquetWriter writer
     
     Schema schema
+    
+    boolean useNCBIContigs = false
+    
+    /**
+     * Known IDS for GRCh38 contigs
+     */
+    final static Map<String,String> GRCH38_CONTIGS = [
+        "chr1" : "NC_000001.11",
+        "chr2" :"NC_000002.12",
+        "chr3" : "NC_000003.12",
+        "chr4" : "NC_000004.12",
+        "chr5" : "NC_000005.10",
+        "chr6" : "NC_000006.12",
+        "chr7" : "NC_000007.14", 
+        "chr8" : "NC_000008.11",
+        "chr9" : "NC_000009.12",
+        "chr10" : "NC_000010.11",
+        "chr11" : "NC_000011.10",
+        "chr12" : "NC_000012.12",
+        "chr13" : "NC_000013.11",
+        "chr14" : "NC_000014.9",
+        "chr15" : "NC_000015.10",
+        "chr16" : "NC_000016.10",
+        "chr17" : "NC_000017.11",
+        "chr18" : "NC_000018.10",
+        "chr19" : "NC_000019.10",
+        "chr20" : "NC_000020.11",
+        "chr21" : "NC_000021.9",
+        "chr22" : "NC_000022.11",
+        "chrX" : "NC_000023.11",
+        "chrY" : "NC_000024.10",
+    ]
 
     @Override
     public void run() {
+        
+        this.useNCBIContigs = opts.ncbi
         
         if(opts.arguments().isEmpty()) {
             parser.usage()
@@ -126,7 +159,12 @@ class ConvertPopulationStatisticsVCFs extends ToolBase {
                 v.getAttributeAsInt('HET', 0)
             }
 
-            record.put("contig", v0.getContig())
+            String contig = v0.getContig()
+            if(useNCBIContigs) {
+                contig = GRCH38_CONTIGS.get(contig, contig)
+            }
+
+            record.put("contig", contig)
             record.put("position", v0.start)
             record.put("ref" , v0.getReference().baseString)
             record.put("alt" , v0.getAlternateAllele(0))
@@ -140,8 +178,8 @@ class ConvertPopulationStatisticsVCFs extends ToolBase {
    
     static void main(String [] args) {
         cli('ConvertPopulationStatisticsVCF <vcf1> <vcf2> <vcf3> ...', args) {
+            ncbi 'Write NCBI contig identifiers instead of chr values'
             o 'Output file', args:1, required: false
         }
     }
-
 }
