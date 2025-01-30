@@ -29,6 +29,8 @@ import htsjdk.variant.variantcontext.VariantContext
 
 import static gngs.Sex.*
 
+import java.text.DecimalFormat
+
 /**
  * A utility class to contain some functionality for computing allele numbers / counts
  * 
@@ -180,6 +182,8 @@ class CreatePopulationStatisticsVCF extends ToolBase {
     int computeAlleleNumber(String contig) {
        (int)sexes.sum { gngs.Sex sex ->  AlleleNumber.getAlleleNumber(sex, contig) } 
     }
+    
+    DecimalFormat afFormat = new java.text.DecimalFormat("#.####")
 
     /**
      * Print out a line of the output VCF based on the given computed statistics
@@ -190,6 +194,9 @@ class CreatePopulationStatisticsVCF extends ToolBase {
      */
     @CompileStatic
     protected void printVCFSite(VariantContext v0, PopulationAlleleCounts ac, int an, int gtc) {
+        
+        def af = an > 0 ? afFormat.format(ac.ac / an.toDouble()) : '0'
+        
         out.println([
             v0.contig,
             v0.start,
@@ -198,7 +205,7 @@ class CreatePopulationStatisticsVCF extends ToolBase {
             v0.alternateAlleles[0],
             '.',
             '.',
-            "AC=$ac.ac;AN=$an;GTC=$gtc;HOM=$ac.hom;HET=$ac.het;HEMI=0"
+            "AC=$ac.ac;AN=$an;GTC=$gtc;AF=$af;HOM=$ac.hom;HET=$ac.het;HEMI=0"
         ].join('\t'))
     }
     
