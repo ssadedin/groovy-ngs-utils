@@ -36,6 +36,8 @@ class TableOptions {
     Appendable out
     String border
     String title
+    Integer precision
+    Double color_threshold
     Map<String,Integer> columnWidths
 }
 
@@ -204,7 +206,15 @@ class Utils {
         table(options, headers, data)
     }
     
-   
+    final static String BLUE = "\u001B[34m"  // ANSI escape code for blue
+    final static String RED = "\u001B[31m"   // ANSI escape code for red
+    final static String RESET = "\u001B[0m"  // Reset to default color
+    
+    /**
+     * Pattern to match ansi regex escape sequences with the goal of enabling them to be stripped out
+     */
+    final static String ANSI_REGEX = ~"\\u001B\\[[0-9;]*m"
+
     /**
      * A utility to print a table of values in a nice format for 
      * output on a terminal. Columns are aligned, padded, borders
@@ -240,8 +250,23 @@ class Utils {
         // Create formatters
         Map formatters = options.format?:[:]
         headers.each { h ->
-            if(!formatters[h])
-                formatters[h] = { String.valueOf(it) }
+            if(!formatters[h]) {
+                formatters[h] = { 
+                    String value
+                    if(options.precision && it instanceof Number) {
+                        value = String.format("%.${options.precision}f", it)
+                    }
+                    else {
+                        value = String.valueOf(it)
+                    }
+                    
+                    if(options.color_threshold && it instanceof Number) {
+                       value = (it < options.color_threshold ? BLUE : RED) + value + (options.color_threshold ? RESET : '')
+                    }
+                    
+                    return value
+                }
+            }
             else 
             if(formatters[h] instanceof Closure) {
                 // just let it be - it will be called and expected to return the value
@@ -269,12 +294,21 @@ class Utils {
             }
         }
         
+       
         // Find the width of each column
         Map<String,Integer> columnWidths = [:]
         if(rows) {
             headers.eachWithIndex { hd, i ->
-                Object widestRow = rows.max { row -> formatters[hd](row[i]).size() }
-                columnWidths[hd] = Math.max(hd.size(), formatters[hd](widestRow[i]).size())
+                Object widestRow = rows.max { row -> 
+                    if(options.color_threshold) {
+                        formatters[hd](row[i]).replaceAll(ANSI_REGEX, '').size() 
+                    }
+                    else
+                        formatters[hd](row[i]).size() 
+
+                }
+                def widestValue = formatters[hd](widestRow[i])
+                columnWidths[hd] = Math.max(hd.size(), options.color_threshold ? widestValue.replaceAll(ANSI_REGEX,'').size() : widestValue.size())
             }
         }
         else {

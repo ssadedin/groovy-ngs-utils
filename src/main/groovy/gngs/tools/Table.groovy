@@ -33,6 +33,8 @@ class Table {
             ofmt 'Output format: csv,tsv,txt default is text', args:1, required: false
             // multi 'If there are empty lines, treat as multiple tables' // todo
             h 'Specify headers. If specified first row of data is treated as data', longOpt: 'headers', args:1, required:false
+            precision 'Digits of precision to use of numeric columns', args:1, type: Integer
+            color_threshold 'Color numeric columns based on greater / smaller than given number', args:1, type: Double
         }
         
         OptionAccessor opts = cli.parse(args)
@@ -144,6 +146,13 @@ class Table {
         }
         
         def tableOptions = [:]
+        if(opts.precision)
+            tableOptions.precision = opts.precision
+        
+        if(opts.color_threshold) {
+            tableOptions.color_threshold = opts.color_threshold
+        }
+        
         if(opts.title) {
             tableOptions.title = opts.title
         }
