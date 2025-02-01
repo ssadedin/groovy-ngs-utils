@@ -25,6 +25,7 @@ import org.apache.avro.Schema
 import org.apache.avro.generic.GenericData
 import org.apache.parquet.avro.AvroParquetWriter
 import org.apache.parquet.hadoop.ParquetWriter
+import org.apache.parquet.hadoop.metadata.CompressionCodecName
 import org.apache.hadoop.fs.Path
 
 import groovy.transform.CompileStatic
@@ -95,10 +96,16 @@ class ConvertPopulationStatisticsVCFs extends ToolBase {
         
         this.schema = this.createSchema()
         
-        writer = AvroParquetWriter.builder(new Path(opts.o)).withSchema(schema).build()
+        if(new File(opts.o).exists())
+            new File(opts.o).delete()
+        
+        writer = AvroParquetWriter
+            .builder(new Path(opts.o))
+            .withSchema(schema)
+            .withCompressionCodec(CompressionCodecName.ZSTD)
+            .build()
        
         writer.withCloseable {
-
             VariantContext lastVariant = null
             ProgressCounter progress = new ProgressCounter(withRate: true, withTime:true, extra: {
                 "chr: $lastVariant.contig pos: $lastVariant.start"
