@@ -79,6 +79,8 @@ class WebService {
     WebServiceCredentials webserviceCredentials
     
     JsonGenerator jsonConverter = new JsonGenerator.Options().build()
+
+    Retry retry = null
     
     /**
      * Create a web service to access the given api at the given end point
@@ -168,41 +170,49 @@ class WebService {
        
        URL url = encodeURL(params, method, payload)
        
-       try {
-           
-           if(credentialsPath && !webserviceCredentials)
-               loadCredentials()
-           
-           if(oauth1AccessToken)
-               return this.executeOAuthRequest(params, url, method, payload)
-           else {
-               log.fine "Not OAuth 1.0 request"
-               HttpURLConnection connection = configureConnection(url, method, data, headers)
-               return executeRequest(connection, payload)
-           }
+       WebServiceException ex = null
+       Retry r = this.retry?.copy()
+       while( ex == null ||  ( r != null && r.allow_retry(ex, method) )){
+            try {
+                
+                if(credentialsPath && !webserviceCredentials)
+                    loadCredentials()
+                
+                if(oauth1AccessToken)
+                    return this.executeOAuthRequest(params, url, method, payload)
+                else {
+                    log.info "Not OAuth 1.0 request"
+                    HttpURLConnection connection = configureConnection(url, method, data, headers)
+                    return executeRequest(connection, payload)
+                }
+            }
+            catch(WebServiceException e) {
+                ex = e 
+            }
+            catch(Exception e) {
+                log.severe "Request '$method' to URL $url failed. Payload: \n$payload"
+                throw e
+            }
        }
-       catch(WebServiceException e) {
-           log.severe "Request to URL $url failed"
-           if(dump && e.body) {
-               File responseFile = new File(api.replaceAll('/','_'))
-               log.severe("Dumping response body to $responseFile")
-               responseFile.text = e.body
-           }
+
+       // if we get here, there was a weservice exeption we could not retry
+        log.severe "Request to URL $url failed"
+        if(dump && ex.body) {
+            File responseFile = new File(api.replaceAll('/','_'))
+            log.severe("Dumping response body to $responseFile")
+            responseFile.text = ex.body
+        }
            
-           if(e.body) {
-               if(e.body.size()<maxBodyDumpSize)
-                   log.severe("Response content:\n" + e.body)
-               else
-                   log.severe("Body contains ${e.body.size()} chars, too large to dump")
-           }
+        if(ex.body) {
+            if(ex.body.size()<maxBodyDumpSize)
+                log.severe("Response content:\n" + ex.body)
+            else
+                log.severe("Body contains ${ex.body.size()} chars, too large to dump")
+        }
                
-           throw e
-       }
-       catch(Exception e) {
-           log.severe "Request to URL $url failed. Payload: \n$payload"
-           throw e
-       }
+        throw ex
     }
+       
     
     Object executeOAuthRequest(Map params, URL url, String method, String data) {
         
@@ -563,3 +573,57 @@ class WebServiceException extends Exception {
     String body
 }
 
+@Log
+class Retry {
+
+    List<Integer> retry_codes
+    
+    Integer total_retries
+    Integer n_retries = 0
+
+    double back_off_factor
+    Integer max_back_off_seconds = 120
+
+    List<String> allowed_methods
+
+    public Retry(List<Integer> retry_codes = [413, 429, 500, 502, 503, 504], Integer total_retries = 3 , double back_off_factor = 2 , List<String> allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PUT", "TRACE"]){
+        this.retry_codes = retry_codes
+        this.total_retries = total_retries
+        this.back_off_factor = back_off_factor
+        this.allowed_methods = allowed_methods
+    }
+
+    public Retry(Retry template){
+        this.retry_codes = template.retry_codes
+        this.total_retries = template.total_retries
+        this.back_off_factor = template.back_off_factor
+        this.allowed_methods = template.allowed_methods
+    }
+
+    boolean allow_retry(WebServiceException e, String method){
+        if( ! (this.allowed_methods.contains(method) && this.retry_codes.contains(e.code) && this.n_retries <= this.total_retries) ){
+            log.info "No retries allowed for $method and error code $e.code"
+            return false
+        }else{
+            long back_off = back_off_time(this.n_retries, this.back_off_factor, this.max_back_off_seconds)
+
+            log.info "Will retry connection method $method; retry attempt $this.n_retries/$this.total_retries; waiting $back_off milliseconds before next attempt"
+
+            sleep(back_off)
+            this.n_retries +=1
+
+            return true
+
+        }
+    }
+
+    private static long back_off_time(int n_retries, double back_off_factor, int max_back_off_seconds){
+        return Math.min( (back_off_factor * ( 2 ** n_retries-1)), max_back_off_seconds ) * 1000 as long
+    }
+
+    public Retry copy() {
+        return new Retry(this)
+    }
+
+
+}
