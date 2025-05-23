@@ -26,9 +26,10 @@ import static org.junit.Assert.*;
 import org.junit.Test;
 
 import gngs.CoverageStats
+import gngs.Regions
 import gngs.VCF
 import gngs.VEPConsequences
-import gngs.Variant
+import gngs.*
 
 
 class VariantTest {
@@ -477,5 +478,19 @@ class VariantTest {
         assert v.genoTypes[0].AF == "0.3"
         println v.line
         
+    }
+    
+    @Test
+    void testInRegions() {
+        v = var("chr6 170871013   rs10558845  ACAG    ACAGCAG,A   53   .   MQ=49.90    GT:AF:AD:DP:GQ:PL  1/1:.:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        
+        Regions regions = [ new Region('chr6:170870000-170872000') ] as Regions
+        
+        def is_in = (v in regions)
+        
+        println "Variant $v is in the regions: $is_in"
+        
+
+        assert is_in : "Variant should be in the regions"
     }
 }

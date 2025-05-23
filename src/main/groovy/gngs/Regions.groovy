@@ -75,6 +75,7 @@ import groovy.xml.MarkupBuilder
  */
 class Regions implements Iterable<Region> {
         
+
     /**
      * Index for looking up overlaps
      */
@@ -1102,4 +1103,9 @@ class Regions implements Iterable<Region> {
         }
         return sw.toString()
     }
+    
+    @CompileStatic
+	boolean isCase(IRegion region) {
+		return !this.getOverlaps(region.chr, region.range.from, region.range.to).isEmpty()
+	}
 }

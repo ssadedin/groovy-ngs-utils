@@ -356,10 +356,7 @@ class BED extends Regions {
         return b
     }
 	
-	boolean isCase(IRegion region) {
-		return this.getOverlaps(region.chr, region.range.from, region.range.to)
-	}
-   
+  
     String toString() {
         int numRanges = getNumberOfRanges()
         if(numRanges>0) {
