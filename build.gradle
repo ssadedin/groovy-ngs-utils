@@ -42,13 +42,13 @@ configurations {
 }
 
 dependencies {
-     implementation group: 'org.codehaus.groovy', name: 'groovy', version: "$GROOVY_VERSION"
+     compileOnly group: 'org.codehaus.groovy', name: 'groovy', version: "$GROOVY_VERSION"
      compileOnly group: 'org.codehaus.groovy', name: 'groovy-xml', version: "$GROOVY_VERSION"
-     implementation group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
-     implementation group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
-     implementation group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
+     compileOnly group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
+     compileOnly group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
+     compileOnly group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
      if(!GROOVY_VERSION.startsWith('2.4')) {
-         implementation group: 'org.codehaus.groovy', name: 'groovy-cli-commons', version: "$GROOVY_VERSION"
+         compileOnly group: 'org.codehaus.groovy', name: 'groovy-cli-commons', version: "$GROOVY_VERSION"
      }
      implementation group: 'org.codehaus.gpars', name: 'gpars', version: '1.2.1'
 
@@ -118,65 +118,6 @@ tasks.named('compileGroovy') {
             exclude { it.file == excludeFile }
         }
     }
-}
-
-// Bundle all dependencies into output library
-jar {
-    from configurations.compile.grep { 
-        !it.name.startsWith("cramtools") && 
-        !it.name.contains('log4j') &&
-        !it.name.startsWith('groovy-') &&
-        !it.name.contains('-linux-armhf-') &&
-        !it.name.contains('win-i686') &&
-        !it.name.contains('linux-i686')
-    }.collect { 
-
-        // println "Including $it"; 
-
-
-        (it.isDirectory() || it.name.endsWith('.pom')) ? it : zipTree(it) 
-    }
-
-    /*
-    from configurations.compile.grep { it.name.startsWith("cramtools") }.collect { 
-        // println "Including $it"; 
-        it.isDirectory() ? it : zipTree(it) 
-    }
-    */
-
-    exclude { details ->
-
-        if(details.relativePath.pathString.startsWith("groovy/stream")) {
-            return false
-        }
-        if(details.relativePath.pathString.startsWith("groovy/"))
-            return true
-
-        if(details.relativePath.pathString.contains("groovyjarjar"))
-            return true
-
-        if(details.relativePath.pathString ==~ '.*/Log4J.*.class$')
-            return true
-
-        if(details.relativePath.pathString.contains("log4j"))
-            return true
-
-        if(details.relativePath.pathString.contains("commons/logging"))
-            return true
-
-        if(details.name.endsWith('.pom'))
-            return true
-
-        return false
-    }
-
-    exclude "org/codehaus/**"
-    exclude "META-INF/groovy*"
-    exclude "META-INF/**/*groovy*"
-    exclude "META-INF/BCKEY*"
-    exclude "org/bouncycastle/**"
-    exclude "org/codehaus/mojo"
-    exclude "org/slf4j/impl/**"
 }
 
 groovydoc {
