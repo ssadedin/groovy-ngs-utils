@@ -37,10 +37,12 @@ import de.erichseifert.gral.plots.XYPlot
 import de.erichseifert.gral.plots.XYPlot.XYLegend
 import de.erichseifert.gral.plots.areas.AreaRenderer
 import de.erichseifert.gral.plots.areas.DefaultAreaRenderer2D
+import de.erichseifert.gral.plots.axes.Axis
 import de.erichseifert.gral.plots.axes.AxisRenderer
 import de.erichseifert.gral.plots.legends.Legend
 import de.erichseifert.gral.plots.legends.SeriesLegend
 import de.erichseifert.gral.plots.lines.DefaultLineRenderer2D
+import de.erichseifert.gral.plots.lines.DiscreteLineRenderer2D
 import de.erichseifert.gral.plots.lines.LineRenderer
 import de.erichseifert.gral.plots.lines.SmoothLineRenderer2D
 import de.erichseifert.gral.plots.points.DefaultPointRenderer2D
@@ -63,6 +65,31 @@ class DefaultPalette extends Palette {
 
 class PlotItem {
     String displayName = null
+}
+
+class ConstantLine {
+    double x
+    double y
+    Double width
+    Object color
+    String style
+    
+    DataTable toTable(double minX, double maxX, double minY, double maxY) {
+        Column xColumn
+        Column yColumn
+
+        if(this.x != null) {
+            xColumn = new Column(Double, [this.x, this.x])
+            yColumn = new Column(Double, [minY, maxY])
+        }
+        else
+        if(this.y != null) {
+            xColumn = new Column(Double, [minX, maxX])
+            yColumn = new Column(Double, [this.y, this.y])
+        }
+
+        return new DataTable(xColumn, yColumn)
+    }
 }
 
 class Text {
@@ -332,7 +359,9 @@ class Plot {
 
     String legendLocation = null // String 
     
-    List texts = []
+    List<Text> texts = []
+    
+    List<ConstantLine> constantLines = []
     
     Palette palette = new DefaultPalette()
     
@@ -376,6 +405,19 @@ class Plot {
         return this
     }
      
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.ConstantLine item) {
+        ConstantLine gngsItem = new ConstantLine(x:item.x, y:item.y, style: item.style)
+        if(item.color)
+            gngsItem.color = new Color(item.color.RGB)
+        this.constantLines << gngsItem
+        return this
+    }
+
+     Plot leftShift(ConstantLine item) {
+        this.constantLines << item
+        return this
+    }
+
     static Object saveAs(def plot, String fileName) {
         if(plot instanceof com.twosigma.beakerx.chart.xychart.Plot) {
             from(plot).save(fileName)
@@ -425,7 +467,13 @@ class Plot {
             if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Bars) {
                 item = new Bars()
             }
-    
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Text) {
+                item = new Text()
+            }
+            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.ConstantLine) {
+                item = new ConstantLine()
+            }
+      
             if(!item)
                 return
  
@@ -452,9 +500,7 @@ class Plot {
 
     BufferedImage getImage(int width, int height) {
 
-        int eastLegendWidth = 0
-        if(this.legendLocation in ["east","north_east","south_east"])
-            eastLegendWidth = 140 // hack / guess
+        int eastLegendWidth = estimateLegendWidth(width)
 
         int rasterFormat = BufferedImage.TYPE_INT_RGB;
         BufferedImage image = new BufferedImage(
@@ -472,19 +518,27 @@ class Plot {
     }
     
     XYPlot toXYPlot(int imageWidth, int imageHeight) {
-        double maxX = Double.MIN_VALUE
-        double maxY = Double.MIN_VALUE
-        
+       
         List<XYItem> xys = items.grep { it instanceof XYItem }
         
+        int uberMinX = xys*.maxX.min()
+        int uberMaxX = PlotUtils.roundUpToOOM(xys*.maxX.max())
+        int uberMinY = xys*.minY.min()
+        int uberMaxY = PlotUtils.roundUpToOOM(xys*.maxY.max())
+        
         int i = 1
+        
+        List<DataTable> clDatas = constantLines.collect { 
+            it.toTable(uberMinX, uberMaxX, uberMinY, uberMaxY) 
+         }
+        
         List<DataTable> datas = xys.collect { XYItem item ->
             DataTable dt = item.toTable()
             dt.setName(item.displayName ?: ('Series ' + i))
 //            dt.setName(item.displayName)
             ++i
             return dt
-        }
+        } + clDatas
         
         DataTable [] dtArray = datas as DataTable[]
         
@@ -639,15 +693,61 @@ class Plot {
             
         double width = (double)imageWidth
         double height = (double)imageHeight
+        addTextsToXY(xyPlot, xAxis, yAxis, width, height)
         
+        clDatas.each { 
+            addConstantLinesToXYPlot(it, xyPlot, xAxis, yAxis, width, height)
+        }
+
+        return xyPlot
+    }
+    
+    void addConstantLinesToXYPlot(DataTable dt, XYPlot xyPlot, Axis xAxis, Axis yAxis, double width, double height) {
+
+        for(ConstantLine cl in constantLines) {
+            // Add a constant line as if it was a two point line
+            LineRenderer lines = new SmoothLineRenderer2D();
+//            LineRenderer lines = new DiscreteLineRenderer2D();
+            
+            BasicStroke stroke = null
+            // Unfortunately setting the stroke with a pattern causes an out of memory error - really not sure why, but
+            // it could interact badly with the fact we only have two points in our plot maybe?
+//            if(cl.style == "DOT") {
+////                float[] dashPattern = [1f, 1f] as float[]; // small dots with spacing
+////                stroke = new BasicStroke(1f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_MITER, 2f, dashPattern, 0f);
+//                
+//                stroke = new BasicStroke(
+//                    1.0f,                      // line width
+//                    BasicStroke.CAP_ROUND,    // round caps for dot effect
+//                    BasicStroke.JOIN_MITER,   // round joins
+//                    4.0f,                     // miter limit
+//                    new float[]{1f, 4f},      // pattern: 1px dash, 4px gap
+//                    0.0f                      // phase offset
+//                );
+//            }
+//            else
+            if(cl.width != null)
+                stroke = new BasicStroke((float)cl.width)
+                
+            if(stroke) {
+                lines.setStroke(stroke)
+            }
+
+            def color = convertColor(cl.color, 0)
+            lines.setColor(color)
+                
+            xyPlot.setLineRenderers(dt, lines)
+        }
+    }
+    
+    void addTextsToXY(XYPlot xyPlot, Axis xAxis, Axis yAxis, double width, double height) {
+        Insets2D.Double insets = xyPlot.getInsets()
         for(Text text in texts) {
 
             Label label = new Label(text.text)
            
             int renderXOffset = xyPlot.getAxisRenderer(XYPlot.AXIS_X).worldToView(xAxis, 0.0d, false)
-            
             int labelRenderX = insets.left + width * (text.x - xAxis.min) / (xAxis.max - xAxis.min) - renderXOffset
-
             int labelRenderY = height - (insets.top + width * (text.y - yAxis.min) / (yAxis.max - yAxis.min))
             
             label.setPosition(labelRenderX,labelRenderY)
@@ -660,8 +760,6 @@ class Plot {
 
             xyPlot.add(label)
         }
-        
-        return xyPlot
     }
     
     /**
@@ -682,31 +780,34 @@ class Plot {
             return palette.colors[ i % palette.colors.size()]
     }
     
+    @CompileStatic
     void save(Map options=null, final String fileName) {
         
         assert fileName.endsWith('.png')
 
         options = options?:[:]
 
-        int width = options.width?:initWidth?:1024
-        int height = options.height?:initHeight?:800
+        int width = (int)(options.width?:initWidth?:1024)
+        int height = (int)(options.height?:initHeight?:800)
         
         XYPlot xyPlot = toXYPlot(width, height)
         
-        int eastLegendWidth = 0
-        
-
-        if(this.legendLocation in ["east","north_east","south_east"]) {
-            int maxDisplayNameLength = this.items*.displayName.collect { it?.size()?:0 }.max()
-            eastLegendWidth = (int)(maxDisplayNameLength*10 * (width/1024)) // hack / guess, use about 15% of width
-        }
-
+        int eastLegendWidth = this.estimateLegendWidth(width)
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
             PlotUtils.write(xyPlot, w, 0,0, width, height, eastLegendWidth);
         } 
     }
     
+    @CompileStatic
+    int estimateLegendWidth(int width) {
+        int eastLegendWidth = 0
+        if(this.legendLocation in ["east","north_east","south_east"]) {
+            int maxDisplayNameLength = this.items*.displayName.collect { it?.size()?:0 }.max()
+            eastLegendWidth = (int)(maxDisplayNameLength*10 * (width/1024)) // hack / guess, use about 15% of width
+        }
+        return eastLegendWidth
+    }
 }
     
 class PlotUtils {

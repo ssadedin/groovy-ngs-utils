@@ -151,6 +151,7 @@ class PlotTest {
         def line = new Density.Line(data:normals, displayName:'TestLine', color: com.twosigma.beakerx.chart.Color.blue)
         assert line.displayName  == 'TestLine'
     }
+
     
     @Test
     void testDensityBx() {
@@ -177,5 +178,20 @@ class PlotTest {
         Plot p = new Plot()
         p << new Line(color: Color.red, x:[1,2,3], y:[4,5,6], width: 1)
         p.save('test.line.png')
+    }
+    
+    @Test
+    void testConstantLine() {
+        
+        Plot p = new Plot(
+            title:'Simons great plot',
+            xLabel: "Random Stuff You Don't Care About",
+            yLabel: "Stuff You Do Care About",
+            ) << \
+            new Lines(x: [1,2,3,4,5,6,7], y: [1,3,6,8,6,5,2], displayName: 'Bananas') << \
+            new Lines(x: [1,2,3,4,5,6,7], y: [1,5,9,18,4,2,1], displayName: 'Oranges') << \
+            new ConstantLine(x: 4, color: Color.red, style: "DOT") // Note: style not working, but accept it for compatiblity
+
+        p.save('test.lines.png')
     }
 }
