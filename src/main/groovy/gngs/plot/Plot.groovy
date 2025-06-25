@@ -68,8 +68,8 @@ class PlotItem {
 }
 
 class ConstantLine {
-    double x
-    double y
+    Double x
+    Double y
     Double width
     Object color
     String style
