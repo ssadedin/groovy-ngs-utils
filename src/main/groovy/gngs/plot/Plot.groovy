@@ -391,7 +391,22 @@ class Plot {
         return this
     }
      
-    
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Line item) {
+        
+        Map optionalAttributes = [:]
+        if(item.color)
+            optionalAttributes.color = new Color(item.color.RGB) 
+
+        this.items << new Line(
+            x: item.x,
+            y: item.y,
+            displayName: item.displayName,
+            width: item.width,
+            * : optionalAttributes
+        )
+        return this
+    }
+     
     Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Text item) {
         Text gngsItem = new Text(x:item.x, y:item.y, text: item.text)
         if(item.color)
