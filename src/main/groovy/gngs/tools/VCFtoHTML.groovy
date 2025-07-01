@@ -37,6 +37,7 @@ import groovy.xml.StreamingMarkupBuilder
 
 import java.text.NumberFormat
 import java.util.regex.Pattern
+import java.util.concurrent.*
 
 import javax.swing.JFrame
 
@@ -1156,53 +1157,64 @@ class VCFtoHTML {
         
         List<String> chrs = opts['chrs'] ? (List<String>)opts['chrs'] : null
         
-        List<String> preFilters = []
-        if(opts['prefilters']) {
-            preFilters = (List<String>)opts['prefilters']
+        if (opts['prefilters']) {
+            List<String> preFilters = (List<String>)opts['prefilters']
             
             log.info "Will apply pre-filters: " + preFilters.join('; ')
-
             parsedPreFilters = (List<Closure>)preFilters.collect {
-                new GroovyShell().evaluate( "{ x ->\n\n$it\n}")
+                new GroovyShell().evaluate("{ x ->\n\n$it\n}")
             }
         }
         
         List<String> vcfPaths = (List<String>)opts['is']
-        
-        List<VCF> vcfs = []
-        
-        for(String vcfPath in vcfPaths) {
-            
-            log.info "Read $vcfPath ..."
-            
-            VCF vcf = new VCF(vcfPath)
-            List applicableExportSamples = exportSamples.grep { 
-                it in vcf.samples
-            }
-            
-            log.info "The following export samples are applicable to $vcfPath: ${applicableExportSamples.join(',')}"
-            
-            vcf = VCF.parse(new File(vcfPath), null, samples:applicableExportSamples?:null) { Variant  v ->
-                
-                if(chrs != null && !(v.chr in chrs))
-                    return false
-                    
-               if(this.targets.any { Regions r -> !r.overlaps(v) }) {
-                    ++stats.excludeByTarget
-                   return false
-               }
+        List<Future<VCF>> futures = []
+        ExecutorService executor = Executors.newFixedThreadPool(vcfPaths.size())
+    
+        for (String vcfPathToProcess : vcfPaths) {
+            futures << executor.submit({ String vcfPath ->
 
-                if(!parsedPreFilters.every { it(v) }) {
-                    ++stats.excludeByPreFilter
-                    return false
+                log.info "Read $vcfPath ..."
+                VCF vcf = new VCF(vcfPath)
+                List applicableExportSamples = exportSamples.grep {
+                    it in vcf.samples
                 }
-            }
-            
-            log.info "Retained ${vcf.size()} variants from $vcfPath"
-            vcfs.add(vcf)
+    
+                log.info "The following export samples are applicable to $vcfPath: ${applicableExportSamples.join(',')}"
+    
+                VCF parsedVCF = VCF.parse(new File(vcfPath), null, samples: applicableExportSamples ?: null) { Variant v ->
+    
+                    if (chrs != null && !(v.chr in chrs))
+                        return false
+    
+                    if (this.targets.any { Regions r -> !r.overlaps(v) }) {
+                        ++stats.excludeByTarget
+                        return false
+                    }
+    
+                    if (!parsedPreFilters.every { it(v) }) {
+                        ++stats.excludeByPreFilter
+                        return false
+                    }
+    
+                    return true
+                }
+    
+                log.info "Retained ${parsedVCF.size()} variants from $vcfPath"
+                return parsedVCF
+            }.curry(vcfPathToProcess) as Callable<VCF>)
         }
+    
+        executor.shutdown()
+        executor.awaitTermination(1, TimeUnit.HOURS)
+    
+        List<VCF> vcfs = []
+        for (Future<VCF> future : futures) {
+            vcfs << future.get()
+        }
+    
         return vcfs
     }
+    
     
     private void printStats(VCFSummaryStats stats) {
         println " Summary ".center(80,"=")
