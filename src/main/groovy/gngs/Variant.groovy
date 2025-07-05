@@ -553,36 +553,18 @@ class Variant implements IRegion, Serializable {
     private boolean parseFields(boolean ignoreHomRef) {
         
 //        def fields = line.split('[\t ]{1,}')
-        List<String>  fields = line.tokenize('\t').grep { it != null }
+        String [] fields = line.split('\t')
         if(ignoreHomRef && fields[4] == '<NON_REF>')
             return false
         
         chr = fields[0]
         id = fields[2]
         ref = fields[3]
-        alts = COMMA_SPLIT.split(fields[4])
+        alts = fields[4].split(',') // note we don't use COMMA_SPLIT because the fast path isn't activated if regex is precompiled
         alt = alts[0]
         qual = fields[5].equals(".") ? -1.0f : Float.parseFloat(fields[5])
         filter = fields[6]
         info = fields[7]
-        
-        // These lines are setting up default values to handle a "sites only" VCF without lots of special
-        // downstream handling for the case where there is no genotype / sample
-        boolean dirty = false
-        if(fields[FORMAT_FIELD_INDEX] == null) { 
-            fields[FORMAT_FIELD_INDEX] = 'GT'
-            dirty = true
-        }
-            
-        if(fields[9] == null)  {
-            fields[9] = '0/1'
-            dirty = true
-        }
-        
-        if(dirty) {
-            this.line = fields.join('\t')
-        }
-         
         pos = Integer.parseInt(fields[1])
         parseGenotypes(fields)
         
@@ -591,7 +573,7 @@ class Variant implements IRegion, Serializable {
     }
     
     @CompileStatic
-    private void parseGenotypes(List<String> fields) {
+    private void parseGenotypes(String [] fields) {
         if(fields.size() > FORMAT_FIELD_INDEX) {
             
           if(genoTypeFields == null)
@@ -621,20 +603,27 @@ class Variant implements IRegion, Serializable {
     // Causes strange typecast error (Char => CharSequence at marked line below
     @CompileStatic
     Map<String,Object> parseGenoTypeFields(String gt) {
-        [genoTypeFields, gt.tokenize(':')].transpose().collectEntries { Object fieldObj ->
-              List field = (List)fieldObj
-              String key = (String)field[0]
-              String value = String.valueOf(field[1])
-              if(key in numericGTFields) { 
-                  return [key,convertNumericValue(value,null)] 
-              }
-              else
-              if(key in numericListFields) {
-                  return [key, value.equals('.') ? null : value.tokenize(",").collect { convertNumericValue(it,null) }]  // strange typecast exc under compilestatic
-              }
-              else
-                  return field
-        } 
+        String[] values = gt.split(':')
+        
+        final int numValues = values.size()
+        
+        Map<String,Object> result = new LinkedHashMap(numValues)
+        for(int i=0; i<numValues; ++i) {
+            String key = genoTypeFields[i]
+            String value = values[i]
+
+          if(key in numericGTFields) { 
+              result.put(key, convertNumericValue(value,null))
+          }
+          else
+          if(key in numericListFields) {
+              result.put(key, value.equals('.') ? null : value.tokenize(",").collect { convertNumericValue(it,null) })
+          }
+          else
+              result.put(key, value)
+        }
+        
+        return result
     }
     
     @CompileStatic

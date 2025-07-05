@@ -281,7 +281,10 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
     
     @Test
     void 'parse VCFs containing SVs 2'() {
-        VCF vcf = VCF.parse("/Users/simon.sadedin/work/ximmer/src/test/data/test.canvas.vcf")
+        File test_vcf = new File("/Users/simon.sadedin/work/ximmer/src/test/data/test.canvas.vcf")
+        if(!test_vcf.exists())
+            return
+        VCF vcf = VCF.parse(test_vcf.path)
         
         println vcf[0].size()
         assert vcf[0].size() > 100
@@ -359,6 +362,15 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
     @Test
     void 'test filter from vcf file name gzipped'() {
         VCF.filter('test.vcf.gz') { false }
+    }
+    
+    @Test
+    void 'test parse sites only VCF'() {
+        VCF vcf = VCF.parse('src/test/data/ddx3x.sitesonly.vcf')
+        
+        println "Sites only VCF has ${vcf.size()} variants"
+        
+        assert vcf.size() == 1
     }
 	
 	@Test
