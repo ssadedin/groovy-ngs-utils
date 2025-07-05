@@ -456,6 +456,8 @@ class Plot {
             title:bxPlot.title,
             xLabel: bxPlot.xLabel,
             yLabel: bxPlot.yLabel,
+            initWidth: bxPlot.initWidth,
+            initHeight: bxPlot.initHeight
         )
         
         if(!bxPlot.xAutoRange)
