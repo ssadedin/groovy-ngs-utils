@@ -252,6 +252,17 @@ abstract class RegulatingActor<T> extends DefaultActor implements Runnable {
     }
     
     @CompileStatic
+    static <T> RegulatingActor<T> actor(int softLimit, int hardLimit, Closure c) {
+        RegulatingActor ds = new RegulatingActor<T>(softLimit, hardLimit) {
+            @CompileStatic
+            void process(T value) {
+                c(value)
+            }
+        }
+        return ds
+    }
+
+    @CompileStatic
     static <T> RegulatingActor<T> actor(Closure c) {
         RegulatingActor ds = new RegulatingActor<T>() {
             @CompileStatic
