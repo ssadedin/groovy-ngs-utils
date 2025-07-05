@@ -1,5 +1,7 @@
 package gngs
-import groovy.transform.CompileStatic;
+import graxxia.Binner
+import groovy.transform.CompileStatic
+
 /**
  * A representation of a genomic position as a long
  * 
@@ -57,6 +59,23 @@ class XPos {
     public static long computeId(int chr, int pos) {
         // Absolute coordinate = chr * 10^e9 + pos
         chr * 1000000000L + pos
+    }
+
+    /**
+     * Note: the binner returned will happily bin into non-meaningful gaps
+     * in the XPos mapping space. Be cautious about referencing {@link #midPoints}
+     * as this may return a very large object that exhausts memory.
+     * 
+     * @param binSizeBp
+     * @return a Binner configured to bin by windows of binSizeBp bases
+     */
+    @CompileStatic
+    public static Binner binByBp(int binSizeBp) {
+        
+        // ChrM is the last chromosome supported, so this has the highest possible number
+        long maxSize = computePos('chrM',17000)
+        
+        return new Binner((int)Math.ceil((double)(maxSize / binSizeBp)), 0, maxSize)
     }
 }
 
