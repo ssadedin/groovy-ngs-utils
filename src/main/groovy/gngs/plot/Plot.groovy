@@ -147,11 +147,12 @@ class XYItem extends PlotItem {
 
 class Lines extends XYItem {
     Double width
-    
+    String style
 }
 
 class Line extends XYItem {
     Double width
+    String style
 }
 
 class Area extends XYItem {
@@ -579,11 +580,39 @@ class Plot {
             if(xy instanceof Lines || xy instanceof Line) {
                 LineRenderer lines = new SmoothLineRenderer2D();
 
+                Stroke stroke = null
                 if(xy.width != null)
-                    lines.setStroke(new BasicStroke((float)xy.width))
+                    stroke = new BasicStroke((float)xy.width)
+
+                if(xy.style == "DOT") {
+                    stroke = new BasicStroke(
+                        xy.width ? xy.width.toFloat() :1.0f,           // line width
+                        BasicStroke.CAP_ROUND,    // round caps for dot effect
+                        BasicStroke.JOIN_MITER,   // round joins
+                        4.0f,                     // miter limit
+                        new float[]{1f, 6f},      // pattern: 1px dash, 4px gap
+                        0.0f                      // phase offset
+                    );
+                }
+                else
+                if(xy.style == "DASH") {
+                    stroke = new BasicStroke(
+                        xy.width ? xy.width.toFloat() :1.0f,           // line width
+                        BasicStroke.CAP_ROUND,    // round caps for dot effect
+                        BasicStroke.JOIN_MITER,   // round joins
+                        4.0f,                     // miter limit
+                        new float[]{8f, 8f},      // pattern: 1px dash, 4px gap
+                        0.0f                      // phase offset
+                    );
+                }
+                    
+
+                if(stroke)
+                    lines.setStroke(stroke)
 
                 lines.setColor(color)
                 xyPlot.setLineRenderers(dt, lines)
+                xyPlot.setPointRenderers(dt, null)
             }
             else
             if(xy instanceof Area) {
