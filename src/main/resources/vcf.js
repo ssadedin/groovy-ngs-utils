@@ -67,7 +67,7 @@
 /**************************** PanelApp API Wrapper ******************************/
 
 class PanelAppApi {
-  constructor(api_url = "https://panelapp.agha.umccr.org/api/v1/") {
+  constructor(api_url = "https://panelapp-aus.org/api/v1/") {
     this.api_url = new URL(api_url);
     this.panel_infos = [];
   }
