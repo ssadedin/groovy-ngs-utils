@@ -271,22 +271,37 @@ class SAM {
     }
 
     /**
-     * Return a new SAMFileWriter configured with the same settings as this 
-     * SAM. It is the caller's responsibility to close the writer.
-     * In this version of the method the files are assumed to be 
-     * <em>pre-sorted</em>*.
+     * Invoke the given closure with a new SAMFileWriter configured with the same settings as this 
+     * SAM. It is the caller's responsibility to close the writer. In this version of the method 
+     * the files are assumed to be <em>pre-sorted</em>.
      * 
      * @param outputFileName    Name of file to write to
      * @return SAMFileWriter
      */
-    def withWriter(String outputFileName, Closure c) {
+    def withWriter(String outputFileName, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMFileWriter']) Closure c) {
         withWriter([:], outputFileName, true, c)
     }
     
-    def withWriter(String outputFileName, boolean sorted, Closure c) {
+    /**
+     * Invoke the given closure with a new SAMFileWriter configured with the same settings as this 
+     * SAM. It is the caller's responsibility to close the writer. Note that selecting false
+     * for sorted will cause the reads to be sorted in real time.
+     * 
+     * @param outputFileName    Name of file to write to
+     * @return SAMFileWriter
+     */
+    def withWriter(String outputFileName, boolean sorted, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMFileWriter']) Closure c) {
         withWriter([:], outputFileName, sorted, c)
     }
 
+    /**
+     * Invoke the given closure with a new SAMFileWriter configured with the same settings as this 
+     * SAM. It is the caller's responsibility to close the writer. Note that selecting false
+     * for sorted will cause the reads to be sorted in real time.
+     * 
+     * @param outputFileName    Name of file to write to
+     * @return SAMFileWriter
+     */
     @CompileStatic
     def withWriter(Map options, String outputFileName, boolean sorted, @ClosureParams(value=SimpleType,options=['htsjdk.samtools.SAMFileWriter']) Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
@@ -301,8 +316,6 @@ class SAM {
         }
          
         SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
-        
-
         try {
             return c(w)
         }
@@ -370,7 +383,16 @@ class SAM {
         }        
     }
     
-    def withOrderedPairWriter(Map options=[:], String outputFileName, boolean sorted, Closure c) {
+    /**
+     * Create an OrderedPairWriter based on this SAM file and invoke the given closure with it
+     * 
+     * @param options   specify `sampleId` to change the sample written in the output BAM file
+     * @param outputFileName output file name
+     * @param sorted    whether to assume the reads written out are pre-sorted
+     * @param c Closure to invoke
+     * @return  pass through of return value from the invoked closure
+     */
+    def withOrderedPairWriter(Map options=[:], String outputFileName, boolean sorted, @ClosureParams(value=SimpleType,options=['gngs.OrderedPairWriter']) Closure c) {
         SAMFileWriterFactory f = new SAMFileWriterFactory()
         SAMFileHeader header = this.samFileReader.fileHeader
         
@@ -477,7 +499,7 @@ class SAM {
      * the reads in order until each single read finds its mate. This means that 
      * reads having no mate accumulate in the buffer without ever being removed. Thus 
      * a large BAM file containing millions of unpaired reads could cause this method to use
-     * substantial ammounts of memory.
+     * substantial amounts of memory.
      * 
      * @param c        Closure to call
      */

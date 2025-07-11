@@ -24,6 +24,8 @@ import groovy.transform.CompileStatic;
 import htsjdk.samtools.SAMFileWriter
 
 /**
+ * Support for writing out read pairs while maintaining a correctly ordered BAM file.
+ * 
  * When processing reads as pairs it can be tricky to write them out again while maintaining the
  * order expected for a "sorted" BAM file. This class buffers the second read until the next 
  * R1 is output that would violate the second read's sort order. 
