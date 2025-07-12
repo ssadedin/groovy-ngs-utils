@@ -47,7 +47,8 @@ dependencies {
          "org.codehaus.groovy:groovy-xml:$GROOVY_VERSION",
          "org.codehaus.groovy:groovy-ant:$GROOVY_VERSION",
          "org.codehaus.groovy:groovy-json:$GROOVY_VERSION",
-         "org.codehaus.groovy:groovy-sql:$GROOVY_VERSION"
+         "org.codehaus.groovy:groovy-sql:$GROOVY_VERSION",
+         "org.codehaus.groovy:groovy-dateutil:$GROOVY_VERSION"
      ]
      groovyDeps.each { dep ->
          compileOnly dep
