@@ -42,13 +42,15 @@ configurations {
 }
 
 dependencies {
-     compileOnly group: 'org.codehaus.groovy', name: 'groovy', version: "$GROOVY_VERSION"
-     compileOnly group: 'org.codehaus.groovy', name: 'groovy-xml', version: "$GROOVY_VERSION"
-     compileOnly group: 'org.codehaus.groovy', name: 'groovy-ant', version: "$GROOVY_VERSION"
-     compileOnly group: 'org.codehaus.groovy', name: 'groovy-json', version: "$GROOVY_VERSION"
-     compileOnly group: 'org.codehaus.groovy', name: 'groovy-sql', version: "$GROOVY_VERSION"
+     // Convert all the groovy dependencies to use the single string form of the dependencies AI!
+     compileOnly "org.codehaus.groovy:groovy:$GROOVY_VERSION"
+     compileOnly "org.codehaus.groovy:groovy-xml:$GROOVY_VERSION"
+     compileOnly "org.codehaus.groovy:groovy-ant:$GROOVY_VERSION"
+     compileOnly "org.codehaus.groovy:groovy-json:$GROOVY_VERSION"
+     compileOnly "org.codehaus.groovy:groovy-sql:$GROOVY_VERSION"
      if(!GROOVY_VERSION.startsWith('2.4')) {
-         compileOnly group: 'org.codehaus.groovy', name: 'groovy-cli-commons', version: "$GROOVY_VERSION"
+         compileOnly "org.codehaus.groovy:groovy-cli-commons:$GROOVY_VERSION"
+         testImplementation "org.codehaus.groovy:groovy-cli-commons:$GROOVY_VERSION"
      }
      implementation group: 'org.codehaus.gpars', name: 'gpars', version: '1.2.1'
 
