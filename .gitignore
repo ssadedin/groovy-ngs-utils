@@ -12,3 +12,4 @@ gradle-lib
 *.swn
 *.swo
 *.swp
+.aider*
