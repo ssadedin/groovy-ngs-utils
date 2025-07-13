@@ -734,7 +734,9 @@ class Variant implements IRegion, Serializable {
             getInfo().EFF = this.snpEffInfo*.info.join(",")
         }
         
-        fields[7] = getInfo()?.collect {k,v -> v != null?"$k=$v":k}.join(';')?:'.'
+        fields[7] = getInfo()?.collect { k,v -> 
+            ((v != null) && !v.is(INFO_FIELD_EXISTS)) ? "$k=$v" : k
+        }.join(';')?:'.'
         
         if(this.@genoTypes != null) {
             rebuildGenotypes(fields)
@@ -999,6 +1001,12 @@ class Variant implements IRegion, Serializable {
     }
     
     /**
+     * A special boolean that operates as true but we can recognise later
+     * marks a value-less attribute
+     */
+    final private static INFO_FIELD_EXISTS = new Boolean(true)
+    
+    /**
      * Parse the value from a VCF INFO field into a Map structure
      * <p>
      * Note this does not do a type safe parsing; all values are parsed to
@@ -1014,7 +1022,7 @@ class Variant implements IRegion, Serializable {
             for(String s in value.tokenize(';')) {
                 int i = s.indexOf('=')
                 if(i<0) {
-                    result[s]=Boolean.TRUE
+                    result[s]=INFO_FIELD_EXISTS
                     continue
                 }
                 result[s.substring(0,i)] = s.substring(i+1)

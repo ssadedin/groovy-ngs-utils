@@ -493,4 +493,14 @@ class VariantTest {
 
         assert is_in : "Variant should be in the regions"
     }
+    
+    
+    @Test
+    void testUpdateValuelessInfo() {
+        v = var("chr1   10263   TEST.INS.1S0    N   CAGGCGCAGAGAGGCGCGCCGGGCCGGCGCAGGCGCAGAGACACATGCTAGCGCGTCCAGGGGAGGAGGCGTGGCA    47  PASS    IMPRECISE;SVTYPE=INS;SVLEN=81;END=10863;SUPPORT=5;COVERAGE=6,6,6,6,6;STRAND=+-;AF=0.833;STDEV_LEN=2.887;STDEV_POS=126.301;SUPPORT_LONG=0    GT:GQ:DR:DV 1/1:3:1:5")
+        
+        v.update { Variant v -> v.info.FOO='bar' }
+        
+        assert v.line.contains('IMPRECISE;')
+    }
 }
