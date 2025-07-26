@@ -209,15 +209,18 @@ class VCFIndex {
             TabixReader.Iterator i = tbr.query(chr,start,end)
             @CompileStatic
             Variant next() {
+                Variant v
                 if(nextLine) {
                     String result = nextLine
                     nextLine = null
-                    return Variant.parse(result)
+                    v = Variant.parse(result)
                 }
                 else {
                     nextLine = null
-                    return Variant.parse(i.next())
+                    v = Variant.parse(i.next())
                 }
+                v.header = headerVCF
+                return v
             }
                 
             @CompileStatic
