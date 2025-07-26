@@ -372,6 +372,8 @@ class Plot {
     Integer initWidth = null
     Integer initHeight = null
     
+    Double legendDistance = null
+    
     Plot leftShift(PlotItem item) {
         this.items << item
         return this
@@ -734,6 +736,9 @@ class Plot {
                 if(this.legendLocation) {
                     xyPlot.setLegendLocation(Location[this.legendLocation.toUpperCase()])
                 }
+            }
+            if(this.legendDistance != null) {
+                xyPlot.setLegendDistance(this.legendDistance)
             }
         }
             
