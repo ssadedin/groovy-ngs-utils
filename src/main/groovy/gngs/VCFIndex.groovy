@@ -26,6 +26,7 @@ import groovy.transform.stc.SimpleType
 
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
+import java.util.stream.Stream
 
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
@@ -33,6 +34,7 @@ import htsjdk.tribble.index.IndexFactory
 import htsjdk.tribble.readers.TabixReader
 import org.codehaus.groovy.runtime.StackTraceUtils
 
+import com.google.common.collect.Iterators
 
 /**
  * Support for querying indexed VCF files via random access.
@@ -195,13 +197,37 @@ class VCFIndex {
             queryIdx(chr,start,end,c)
     }
     
+    
     @CompileStatic
-    Iterator<Variant> iterator(String chr, int start, int end) {
+    Iterator<Variant> iterator(Regions regions) {
+
         if(!fileName.endsWith('.gz') && !fileName.endsWith('.bgz')) 
             throw new IllegalStateException("Iterator queries are only supported for Tabix indexed VCFs")
             
         TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
+
+        return Iterators.concat(regions.collect { iterator(tbr, it.chr, it.from, it.to) }.iterator())
+    }
+    
+    @CompileStatic
+    Iterator<Variant> iterator(IRegion region) {
+        return iterator(region.chr, region.range.from, region.range.to)
+    }
+    
+    @CompileStatic
+    Iterator<Variant> iterator(final String chr, final int start, final int end) {
+
+        if(!fileName.endsWith('.gz') && !fileName.endsWith('.bgz')) 
+            throw new IllegalStateException("Iterator queries are only supported for Tabix indexed VCFs")
             
+        TabixReader tbr = new TabixReader(this.fileName, this.fileName + '.tbi')
+        return iterator(tbr, chr, start, end)
+     }
+    
+    
+    @CompileStatic
+    Iterator<Variant> iterator(TabixReader tbr, final String chr, final int start, final int end) {
+           
         return new Iterator<Variant>() {
                 
             String nextLine = null
