@@ -319,6 +319,8 @@ class VCF implements Iterable<Variant>, Serializable {
             Variant v = variants.first()
             if(v.header != null)
                 this.headerLines.addAll(v.header.headerLines)
+            this.parseLastHeaderLine()
+            this.add(v)
         }
         addAll(variants)
     }
