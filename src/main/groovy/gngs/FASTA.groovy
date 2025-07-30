@@ -203,6 +203,33 @@ class FASTA {
         return bestMotif
     }
      
+    /**
+     * Search for a repeat at the given position and return a RepeatMotif object
+     * if one is found
+     * 
+     * @param contig
+     * @param position
+     * @return RepeatMotif or null if none is found
+     */
+    @CompileStatic
+    boolean isRepetitive(final String contig, final int position, final int windowSize, final int numRepeats) {
+        final int halfWindow = (int)(windowSize / 2)
+        byte[] bases = baseBytesAt(contig, position-halfWindow, position+halfWindow)
+        
+        final int a_base = 97
+        if(bases[halfWindow] >= a_base || bases[halfWindow-1] > a_base || bases[halfWindow+1] > a_base) 
+            return true
+
+        final int maxLen = 4
+        for(int len=1; len<=maxLen;++len) {
+            RepeatMotif motif = repeatAt(bases, len)
+            if(motif && motif.repetitions>=numRepeats) {
+                return true
+            }
+        }
+        return false
+    }
+
     public static final int T = (int)"T".charAt(0)
     public static final int A = (int)"A".charAt(0)
     public static final int C = (int)"C".charAt(0)
