@@ -73,6 +73,7 @@ class ConstantLine {
     Double width
     Object color
     String style
+    String displayName
     
     DataTable toTable(double minX, double maxX, double minY, double maxY) {
         Column xColumn
@@ -469,6 +470,19 @@ class Plot {
         if(!bxPlot.yAutoRange)
             p.yBound = [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()]
         
+        def setProps = { g, item ->
+            g.properties.each { k,v ->
+                if(item.hasProperty(k)) {
+                    try {
+                        item[k] = v
+                    }
+                    catch(ReadOnlyPropertyException exReadOnly) {
+                        // ignore
+                    }
+                }
+            }
+        }
+
         bxPlot.graphics.each { XYGraphics g ->
             
             def item = null
@@ -490,24 +504,18 @@ class Plot {
             if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.Text) {
                 item = new Text()
             }
-            if(g instanceof com.twosigma.beakerx.chart.xychart.plotitem.ConstantLine) {
-                item = new ConstantLine()
-            }
-      
+     
             if(!item)
                 return
  
-            g.properties.each { k,v ->
-                if(item.hasProperty(k)) {
-                    try {
-                        item[k] = v
-                    }
-                    catch(ReadOnlyPropertyException exReadOnly) {
-                        // ignore
-                    }
-                }
-            }
-            
+            setProps(g, item)
+
+            p << item
+        }
+        
+        bxPlot.constantLines.each { cl ->
+            ConstantLine item = new ConstantLine()
+            setProps(cl, item)
             p << item
         }
         
@@ -548,8 +556,12 @@ class Plot {
         
         int i = 1
         
-        List<DataTable> clDatas = constantLines.collect { 
-            it.toTable(uberMinX, uberMaxX, uberMinY, uberMaxY) 
+        List<DataTable> clDatas = constantLines.collect { ConstantLine cl ->
+            DataTable dt  = cl.toTable(uberMinX, uberMaxX, uberMinY, uberMaxY) 
+            if(cl.displayName) {
+                dt.setName(cl.displayName)
+            }
+            return dt
          }
         
         List<DataTable> datas = xys.collect { XYItem item ->
@@ -592,7 +604,7 @@ class Plot {
                         BasicStroke.CAP_ROUND,    // round caps for dot effect
                         BasicStroke.JOIN_MITER,   // round joins
                         4.0f,                     // miter limit
-                        new float[]{1f, 6f},      // pattern: 1px dash, 4px gap
+                        [1f, 6f] as float[],      // pattern: 1px dash, 4px gap
                         0.0f                      // phase offset
                     );
                 }
@@ -603,7 +615,7 @@ class Plot {
                         BasicStroke.CAP_ROUND,    // round caps for dot effect
                         BasicStroke.JOIN_MITER,   // round joins
                         4.0f,                     // miter limit
-                        new float[]{8f, 8f},      // pattern: 1px dash, 4px gap
+                        [8f, 8f] as float[],      // pattern: 1px dash, 4px gap
                         0.0f                      // phase offset
                     );
                 }
