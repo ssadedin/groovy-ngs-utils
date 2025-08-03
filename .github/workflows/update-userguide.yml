@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'userguide/**'
+      - '.github/workflows/update-userguide.yml'
 
 jobs:
   update-userguide:
@@ -22,9 +23,10 @@ jobs:
           version: 1.69
       - name: Build and Deploy User Guide
         run: |
+          unzip ${{ steps.sdkman.outputs.file }}
+          ls -ltR
           cd userguide
-          ls -ltR ~/.sdkman
-          ~/.sdkman/candidates/znai/current/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
+          ../znai/1.69/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
       - name: Commit and Push Updates
         run: |
           git clone git@github.com:ssadedin/ssadedin.github.io.git deploy_repo
