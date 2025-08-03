@@ -24,7 +24,7 @@ jobs:
           version: 1.69
       - name: Build and Deploy User Guide
         run: |
-          unzip -d /tmp/znai ${{ steps.installznai.output.file }}
+          unzip -d /tmp/znai ${{ steps.installznai.outputs.file }}
           ls -ltR /tmp/znai
           cd userguide
           /tmp/znai/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
