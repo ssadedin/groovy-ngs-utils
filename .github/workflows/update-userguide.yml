@@ -25,7 +25,6 @@ jobs:
       - name: Build and Deploy User Guide
         run: |
           unzip -d /tmp/znai ${{ steps.installznai.outputs.file }}
-          ls -ltR /tmp/znai
           cd userguide
           /tmp/znai/dist/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
       - name: Commit and Push Updates
