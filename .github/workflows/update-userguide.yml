@@ -27,7 +27,7 @@ jobs:
           unzip -d /tmp/znai ${{ steps.installznai.outputs.file }}
           ls -ltR /tmp/znai
           cd userguide
-          /tmp/znai/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
+          /tmp/znai/dist/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
       - name: Commit and Push Updates
         run: |
           git clone git@github.com:ssadedin/ssadedin.github.io.git deploy_repo

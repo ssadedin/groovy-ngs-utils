@@ -4,7 +4,7 @@ on:
   push:
     paths-ignore:
       - 'userguide/**'
-      - '.github/workflows/ci-build.yml'
+      - '.github/workflows/update-userguide.yml'
 
 jobs:
   build:
