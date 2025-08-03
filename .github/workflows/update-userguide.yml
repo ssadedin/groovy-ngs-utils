@@ -21,8 +21,9 @@ jobs:
           znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
       - name: Commit and Push Updates
         run: |
-          cd ./deploy
-          git init
+          git clone git@github.com:ssadedin/ssadedin.github.io.git deploy_repo
+          cp -r deploy/* deploy_repo/groovy-ngs-utils/userguide/
+          cd deploy_repo
           git add .
           git commit -m 'Update user guide for groovy-ngs' || echo "No changes to commit"
           git push
