@@ -1,0 +1,27 @@
+name: Update User Guide
+
+on:
+  push:
+    paths:
+      - 'userguide/**'
+
+jobs:
+  update-userguide:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Java 11
+        uses: actions/setup-java@v2
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Build and Deploy User Guide
+        run: |
+          cd userguide
+          znai --doc-id groovy-ngs-utils/userguide --deploy /Users/simon.sadedin/work/ssadedin.github.io/
+      - name: Commit and Push Updates
+        run: |
+          cd /Users/simon.sadedin/work/ssadedin.github.io/
+          git add groovy-ngs-utils/userguide
+          git commit -m 'Update user guide for groovy-ngs' groovy-ngs-utils/userguide || echo "No changes to commit"
+          git push
