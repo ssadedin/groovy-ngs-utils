@@ -8,6 +8,9 @@ on:
 jobs:
   update-userguide:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash -ieo pipefail {0}
     steps:
       - uses: actions/checkout@v2
       - name: Set up Java 11
@@ -21,7 +24,6 @@ jobs:
           candidate: znai
           version: 1.69
       - name: Build and Deploy User Guide
-        shell: bash -ieo pipefail {0}
         run: |
           cd userguide
           znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
