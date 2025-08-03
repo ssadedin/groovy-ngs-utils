@@ -21,6 +21,7 @@ jobs:
           candidate: znai
           version: 1.69
       - name: Build and Deploy User Guide
+        shell: bash -ieo pipefail {0}
         run: |
           cd userguide
           znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
