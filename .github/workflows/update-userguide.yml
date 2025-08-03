@@ -26,7 +26,7 @@ jobs:
       - name: Build and Deploy User Guide
         run: |
           cd userguide
-          znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
+          ~/.sdkman/candidates/znai/current/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
       - name: Commit and Push Updates
         run: |
           git clone git@github.com:ssadedin/ssadedin.github.io.git deploy_repo

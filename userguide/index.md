@@ -2,7 +2,7 @@
 
 A toolkit for working with genomic sequencing data in Groovy.
 
-The JVM is a powerful platform for data analysis, offering high performance, extraordinary library and platform
+The JVM is a powerful platform for data analysis, offering high performance, strong library and platform
 support and rock solid industry support when it comes time to scale up and productionise your work.
 Groovy NGS aims to unlock the power of the JVM for working with genomic sequencing data by enabling it 
 to be used with the versatile and highly productive Groovy programming language.
