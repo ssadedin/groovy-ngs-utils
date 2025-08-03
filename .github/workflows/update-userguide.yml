@@ -5,6 +5,8 @@ on:
     paths:
       - 'userguide/**'
       - '.github/workflows/update-userguide.yml'
+    branches:
+      - master
 
 jobs:
   update-userguide:
