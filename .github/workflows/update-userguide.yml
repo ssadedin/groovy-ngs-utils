@@ -17,16 +17,17 @@ jobs:
           java-version: '11'
           distribution: 'adopt'
       - name: Setup sdkman and install znai
+        id:  installznai
         uses: sdkman/sdkman-action@master
         with:
           candidate: znai
           version: 1.69
       - name: Build and Deploy User Guide
         run: |
-          unzip ${{ steps.sdkman.outputs.file }}
-          ls -ltR
+          uzip -d /tmp/znai ${{ steps.installznai.output.file }}
+          ls -ltR /tmp/znai
           cd userguide
-          ../znai/1.69/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
+          /tmp/znai/znai --doc-id groovy-ngs-utils/userguide --deploy ./deploy
       - name: Commit and Push Updates
         run: |
           git clone git@github.com:ssadedin/ssadedin.github.io.git deploy_repo
