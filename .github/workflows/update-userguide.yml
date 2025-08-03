@@ -18,7 +18,8 @@ jobs:
       - name: Setup sdkman and install znai
         uses: sdkman/sdkman-action@master
         with:
-          sdk: znai=1.69
+          candidate: znai
+          version: 1.69
       - name: Build and Deploy User Guide
         run: |
           cd userguide
