@@ -292,20 +292,14 @@ class PDF {
 	 }
 	 
 	 void img(String src) {
-		 java.awt.Image awtImage = Toolkit.getDefaultToolkit().createImage(src);
-		 com.lowagie.text.Image img = com.lowagie.text.Image.getInstance(awtImage, null);
-		 
-		 int height = -1
-		 height = awtImage.getHeight({ java.awt.Image i, int infoflags, int x, int y, int width, int h ->
-			 height = h
-			 return false
-		 } as ImageObserver)
-		 while(height<0)
-		 	Thread.sleep(50)
-			 
-//		 println "Height = ${height}"
-		 
-		 float aspectRatio = (height/ (float)awtImage.getWidth(null))
+         // Load image directly with iText to avoid AWT issues
+         com.lowagie.text.Image img = com.lowagie.text.Image.getInstance(new File(src).absolutePath)
+         
+         float height = img.getHeight()
+         float width = img.getWidth()
+         float aspectRatio = height/width
+         
+         System.err.println("PDF: Loaded image ${src} with dimensions ${width}x${height}")
 //		 println "Aspect ratio = $aspectRatio"
 		 img.scaleAbsolute((float)300,(float)(aspectRatio * 300))
 		 img.absoluteX = 150
