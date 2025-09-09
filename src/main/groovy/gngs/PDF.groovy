@@ -299,8 +299,6 @@ class PDF {
          float width = img.getWidth()
          float aspectRatio = height/width
          
-         System.err.println("PDF: Loaded image ${src} with dimensions ${width}x${height}")
-//		 println "Aspect ratio = $aspectRatio"
 		 img.scaleAbsolute((float)300,(float)(aspectRatio * 300))
 		 img.absoluteX = 150
 		 elementStack[-1].add(img)

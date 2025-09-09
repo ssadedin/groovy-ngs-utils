@@ -57,7 +57,7 @@ class PDFTest {
 				cells("super","padding")
 			}
 			
-			img("tests/test.jpg")
+			img("src/test/data/test.jpg")
 		}
 	}
 
