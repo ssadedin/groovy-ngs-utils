@@ -35,27 +35,57 @@ class DownsampleFASTQ extends ToolBase {
         cli('DownsampleFASTQ -r <fraction of reads to preserve> -i1 <fastq r1> -i2 <fastq r2> -o1 <fastq output1> -o2 <fastq output2>', args) {
             i1 'FASTQ R1', args:1, required: true
             i2 'FASTQ R2', args:1, required: true
-            o1 'Output FASTQ R2', args:1, required: true
-            o2 'Output FASTQ R2', args:1, required: true
+            o1 'Output FASTQ R1 (optional)', args:1
+            o2 'Output FASTQ R2 (optional)', args:1
             r 'Fraction of reads to preserve', args:1, required: true
         } 
     }
 
     @Override
     public void run() {
-        
+    
+        // Ensure that either both o1 and o2 options are provided or neither.
+        if ((opts.o1 && !opts.o2) || (opts.o2 && !opts.o1)) {
+            throw new IllegalArgumentException("Either both o1 and o2 must be provided or neither.")
+        }
+    
         final double rate = opts.r.toDouble()
-        Random random = new Random()
-        OutputStream os1 = new GZIPOutputStream(new FileOutputStream(opts.o1))
-        OutputStream os2 = new GZIPOutputStream(new FileOutputStream(opts.o2))
+        // If output options are provided, use them as is. Otherwise, compute defaults.
+        String o1Path = opts.o1 ?: computeDefaultOutput(opts.i1, rate)
+        String o2Path = opts.o2 ?: computeDefaultOutput(opts.i2, rate)
+        
+        // Optional logging to show what file paths are used.
+        System.err.println("Output for R1: " + o1Path)
+        System.err.println("Output for R2: " + o2Path)
+        
+        OutputStream os1 = new GZIPOutputStream(new FileOutputStream(o1Path))
+        OutputStream os2 = new GZIPOutputStream(new FileOutputStream(o2Path))
         os1.withWriter { w1 ->
             os2.withWriter { w2 ->
-               FASTQ.filter(opts.i1, opts.i2, w1, w2) { r1, r2 ->
-                    return (random.nextDouble()<rate)
+                FASTQ.filter(opts.i1, opts.i2, w1, w2) { r1, r2 ->
+                    return (new Random().nextDouble() < rate)
                 }            
             }
         }
-     
     }
 
+    /**
+     * Compute a default output path based on the input file and downsample rate.
+     * The computed output retains the original input file name but is placed in a subdirectory 
+     * named "downsampled_<percentage>" located in the same directory as the input file (or the current 
+     * directory if none exists).
+     */
+    private String computeDefaultOutput(String inputFile, double rate) {
+        int percentage = (int) (rate * 100)
+        
+        File inFile = new File(inputFile)
+        File parentDir = inFile.parentFile ?: new File(".")
+        File outDir = new File(parentDir, "downsampled_${percentage}")
+        if (!outDir.exists()) {
+            outDir.mkdirs()
+        }
+        
+        // Keep the same input file name.
+        return new File(outDir, inFile.name).getAbsolutePath()
+    }
 }
