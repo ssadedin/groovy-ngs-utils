@@ -23,12 +23,14 @@ import java.util.zip.GZIPOutputStream
 
 import gngs.FASTQ
 import gngs.ToolBase
+import groovy.util.logging.Log
 
 /**
  * A simple tool for downsampling paired end FASTQ to achieve lower coverage.
  * 
  * @author Simon Sadedin
  */
+@Log
 class DownsampleFASTQ extends ToolBase {
     
     static void main(String[] args) {
@@ -53,11 +55,7 @@ class DownsampleFASTQ extends ToolBase {
         // If output options are provided, use them as is. Otherwise, compute defaults.
         String o1Path = opts.o1 ?: computeDefaultOutput(opts.i1, rate)
         String o2Path = opts.o2 ?: computeDefaultOutput(opts.i2, rate)
-        
-        // Optional logging to show what file paths are used.
-        System.err.println("Output for R1: " + o1Path)
-        System.err.println("Output for R2: " + o2Path)
-        
+       
         OutputStream os1 = new GZIPOutputStream(new FileOutputStream(o1Path))
         OutputStream os2 = new GZIPOutputStream(new FileOutputStream(o2Path))
         os1.withWriter { w1 ->
@@ -67,7 +65,10 @@ class DownsampleFASTQ extends ToolBase {
                 }            
             }
         }
-    }
+
+        // Optional logging to show what file paths are used.
+        log.info("Wrote: " + o1Path + "," + o2Path)
+     }
 
     /**
      * Compute a default output path based on the input file and downsample rate.
