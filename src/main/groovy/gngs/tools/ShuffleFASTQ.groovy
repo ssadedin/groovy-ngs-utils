@@ -28,6 +28,25 @@ class ShuffleFASTQ extends ToolBase {
     private writeFASTQ(final FASTQRead [][] buffer, String r1, String r2, String o1, String o2) {
         Utils.withWriters([o1,o2]) {  w1, w2 ->
             FASTQ.eachPair(r1, r2) { read1, read2 ->
+                // Generate random index in buffer
+                int randomIndex = (int)(Math.random() * buffer.length)
+                
+                // If there's already a pair at this position, write it out
+                if(buffer[randomIndex] != null) {
+                    w1.write(buffer[randomIndex][0].toString())
+                    w2.write(buffer[randomIndex][1].toString())
+                }
+                
+                // Store the current pair at the random position
+                buffer[randomIndex] = [read1, read2] as FASTQRead[]
+            }
+            
+            // After processing all pairs, write out remaining buffered reads
+            for(FASTQRead[] pair : buffer) {
+                if(pair != null) {
+                    w1.write(pair[0].toString())
+                    w2.write(pair[1].toString()) 
+                }
             }
         }
     }
