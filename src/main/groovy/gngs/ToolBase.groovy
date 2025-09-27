@@ -218,7 +218,14 @@ abstract class ToolBase {
         String envNoProxy = System.getenv('no_proxy') ?: System.getenv('NO_PROXY')
         if (envNoProxy) {
             // Convert comma-separated list to pipe-separated string required by Java's non-proxy settings.
-            String nonProxyHosts = envNoProxy.split(',').collect { it.trim() }.join('|')
+            String nonProxyHosts = envNoProxy.split(',').collect { entry -> 
+                entry = entry.trim()
+                // If domain starts with dot, convert to wildcard format
+                if(entry.startsWith('.')) {
+                    return '*' + entry
+                }
+                return entry
+            }.join('|')
             System.properties['http.nonProxyHosts'] = nonProxyHosts
             log.info("Setting nonProxyHosts to: " + nonProxyHosts)
         }
