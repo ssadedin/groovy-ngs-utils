@@ -13,7 +13,7 @@ class Table {
     static Map<String,List<String>> AUTO_COLUMN_NAMES = [
         bed: ['Chr', 'Start','End','Id'],
         ped: ['Family','Sample','Father','Mother','Sex','Phenotype'],
-        vcf: { path -> ['Chr', 'Pos', 'Ref', 'Alt'] + new gngs.VCF(path).samples }
+        vcf: { path -> ['CHR', 'ID','POS', 'REF', 'ALT','QUAL','FILTER','INFO','FORMAT'] + new gngs.VCF(path).samples }
     ]
 
     static void main(String [] args) {
@@ -33,6 +33,7 @@ class Table {
             ofmt 'Output format: csv,tsv,txt default is text', args:1, required: false
             // multi 'If there are empty lines, treat as multiple tables' // todo
             h 'Specify headers. If specified first row of data is treated as data', longOpt: 'headers', args:1, required:false
+            s 'Skip lines starting with <arg>', longOpt: 'skipchar', args:1, required: false
             precision 'Digits of precision to use of numeric columns', args:1, type: Integer
             color_threshold 'Color numeric columns based on greater / smaller than given number', args:1, type: Double
         }
@@ -50,8 +51,19 @@ class Table {
             files = opts.arguments() as List
             
         String fileExt = files[0] ? files[0].replaceAll(/^.*\./,'') : null
+        if(fileExt == 'gz') {
+            fileExt = files[0].tokenize('.')[-2]
+        }
 
         Map readOptions = [:]
+        if(opts.s) {
+            readOptions.commentChar = opts.s
+        }
+        else
+        if(fileExt == 'vcf') {
+            readOptions.commentChar = '#'
+        }
+        
         if(opts.h) {
             readOptions.columnNames = opts.h.tokenize(',')*.trim()
         }
@@ -74,7 +86,7 @@ class Table {
             data = new TSV(readOptions,System.in.newReader()).toListMap()
         }
         else
-        if(opts.tsv || files[0].endsWith('tsv')) {
+        if(opts.tsv || fileExt in ['tsv','vcf']) {
             data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else
