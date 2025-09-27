@@ -197,22 +197,30 @@ abstract class ToolBase {
      * needed from there.
      */
     static void setProxy() {
-        String envProxy = System.getenv('http_proxy')
+        // Set proxy from http_proxy or HTTP_PROXY if defined
+        String envProxy = System.getenv('http_proxy') ?: System.getenv('HTTP_PROXY')
         if(envProxy && !System.properties.containsKey('http.proxyHost')) {
-            // Parse the proxy out
-            
-            String host = null
-            String port = null
             List<String> parts = envProxy.tokenize(':')
-            host = parts[1].replaceAll('^//','')
-            if(parts.size()>2) { // Port set
-                port = parts[2]
+            if (parts.size() < 2) {
+                log.warning "Invalid proxy format: " + envProxy
+            } else {
+                String host = parts[1].replaceAll(/^\/\//, '')
+                String port = parts.size() > 2 ? parts[2] : null
+                log.info("Auto detected proxy host=$host, proxy port=$port")
+                System.properties['http.proxyHost'] = host
+                if (port != null) {
+                    System.properties['http.proxyPort'] = port
+                }
             }
-            log.info "Auto detected proxy host=$host, proxy port=$port"
-            System.properties['http.proxyHost'] = host
-            
-            if(port != null)
-                System.properties['http.proxyPort'] = port
+        }
+        
+        // Set non-proxy hosts if no_proxy or NO_PROXY is set
+        String envNoProxy = System.getenv('no_proxy') ?: System.getenv('NO_PROXY')
+        if (envNoProxy) {
+            // Convert comma-separated list to pipe-separated string required by Java's non-proxy settings.
+            String nonProxyHosts = envNoProxy.split(',').collect { it.trim() }.join('|')
+            System.properties['http.nonProxyHosts'] = nonProxyHosts
+            log.info("Setting nonProxyHosts to: " + nonProxyHosts)
         }
     }
     
