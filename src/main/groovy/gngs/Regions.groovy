@@ -571,7 +571,7 @@ class Regions implements Iterable<Region> {
     }
     
     @CompileStatic
-    void remove(String chr, Range r) {
+    void remove(String chr, IntRange r) {
         RangeIndex chrIndex = this.index[chr]
         if(!chrIndex)
             throw new IllegalArgumentException("Cannot remove region from chrosomome $chr : it does not have any regions")

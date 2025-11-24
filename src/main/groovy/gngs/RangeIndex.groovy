@@ -81,7 +81,7 @@ import groovy.transform.CompileStatic;
  * 
  * @author simon.sadedin@mcri.edu.au
  */
-class RangeIndex implements Iterable<IntRange> {
+class RangeIndex implements IRangeIndex {
     
     /**
      * The actual index - a map from position to the list of ranges
@@ -312,7 +312,7 @@ class RangeIndex implements Iterable<IntRange> {
      * Remove an existing range from the index. The existing range
      * MUST already be in the index, and cannot be a user-supplied range. 
      */
-    void remove(Range r) {
+    void remove(IntRange r) {
         // There should be an entry where this range starts
         int lastPos = r.from-1
         List toRemove = []
@@ -380,7 +380,7 @@ class RangeIndex implements Iterable<IntRange> {
         return lowerEntry.value.any { it.containsWithinBounds(position) }    
     }
     
-    List<Range> getOverlaps(int position) {
+    List<IntRange> getOverlaps(int position) {
         Map.Entry lowerEntry = ranges.lowerEntry(position+1)
         if(!lowerEntry)
             return []
@@ -445,7 +445,7 @@ class RangeIndex implements Iterable<IntRange> {
      * @return List of ranges in the index that overlap the query
      */
     @CompileStatic
-    List<Range> getOverlaps(final int start, final int end, final boolean returnFirst) {
+    List<IntRange> getOverlaps(final int start, final int end, final boolean returnFirst) {
         def resultSet = new TreeSet<IntRange>(INT_RANGE_COMPARATOR)
         def entry = ranges.lowerEntry(start+1)
         if(entry.is(null))
@@ -457,13 +457,13 @@ class RangeIndex implements Iterable<IntRange> {
                if(r.from<=end && r.to>=start) {
                    resultSet.add(r)
                    if(returnFirst)
-                       return (List<Range>)Arrays.asList(resultSet.toArray())
+                       return (List<IntRange>)Arrays.asList(resultSet.toArray())
                }
             }
             entry = ranges.higherEntry(entry.key)
         }
         
-        return (List<Range>)Arrays.asList(resultSet.toArray())
+        return (List<IntRange>)Arrays.asList(resultSet.toArray())
     }
     
     /**
