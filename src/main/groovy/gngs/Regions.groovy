@@ -79,7 +79,7 @@ class Regions implements Iterable<Region> {
     /**
      * Index for looking up overlaps
      */
-    Map<String, RangeIndex> index = [:]
+    Map<String, IRangeIndex> index = [:]
     
     /**
      * A list of ranges in the order they were loaded
@@ -211,7 +211,7 @@ class Regions implements Iterable<Region> {
     
     @CompileStatic
     List<IntRange> intersect(String chr, int start, int end) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return []
         List<IntRange> result = chrIndex.intersect(start,end)
@@ -268,7 +268,7 @@ class Regions implements Iterable<Region> {
     Regions intersectImpl(Regions other) {
         Regions result = new Regions()
         this.index.each { chr, chrIndex ->
-            RangeIndex otherChrIndex = other.index[chr]
+            IRangeIndex otherChrIndex = other.index[chr]
             if(otherChrIndex.is(null))
                 return 
             for(IntRange r in chrIndex) {
@@ -319,7 +319,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     boolean overlaps(String chr, int from, int to) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return false
         return chrIndex.overlaps(from,to)        
@@ -384,7 +384,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     List<IntRange> getOverlaps(String chr, int start, int end) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return []
         return chrIndex.getOverlaps(start,end)
@@ -411,7 +411,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     List<IntRange> subtractFrom(String chr, int start, int end) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return [start..end-1]
         
@@ -423,7 +423,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     void eachOverlap(String chr, int pos, Closure c) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return
         for(groovy.lang.Range r in chrIndex.getOverlaps(pos)) {
@@ -438,7 +438,7 @@ class Regions implements Iterable<Region> {
     
     @CompileStatic
     List<IntRange> startingAt(String chr, int pos) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return []
         return chrIndex.startingAt(pos)
@@ -490,7 +490,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     groovy.lang.IntRange nextRange(String chr, int pos) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(chrIndex == null)
             return null
         return (IntRange)chrIndex.nextRange(pos)
@@ -572,7 +572,7 @@ class Regions implements Iterable<Region> {
     
     @CompileStatic
     void remove(String chr, IntRange r) {
-        RangeIndex chrIndex = this.index[chr]
+        IRangeIndex chrIndex = this.index[chr]
         if(!chrIndex)
             throw new IllegalArgumentException("Cannot remove region from chrosomome $chr : it does not have any regions")
         chrIndex.remove(r)
@@ -651,9 +651,9 @@ class Regions implements Iterable<Region> {
     Regions addRegion(String chr, int start, int end, Object extra = null) {
         
         // Add to full range index
-        RangeIndex chrIndex = index[chr]
+        IRangeIndex chrIndex = index[chr]
         if(!chrIndex) {
-            chrIndex = new RangeIndex()
+            chrIndex = new RangeIndex() // Keep concrete implementation for instantiation
             index[chr] = chrIndex
         }
         
@@ -680,7 +680,7 @@ class Regions implements Iterable<Region> {
     Regions addRegion(Region r) {
         // Add to full range index
         String chr = r.chr
-        RangeIndex chrIndex = index[chr]
+        IRangeIndex chrIndex = index[chr]
         if(!chrIndex) {
             chrIndex = new RangeIndex()
             index[chr] = chrIndex
@@ -717,7 +717,7 @@ class Regions implements Iterable<Region> {
     @CompileStatic
     Regions reduce(Closure reducer=null) {
         Regions result = new Regions()
-        this.index.each { String chr, RangeIndex ranges ->
+        this.index.each { String chr, IRangeIndex ranges ->
             result.allRanges[chr] = []
             result.index[chr] = ranges.reduce(reducer)
             result.index[chr].each { IntRange r ->
@@ -733,7 +733,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     boolean contains(String chr, int position) {
-        RangeIndex chrIndex = index[chr]
+        IRangeIndex chrIndex = index[chr]
         return chrIndex != null && (position in chrIndex)
     }
     
@@ -1016,7 +1016,7 @@ class Regions implements Iterable<Region> {
      */
     @CompileStatic
     Region getSpan(String contig) {
-        RangeIndex index = this.index.get(contig)
+        IRangeIndex index = this.index.get(contig)
         if(index.is(null)) 
             return null;
         

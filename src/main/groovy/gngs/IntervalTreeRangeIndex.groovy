@@ -69,16 +69,20 @@ class IntervalTreeRangeIndex implements IRangeIndex {
     List<IntRange> getOverlaps(int start, int end, boolean returnFirst) {
         // For single-base queries, use same position for start and end
         int endPos = start == end ? start : end
-        def overlaps = tree.overlappers(start, endPos)
-            .collect { it.getValue() }
-            .collectMany { it }
+        def overlaps = tree.overlappers(start-1, endPos+1)
+        
+        def intersects = overlaps.collectMany { 
+                it.getValue() 
+            }
             .findAll { range -> 
                 // A range overlaps if:
                 // - it starts at or before the query end AND
                 // - it ends at or after the query start
+                // Note: range.to is exclusive, so we need to subtract 1 for comparison
                 range.from <= end && start <= range.to
             } as List<IntRange>
-        return returnFirst ? overlaps.take(1) : overlaps
+
+        return returnFirst ? intersects.take(1) : intersects
     }
     
     /**
@@ -151,7 +155,14 @@ class IntervalTreeRangeIndex implements IRangeIndex {
      * <em>Note:</em>The start and end point are both treated as <b>inclusive</b>.
      */
     List<IntRange> intersect(int start, int end) {
-        throw new UnsupportedOperationException("intersect() not yet implemented")
+        def overlaps = getOverlaps(start, end)
+        return overlaps.collect { range ->
+            // For each overlapping range, create a new range representing 
+            // the intersection with the query range
+            int intersectStart = Math.max(start, range.from)
+            int intersectEnd = Math.min(end, range.to)
+            new IntRange(intersectStart, intersectEnd)
+        }
     }
     
     /**

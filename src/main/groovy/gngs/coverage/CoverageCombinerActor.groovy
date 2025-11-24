@@ -184,8 +184,9 @@ class CoverageCombinerActor extends RegulatingActor<SampleReadCount> {
         int count = 0
         BatchedAcknowledgeableMessage<SampleReadCount> bam = new BatchedAcknowledgeableMessage(downstreamCount, 10)
         for(String chr in chrs) {
-            int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
-            int end = scanRegions.index[chr].ranges.lastKey() + 1000
+            final RangeIndex rIndex = (RangeIndex)scanRegions.index[chr]
+            int start = Math.max(0, rIndex.ranges.firstKey() - 1000)
+            int end = rIndex.ranges.lastKey() + 1000
             log.info "Scan $chr from $start to $end (overlapping ${scanRegions.numberOfRanges} regions)"
             Region scanRegion = new Region(chr, start, end)
             TabixReader.Iterator iter = reader.query(chr, start-2, end+2)

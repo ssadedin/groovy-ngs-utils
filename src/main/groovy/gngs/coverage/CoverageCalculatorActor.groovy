@@ -328,8 +328,9 @@ class CoverageCalculatorActor extends RegulatingActor<ReadRange> {
         List<String> chrs = (List<String>)scanRegions.collect { Region r -> r.chr }.unique()
         int failMQ = 0
         for(String chr in chrs) {
-            int start = Math.max(0, scanRegions.index[chr].ranges.firstKey() - 1000)
-            int end = scanRegions.index[chr].ranges.lastKey() + 1000
+            final RangeIndex rIndex = (RangeIndex)scanRegions.index[chr]
+            int start = Math.max(0, rIndex.ranges.firstKey() - 1000)
+            int end = rIndex.ranges.lastKey() + 1000
             
             Regions chrScanRegions = scanRegions.grep { Region r -> r.chr == chr } as Regions
             List<QueryInterval> intervals = bam.toQueryIntervals(chrScanRegions)
