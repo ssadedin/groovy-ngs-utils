@@ -358,6 +358,46 @@ class IRangeIndexTest {
         assert result.size() == 0
     }
     
+    @Test 
+    void testReduce() {
+        IRangeIndex index = createIndex()
+        
+        // Add overlapping ranges
+        index.add(0..10)
+        index.add(5..15) 
+        index.add(20..30)
+        index.add(25..35)
+        index.add(50..60)
+        
+        // Reduce the ranges
+        IRangeIndex reduced = index.reduce()
+        
+        // Should combine to 3 ranges:
+        // 0-15 (from merging 0-10 and 5-15)
+        // 20-35 (from merging 20-30 and 25-35) 
+        // 50-60 (unchanged)
+        List<IntRange> ranges = reduced.collect { it }
+        
+        assert ranges.size() == 3
+        assert ranges[0] == 0..15
+        assert ranges[1] == 20..35  
+        assert ranges[2] == 50..60
+        
+        // Test with GRanges and reducer
+        index = createIndex()
+        index.add(0, 10, "A")
+        index.add(5, 15, "B") // note: this method subtracts 1 from end point, consistent with original RangeIndex
+        
+        reduced = index.reduce { r1, r2 -> r1.extra + r2.extra }
+        ranges = reduced.collect { it }
+        
+        assert ranges.size() == 1
+        assert ranges[0].from == 0
+        assert ranges[0].to == 14
+        assert ranges[0] instanceof GRange
+        assert ((GRange)ranges[0]).extra == "AB"
+    }
+    
     @Test
     void testCoverage() {
        IRangeIndex index = createIndex()

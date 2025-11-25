@@ -856,8 +856,8 @@ class RangeIndex implements IRangeIndex {
      * @return  new RangeIndex with all overlapping regions reduced to single flattened regions
      */
     @CompileStatic
-    RangeIndex reduce(Closure reducer = null) {
-        RangeIndex reduced = new RangeIndex()
+    IRangeIndex reduce(Closure reducer = null) {
+        IRangeIndex reduced = new RangeIndex()
 
         // We take advantage of the fact that we iterate the ranges in order of genomic start position
         IntRange currentRange = null

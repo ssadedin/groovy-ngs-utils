@@ -136,10 +136,73 @@ class IntervalTreeRangeIndex implements IRangeIndex {
     }
     
     /**
-     * Not yet implemented
+     * Merge all overlapping ranges together to make simplified regions
+     * representing all the ranges covered by any range in this RangeIndex.
+     * 
+     * If a closure is provided, it is called whenever two regions need to be merged,
+     * providing both regions as arguments. The return value is set as the <code>extra</code>
+     * attribute on the resulting region.
+     * 
+     * @return new IRangeIndex with all overlapping regions reduced to single flattened regions
      */
-    RangeIndex reduce(Closure reducer = null) {
-        throw new UnsupportedOperationException("reduce() not yet implemented")
+    @CompileStatic
+    IRangeIndex reduce(Closure reducer = null) {
+        IRangeIndex reduced = new IntervalTreeRangeIndex()
+        
+        // No ranges to reduce
+        if(numRanges == 0) {
+            return reduced
+        }
+        
+        // Process ranges in start position order
+        Iterator<IntervalTree.Node<List<IntRange>>> iter = tree.iterator()
+        IntRange currentRange = null
+        
+        while(iter.hasNext()) {
+            List<IntRange> ranges = iter.next().getValue()
+            for(IntRange r : ranges) {
+                if(currentRange == null) {
+                    currentRange = r
+                    continue
+                }
+                
+                // If current range overlaps with this range
+                if(r.from <= currentRange.to) {
+                    // Merge the ranges
+                    if(currentRange instanceof GRange) {
+                        Object newExtra = ((GRange)currentRange).extra
+                        if(r instanceof GRange) {
+                            if(reducer != null) {
+                                newExtra = reducer(currentRange, r)
+                            }
+                        }
+                        currentRange = new GRange(
+                            Math.min(currentRange.from, r.from),
+                            Math.max(currentRange.to, r.to),
+                            newExtra
+                        )
+                    }
+                    else {
+                        currentRange = new IntRange(
+                            Math.min(currentRange.from, r.from),
+                            Math.max(currentRange.to, r.to)
+                        )
+                    }
+                }
+                else {
+                    // No overlap - add current range and start new one
+                    reduced.add(currentRange)
+                    currentRange = r
+                }
+            }
+        }
+        
+        // Add final range if exists
+        if(currentRange != null) {
+            reduced.add(currentRange)
+        }
+        
+        return reduced
     }
     
     /**

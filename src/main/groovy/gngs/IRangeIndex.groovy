@@ -170,9 +170,9 @@ interface IRangeIndex extends Iterable<IntRange> {
      * providing both regions as arguments. The return value is set as the <code>extra</code>
      * attribute on the resulting region.
      * 
-     * @return  new RangeIndex with all overlapping regions reduced to single flattened regions
+     * @return  new IRangeIndex with all overlapping regions reduced to single flattened regions
      */
-    RangeIndex reduce(Closure reducer)
+    IRangeIndex reduce(Closure reducer)
     
     /**
      * Return a list of ranges representing "coverage" blocks within this
