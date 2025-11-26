@@ -156,6 +156,10 @@ class RangedData extends Regions {
             this.regionParser = (Closure) options.regionParser
         }
         
+        if(options.rangeIndexClass) {
+            this.rangeIndexClass = options.rangeIndexClass
+        }
+        
         // Assume columns on first line
         TSV tsv = new TSV(options, source.newReader())
         PropertyMapper currentLine

@@ -75,6 +75,7 @@ import groovy.xml.MarkupBuilder
  */
 class Regions implements Iterable<Region> {
         
+    Class rangeIndexClass = RangeIndex
 
     /**
      * Index for looking up overlaps
@@ -653,7 +654,7 @@ class Regions implements Iterable<Region> {
         // Add to full range index
         IRangeIndex chrIndex = index[chr]
         if(!chrIndex) {
-            chrIndex = new RangeIndex() // Keep concrete implementation for instantiation
+            chrIndex = createRangeIndex()
             index[chr] = chrIndex
         }
         
@@ -666,6 +667,11 @@ class Regions implements Iterable<Region> {
             
         allRanges[chr] << newRange
         return this
+    }
+    
+    @CompileStatic
+    IRangeIndex createRangeIndex() {
+        rangeIndexClass == IntervalTreeRangeIndex ? new IntervalTreeRangeIndex() : new RangeIndex()        
     }
     
     /**
@@ -682,7 +688,7 @@ class Regions implements Iterable<Region> {
         String chr = r.chr
         IRangeIndex chrIndex = index[chr]
         if(!chrIndex) {
-            chrIndex = new RangeIndex()
+            chrIndex = createRangeIndex()
             index[chr] = chrIndex
         }
         
