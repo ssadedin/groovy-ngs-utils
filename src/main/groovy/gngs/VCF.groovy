@@ -315,14 +315,21 @@ class VCF implements Iterable<Variant>, Serializable {
      * @param variants
      */
     VCF(Iterable<Variant> variants) {
-        if(variants.iterator().hasNext()) {
-            Variant v = variants.first()
-            if(v.header != null)
-                this.headerLines.addAll(v.header.headerLines)
-            this.parseLastHeaderLine()
-            this.add(v)
+        Iterator<Variant> i = variants.iterator()
+        if(!i.hasNext()) {
+            return
         }
-        addAll(variants)
+
+        Variant v = i.next()
+        if(v.header != null)
+            this.headerLines.addAll(v.header.headerLines)
+
+        this.parseLastHeaderLine()
+        this.add(v)
+
+        for(Variant v2 in i) {
+            this.add(v2)
+        }
     }
 
     @CompileStatic

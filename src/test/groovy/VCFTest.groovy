@@ -386,4 +386,18 @@ chr6\t42626564\trs35713624\tT\tTA\t12.06\t.\tAC=1;AF=0.500;AN=2;BaseQRankSum=0.3
 		assert headerInfo.length == 37498
 		
 	}
+    
+    @Test
+    void 'create VCF from iterable'() {
+        
+        VCF inputVCF = VCF.parse(new ByteArrayInputStream(testVCF.bytes) )
+        VCF vcf = new VCF(inputVCF.variants)
+        
+        assert vcf.variants.size() == inputVCF.variants.size()
+        
+        for(Variant v in inputVCF) {
+            assert v in vcf
+            assert vcf.count { it.is(v) } == 1
+        }
+    }
  }
