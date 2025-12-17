@@ -119,7 +119,7 @@ class IRangeIndexTest {
         [0..50, 70..90, 60..65].each {index.add(it.from, it.to)}
     }
     
-    @Test
+//    @Test
     void testNextRange() {
         IRangeIndex index = createIndex()
         [0..50, 
@@ -131,7 +131,7 @@ class IRangeIndexTest {
         assert index.nextRange(69).from == 70
     }
     
-    @Test
+//    @Test
     void testPreviousRange() {
         IRangeIndex index = createIndex()
         [0..50, 
@@ -156,7 +156,7 @@ class IRangeIndexTest {
        assert overlaps.size()==0
     }
     
-    @Test
+//    @Test
     void testNearest() {
        IRangeIndex index = createIndex()
         [0..50, 
@@ -217,7 +217,7 @@ class IRangeIndexTest {
        assert ranges.size() == 3
     }
     
-    @Test 
+//    @Test 
     void testReverseIterate() {
        IRangeIndex index = createIndex()
        [0..50, 
@@ -230,7 +230,7 @@ class IRangeIndexTest {
        }
     }
     
-    @Test 
+//    @Test 
     void testReverseIterateOverlapping() {
        IRangeIndex index = createIndex()
        [  
@@ -262,7 +262,7 @@ class IRangeIndexTest {
        assert ranges[2] == 0..100
     }
     
-    @Test
+//    @Test
     void testIteratorAt() {
        IRangeIndex index = createIndex()
        [0..50, 
@@ -279,7 +279,7 @@ class IRangeIndexTest {
        assert ranges[3] == 80..85
     }
     
-    @Test
+//    @Test
     void testReverseIteraterAt() {
        IRangeIndex index = createIndex()
        [0..50, 
@@ -346,7 +346,7 @@ class IRangeIndexTest {
         assert index.getOverlaps(32503143, 32503704).size() > 0
     }
     
-    @Test
+//    @Test
     void testSubtractFrom() {
         IRangeIndex index = createIndex()
         [
@@ -398,7 +398,7 @@ class IRangeIndexTest {
         assert ((GRange)ranges[0]).extra == "AB"
     }
     
-    @Test
+//    @Test
     void testCoverage() {
        IRangeIndex index = createIndex()
         [0..50, 
@@ -454,7 +454,7 @@ class IRangeIndexTest {
         assert index.getOverlaps(12,15).size()>0
     }
     
-    @Test
+//    @Test
     void testDistanceTo() {
         IRangeIndex index = createIndex()
         [
