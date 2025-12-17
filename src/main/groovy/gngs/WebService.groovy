@@ -60,6 +60,8 @@ class WebService {
     
     OAuth10Credentials apiCredentials
     
+    OAuth2ClientCredentials oauth2Credentials
+    
     BearerTokenCredentials bearerToken
     
     BasicCredentials basicCredentials
@@ -103,6 +105,16 @@ class WebService {
         return this
     }
     
+    WebService withOAuth2(String clientId, String clientSecret, String tokenUrl, String scope = null) {
+        this.oauth2Credentials = new OAuth2ClientCredentials(
+            clientId: clientId,
+            clientSecret: clientSecret,
+            tokenUrl: tokenUrl,
+            scope: scope
+        )
+        return this
+    }
+    
     Object post(List data) {
         request([:], 'POST', data, null)
     }
@@ -137,6 +149,7 @@ class WebService {
         child.dump = this.dump
         child.oauth1AccessToken = this.oauth1AccessToken
         child.apiCredentials = this.apiCredentials
+        child.oauth2Credentials = this.oauth2Credentials
         child.basicCredentials = this.basicCredentials
         child.bearerToken = this.bearerToken
         child.autoSlash = this.autoSlash
@@ -247,7 +260,7 @@ class WebService {
     
 
     public void loadCredentials() {
-        if((this.apiCredentials != null) || (this.basicCredentials != null))
+        if((this.apiCredentials != null) || (this.basicCredentials != null) || (this.oauth2Credentials != null))
             return 
             
         File credsFile 
@@ -282,6 +295,17 @@ class WebService {
         
         log.info "Loaded credentials from credentials file"
         
+        // OAuth2 support
+        if(yaml.oauth2) {
+            this.oauth2Credentials = new OAuth2ClientCredentials(
+                clientId: yaml.oauth2.clientId,
+                clientSecret: yaml.oauth2.clientSecret,
+                tokenUrl: yaml.oauth2.tokenUrl,
+                scope: yaml.oauth2.scope
+            )
+            this.webserviceCredentials = this.oauth2Credentials
+        }
+        
         if(yaml.apiKey) {
             this.apiCredentials = new OAuth10Credentials(apiKey:yaml.apiKey, apiSecret: yaml.apiSecret)
             this.webserviceCredentials = this.apiCredentials
@@ -315,11 +339,12 @@ class WebService {
             if(!headers?.containsKey('Content-Type'))
                 setRequestProperty('Content-Type','application/json')
 
-            for(WebServiceCredentials creds in [webserviceCredentials, bearerToken, basicCredentials]) {
+            for(WebServiceCredentials creds in [oauth2Credentials, webserviceCredentials, bearerToken, basicCredentials]) {
                 if(creds) {
                     if(verbose)
                         log.info "Configuring authorization using : " + creds
                     creds.configure(connection, url, method, data, headers)
+                    break  // Only use first valid credential
                 }
             }
 
@@ -518,6 +543,99 @@ class OAuth10Credentials  implements WebServiceCredentials {
         new ServiceBuilder(this.apiKey)
             .apiSecret(this.apiSecret)
             .build(new TwoLeggedOAuthAPI()) 
+    }
+}
+
+@ToString(excludes=['clientSecret'])
+@Log
+class OAuth2ClientCredentials implements WebServiceCredentials {
+    String clientId
+    String clientSecret
+    String tokenUrl
+    String scope  // optional
+    
+    // Cached token info
+    private String accessToken
+    private Long expiresAt  // timestamp when token expires
+    
+    // Allow injection of custom token fetcher for testing
+    Closure<Map> tokenFetcher = null
+    
+    @Override
+    void configure(HttpURLConnection connection, URL url, String method, Object data, Map headers) {
+        ensureValidToken()
+        connection.setRequestProperty('Authorization', 'Bearer ' + accessToken)
+    }
+    
+    private synchronized void ensureValidToken() {
+        if (accessToken == null || isTokenExpired()) {
+            refreshToken()
+        }
+    }
+    
+    private boolean isTokenExpired() {
+        if (expiresAt == null) return true
+        // Refresh 60 seconds before actual expiry to avoid race conditions
+        return System.currentTimeMillis() >= (expiresAt - 60000)
+    }
+    
+    private void refreshToken() {
+        if (tokenFetcher != null) {
+            Map tokenResponse = tokenFetcher.call()
+            this.accessToken = tokenResponse.access_token
+            if (tokenResponse.expires_in) {
+                this.expiresAt = System.currentTimeMillis() + (tokenResponse.expires_in * 1000)
+            }
+            return
+        }
+        
+        log.info "Obtaining OAuth2 access token from $tokenUrl"
+        
+        // Build request parameters
+        Map params = [grant_type: 'client_credentials']
+        if (scope) {
+            params.scope = scope
+        }
+        
+        // Create a temporary WebService instance for the token request
+        // Extract base URL and path from tokenUrl
+        URL url = new URL(tokenUrl)
+        String baseUrl = "${url.protocol}://${url.host}${url.port > 0 && url.port != url.defaultPort ? ':' + url.port : ''}"
+        String path = url.path ?: ''
+        
+        WebService tokenService = new WebService(baseUrl, path)
+        tokenService.verbose = false  // Don't log token requests
+        
+        // Set up basic auth for client credentials
+        tokenService.basicCredentials = new BasicCredentials(
+            username: clientId,
+            password: clientSecret
+        )
+        
+        try {
+            // Make the token request with form-encoded body
+            def response = tokenService.postWithHeaders(
+                params,
+                new Headers(['Content-Type': 'application/x-www-form-urlencoded'])
+            )
+            
+            this.accessToken = response.access_token
+            
+            // Calculate expiry time
+            if (response.expires_in) {
+                this.expiresAt = System.currentTimeMillis() + (response.expires_in * 1000)
+            }
+            
+            log.info "Successfully obtained OAuth2 access token (expires in ${response.expires_in} seconds)"
+        }
+        catch (WebServiceException e) {
+            throw new WebServiceException(
+                "Failed to obtain OAuth2 token from $tokenUrl: ${e.body ?: e.message}",
+                e.code,
+                e.reason,
+                e.body
+            )
+        }
     }
 }
 
