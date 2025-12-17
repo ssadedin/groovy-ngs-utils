@@ -172,7 +172,7 @@ class WebService {
        
        WebServiceException ex = null
        Retry r = this.retry?.copy()
-       while( ex == null ||  ( r != null && r.allow_retry(ex, method) )){
+       while(ex == null ||  (r != null && r.allow_retry(ex, method))) {
             try {
                 
                 if(credentialsPath && !webserviceCredentials)
@@ -586,28 +586,29 @@ class Retry {
 
     List<String> allowed_methods
 
-    public Retry(List<Integer> retry_codes = [413, 429, 500, 502, 503, 504], Integer total_retries = 3 , double back_off_factor = 2 , List<String> allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PUT", "TRACE"]){
+    public Retry(List<Integer> retry_codes = [413, 429, 500, 502, 503, 504], Integer total_retries = 3 , double back_off_factor = 2 , List<String> allowed_methods = ["DELETE", "GET", "HEAD", "OPTIONS", "PUT", "TRACE"]) {
         this.retry_codes = retry_codes
         this.total_retries = total_retries
         this.back_off_factor = back_off_factor
         this.allowed_methods = allowed_methods
     }
 
-    public Retry(Retry template){
+    public Retry(Retry template) {
         this.retry_codes = template.retry_codes
         this.total_retries = template.total_retries
         this.back_off_factor = template.back_off_factor
         this.allowed_methods = template.allowed_methods
     }
 
-    boolean allow_retry(WebServiceException e, String method){
-        if( ! (this.allowed_methods.contains(method) && this.retry_codes.contains(e.code) && this.n_retries <= this.total_retries) ){
+    boolean allow_retry(WebServiceException e, String method) {
+        if(!(this.allowed_methods.contains(method) && this.retry_codes.contains(e.code) && this.n_retries <= this.total_retries)) {
             log.info "No retries allowed for $method and error code $e.code"
             return false
-        }else{
+        }
+        else {
             long back_off = back_off_time(this.n_retries, this.back_off_factor, this.max_back_off_seconds)
 
-            log.info "Will retry connection method $method; retry attempt $this.n_retries/$this.total_retries; waiting $back_off milliseconds before next attempt"
+            log.info "Will retry connection method $method; retry attempt $n_retries/$total_retries; waiting $back_off milliseconds before next attempt"
 
             sleep(back_off)
             this.n_retries +=1
@@ -617,13 +618,11 @@ class Retry {
         }
     }
 
-    private static long back_off_time(int n_retries, double back_off_factor, int max_back_off_seconds){
-        return Math.min( (back_off_factor * ( 2 ** n_retries-1)), max_back_off_seconds ) * 1000 as long
+    private static long back_off_time(int n_retries, double back_off_factor, int max_back_off_seconds) {
+        return Math.min((back_off_factor * ( 2 ** n_retries-1)), max_back_off_seconds) * 1000 as long
     }
 
     public Retry copy() {
         return new Retry(this)
     }
-
-
 }
