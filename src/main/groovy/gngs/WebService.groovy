@@ -194,7 +194,6 @@ class WebService {
                 if(oauth1AccessToken)
                     return this.executeOAuthRequest(params, url, method, payload)
                 else {
-                    log.info "Not OAuth 1.0 request"
                     HttpURLConnection connection = configureConnection(url, method, data, headers)
                     return executeRequest(connection, payload)
                 }
