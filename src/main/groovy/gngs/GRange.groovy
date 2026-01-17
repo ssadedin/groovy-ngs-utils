@@ -522,6 +522,10 @@ class GRange extends IntRange implements Serializable {
         return result
     }
     
+    void setExtra(Object extra) {
+        this.extra = extra
+    }
+    
     Object extra    
 }
 
