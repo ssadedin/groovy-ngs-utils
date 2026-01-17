@@ -231,9 +231,48 @@ class IntervalTreeRangeIndex implements IRangeIndex {
     /**
      * Subtract all the ranges in this range index from the given range and return
      * the resulting list of ranges.
+     * <p>
+     * <em>Note:</em>both start and end are considered <b>inclusive</b>.
+     * 
+     * @param start start of range to subtract from (inclusive)
+     * @param end   end of range to subtract from (inclusive)
+     * @return  List of ranges left after the ranges in this RangeIndex are removed from 
+     *          the specified region.
      */
     List<IntRange> subtractFrom(int start, int end) {
-        throw new UnsupportedOperationException("subtractFrom() not yet implemented")
+        // Get all overlapping ranges, sorted by start position
+        List<IntRange> overlaps = getOverlaps(start, end).sort { it.from }
+        
+        // If no overlaps, return the entire range
+        if (overlaps.isEmpty()) {
+            return [new IntRange(start, end)]
+        }
+        
+        List<IntRange> result = []
+        int currentPos = start
+        
+        for (IntRange overlap : overlaps) {
+            // If there's a gap before this overlap, add it to result
+            if (currentPos < overlap.from) {
+                result.add(new IntRange(currentPos, overlap.from - 1))
+            }
+            
+            // Move current position past this overlap
+            // overlap.to is exclusive in our representation, so we use it directly
+            currentPos = Math.max(currentPos, overlap.to + 1)
+            
+            // If we've gone past the end, we're done
+            if (currentPos > end) {
+                break
+            }
+        }
+        
+        // If there's remaining range after all overlaps, add it
+        if (currentPos <= end) {
+            result.add(new IntRange(currentPos, end))
+        }
+        
+        return result
     }
     
     /**
