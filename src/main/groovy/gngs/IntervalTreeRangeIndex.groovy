@@ -298,35 +298,49 @@ class IntervalTreeRangeIndex implements IRangeIndex {
      * Returns the range whose end point is before the given position.
      */
     Range previousRange(int pos) {
-        // We need to find the range with the highest end position that is < pos
-        // Since ranges are stored by start position in the tree, we need to iterate
-        // backwards and find the first range whose end is before pos
+        // Find the first range that ends before pos by searching backwards
+        // We look for ranges that could potentially end before pos
+        IntRange candidate = null
         
-        // Start from the position just before pos and work backwards
-        IntervalTree.Node<List<IntRange>> node = tree.max(pos - 1, pos - 1)
-        
-        IntRange bestMatch = null
-        
-        // Iterate backwards through the tree
+        // Iterate backwards to find a range that ends before pos
         Iterator<IntervalTree.Node<List<IntRange>>> iter = tree.reverseIterator(pos - 1, pos - 1)
         while (iter.hasNext()) {
             List<IntRange> ranges = iter.next().getValue()
             for (IntRange range : ranges) {
                 // Check if this range ends before pos (remember: range.to is exclusive)
                 if (range.to < pos) {
-                    // Keep the range with the highest end position
-                    if (bestMatch == null || range.to > bestMatch.to) {
-                        bestMatch = range
-                    }
+                    candidate = range
+                    break
                 }
             }
-            // Once we find a match, we can stop since we're iterating backwards
-            if (bestMatch != null) {
+            if (candidate != null) {
                 break
             }
         }
         
-        return bestMatch
+        // If no candidate found, there's no range ending before pos
+        if (candidate == null) {
+            return null
+        }
+        
+        // Now check if there are any ranges that overlap the candidate's endpoint
+        // and extend closer to pos. If so, the one with the highest endpoint is the answer.
+        List<IntRange> overlappers = getOverlaps(candidate.to, pos - 1)
+        
+        // If no overlappers, candidate is the answer
+        if (overlappers.isEmpty()) {
+            return candidate
+        }
+        
+        // Find the overlapper with the highest end point that's still < pos
+        IntRange best = candidate
+        for (IntRange overlapper : overlappers) {
+            if (overlapper.to < pos && overlapper.to > best.to) {
+                best = overlapper
+            }
+        }
+        
+        return best
     }
     
     /**
