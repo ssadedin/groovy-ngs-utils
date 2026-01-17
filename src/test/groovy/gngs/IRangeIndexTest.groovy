@@ -131,7 +131,7 @@ class IRangeIndexTest {
         assert index.nextRange(69).from == 70
     }
     
-//    @Test
+    @Test
     void testPreviousRange() {
         IRangeIndex index = createIndex()
         [0..50, 
