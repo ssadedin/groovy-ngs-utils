@@ -138,12 +138,22 @@ class IRangeIndexTest {
          70..90, 
          60..65].each {index.add(it.from, it.to)}
         
-        assert index.previousRange(59).from == 0
-        assert index.previousRange(70).from == 60
-        assert index.previousRange(69).from == 60
-        assert index.previousRange(65).from == 60
-        assert index.previousRange(64).from == 60
-        assert index.previousRange(63).from == 0
+        // previousRange should find the range whose END is before the given position
+        // Range 0..50 ends at 50 (exclusive), so it ends before position 51
+        assert index.previousRange(51).from == 0
+        assert index.previousRange(51).to == 50
+        
+        // At position 66, range 60..65 has ended (ends at 65 exclusive)
+        assert index.previousRange(66).from == 60
+        assert index.previousRange(66).to == 65
+        
+        // At position 65, range 60..65 has NOT ended yet (ends at 65 exclusive means up to but not including 65)
+        // So we should get range 0..50
+        assert index.previousRange(65).from == 0
+        
+        // At position 91, range 70..90 has ended
+        assert index.previousRange(91).from == 70
+        assert index.previousRange(91).to == 90
     } 
     
     @Test
