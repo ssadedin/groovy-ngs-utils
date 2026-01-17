@@ -279,17 +279,18 @@ class IntervalTreeRangeIndex implements IRangeIndex {
      * Find the next range after the given position
      */
     Range nextRange(int pos) {
-        // Get all ranges and sort by start position
-        List<IntRange> allRanges = this.collect { it }.sort { it.from }
+        // Use IntervalTree's min() method to efficiently find the first range
+        // that starts after the given position
+        IntervalTree.Node<List<IntRange>> node = tree.min(pos + 1, pos + 1)
         
-        // Find the first range that starts after the given position
-        for (IntRange range : allRanges) {
-            if (range.from > pos) {
-                return range
-            }
+        if (node == null) {
+            return null
         }
         
-        return null
+        // The node may contain multiple ranges at the same position
+        // Return the first one (they all have the same start position)
+        List<IntRange> ranges = node.getValue()
+        return ranges.isEmpty() ? null : ranges[0]
     }
     
     /**
