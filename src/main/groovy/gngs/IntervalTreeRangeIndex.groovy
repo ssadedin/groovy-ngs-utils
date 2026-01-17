@@ -294,21 +294,39 @@ class IntervalTreeRangeIndex implements IRangeIndex {
     }
     
     /**
-     * Find the previous range before the given position
+     * Find the previous range before the given position.
+     * Returns the range whose end point is before the given position.
      */
     Range previousRange(int pos) {
-        // Use IntervalTree's max() method to efficiently find the last range
-        // that starts before the given position
+        // We need to find the range with the highest end position that is < pos
+        // Since ranges are stored by start position in the tree, we need to iterate
+        // backwards and find the first range whose end is before pos
+        
+        // Start from the position just before pos and work backwards
         IntervalTree.Node<List<IntRange>> node = tree.max(pos - 1, pos - 1)
         
-        if (node == null) {
-            return null
+        IntRange bestMatch = null
+        
+        // Iterate backwards through the tree
+        Iterator<IntervalTree.Node<List<IntRange>>> iter = tree.reverseIterator(pos - 1, pos - 1)
+        while (iter.hasNext()) {
+            List<IntRange> ranges = iter.next().getValue()
+            for (IntRange range : ranges) {
+                // Check if this range ends before pos (remember: range.to is exclusive)
+                if (range.to < pos) {
+                    // Keep the range with the highest end position
+                    if (bestMatch == null || range.to > bestMatch.to) {
+                        bestMatch = range
+                    }
+                }
+            }
+            // Once we find a match, we can stop since we're iterating backwards
+            if (bestMatch != null) {
+                break
+            }
         }
         
-        // The node may contain multiple ranges at the same position
-        // Return the first one (they all have the same start position)
-        List<IntRange> ranges = node.getValue()
-        return ranges.isEmpty() ? null : ranges[0]
+        return bestMatch
     }
     
     /**
