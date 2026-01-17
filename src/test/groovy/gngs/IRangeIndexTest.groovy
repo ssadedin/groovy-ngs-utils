@@ -346,7 +346,7 @@ class IRangeIndexTest {
         assert index.getOverlaps(32503143, 32503704).size() > 0
     }
     
-//    @Test
+    @Test
     void testSubtractFrom() {
         IRangeIndex index = createIndex()
         [
@@ -356,6 +356,23 @@ class IRangeIndexTest {
         List<Range> result = index.subtractFrom(0, 100)
        
         assert result.size() == 0
+        
+        result = index.subtractFrom(0, 200)
+        assert result.size() == 1
+        assert result[0].from == 101
+        
+        result = index.subtractFrom(0, 200)
+        assert result.size() == 1
+        assert result[0].from == 101
+        
+        index.add(150..160)
+
+        result = index.subtractFrom(0, 200)
+        assert result.size() == 2
+        assert result[0].from == 101
+        assert result[0].to == 149
+        assert result[1].from == 161
+        assert result[1].to == 200
     }
     
     @Test 
