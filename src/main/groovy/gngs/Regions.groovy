@@ -923,10 +923,11 @@ class Regions implements Iterable<Region> {
     Regions enhance() {
         Regions result = new Regions()
         for(Region r in this) {
+            // static compile workaround
+            Region rr = (Region)r;
             if(r instanceof GRange) {
-                GRange gr = ((GRange)r.range)
-                gr.extra = (Object)r;
-                result.addRegion((Region)r)
+                r.extra = rr;
+                result.addRegion(rr)
            }
             else {
                 GRange gr = new GRange(r.from, r.to, null)
