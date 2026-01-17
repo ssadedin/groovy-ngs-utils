@@ -297,7 +297,18 @@ class IntervalTreeRangeIndex implements IRangeIndex {
      * Find the previous range before the given position
      */
     Range previousRange(int pos) {
-        throw new UnsupportedOperationException("previousRange() not yet implemented")
+        // Use IntervalTree's max() method to efficiently find the last range
+        // that starts before the given position
+        IntervalTree.Node<List<IntRange>> node = tree.max(pos - 1, pos - 1)
+        
+        if (node == null) {
+            return null
+        }
+        
+        // The node may contain multiple ranges at the same position
+        // Return the first one (they all have the same start position)
+        List<IntRange> ranges = node.getValue()
+        return ranges.isEmpty() ? null : ranges[0]
     }
     
     /**
