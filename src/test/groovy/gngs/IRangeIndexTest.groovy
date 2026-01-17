@@ -119,7 +119,7 @@ class IRangeIndexTest {
         [0..50, 70..90, 60..65].each {index.add(it.from, it.to)}
     }
     
-//    @Test
+    @Test
     void testNextRange() {
         IRangeIndex index = createIndex()
         [0..50, 
