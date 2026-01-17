@@ -279,7 +279,17 @@ class IntervalTreeRangeIndex implements IRangeIndex {
      * Find the next range after the given position
      */
     Range nextRange(int pos) {
-        throw new UnsupportedOperationException("nextRange() not yet implemented")
+        // Get all ranges and sort by start position
+        List<IntRange> allRanges = this.collect { it }.sort { it.from }
+        
+        // Find the first range that starts after the given position
+        for (IntRange range : allRanges) {
+            if (range.from > pos) {
+                return range
+            }
+        }
+        
+        return null
     }
     
     /**
