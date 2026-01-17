@@ -157,6 +157,34 @@ class IRangeIndexTest {
     } 
     
     @Test
+    void testPreviousRangeWithOverlap() {
+        // Test case where the correct answer is NOT the first range encountered
+        // when iterating backwards. This tests the overlapper logic.
+        IRangeIndex index = createIndex()
+        [
+            10..20,   // ends at 20
+            15..30,   // overlaps first range, ends at 30
+            40..50    // separate range
+        ].each {index.add(it.from, it.to)}
+        
+        // At position 35, the first range we encounter going backwards is 10..20
+        // But 15..30 overlaps it and extends closer to 35, so 15..30 is the answer
+        def result = index.previousRange(35)
+        assert result.from == 15
+        assert result.to == 30
+        
+        // At position 31, range 15..30 has just ended, so it should be the answer
+        result = index.previousRange(31)
+        assert result.from == 15
+        assert result.to == 30
+        
+        // At position 30, range 15..30 has NOT ended yet, so we get 10..20
+        result = index.previousRange(30)
+        assert result.from == 10
+        assert result.to == 20
+    }
+    
+    @Test
     void getOverlapsHigherDisjoint() {
        IRangeIndex index = createIndex()
        index.add(48672868..48672928)
