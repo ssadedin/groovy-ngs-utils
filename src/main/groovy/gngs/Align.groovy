@@ -50,6 +50,11 @@ import org.biojava.nbio.core.sequence.location.template.Location;
  * AATTCAT-AA
  * </pre>
  * 
+ * To determine the quality of the alignment, access the score:
+ * <pre>
+ * println "Score of alignment: " + Align.global('AATTAATTAA','AATTCATAA').score
+ * </pre>
+ * 
  * @author simon.sadedin@mcri.edu.au
  */
 class Align {
@@ -144,7 +149,8 @@ class Align {
      * @param queryString
      * @param referenceString
      * 
-     * @return aligner with profile computed, use Aligner.profile to access result
+     * @return aligner with profile computed, use aligner.profile to access result, and 
+     *         aligner.score to get alignment score
      */
     static Aligner local(Map params=[:], String queryString, String referenceString) {
         

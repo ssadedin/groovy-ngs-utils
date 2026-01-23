@@ -34,3 +34,54 @@ and retain only the portion with the highest quality.
 The duplex trimmer is to be implemented in Groovy as a GNGS tool, extending the `Toolbase` class.
 It should use the `gngs.SAM` class to process a BAM file and identify duplex reads. The core
 API to utilise is the `SAMRecord` class to retrieve read information.
+
+## Implementation Plan
+
+### Phase 1: Core Detection Logic
+- [x] Create DuplexDetector class
+  - [x] Method to extract soft clip information from CIGAR
+  - [x] Method to calculate if soft clip length ≈ aligned length (within 10%)
+  - [x] Method to extract aligned and soft clipped sequences
+  - [x] Method to align first 50bp of soft clip vs last 50bp of aligned part using Align.local()
+  - [x] Configurable alignment threshold (default 80% match)
+
+### Phase 2: Tool Implementation
+- [ ] Create DuplexTrimmer class extending ToolBase
+  - [ ] CLI options: -i input, -o output, -t threshold, -a action, -s stats
+  - [ ] Processing pipeline using SAM.eachRecord()
+  - [ ] Write output using SAM.withWriter()
+- [ ] Implement actions:
+  - [ ] reject: Skip duplex reads entirely
+  - [ ] trim: Remove soft clips, keep aligned portion
+  - [ ] keep_best: Compare quality scores, keep higher quality portion
+
+### Phase 3: Testing
+- [x] Unit tests (DuplexDetectorTest.groovy)
+  - [x] Normal read (no soft clips) → not duplex
+  - [x] Soft clip too small → not duplex
+  - [x] Soft clip wrong sequence → not duplex
+  - [x] True duplex read → IS duplex
+  - [x] Edge case: exactly 10% difference in lengths
+  - [x] Hard clips should be ignored
+- [ ] Integration tests (DuplexTrimmerTest.groovy)
+  - [ ] Create test BAM files with mix of normal and duplex reads
+  - [ ] Verify output BAM has correct number of reads
+  - [ ] Verify duplex reads handled per selected action
+  - [ ] Verify statistics are accurate
+
+### Phase 4: Statistics and Reporting
+- [ ] Track metrics:
+  - [ ] Total reads processed
+  - [ ] Duplex reads detected
+  - [ ] Reads rejected/trimmed/kept
+  - [ ] Average soft clip length
+  - [ ] Average alignment score
+- [ ] Output statistics in JSON or TSV format
+
+## Design Notes
+- Use Groovy 2.x compatible syntax: `[1,2,3] as byte[]` not `new byte[]{1,2,3}`
+- Use 4 spaces for indentation, no tabs
+- Default alignment threshold: 80% (40/50 bases match)
+- Default length tolerance: 10%
+- Check both leading and trailing soft clips
+- Use `gngs.Align.local()` for sequence alignment
