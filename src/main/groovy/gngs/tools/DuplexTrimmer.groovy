@@ -378,7 +378,7 @@ class DuplexTrimmer extends ToolBase {
         double candidatePercent = count > 0 ? 100.0 * candidates / count : 0.0
         double duplexPercent = candidates > 0 ? 100.0 * duplex / candidates : 0.0
         
-        System.err.println String.format(
+        log.info String.format(
             "Progress: %,d reads | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
             count, candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
         )
