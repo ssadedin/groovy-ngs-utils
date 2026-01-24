@@ -29,6 +29,19 @@ reads (this is not advisable because it would align identically and behave as a 
 Finally, it could be that we decide which of the two has higher quality overall 
 and retain only the portion with the highest quality.
 
+## Key Requirements
+
+- The duplex trimmer must be able to process very large files in a reasonable time
+- By far the most expensive step is the alignment part
+- We can assume the system has many cores and large RAM
+- To facilitate processing large files, a multithreaded architecture should be implemented
+- It is critical that reads are written out in the same order that they are read in
+- It is also important that the queuing overhead doesn't become the bottleneck, so
+  make sure there is almost no overhead when processing a read that fails
+  very quick tests to check if it is a candidate for trimming
+- Based on these requirements, an appropriate multithreading architecture should be
+  implemented
+  
 ## Implementation Guidance
 
 The duplex trimmer is to be implemented in Groovy as a GNGS tool, extending the `Toolbase` class.
