@@ -108,12 +108,14 @@ class DuplexDetectorTest {
         assert detector.lengthsMatch(50, 55)  // 10% difference
         assert detector.lengthsMatch(55, 50)
         assert detector.lengthsMatch(100, 95)
+        assert detector.lengthsMatch(50, 60)  // 20% difference - now within tolerance
+        assert detector.lengthsMatch(60, 50)
     }
     
     @Test
     void testLengthsMatch_outsideTolerance() {
-        assert !detector.lengthsMatch(50, 60)  // 20% difference
-        assert !detector.lengthsMatch(50, 40)
+        assert !detector.lengthsMatch(50, 65)  // 30% difference
+        assert !detector.lengthsMatch(50, 35)  // 30% difference
     }
     
     @Test
@@ -150,7 +152,7 @@ class DuplexDetectorTest {
     
     @Test
     void testIsDuplexRead_softClipTooSmall() {
-        // 10bp soft clip, 90bp aligned - not within 10% tolerance
+        // 10bp soft clip, 90bp aligned - not within 20% tolerance
         SAMRecord record = createRecord("90M10S", "A" * 100)
         
         assert !detector.isDuplexRead(record)
@@ -189,17 +191,17 @@ class DuplexDetectorTest {
     }
     
     @Test
-    void testIsDuplexRead_edgeCaseExactly10PercentDifference() {
-        // 50bp aligned, 55bp soft clip (10% difference)
+    void testIsDuplexRead_edgeCaseExactly20PercentDifference() {
+        // 50bp aligned, 60bp soft clip (20% difference)
         String alignedPart = "ACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTACGTAC"  // 50bp
-        String softClipPart = SequenceUtil.reverseComplement(alignedPart) + "ACGTA"  // 55bp
+        String softClipPart = SequenceUtil.reverseComplement(alignedPart) + "ACGTACGTAC"  // 60bp
         String fullSeq = alignedPart + softClipPart
         
-        SAMRecord record = createRecord("50M55S", fullSeq)
+        SAMRecord record = createRecord("50M60S", fullSeq)
         
         boolean result = detector.isDuplexRead(record)
         
-        assert result  // Should be detected as duplex
+        assert result  // Should be detected as duplex at exactly 20% tolerance
     }
     
     @Test
