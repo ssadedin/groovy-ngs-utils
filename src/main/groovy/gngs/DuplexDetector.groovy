@@ -25,12 +25,12 @@ class DuplexDetector {
     /**
      * Default tolerance for length comparison (10%)
      */
-    static final double DEFAULT_LENGTH_TOLERANCE = 0.10
+    static final double DEFAULT_LENGTH_TOLERANCE = 0.2
     
     /**
-     * Default alignment threshold (80% match = 40/50 bases)
+     * Default alignment threshold
      */
-    static final double DEFAULT_ALIGNMENT_THRESHOLD = 0.40
+    static final double DEFAULT_ALIGNMENT_THRESHOLD = 0.30
     
     /**
      * Number of bases to compare for alignment check
@@ -158,7 +158,7 @@ class DuplexDetector {
      */
     double alignSequences(String seq1, String seq2) {
 
-        return Align.global(seq1, seq2).score / seq1.length()
+        return Align.global(gapOpenPenalty: 1, seq1, seq2).score / seq1.length()
     }
     
     /**
