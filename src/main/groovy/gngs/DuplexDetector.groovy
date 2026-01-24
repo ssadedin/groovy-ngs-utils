@@ -188,6 +188,11 @@ class DuplexDetector {
             return false
         }
         
+        // Check if CIGAR is available
+        if (record.getCigar() == null) {
+            return false
+        }
+        
         // Extract soft clip information
         SoftClipInfo info = extractSoftClipInfo(record)
         
@@ -207,6 +212,9 @@ class DuplexDetector {
         
         // Extract sequences for comparison
         byte[] bases = record.getReadBases()
+        if (bases == null || bases.length == 0) {
+            return false
+        }
         int readLength = bases.length
         
         String alignedSeq
