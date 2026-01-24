@@ -314,8 +314,8 @@ class SAM {
         if(options.sampleId) {
             header.readGroups.each { it.setSample((String)options.sampleId) }
         }
-         
-        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName))
+        
+        SAMFileWriter w = f.makeBAMWriter(header, sorted, new File(outputFileName), 1)
         try {
             return c(w)
         }

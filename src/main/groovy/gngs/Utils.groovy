@@ -8,6 +8,9 @@ import groovy.transform.stc.ClosureParams
 import groovy.transform.stc.SimpleType
 import htsjdk.samtools.util.BlockCompressedInputStream
 import htsjdk.samtools.util.BlockCompressedOutputStream
+import htsjdk.samtools.util.BlockGunzipper
+import htsjdk.samtools.util.zip.DeflaterFactory
+import htsjdk.samtools.util.zip.InflaterFactory
 
 import java.text.NumberFormat
 import java.util.logging.*
@@ -15,6 +18,9 @@ import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
 import org.yaml.snakeyaml.Yaml
+
+import com.intel.gkl.compression.IntelDeflaterFactory
+import com.intel.gkl.compression.IntelInflaterFactory
 
 import java.io.Writer
 import java.nio.file.Files
@@ -663,5 +669,13 @@ class Utils {
         Utils.reader(fileLike) {
             return new Yaml().load(it)
         }
+    }
+    
+    static void setupAcceleratedDeflaters() {
+        InflaterFactory intelInflater = new IntelInflaterFactory();
+        BlockGunzipper.setDefaultInflaterFactory(intelInflater);
+        
+        DeflaterFactory intelFactory = new IntelDeflaterFactory();
+        BlockCompressedOutputStream.setDefaultDeflaterFactory(intelFactory);
     }
 }
