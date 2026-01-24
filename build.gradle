@@ -111,6 +111,7 @@ dependencies {
      implementation project('htsjdk')
      implementation project('graxxia')
 
+     implementation "com.intel.gkl:gkl:0.8.11"
      
      testImplementation 'junit:junit:4.12'
      
