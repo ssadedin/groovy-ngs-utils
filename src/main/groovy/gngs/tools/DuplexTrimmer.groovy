@@ -146,7 +146,7 @@ class DuplexTrimmer extends ToolBase {
         }
         
         if(region) {
-            bam.withIterator(region, processRecord)
+            bam.withIterator(region, { i -> i.each(processRecord)})
         } else {
             bam.eachRecord(processRecord)
         }
