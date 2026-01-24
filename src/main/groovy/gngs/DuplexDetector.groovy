@@ -157,23 +157,8 @@ class DuplexDetector {
      * @return fraction of matching bases (0.0 to 1.0)
      */
     double alignSequences(String seq1, String seq2) {
-        if (seq1.isEmpty() || seq2.isEmpty()) {
-            return 0.0
-        }
-        
-        // Reverse complement seq2
-        String seq2RC = SAMSequenceUtil.reverseComplement(seq2)
-        
-        // Simple approach: count matching positions directly
-        int matches = 0
-        int compareLength = Math.min(seq1.length(), seq2RC.length())
-        for (int i = 0; i < compareLength; i++) {
-            if (seq1.charAt(i) == seq2RC.charAt(i)) {
-                matches++
-            }
-        }
-        
-        return (double) matches / (double) compareLength
+
+        return Align.global(seq1, seq2).score / seq1.length()
     }
     
     /**
