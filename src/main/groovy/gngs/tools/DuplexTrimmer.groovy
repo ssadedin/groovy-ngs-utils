@@ -281,7 +281,7 @@ class DuplexTrimmer extends ToolBase {
         Thread.start {
             log.info "Writing output to: $outputFile"
             
-            bam.withWriter(outputFile, false) { SAMFileWriter writer ->
+            bam.withWriter(outputFile, true) { SAMFileWriter writer ->
                 
                 while (true) {
                     ReadWrapper wrapper = outputQueue.take()
