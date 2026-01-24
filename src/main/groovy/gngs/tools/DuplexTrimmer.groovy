@@ -95,45 +95,16 @@ class DuplexTrimmer extends ToolBase {
         long seqNum = 0
         
         Closure processRecord = { SAMRecord record ->
-            // Track current position for progress logging
+            // Track current position for progress logging (minimal overhead)
             currentChr = record.referenceName
             currentPos = record.alignmentStart
-            
-            boolean isTraceRead = traceReadName && record.readName == traceReadName
-            
-            if(isTraceRead) {
-                log.info "TRACE [$traceReadName]: Processing read at ${record.referenceName}:${record.alignmentStart}"
-            }
             
             ReadWrapper wrapper = new ReadWrapper(
                 record: record,
                 sequenceNumber: seqNum++
             )
             
-            // Fast filter - skip obvious non-candidates
-            if (!hasSoftClips(record)) {
-                if(isTraceRead) {
-                    log.info "TRACE [$traceReadName]: REJECTED - No soft clips found"
-                }
-                wrapper.skipProcessing = true
-                wrapper.processed = true
-            }
-            else if(!lengthsRoughlyMatch(record)) {
-                if(isTraceRead) {
-                    def info = detector.extractSoftClipInfo(record)
-                    log.info "TRACE [$traceReadName]: REJECTED - Lengths don't match (soft clip: ${info.totalSoftClip}, aligned: ${info.alignedBases})"
-                }
-                wrapper.skipProcessing = true
-                wrapper.processed = true
-            }
-            else {
-                candidateReads.incrementAndGet()
-                if(isTraceRead) {
-                    log.info "TRACE [$traceReadName]: CANDIDATE - Passed fast filter, sending to worker for alignment check"
-                }
-            }
-            
-            // Add to both queues - workers read from input, writer reads from output
+            // Add to both queues immediately - let workers do ALL filtering
             inputQueue.put(wrapper)
             outputQueue.put(wrapper)
             
@@ -210,12 +181,31 @@ class DuplexTrimmer extends ToolBase {
                     break
                 }
                 
-                if (wrapper.skipProcessing) {
-                    // Already marked processed by fast filter - nothing to do
+                boolean isTraceRead = traceReadName && wrapper.record.readName == traceReadName
+                
+                // Fast filter - skip obvious non-candidates
+                if (!hasSoftClips(wrapper.record)) {
+                    if(isTraceRead) {
+                        log.info "TRACE [$traceReadName]: REJECTED - No soft clips found"
+                    }
+                    wrapper.processed = true
                     continue
                 }
                 
-                boolean isTraceRead = traceReadName && wrapper.record.readName == traceReadName
+                if(!lengthsRoughlyMatch(wrapper.record)) {
+                    if(isTraceRead) {
+                        def info = threadDetector.extractSoftClipInfo(wrapper.record)
+                        log.info "TRACE [$traceReadName]: REJECTED - Lengths don't match (soft clip: ${info.totalSoftClip}, aligned: ${info.alignedBases})"
+                    }
+                    wrapper.processed = true
+                    continue
+                }
+                
+                // This is a candidate
+                candidateReads.incrementAndGet()
+                if(isTraceRead) {
+                    log.info "TRACE [$traceReadName]: CANDIDATE - Passed fast filter, performing alignment check"
+                }
                 
                 // Do expensive detection
                 wrapper.isDuplex = threadDetector.isDuplexRead(wrapper.record)
