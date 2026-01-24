@@ -230,7 +230,14 @@ class DuplexTrimmer extends ToolBase {
                         alignedSeq = threadDetector.extractSequence(wrapper.record, alignedStart, alignedEnd)
                     }
                     
+                    // Reverse complement the soft clip sequence for visual comparison
+                    String softClipRC = htsjdk.samtools.util.SequenceUtil.reverseComplement(softClipSeq)
+                    
                     double alignmentScore = threadDetector.alignSequences(alignedSeq, softClipSeq)
+                    
+                    log.info "TRACE [$traceReadName]: Alignment comparison (aligned vs RC of soft clip):"
+                    log.info "TRACE [$traceReadName]: Aligned:  $alignedSeq"
+                    log.info "TRACE [$traceReadName]: SoftClip: $softClipRC"
                     
                     if(wrapper.isDuplex) {
                         log.info "TRACE [$traceReadName]: DUPLEX DETECTED - Alignment score: ${String.format('%.3f', alignmentScore)} (threshold: ${threadDetector.alignmentThreshold})"
