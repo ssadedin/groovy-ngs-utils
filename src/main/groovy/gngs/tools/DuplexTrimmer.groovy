@@ -38,7 +38,17 @@ class DuplexTrimmer extends ToolBase {
         
         traceReadName = opts['trace']
         
+        // Apply configuration options to detector
+        if(opts['lengthTolerance']) {
+            detector.lengthTolerance = opts['lengthTolerance'].toDouble()
+        }
+        
+        if(opts['alignmentThreshold']) {
+            detector.alignmentThreshold = opts['alignmentThreshold'].toDouble()
+        }
+        
         log.info "Starting DuplexTrimmer with $threads threads and queue size $queueSize"
+        log.info "Length tolerance: ${detector.lengthTolerance}, Alignment threshold: ${detector.alignmentThreshold}"
         
         if(traceReadName) {
             log.info "Trace logging enabled for read: $traceReadName"
