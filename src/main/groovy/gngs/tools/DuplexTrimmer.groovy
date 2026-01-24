@@ -26,9 +26,13 @@ class DuplexTrimmer extends ToolBase {
     AtomicLong duplexReads = new AtomicLong(0)
     AtomicLong rejectedReads = new AtomicLong(0)
     AtomicLong trimmedReads = new AtomicLong(0)
+    AtomicLong candidateReads = new AtomicLong(0)
     
     // Trace logging
     String traceReadName = null
+    
+    // Progress tracking
+    static final int PROGRESS_INTERVAL = 5000
     
     @Override
     void run() {
@@ -114,15 +118,23 @@ class DuplexTrimmer extends ToolBase {
                 wrapper.skipProcessing = true
                 wrapper.processed = true
             }
-            else if(isTraceRead) {
-                log.info "TRACE [$traceReadName]: CANDIDATE - Passed fast filter, sending to worker for alignment check"
+            else {
+                candidateReads.incrementAndGet()
+                if(isTraceRead) {
+                    log.info "TRACE [$traceReadName]: CANDIDATE - Passed fast filter, sending to worker for alignment check"
+                }
             }
             
             // Add to both queues - workers read from input, writer reads from output
             inputQueue.put(wrapper)
             outputQueue.put(wrapper)
             
-            totalReads.incrementAndGet()
+            long count = totalReads.incrementAndGet()
+            
+            // Print progress every PROGRESS_INTERVAL reads
+            if(count % PROGRESS_INTERVAL == 0) {
+                printProgress(count)
+            }
         }
         
         if(region) {
@@ -355,6 +367,24 @@ class DuplexTrimmer extends ToolBase {
     }
     
     /**
+     * Print progress statistics
+     */
+    void printProgress(long count) {
+        long candidates = candidateReads.get()
+        long duplex = duplexReads.get()
+        long rejected = rejectedReads.get()
+        long trimmed = trimmedReads.get()
+        
+        double candidatePercent = count > 0 ? 100.0 * candidates / count : 0.0
+        double duplexPercent = candidates > 0 ? 100.0 * duplex / candidates : 0.0
+        
+        System.err.println String.format(
+            "Progress: %,d reads | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
+            count, candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
+        )
+    }
+    
+    /**
      * Print statistics about the run
      */
     void printStatistics() {
@@ -363,6 +393,7 @@ class DuplexTrimmer extends ToolBase {
         System.err.println "Duplex Trimmer Statistics"
         System.err.println "=" * 80
         System.err.println "Total reads processed:    ${totalReads.get()}"
+        System.err.println "Candidate reads:          ${candidateReads.get()} (${String.format('%.2f', 100.0 * candidateReads.get() / totalReads.get())}%)"
         System.err.println "Duplex reads detected:    ${duplexReads.get()} (${String.format('%.2f', 100.0 * duplexReads.get() / totalReads.get())}%)"
         System.err.println "Reads rejected:           ${rejectedReads.get()}"
         System.err.println "Reads trimmed:            ${trimmedReads.get()}"
