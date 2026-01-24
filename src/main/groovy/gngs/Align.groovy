@@ -97,7 +97,7 @@ class Align {
         DNASequence query = new DNASequence(queryString);
         DNASequence reference = new DNASequence(referenceString);
         
-        GapPenalty gapPenalty = new SimpleGapPenalty((short)5,(short)1);
+        GapPenalty gapPenalty = new SimpleGapPenalty((short)actualParams.gapOpenPenalty, (short)actualParams.gapExtensionPenalty);
         
         NeedlemanWunsch<DNASequence, NucleotideCompound> aligner = new NeedlemanWunsch<DNASequence, NucleotideCompound>(query, reference, gapPenalty, actualParams.substitutionMatrix);
         
@@ -160,7 +160,7 @@ class Align {
         DNASequence query = new DNASequence(queryString);
         DNASequence reference = new DNASequence(referenceString);
         
-        GapPenalty gapPenalty = new SimpleGapPenalty((short)5,(short)1);
+        GapPenalty gapPenalty = new SimpleGapPenalty((short)actualParams.gapOpenPenalty, (short)actualParams.gapExtensionPenalty);
         
         SmithWaterman<DNASequence, NucleotideCompound> aligner = new SmithWaterman<DNASequence, NucleotideCompound>(query, reference, gapPenalty, actualParams.substitutionMatrix);
         
