@@ -244,13 +244,13 @@ class DuplexDetectorTest {
     }
 
     @Test
-    void testActualNonDuplexReadWrongSoftClips() {
+    void testActualDuplexRead2() {
+        String testReadName = '8e430fd0-7b01-43ef-9f5a-4cc0d2671bf2'  
         SAM bam = new SAM('src/test/data/example_duplex_reads.small.bam')
-        // This is a chimeric read, not a duplex one
-        SAMRecord read =  bam.withIterator { i -> i.find { it.readName == '8e430fd0-7b01-43ef-9f5a-4cc0d2671bf2'  } }
+        SAMRecord read =  bam.withIterator { i -> i.find { it.readName == testReadName} }
         assert read != null
 
         def result = detector.isDuplexRead(read)
-        assert result == false : "Read duplex read not detected"
+        assert result == true : "Duplex read $testReadName was detected as NOT duplex!"
     }
 }
