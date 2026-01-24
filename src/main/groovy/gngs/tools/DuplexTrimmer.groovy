@@ -1,14 +1,14 @@
 package gngs.tools
 
+import java.util.concurrent.LinkedBlockingQueue
+import java.util.concurrent.atomic.AtomicLong
+
 import gngs.*
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
 import htsjdk.samtools.CigarOperator
 import htsjdk.samtools.SAMFileWriter
 import htsjdk.samtools.SAMRecord
-
-import java.util.concurrent.LinkedBlockingQueue
-import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Tool to detect and handle Oxford Nanopore duplex reads that were accidentally
@@ -421,6 +421,9 @@ class DuplexTrimmer extends ToolBase {
     }
     
     static void main(String[] args) {
+        
+        Utils.setupAcceleratedDeflaters()
+        
         cli('Detect and handle Oxford Nanopore duplex reads', args) {
             i 'Input BAM/SAM file', args: 1, required: true
             o 'Output BAM file', args: 1, required: true

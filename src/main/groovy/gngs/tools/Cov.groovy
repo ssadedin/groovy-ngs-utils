@@ -564,6 +564,9 @@ class Cov extends ToolBase {
     }
     
     static void main(String[] args) {
+        
+        Utils.setupAcceleratedDeflaters()
+        
         cli('Cov [-o <per-base-output>] -L <target regions> <bam file>', 'Fast per-base coverage calculations with statistics output', args) {
             o 'Output file to write to', args:1, required: false
             'do' 'Output file for downsampled output', args:1, required:false, longOpt: 'downsampleOutput', type: File
