@@ -33,6 +33,8 @@ class DuplexTrimmer extends ToolBase {
     
     // Progress tracking
     static final int PROGRESS_INTERVAL = 5000
+    String currentChr = null
+    int currentPos = 0
     
     @Override
     void run() {
@@ -91,6 +93,10 @@ class DuplexTrimmer extends ToolBase {
         long seqNum = 0
         
         Closure processRecord = { SAMRecord record ->
+            // Track current position for progress logging
+            currentChr = record.referenceName
+            currentPos = record.alignmentStart
+            
             boolean isTraceRead = traceReadName && record.readName == traceReadName
             
             if(isTraceRead) {
@@ -378,9 +384,11 @@ class DuplexTrimmer extends ToolBase {
         double candidatePercent = count > 0 ? 100.0 * candidates / count : 0.0
         double duplexPercent = candidates > 0 ? 100.0 * duplex / candidates : 0.0
         
+        String position = currentChr ? "${currentChr}:${currentPos}" : "N/A"
+        
         log.info String.format(
-            "Progress: %,d reads | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
-            count, candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
+            "Progress: %,d reads at %s | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
+            count, position, candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
         )
     }
     
