@@ -35,6 +35,8 @@ class DuplexTrimmer extends ToolBase {
     static final int PROGRESS_INTERVAL = 5000
     String currentChr = null
     int currentPos = 0
+    LinkedBlockingQueue<ReadWrapper> inputQueue = null
+    LinkedBlockingQueue<ReadWrapper> outputQueue = null
     
     @Override
     void run() {
@@ -60,8 +62,8 @@ class DuplexTrimmer extends ToolBase {
             log.info "Trace logging enabled for read: $traceReadName"
         }
         
-        LinkedBlockingQueue<ReadWrapper> inputQueue = new LinkedBlockingQueue<>(queueSize)
-        LinkedBlockingQueue<ReadWrapper> outputQueue = new LinkedBlockingQueue<>(queueSize)
+        this.inputQueue = new LinkedBlockingQueue<>(queueSize)
+        this.outputQueue = new LinkedBlockingQueue<>(queueSize)
         
         // Poison pill to signal end
         ReadWrapper POISON = new ReadWrapper(sequenceNumber: -1)
@@ -386,9 +388,18 @@ class DuplexTrimmer extends ToolBase {
         
         String position = currentChr ? "${currentChr}:${currentPos}" : "N/A"
         
+        int inputQueueSize = inputQueue?.size() ?: 0
+        int outputQueueSize = outputQueue?.size() ?: 0
+        int queueCapacity = inputQueue?.remainingCapacity() ?: 0
+        int totalCapacity = inputQueueSize + queueCapacity
+        
+        double inputUtilization = totalCapacity > 0 ? 100.0 * inputQueueSize / totalCapacity : 0.0
+        double outputUtilization = totalCapacity > 0 ? 100.0 * outputQueueSize / totalCapacity : 0.0
+        
         log.info String.format(
-            "Progress: %,d reads at %s | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
-            count, position, candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
+            "Progress: %,d reads at %s | Queue: in=%d/%d (%.1f%%) out=%d/%d (%.1f%%) | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
+            count, position, inputQueueSize, totalCapacity, inputUtilization, outputQueueSize, totalCapacity, outputUtilization,
+            candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
         )
     }
     
