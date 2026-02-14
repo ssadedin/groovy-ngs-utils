@@ -1115,4 +1115,14 @@ class Regions implements Iterable<Region> {
 	boolean isCase(IRegion region) {
 		return !this.getOverlaps(region.chr, region.range.from, region.range.to).isEmpty()
 	}
+    
+    /**
+     * Returns the highest mutual overlap of a region in this Regions object with the give region
+     * 
+     * @param r
+     * @return
+     */
+    double mutualOverlap(IRegion r) {
+        this.getOverlapRegions(r).collect { it.mutualOverlap(r) }?.max()?:0
+    }
 }
