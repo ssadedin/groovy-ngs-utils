@@ -503,4 +503,19 @@ class VariantTest {
         
         assert v.line.contains('IMPRECISE;')
     }
+    
+    @Test
+    void testDelRegion() {
+        v = var("chr6 170871013   rs10558845  ACAGAGA    A   53   .   MQ=49.90    GT:AF:AD:DP:GQ:PL  1/1:.:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        
+        println "Size: " + v.size()
+        assert v.getRegion().size() == 7
+
+        v = var("chr6 170871013   rs10558845  A    ATACT   53   .   MQ=49.90    GT:AF:AD:DP:GQ:PL  1/1:.:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert v.getRegion().size() == 5
+
+        v = var("chr6 170871013   rs10558845  A    T   53   .   MQ=49.90    GT:AF:AD:DP:GQ:PL  1/1:.:4,83,93:213:99:7597,4181,5801,3074,0,3833")
+        assert v.getRegion().size() == 1
+    }
+    
 }

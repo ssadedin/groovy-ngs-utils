@@ -513,11 +513,7 @@ class Variant implements IRegion, Serializable {
 	
     @CompileStatic
 	IntRange getRange() {
-        if(isSV()) {
-            return pos..pos+this.size()
-        }
-        else
-    		return pos..<(pos+alts.max { it.size() }.size())
+        return pos..pos+this.size()
 	}
     
     @CompileStatic
