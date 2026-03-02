@@ -242,9 +242,9 @@ class RefGenes implements GeneAnnotationSource {
     }
     
     @CompileStatic
-    List<Region> getExons(IRegion region) {
+    List<Region> getExons(IRegion region, boolean codingOnly = true) {
         return (List<Region>)refData.getOverlaps(region).collect { IntRange r ->
-            exonsForTranscript(((Region)((GRange)r).extra), true)
+            exonsForTranscript(((Region)((GRange)r).extra), codingOnly)
         }.flatten().grep { Region r ->
             (r != null) && r.overlaps(region)
         }   
