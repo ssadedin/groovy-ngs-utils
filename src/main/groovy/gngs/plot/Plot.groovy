@@ -345,26 +345,26 @@ class Histogram {
             h.data = allData.collect { series -> series.collect { it.toDouble() } }
         }
 
-        if(bxHist.binCount)
-            h.binCount = bxHist.binCount
+        if(bxHist.getBinCount())
+            h.binCount = bxHist.getBinCount()
 
-        if(bxHist.xLabel)
-            h.xLabel = bxHist.xLabel
+        if(bxHist.getXLabel())
+            h.xLabel = bxHist.getXLabel()
 
-        if(bxHist.yLabel)
-            h.yLabel = bxHist.yLabel
+        if(bxHist.getYLabel())
+            h.yLabel = bxHist.getYLabel()
 
-        if(bxHist.names && !bxHist.names.isEmpty())
-            h.names = bxHist.names
+        if(bxHist.getNames() && !bxHist.getNames().isEmpty())
+            h.names = bxHist.getNames()
 
-        if(bxHist.rangeMin != null)
-            h.rangeMin = bxHist.rangeMin.toDouble()
+        if(bxHist.getRangeMin() != null)
+            h.rangeMin = bxHist.getRangeMin().toDouble()
 
-        if(bxHist.rangeMax != null)
-            h.rangeMax = bxHist.rangeMax.toDouble()
+        if(bxHist.getRangeMax() != null)
+            h.rangeMax = bxHist.getRangeMax().toDouble()
 
-        if(bxHist.color && !bxHist.color.isEmpty()) {
-            List<Color> colors = bxHist.color.collect { c ->
+        if(bxHist.getColor() && !bxHist.getColor().isEmpty()) {
+            List<Color> colors = bxHist.getColor().collect { c ->
                 new Color(c.getRed(), c.getGreen(), c.getBlue())
             }
             // Palette expects first color unused (index 0), histogram uses index i+1
