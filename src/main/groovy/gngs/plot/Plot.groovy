@@ -19,6 +19,7 @@ import de.erichseifert.gral.data.Column
 import de.erichseifert.gral.data.DataSource
 import de.erichseifert.gral.data.DataTable
 import de.erichseifert.gral.data.EnumeratedData
+import de.erichseifert.gral.data.statistics.Statistics
 import de.erichseifert.gral.data.statistics.Histogram2D
 import de.erichseifert.gral.graphics.Drawable
 import de.erichseifert.gral.graphics.DrawingContext
@@ -242,7 +243,7 @@ class Histogram {
         }
 
         plot.getAxis(XYPlot.AXIS_Y).with {
-            max = PlotUtils.roundUpToOOM(histogram2ds*.max().max())
+            max = PlotUtils.roundUpToOOM(histogram2ds.collect { DataSource ds -> ds.getColumn(1).getStatistics().get(Statistics.MAX) }.max())
         }
         
         histogram2ds.eachWithIndex { h2d, i ->
