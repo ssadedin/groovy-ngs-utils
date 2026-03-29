@@ -336,13 +336,25 @@ class Histogram {
         Histogram h = new Histogram()
         h.title = bxHist.title ?: ''
 
-        // BeakerX histogram getData() returns List<List<Number>>
-        List<List<Number>> allData = bxHist.getData()
-        if(allData.size() == 1) {
-            h.data = allData[0].collect { it.toDouble() }
+        // BeakerX histogram getData() returns List<List<Number>>, but may
+        // also return a flat List<Number> depending on how data was set
+        List allData = bxHist.getData()
+        if(allData.isEmpty()) {
+            h.data = []
+        }
+        else
+        if(allData[0] instanceof List) {
+            // Data is List<List<Number>>
+            if(allData.size() == 1) {
+                h.data = allData[0].collect { ((Number)it).toDouble() }
+            }
+            else {
+                h.data = allData.collect { series -> ((List)series).collect { ((Number)it).toDouble() } }
+            }
         }
         else {
-            h.data = allData.collect { series -> series.collect { it.toDouble() } }
+            // Data is a flat List<Number>
+            h.data = allData.collect { ((Number)it).toDouble() }
         }
 
         if(bxHist.getBinCount())
