@@ -321,6 +321,56 @@ class Histogram {
         return histogram2d
     }
 
+    /**
+     * Convert a BeakerX Histogram to a gngs Histogram
+     */
+    static Histogram from(com.twosigma.beakerx.chart.histogram.Histogram bxHist) {
+        Histogram h = new Histogram()
+        h.title = bxHist.title ?: ''
+
+        // BeakerX histogram getData() returns List<List<Number>>
+        List<List<Number>> allData = bxHist.getData()
+        if(allData.size() == 1) {
+            h.data = allData[0].collect { it.toDouble() }
+        }
+        else {
+            h.data = allData.collect { series -> series.collect { it.toDouble() } }
+        }
+
+        if(bxHist.binCount)
+            h.binCount = bxHist.binCount
+
+        if(bxHist.xLabel)
+            h.xLabel = bxHist.xLabel
+
+        if(bxHist.yLabel)
+            h.yLabel = bxHist.yLabel
+
+        if(bxHist.displayName)
+            h.names = [bxHist.displayName]
+
+        if(bxHist.names && !bxHist.names.isEmpty())
+            h.names = bxHist.names
+
+        if(bxHist.rangeMin != null)
+            h.rangeMin = bxHist.rangeMin.toDouble()
+
+        if(bxHist.rangeMax != null)
+            h.rangeMax = bxHist.rangeMax.toDouble()
+
+        if(bxHist.color && !bxHist.color.isEmpty()) {
+            List<Color> colors = bxHist.color.collect { c ->
+                new Color(c.getRed(), c.getGreen(), c.getBlue())
+            }
+            // Palette expects first color unused (index 0), histogram uses index i+1
+            Palette p = new Palette()
+            p.colors = ([colors[0]] + colors) as Color[]
+            h.palette = p
+        }
+
+        return h
+    }
+
     @CompileStatic
     private List<Double> calculateBreaks(Iterable<Iterable<Double>> datas) {
         
@@ -443,11 +493,19 @@ class Plot {
             from(plot).save(fileName)
         }
         else
+        if(plot instanceof com.twosigma.beakerx.chart.histogram.Histogram) {
+            Histogram.from(plot).save(fileName)
+        }
+        else
         if(plot instanceof Plot) {
             plot.save(fileName)
         }
+        else
+        if(plot instanceof Histogram) {
+            plot.save(fileName)
+        }
         else {
-            throw new IllegalArgumentException('Please provide a gngs or beakerx Plot object - you provided: ' + plot?.class?.name)
+            throw new IllegalArgumentException('Please provide a gngs or beakerx Plot or Histogram object - you provided: ' + plot?.class?.name)
         }
         return plot
     }
