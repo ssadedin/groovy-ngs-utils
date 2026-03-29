@@ -470,8 +470,12 @@ class Plot {
         if(!bxPlot.yAutoRange)
             p.yBound = [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()]
         
-        def setProps = { g, item ->
+        def setProps = { g, item, i ->
             g.properties.each { k,v ->
+                if(k == "color" && v instanceof com.twosigma.beakerx.chart.Color) {
+                    v = p.convertColor(v, i)
+                }
+
                 if(item.hasProperty(k)) {
                     try {
                         item[k] = v
@@ -483,6 +487,7 @@ class Plot {
             }
         }
 
+        int i = 0
         bxPlot.graphics.each { XYGraphics g ->
             
             def item = null
@@ -508,15 +513,17 @@ class Plot {
             if(!item)
                 return
  
-            setProps(g, item)
+            setProps(g, item, i)
 
             p << item
+            ++i
         }
         
         bxPlot.constantLines.each { cl ->
             ConstantLine item = new ConstantLine()
-            setProps(cl, item)
+            setProps(cl, item, i)
             p << item
+            ++i
         }
         
         return p
@@ -855,7 +862,8 @@ class Plot {
         
         XYPlot xyPlot = toXYPlot(width, height)
         
-        int eastLegendWidth = this.estimateLegendWidth(width)
+        int eastLegendWidth = (int)(options.marginRight ?: this.estimateLegendWidth(width))
+
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
             PlotUtils.write(xyPlot, w, 0,0, width, height, eastLegendWidth);
