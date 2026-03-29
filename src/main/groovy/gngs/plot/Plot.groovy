@@ -354,9 +354,6 @@ class Histogram {
         if(bxHist.yLabel)
             h.yLabel = bxHist.yLabel
 
-        if(bxHist.displayName)
-            h.names = [bxHist.displayName]
-
         if(bxHist.names && !bxHist.names.isEmpty())
             h.names = bxHist.names
 

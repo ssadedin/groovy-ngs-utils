@@ -150,14 +150,13 @@ class PlotTest {
     void testHistogramFromBeakerX() {
         def bxHist = mock(com.twosigma.beakerx.chart.histogram.Histogram)
         when(bxHist.getData()).thenReturn([[1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 5.0] as List<Number>])
-        when(bxHist.getDisplayName()).thenReturn('My Series')
         when(bxHist.getBinCount()).thenReturn(5)
         when(bxHist.getTitle()).thenReturn('BeakerX Histogram')
         when(bxHist.getXLabel()).thenReturn('Values')
         when(bxHist.getYLabel()).thenReturn('Counts')
         when(bxHist.getRangeMin()).thenReturn(null)
         when(bxHist.getRangeMax()).thenReturn(null)
-        when(bxHist.getNames()).thenReturn(null)
+        when(bxHist.getNames()).thenReturn(['My Series'])
         when(bxHist.getColor()).thenReturn(null)
 
         Histogram h = Histogram.from(bxHist)
