@@ -174,6 +174,32 @@ class PlotTest {
     }
 
     @Test
+    void testHistogramRange() {
+        List data = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+        Histogram hist = new Histogram(
+            data: data,
+            binCount: 8,
+            rangeMin: -2.0,
+            rangeMax: 5.0,
+            title: 'Range Test',
+            xLabel: 'X',
+            yLabel: 'Y'
+        )
+
+        // Verify that data outside range is excluded from the histogram
+        BarPlot plot = hist.createPlot()
+        def xAxis = plot.getAxis(XYPlot.AXIS_X)
+        assert xAxis.min != null
+        assert xAxis.max != null
+        // x-axis should be constrained around the range, not extending to -5 or 10
+        assert xAxis.min >= -4.0 : "X axis min ${xAxis.min} should be near rangeMin"
+        assert xAxis.max <= 7.0 : "X axis max ${xAxis.max} should be near rangeMax"
+
+        hist.save('test_histogram_range.png')
+    }
+
+    @Test
     void testDensity() {
         def normals = (1..1000).collect { r.nextGaussian() }
         def line = new Density.Line(data:normals, displayName:'TestLine', color: com.twosigma.beakerx.chart.Color.blue)

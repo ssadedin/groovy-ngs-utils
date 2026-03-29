@@ -242,6 +242,15 @@ class Histogram {
             intersection = -Double.MAX_VALUE // left align the axis
         }
 
+        if(rangeMin != Double.NEGATIVE_INFINITY || rangeMax != Double.POSITIVE_INFINITY) {
+            plot.getAxis(XYPlot.AXIS_X).with {
+                if(rangeMin != Double.NEGATIVE_INFINITY)
+                    min = rangeMin - (breaks[1] - breaks[0])
+                if(rangeMax != Double.POSITIVE_INFINITY)
+                    max = rangeMax + (breaks[1] - breaks[0])
+            }
+        }
+
         plot.getAxis(XYPlot.AXIS_Y).with {
             double yMax = 0
             for(DataSource ds in histogram2ds) {
