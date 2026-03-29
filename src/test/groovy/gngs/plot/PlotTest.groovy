@@ -5,6 +5,9 @@ import static org.junit.Assert.*
 import gngs.plot.bx.Density
 import java.awt.Color
 
+import de.erichseifert.gral.plots.BarPlot
+import de.erichseifert.gral.plots.XYPlot
+
 import org.junit.Test
 import static org.mockito.Mockito.*
 
