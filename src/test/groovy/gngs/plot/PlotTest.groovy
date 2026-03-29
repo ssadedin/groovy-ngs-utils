@@ -146,6 +146,30 @@ class PlotTest {
     }
     
     @Test
+    void testHistogramFromBeakerX() {
+        def bxHist = new com.twosigma.beakerx.chart.histogram.Histogram()
+        bxHist.setData([1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 5.0] as List<Number>)
+        bxHist.setDisplayName('My Series')
+        bxHist.setBinCount(5)
+        bxHist.setTitle('BeakerX Histogram')
+        bxHist.setXLabel('Values')
+        bxHist.setYLabel('Counts')
+
+        Histogram h = Histogram.from(bxHist)
+
+        assert h.title == 'BeakerX Histogram'
+        assert h.xLabel == 'Values'
+        assert h.yLabel == 'Counts'
+        assert h.binCount == 5
+        assert h.names == ['My Series']
+        assert h.data instanceof List
+        assert h.data.size() == 9
+        assert h.data.every { it instanceof Double }
+
+        h.save('test_bx_histogram.png')
+    }
+
+    @Test
     void testDensity() {
         def normals = (1..1000).collect { r.nextGaussian() }
         def line = new Density.Line(data:normals, displayName:'TestLine', color: com.twosigma.beakerx.chart.Color.blue)
