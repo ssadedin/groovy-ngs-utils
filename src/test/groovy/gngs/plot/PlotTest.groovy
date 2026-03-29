@@ -167,8 +167,8 @@ class PlotTest {
         assert h.binCount == 5
         assert h.names == ['My Series']
         assert h.data instanceof List
-        assert h.data.size() == 9
-        assert h.data.every { it instanceof Double }
+        assert h.data.size() == 1
+        assert h.data[0].size() == 9
 
         h.save('test_bx_histogram.png')
     }
