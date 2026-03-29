@@ -338,6 +338,10 @@ class Histogram {
         return histogram2d
     }
 
+    static Histogram from(gngs.plot.Histogram other) {
+        return other
+    }
+
     /**
      * Convert a BeakerX Histogram to a gngs Histogram
      */
@@ -517,8 +521,16 @@ class Plot {
         return plot
     }
     
-    static Plot from(gngs.plot.Plot other) {
+    static from(gngs.plot.Plot other) {
         return other
+    }
+
+    static from(gngs.plot.Histogram other) {
+        return other
+    }
+
+    static from(com.twosigma.beakerx.chart.histogram.Histogram bxHist) {
+        return Histogram.from(bxHist)
     }
 
     static Plot from(com.twosigma.beakerx.chart.xychart.Plot bxPlot) {
