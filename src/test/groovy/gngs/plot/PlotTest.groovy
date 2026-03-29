@@ -6,6 +6,7 @@ import gngs.plot.bx.Density
 import java.awt.Color
 
 import org.junit.Test
+import static org.mockito.Mockito.*
 
 class PlotTest {
 
@@ -147,13 +148,17 @@ class PlotTest {
     
     @Test
     void testHistogramFromBeakerX() {
-        def bxHist = new com.twosigma.beakerx.chart.histogram.Histogram()
-        bxHist.setData([1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 5.0] as List<Number>)
-        bxHist.setDisplayName('My Series')
-        bxHist.setBinCount(5)
-        bxHist.setTitle('BeakerX Histogram')
-        bxHist.setXLabel('Values')
-        bxHist.setYLabel('Counts')
+        def bxHist = mock(com.twosigma.beakerx.chart.histogram.Histogram)
+        when(bxHist.getData()).thenReturn([[1.0, 2.0, 2.0, 3.0, 3.0, 3.0, 4.0, 4.0, 5.0] as List<Number>])
+        when(bxHist.getDisplayName()).thenReturn('My Series')
+        when(bxHist.getBinCount()).thenReturn(5)
+        when(bxHist.getTitle()).thenReturn('BeakerX Histogram')
+        when(bxHist.getXLabel()).thenReturn('Values')
+        when(bxHist.getYLabel()).thenReturn('Counts')
+        when(bxHist.getRangeMin()).thenReturn(null)
+        when(bxHist.getRangeMax()).thenReturn(null)
+        when(bxHist.getNames()).thenReturn(null)
+        when(bxHist.getColor()).thenReturn(null)
 
         Histogram h = Histogram.from(bxHist)
 
