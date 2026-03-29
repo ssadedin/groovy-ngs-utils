@@ -243,7 +243,15 @@ class Histogram {
         }
 
         plot.getAxis(XYPlot.AXIS_Y).with {
-            max = PlotUtils.roundUpToOOM(histogram2ds.collect { DataSource ds -> ds.getColumn(1).getStatistics().get(Statistics.MAX) }.max())
+            double yMax = 0
+            for(DataSource ds in histogram2ds) {
+                for(int row = 0; row < ds.getRowCount(); ++row) {
+                    double val = ((Number)ds.get(1, row)).doubleValue()
+                    if(val > yMax)
+                        yMax = val
+                }
+            }
+            max = PlotUtils.roundUpToOOM(yMax)
         }
         
         histogram2ds.eachWithIndex { h2d, i ->
