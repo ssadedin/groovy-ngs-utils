@@ -33,6 +33,7 @@ class Table {
             ofmt 'Output format: csv,tsv,txt default is text', args:1, required: false
             // multi 'If there are empty lines, treat as multiple tables' // todo
             h 'Specify headers. If specified first row of data is treated as data', longOpt: 'headers', args:1, required:false
+            sep 'Field separator character for input/output', args:1, required:false
             s 'Skip lines starting with <arg>', longOpt: 'skipchar', args:1, required: false
             precision 'Digits of precision to use of numeric columns', args:1, type: Integer
             color_threshold 'Color numeric columns based on greater / smaller than given number', args:1, type: Double
@@ -82,6 +83,10 @@ class Table {
         boolean multiFile = files?.size()>1
                         
         def data
+        if(opts['sep']) {
+            readOptions.separator = opts['sep'][0] as char
+        }
+
         if(!files) {
             if(opts.csv) {
                 data = new CSV(readOptions,System.in.newReader()).toListMap()
@@ -91,11 +96,15 @@ class Table {
             }
         }
         else
-        if(opts.tsv || fileExt in ['tsv','vcf']) {
+        if(opts['sep']) {
             data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else
-        if(opts.csv || files[0].endsWith('csv')) {
+        if(opts['tsv'] || fileExt in ['tsv','vcf']) {
+            data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
+        }
+        else
+        if(opts['csv'] || files[0].endsWith('csv')) {
             data = files.collect { f -> new CSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else
@@ -179,25 +188,12 @@ class Table {
         }
         else
         if(outputFormat == 'csv') {
-            writeCSV(data)
+            writeData(data, opts['sep'] ?: ',')
         }
         else
         if(outputFormat == 'tsv') {
-            writeTSV(data)
+            writeData(data, opts['sep'] ?: '\t')
         }
-    }
-    
-    static void writeTSV(List<Map> data) {
-        System.out.withWriter { Writer w ->
-            w.println(data[0]*.key.join('\t'))
-            for(Map row in data) {
-                w.println(row*.value.join('\t'))
-            }
-        }    
-    }
-    
-    static void writeCSV(List<Map> data) {
-        writeData(data,',')
     }
     
     static void writeData(List<Map> data, String sep) {
