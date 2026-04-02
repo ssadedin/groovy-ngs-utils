@@ -34,6 +34,7 @@ class Table {
             // multi 'If there are empty lines, treat as multiple tables' // todo
             h 'Specify headers. If specified first row of data is treated as data', longOpt: 'headers', args:1, required:false
             sep 'Field separator character for input/output', args:1, required:false
+            section 'Extract named section from sectioned file (e.g. [Samples])', args:1, required:false
             s 'Skip lines starting with <arg>', longOpt: 'skipchar', args:1, required: false
             precision 'Digits of precision to use of numeric columns', args:1, type: Integer
             color_threshold 'Color numeric columns based on greater / smaller than given number', args:1, type: Double
@@ -81,35 +82,45 @@ class Table {
         }
         
         boolean multiFile = files?.size()>1
-                        
+
         def data
         if(opts['sep']) {
             readOptions.separator = opts['sep'][0] as char
         }
 
+        Closure sectionPreProcessor = null
+        if(opts['section']) {
+            String sectionName = opts['section']
+            sectionPreProcessor = { String f ->
+                Reader raw = f ? new File(f).newReader() : System.in.newReader()
+                extractSection(raw, sectionName)
+            }
+        }
+
         if(!files) {
+            Reader reader = sectionPreProcessor ? sectionPreProcessor(null) : System.in.newReader()
             if(opts.csv) {
-                data = new CSV(readOptions,System.in.newReader()).toListMap()
+                data = new CSV(readOptions,reader).toListMap()
             }
             else {
-                data = new TSV(readOptions,System.in.newReader()).toListMap()
+                data = new TSV(readOptions,reader).toListMap()
             }
         }
         else
         if(opts['sep']) {
-            data = loadFiles(files, multiFile) { f -> new TSV(readOptions, f) }
+            data = loadFiles(files, multiFile, sectionPreProcessor) { r -> new TSV(readOptions, r) }
         }
         else
         if(opts['tsv'] || fileExt in ['tsv','vcf']) {
-            data = loadFiles(files, multiFile) { f -> new TSV(readOptions, f) }
+            data = loadFiles(files, multiFile, sectionPreProcessor) { r -> new TSV(readOptions, r) }
         }
         else
         if(opts['csv'] || files[0].endsWith('csv')) {
-            data = loadFiles(files, multiFile) { f -> new CSV(readOptions, f) }
+            data = loadFiles(files, multiFile, sectionPreProcessor) { r -> new CSV(readOptions, r) }
         }
         else
         if(files[0] && Utils.reader(files[0]) { r -> r.readLine() }.tokenize('\t').size()>3) {
-            data = loadFiles(files, multiFile) { f -> new TSV(readOptions, f) }
+            data = loadFiles(files, multiFile, sectionPreProcessor) { r -> new TSV(readOptions, r) }
         }
         else {
             System.err.println()
@@ -196,10 +207,54 @@ class Table {
         }
     }
     
-    static List<Map> loadFiles(List files, boolean multiFile, Closure readerFactory) {
+    static List<Map> loadFiles(List files, boolean multiFile, Closure preProcessor = null, Closure readerFactory) {
         files.collect { f ->
-            readerFactory(f).toListMap().collect { (multiFile ? [File: f] : [:]) + it }
+            Reader reader = preProcessor ? preProcessor(f) : new File(f).newReader()
+            readerFactory(reader).toListMap().collect { (multiFile ? [File: f] : [:]) + it }
         }.sum()
+    }
+
+    /**
+     * Extracts lines belonging to the named section from a sectioned file.
+     * Sections are delimited by headers of the form [SectionName].
+     * A blank line terminates the current section.
+     */
+    static Reader extractSection(Reader reader, String sectionName) {
+        String targetHeader = "[${sectionName}]"
+        List<String> sectionLines = []
+        boolean inSection = false
+        boolean sectionFound = false
+
+        reader.eachLine { String line ->
+            if(!inSection) {
+                if(line.trim() == targetHeader) {
+                    inSection = true
+                    sectionFound = true
+                }
+            }
+            else {
+                if(line.trim().isEmpty()) {
+                    // blank line terminates the section
+                    inSection = false
+                }
+                else if(line.trim().startsWith('[') && line.trim().endsWith(']')) {
+                    // next section header terminates current section
+                    inSection = false
+                }
+                else {
+                    sectionLines << line
+                }
+            }
+        }
+
+        if(!sectionFound) {
+            System.err.println()
+            System.err.println "Section [${sectionName}] not found in input!"
+            System.err.println()
+            System.exit(1)
+        }
+
+        return new StringReader(sectionLines.join('\n'))
     }
 
     static void writeData(List<Map> data, String sep) {
