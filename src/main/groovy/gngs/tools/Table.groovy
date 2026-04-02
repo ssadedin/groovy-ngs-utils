@@ -188,11 +188,11 @@ class Table {
         }
         else
         if(outputFormat == 'csv') {
-            writeData(data, opts['sep'] ?: ',')
+            writeData(data, ',')
         }
         else
         if(outputFormat == 'tsv') {
-            writeData(data, opts['sep'] ?: '\t')
+            writeData(data, '\t')
         }
     }
     
