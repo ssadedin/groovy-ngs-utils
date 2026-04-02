@@ -97,19 +97,19 @@ class Table {
         }
         else
         if(opts['sep']) {
-            data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
+            data = loadFiles(files, multiFile) { f -> new TSV(readOptions, f) }
         }
         else
         if(opts['tsv'] || fileExt in ['tsv','vcf']) {
-            data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
+            data = loadFiles(files, multiFile) { f -> new TSV(readOptions, f) }
         }
         else
         if(opts['csv'] || files[0].endsWith('csv')) {
-            data = files.collect { f -> new CSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
+            data = loadFiles(files, multiFile) { f -> new CSV(readOptions, f) }
         }
         else
         if(files[0] && Utils.reader(files[0]) { r -> r.readLine() }.tokenize('\t').size()>3) {
-            data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
+            data = loadFiles(files, multiFile) { f -> new TSV(readOptions, f) }
         }
         else {
             System.err.println()
@@ -196,6 +196,12 @@ class Table {
         }
     }
     
+    static List<Map> loadFiles(List files, boolean multiFile, Closure readerFactory) {
+        files.collect { f ->
+            readerFactory(f).toListMap().collect { (multiFile ? [File: f] : [:]) + it }
+        }.sum()
+    }
+
     static void writeData(List<Map> data, String sep) {
         System.out.withWriter { Writer w ->
             CSVWriter csv = new CSVWriter(w, sep as char)
