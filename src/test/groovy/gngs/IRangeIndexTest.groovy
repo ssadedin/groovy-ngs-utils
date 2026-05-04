@@ -134,9 +134,9 @@ class IRangeIndexTest {
     @Test
     void testPreviousRange() {
         IRangeIndex index = createIndex()
-        [0..50, 
-         70..90, 
-         60..65].each {index.add(it.from, it.to)}
+        [0..50,
+         70..90,
+         60..65].each {index.add(it)}
         
         // previousRange should find the range whose END is before the given position
         // Range 0..50 ends at 50 (exclusive), so it ends before position 51
@@ -165,7 +165,7 @@ class IRangeIndexTest {
             10..20,   // ends at 20
             15..30,   // overlaps first range, ends at 30
             40..50    // separate range
-        ].each {index.add(it.from, it.to)}
+        ].each {index.add(it)}
         
         // At position 35, the first range we encounter going backwards is 10..20
         // But 15..30 overlaps it and extends closer to 35, so 15..30 is the answer
