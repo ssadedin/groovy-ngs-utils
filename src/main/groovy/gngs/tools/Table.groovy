@@ -99,7 +99,7 @@ class Table {
             data = files.collect { f -> new CSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else
-        if(files[0] && new File(files[0]).newReader().readLine().tokenize('\t').size()>3) {
+        if(files[0] && Utils.reader(files[0]) { r -> r.readLine() }.tokenize('\t').size()>3) {
             data = files.collect { f -> new TSV(readOptions,f).toListMap().collect { (multiFile?[File: f]:[:]) + it }}.sum()
         }
         else {
