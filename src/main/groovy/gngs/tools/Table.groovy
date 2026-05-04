@@ -83,7 +83,12 @@ class Table {
                         
         def data
         if(!files) {
-            data = new TSV(readOptions,System.in.newReader()).toListMap()
+            if(opts.csv) {
+                data = new CSV(readOptions,System.in.newReader()).toListMap()
+            }
+            else {
+                data = new TSV(readOptions,System.in.newReader()).toListMap()
+            }
         }
         else
         if(opts.tsv || fileExt in ['tsv','vcf']) {
