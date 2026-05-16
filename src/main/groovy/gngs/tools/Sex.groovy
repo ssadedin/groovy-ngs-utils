@@ -54,7 +54,13 @@ class Sex extends ToolBase {
         
         for(String vcf in opts.arguments().grep { it.endsWith('.vcf') || it.endsWith('vcf.gz') || it.endsWith('vcf.bgz') }) {
             
-            gngs.Sex sex = new VCF(vcf).guessSex(0, sampleSize)
+            gngs.Sex sex
+            if(opts['sample']) {
+                sex = new VCF(vcf).guessSex((String)opts['sample'], sampleSize)
+            }
+            else {
+                sex = new VCF(vcf).guessSex(0, sampleSize)
+            }
             
             if(opts.filter) {
                 if(opts.filter == sex.toString())
@@ -183,6 +189,7 @@ class Sex extends ToolBase {
     static main(args) {
         cli("Sex [-t <target region>] <vcf file | bam file | fastq> <vcf file | bam file | fastq> ...", args) {
             t 'Target regions to analyse (required for BAM files)', longOpt: 'target', args:1, required: false
+            sample 'Sample name to check in a multi-sample VCF', longOpt: 'sample', args:1, required: false
             stats 'Print extended information supporting inference', longOpt: 'stats'
             v 'Print verbose information about how sex is being determined'
             filter 'Print out input if it matches sex of argument (MALE, FEMALE)', args:1, required: false
