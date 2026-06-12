@@ -159,7 +159,8 @@ class DuplexTrimmer extends ToolBase {
             return false
         }
         
-        return detector.lengthsMatch(info.totalSoftClip, info.alignedBases)
+        return detector.lengthsMatch(info.leadingSoftClip, info.alignedBases) ||
+               detector.lengthsMatch(info.trailingSoftClip, info.alignedBases)
     }
     
     /**
@@ -260,7 +261,13 @@ class DuplexTrimmer extends ToolBase {
                     duplexReads.incrementAndGet()
                     // Determine which end is the duplex side
                     def duplexInfo = threadDetector.extractSoftClipInfo(wrapper.record)
-                    wrapper.duplexOnTrailingEnd = (duplexInfo.trailingSoftClip >= duplexInfo.leadingSoftClip)
+                    boolean leadingMatches = threadDetector.lengthsMatch(duplexInfo.leadingSoftClip, duplexInfo.alignedBases)
+                    boolean trailingMatches = threadDetector.lengthsMatch(duplexInfo.trailingSoftClip, duplexInfo.alignedBases)
+                    if (trailingMatches && leadingMatches) {
+                        wrapper.duplexOnTrailingEnd = (duplexInfo.trailingSoftClip >= duplexInfo.leadingSoftClip)
+                    } else {
+                        wrapper.duplexOnTrailingEnd = trailingMatches
+                    }
                     wrapper.record = applyAction(wrapper.record, wrapper.duplexOnTrailingEnd)
                     
                     if(isTraceRead) {

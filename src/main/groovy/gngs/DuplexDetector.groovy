@@ -186,13 +186,22 @@ class DuplexDetector {
             return false
         }
         
-        // Check if soft clip length matches aligned length
-        if (!lengthsMatch(info.getTotalSoftClip(), info.alignedBases)) {
+        // Check if either the leading or trailing soft clip individually matches the aligned length
+        boolean leadingMatches = lengthsMatch(info.leadingSoftClip, info.alignedBases)
+        boolean trailingMatches = lengthsMatch(info.trailingSoftClip, info.alignedBases)
+        
+        if (!leadingMatches && !trailingMatches) {
             return false
         }
         
-        // Determine which end has the soft clip (prefer trailing)
-        boolean useTrailing = info.trailingSoftClip >= info.leadingSoftClip
+        // Determine which end has the duplex soft clip (prefer the one that matches)
+        boolean useTrailing
+        if (trailingMatches && leadingMatches) {
+            // Both match - prefer the larger one
+            useTrailing = info.trailingSoftClip >= info.leadingSoftClip
+        } else {
+            useTrailing = trailingMatches
+        }
         int softClipLength = useTrailing ? info.trailingSoftClip : info.leadingSoftClip
         
         // Extract sequences for comparison
