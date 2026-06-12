@@ -258,7 +258,10 @@ class DuplexTrimmer extends ToolBase {
                 
                 if (wrapper.isDuplex) {
                     duplexReads.incrementAndGet()
-                    wrapper.record = applyAction(wrapper.record)
+                    // Determine which end is the duplex side
+                    def duplexInfo = threadDetector.extractSoftClipInfo(wrapper.record)
+                    wrapper.duplexOnTrailingEnd = (duplexInfo.trailingSoftClip >= duplexInfo.leadingSoftClip)
+                    wrapper.record = applyAction(wrapper.record, wrapper.duplexOnTrailingEnd)
                     
                     if(isTraceRead) {
                         String action = opts['action'] ?: 'reject'
@@ -309,7 +312,7 @@ class DuplexTrimmer extends ToolBase {
      * Apply the configured action to a duplex read
      */
     @CompileStatic
-    SAMRecord applyAction(SAMRecord record) {
+    SAMRecord applyAction(SAMRecord record, boolean duplexOnTrailingEnd) {
         String action = opts['action'] ?: 'reject'
         
         switch(action) {
@@ -319,7 +322,7 @@ class DuplexTrimmer extends ToolBase {
                 
             case 'trim':
                 trimmedReads.incrementAndGet()
-                return trimSoftClips(record)
+                return trimDuplexEnd(record, duplexOnTrailingEnd)
                 
             case 'keep':
                 return record  // Keep as-is
@@ -332,27 +335,40 @@ class DuplexTrimmer extends ToolBase {
     }
     
     /**
-     * Remove soft clips from a read, keeping only the aligned portion
+     * Remove the soft clip from only the end identified as the duplex portion
      */
     @CompileStatic
-    SAMRecord trimSoftClips(SAMRecord record) {
+    SAMRecord trimDuplexEnd(SAMRecord record, boolean duplexOnTrailingEnd) {
         def info = detector.extractSoftClipInfo(record)
         
-        // Create a new CIGAR without soft clips
-        def newCigar = record.cigar.cigarElements
-            .findAll { it.operator != CigarOperator.SOFT_CLIP }
+        List cigarElements = record.cigar.cigarElements
+        
+        // Only remove the soft clip on the duplex end
+        List newCigar
+        int trimStart = 0
+        int trimEnd = record.readLength
+        
+        if (duplexOnTrailingEnd) {
+            // Remove trailing soft clip only
+            newCigar = cigarElements.findAll { el ->
+                // Keep all elements except the last one if it's a soft clip
+                el != cigarElements.last() || el.operator != CigarOperator.SOFT_CLIP
+            }
+            trimEnd = record.readLength - info.trailingSoftClip
+        } else {
+            // Remove leading soft clip only
+            newCigar = cigarElements.findAll { el ->
+                // Keep all elements except the first one if it's a soft clip
+                el != cigarElements.first() || el.operator != CigarOperator.SOFT_CLIP
+            }
+            trimStart = info.leadingSoftClip
+        }
         
         if (newCigar.isEmpty()) {
             return null  // Nothing left after trimming
         }
         
-        // Update the record
-        record.cigar = new htsjdk.samtools.Cigar(newCigar)
-        
         // Trim the bases and qualities
-        int trimStart = info.leadingSoftClip
-        int trimEnd = record.readLength - info.trailingSoftClip
-        
         if (trimStart < trimEnd) {
             byte[] newBases = Arrays.copyOfRange(record.readBases, trimStart, trimEnd)
             byte[] newQuals = Arrays.copyOfRange(record.baseQualities, trimStart, trimEnd)
@@ -360,6 +376,9 @@ class DuplexTrimmer extends ToolBase {
             record.readBases = newBases
             record.baseQualities = newQuals
         }
+        
+        // Update the CIGAR after trimming bases
+        record.cigar = new htsjdk.samtools.Cigar(newCigar)
         
         return record
     }
@@ -438,4 +457,5 @@ class ReadWrapper {
     volatile boolean processed = false
     volatile boolean isDuplex = false
     volatile boolean skipProcessing = false
+    volatile boolean duplexOnTrailingEnd = false
 }
