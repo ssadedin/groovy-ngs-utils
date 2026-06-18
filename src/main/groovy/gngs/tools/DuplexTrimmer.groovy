@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicLong
 import gngs.*
 import groovy.transform.CompileStatic
 import groovy.util.logging.Log
+import htsjdk.samtools.CigarElement
 import htsjdk.samtools.CigarOperator
 import htsjdk.samtools.SAMFileWriter
 import htsjdk.samtools.SAMRecord
@@ -348,27 +349,49 @@ class DuplexTrimmer extends ToolBase {
     SAMRecord trimDuplexEnd(SAMRecord record, boolean duplexOnTrailingEnd) {
         def info = detector.extractSoftClipInfo(record)
         
-        List cigarElements = record.cigar.cigarElements
-        
-        // Only remove the soft clip on the duplex end
-        List newCigar
+        List<CigarElement> cigarElements = record.cigar.cigarElements
+        List<CigarElement> newCigar = new ArrayList<CigarElement>()
         int trimStart = 0
         int trimEnd = record.readLength
         
         if (duplexOnTrailingEnd) {
-            // Remove trailing soft clip only
-            newCigar = cigarElements.findAll { el ->
-                // Keep all elements except the last one if it's a soft clip
-                el != cigarElements.last() || el.operator != CigarOperator.SOFT_CLIP
-            }
+            // Remove trailing soft clip (and any trailing hard clip) only
             trimEnd = record.readLength - info.trailingSoftClip
-        } else {
-            // Remove leading soft clip only
-            newCigar = cigarElements.findAll { el ->
-                // Keep all elements except the first one if it's a soft clip
-                el != cigarElements.first() || el.operator != CigarOperator.SOFT_CLIP
+            
+            // Build new CIGAR: keep everything except trailing S and H
+            int lastNonTrailingIdx = cigarElements.size() - 1
+            // Walk backwards past trailing H and S elements
+            while (lastNonTrailingIdx >= 0) {
+                CigarOperator op = cigarElements[lastNonTrailingIdx].operator
+                if (op == CigarOperator.SOFT_CLIP || op == CigarOperator.HARD_CLIP) {
+                    lastNonTrailingIdx--
+                } else {
+                    break
+                }
             }
+            // Copy elements up to and including the last non-trailing element
+            for (int i = 0; i <= lastNonTrailingIdx; i++) {
+                newCigar.add(cigarElements[i])
+            }
+        } else {
+            // Remove leading soft clip (and any leading hard clip) only
             trimStart = info.leadingSoftClip
+            
+            // Build new CIGAR: keep everything except leading S and H
+            int firstNonLeadingIdx = 0
+            // Walk forward past leading H and S elements
+            while (firstNonLeadingIdx < cigarElements.size()) {
+                CigarOperator op = cigarElements[firstNonLeadingIdx].operator
+                if (op == CigarOperator.SOFT_CLIP || op == CigarOperator.HARD_CLIP) {
+                    firstNonLeadingIdx++
+                } else {
+                    break
+                }
+            }
+            // Copy elements from the first non-leading element onwards
+            for (int i = firstNonLeadingIdx; i < cigarElements.size(); i++) {
+                newCigar.add(cigarElements[i])
+            }
         }
         
         if (newCigar.isEmpty()) {
