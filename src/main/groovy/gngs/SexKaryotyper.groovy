@@ -112,10 +112,6 @@ class SexKaryotyper implements Runnable {
         
         log.info "Means for $sample are: " + [chrX: xCoverage, chrY: yCoverage, autosomes: autosomeCoverage]
         
-        if(yCoverage < 5 && xCoverage > 30) {
-            sex = Sex.FEMALE
-        }
-        else
         if(autosomeCoverage < 1.0) {
             log.warning("Autosomal coverage too low to infer sex: $autosomeCoverage")
             sex = Sex.OTHER
@@ -124,6 +120,11 @@ class SexKaryotyper implements Runnable {
         if(xCoverage / autosomeCoverage < 0.75) {
             log.info "chrX / auto = " + (xCoverage / autosomeCoverage)
             sex = Sex.MALE
+        }
+        else
+        if(yCoverage / autosomeCoverage < 0.125) {
+            log.info "chrY / auto = " + (yCoverage / autosomeCoverage)
+            sex = Sex.FEMALE
         }
         else
             sex = Sex.OTHER
