@@ -2,6 +2,7 @@ package gngs.tools
 
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.ConcurrentHashMap
 
 import gngs.*
 import groovy.transform.CompileStatic
@@ -28,9 +29,13 @@ class DuplexTrimmer extends ToolBase {
     AtomicLong rejectedReads = new AtomicLong(0)
     AtomicLong trimmedReads = new AtomicLong(0)
     AtomicLong candidateReads = new AtomicLong(0)
+    AtomicLong removedSecondaries = new AtomicLong(0)
     
     // Trace logging
     String traceReadName = null
+    
+    // Secondary alignment tracking
+    static final int MAX_SECONDARY_BUFFER = 1000
     
     // Progress tracking
     static final int PROGRESS_INTERVAL = 5000
@@ -102,7 +107,8 @@ class DuplexTrimmer extends ToolBase {
             
             ReadWrapper wrapper = new ReadWrapper(
                 record: record,
-                sequenceNumber: seqNum++
+                sequenceNumber: seqNum++,
+                originalReadName: record.readName
             )
             
             // Add to both queues immediately - let workers do ALL filtering
@@ -283,14 +289,34 @@ class DuplexTrimmer extends ToolBase {
     }
     
     /**
-     * Start the output thread that writes processed reads in order from the output queue
+     * Start the output thread that writes processed reads in order from the output queue.
+     * 
+     * When removeSecondaries is enabled, this thread tracks which read names have been
+     * identified as duplex. If a secondary/supplementary alignment is encountered whose
+     * primary hasn't been resolved yet, the output stream is buffered until the primary
+     * is found (which should be very nearby in a coordinate-sorted BAM since the secondary
+     * aligns to approximately the same position as the primary).
      */
     Thread startOutputThread(LinkedBlockingQueue<ReadWrapper> outputQueue, 
                             ReadWrapper POISON, String outputFile, SAM bam) {
+        
+        boolean removeSecondaries = opts['removeSecondaries'] ? true : false
+        
         Thread.start {
             log.info "Writing output to: $outputFile"
+            if (removeSecondaries) {
+                log.info "Secondary alignment removal enabled"
+            }
             
             bam.withWriter(outputFile, true) { SAMFileWriter writer ->
+                
+                // Track resolved read names
+                Set<String> duplexReadNames = new HashSet<>()
+                Set<String> resolvedNonDuplex = new HashSet<>()
+                
+                // Eviction tracking - remove old entries to bound memory
+                long evictionCounter = 0
+                final long EVICTION_INTERVAL = 50000
                 
                 while (true) {
                     ReadWrapper wrapper = outputQueue.take()
@@ -304,10 +330,107 @@ class DuplexTrimmer extends ToolBase {
                         Thread.sleep(1)
                     }
                     
-                    // Write immediately in queue order - queue order IS the correct order
-                    // null record means it was rejected
-                    if (wrapper.record != null) {
-                        writer.addAlignment(wrapper.record)
+                    // null record means it was rejected (but we still need to track the name)
+                    if (wrapper.record == null) {
+                        if (removeSecondaries && wrapper.isDuplex) {
+                            duplexReadNames.add(wrapper.originalReadName)
+                        }
+                        continue
+                    }
+                    
+                    SAMRecord record = wrapper.record
+                    
+                    if (removeSecondaries && record.isSecondaryOrSupplementary()) {
+                        String readName = record.readName
+                        if (duplexReadNames.contains(readName)) {
+                            // Primary was already resolved as duplex - discard
+                            removedSecondaries.incrementAndGet()
+                            continue
+                        } else if (resolvedNonDuplex.contains(readName)) {
+                            // Primary was already resolved as non-duplex - write
+                            writer.addAlignment(record)
+                        } else {
+                            // Primary not yet seen - buffer until resolved
+                            List<ReadWrapper> localBuffer = new ArrayList<>()
+                            localBuffer.add(wrapper)
+                            boolean resolved = false
+                            
+                            while (!resolved) {
+                                ReadWrapper next = outputQueue.take()
+                                
+                                if (next.sequenceNumber == -1) {
+                                    // End of stream - flush buffer and exit
+                                    for (ReadWrapper buffered : localBuffer) {
+                                        if (buffered.record != null) {
+                                            writer.addAlignment(buffered.record)
+                                        }
+                                    }
+                                    resolved = true
+                                    // Re-signal poison for the outer loop
+                                    outputQueue.put(next)
+                                    break
+                                }
+                                
+                                while (!next.processed) {
+                                    Thread.sleep(1)
+                                }
+                                
+                                localBuffer.add(next)
+                                
+                                // Check if this is the primary that resolves our secondary
+                                if (next.record != null && !next.record.isSecondaryOrSupplementary()
+                                    && next.record.readName == readName) {
+                                    if (next.isDuplex) {
+                                        duplexReadNames.add(readName)
+                                    } else {
+                                        resolvedNonDuplex.add(readName)
+                                    }
+                                    resolved = true
+                                } else if (next.record == null && next.isDuplex 
+                                           && next.originalReadName == readName) {
+                                    // Primary was rejected (record set to null)
+                                    duplexReadNames.add(readName)
+                                    resolved = true
+                                }
+                                
+                                // Safety valve: if buffer grows too large, assume non-duplex
+                                if (!resolved && localBuffer.size() > MAX_SECONDARY_BUFFER) {
+                                    log.warning "Secondary buffer exceeded ${MAX_SECONDARY_BUFFER} for read ${readName}, assuming non-duplex"
+                                    resolvedNonDuplex.add(readName)
+                                    resolved = true
+                                }
+                            }
+                            
+                            // Flush local buffer in order
+                            for (ReadWrapper buffered : localBuffer) {
+                                if (buffered.record == null) {
+                                    continue
+                                }
+                                if (buffered.record.isSecondaryOrSupplementary()
+                                    && duplexReadNames.contains(buffered.record.readName)) {
+                                    removedSecondaries.incrementAndGet()
+                                    continue
+                                }
+                                writer.addAlignment(buffered.record)
+                            }
+                        }
+                    } else {
+                        // Primary read or removeSecondaries disabled
+                        if (removeSecondaries) {
+                            if (wrapper.isDuplex) {
+                                duplexReadNames.add(record.readName)
+                            } else {
+                                resolvedNonDuplex.add(record.readName)
+                            }
+                        }
+                        writer.addAlignment(record)
+                    }
+                    
+                    // Periodic eviction of old resolved names to bound memory
+                    if (removeSecondaries && (++evictionCounter % EVICTION_INTERVAL == 0)) {
+                        // Keep duplexReadNames (small set, needed for distant secondaries)
+                        // Clear resolvedNonDuplex (large set, distant secondaries are safe to write)
+                        resolvedNonDuplex.clear()
                     }
                 }
             }
@@ -435,10 +558,12 @@ class DuplexTrimmer extends ToolBase {
         double inputUtilization = totalCapacity > 0 ? 100.0 * inputQueueSize / totalCapacity : 0.0
         double outputUtilization = totalCapacity > 0 ? 100.0 * outputQueueSize / totalCapacity : 0.0
         
+        long secondaries = removedSecondaries.get()
+        
         log.info String.format(
-            "Progress: %,d reads at %s | Queue: in=%d/%d (%.1f%%) out=%d/%d (%.1f%%) | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed",
+            "Progress: %,d reads at %s | Queue: in=%d/%d (%.1f%%) out=%d/%d (%.1f%%) | %,d candidates (%.2f%%) | %,d duplex (%.2f%%) | %,d rejected | %,d trimmed | %,d sec. removed",
             count, position, inputQueueSize, totalCapacity, inputUtilization, outputQueueSize, totalCapacity, outputUtilization,
-            candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed
+            candidates, candidatePercent, duplex, duplexPercent, rejected, trimmed, secondaries
         )
     }
     
@@ -455,6 +580,7 @@ class DuplexTrimmer extends ToolBase {
         System.err.println "Duplex reads detected:    ${duplexReads.get()} (${String.format('%.2f', 100.0 * duplexReads.get() / totalReads.get())}%)"
         System.err.println "Reads rejected:           ${rejectedReads.get()}"
         System.err.println "Reads trimmed:            ${trimmedReads.get()}"
+        System.err.println "Secondaries removed:      ${removedSecondaries.get()}"
         System.err.println "=" * 80
         System.err.println ""
     }
@@ -472,6 +598,7 @@ class DuplexTrimmer extends ToolBase {
             lengthTolerance 'Length tolerance for duplex detection (default 0.10)', args: 1, required: false
             alignmentThreshold 'Alignment threshold for duplex detection (default 0.40)', args: 1, required: false
             region 'Region to process (format: chr:start-end)', args: 1, required: false
+            removeSecondaries 'Remove secondary/supplementary alignments for duplex reads', required: false
             trace 'Read name to trace through processing', args: 1, required: false
         }
     }
@@ -483,6 +610,7 @@ class DuplexTrimmer extends ToolBase {
 @CompileStatic
 class ReadWrapper {
     SAMRecord record
+    String originalReadName
     long sequenceNumber
     volatile boolean processed = false
     volatile boolean isDuplex = false
