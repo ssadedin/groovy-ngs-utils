@@ -61,8 +61,12 @@ class DuplexTrimmer extends ToolBase {
             detector.alignmentThreshold = opts['alignmentThreshold'].toDouble()
         }
         
+        if(opts['alignmentWindow']) {
+            detector.alignmentWindowSize = opts['alignmentWindow'].toInteger()
+        }
+        
         log.info "Starting DuplexTrimmer with $threads threads and queue size $queueSize"
-        log.info "Length tolerance: ${detector.lengthTolerance}, Alignment threshold: ${detector.alignmentThreshold}"
+        log.info "Length tolerance: ${detector.lengthTolerance}, Alignment threshold: ${detector.alignmentThreshold}, Alignment window: ${detector.alignmentWindowSize}"
         
         if(traceReadName) {
             log.info "Trace logging enabled for read: $traceReadName"
@@ -180,6 +184,7 @@ class DuplexTrimmer extends ToolBase {
             // Copy configuration from main detector
             threadDetector.lengthTolerance = detector.lengthTolerance
             threadDetector.alignmentThreshold = detector.alignmentThreshold
+            threadDetector.alignmentWindowSize = detector.alignmentWindowSize
             
             while (true) {
                 ReadWrapper wrapper = inputQueue.take()
@@ -597,6 +602,7 @@ class DuplexTrimmer extends ToolBase {
             queueSize 'Size of processing queue', args: 1, required: false
             lengthTolerance 'Length tolerance for duplex detection (default 0.10)', args: 1, required: false
             alignmentThreshold 'Alignment threshold for duplex detection (default 0.40)', args: 1, required: false
+            alignmentWindow 'Number of bases to compare at the junction for alignment check (default 50)', args: 1, required: false
             region 'Region to process (format: chr:start-end)', args: 1, required: false
             removeSecondaries 'Remove secondary/supplementary alignments for duplex reads', required: false
             trace 'Read name to trace through processing', args: 1, required: false

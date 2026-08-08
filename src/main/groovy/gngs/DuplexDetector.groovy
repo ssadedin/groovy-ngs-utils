@@ -33,9 +33,14 @@ class DuplexDetector {
     static final double DEFAULT_ALIGNMENT_THRESHOLD = 0.30
     
     /**
+     * Default number of bases to compare for alignment check
+     */
+    static final int DEFAULT_ALIGNMENT_WINDOW_SIZE = 50
+    
+    /**
      * Number of bases to compare for alignment check
      */
-    static final int ALIGNMENT_WINDOW_SIZE = 50
+    int alignmentWindowSize = DEFAULT_ALIGNMENT_WINDOW_SIZE
     
     /**
      * Tolerance for comparing aligned vs soft clipped lengths
@@ -215,22 +220,22 @@ class DuplexDetector {
         String softClipSeq
         
         if (useTrailing) {
-            // Trailing soft clip: compare last 50bp of aligned vs first 50bp of soft clip
+            // Trailing soft clip: compare last N bp of aligned vs first N bp of soft clip
             int alignedEnd = readLength - softClipLength
-            int alignedStart = Math.max(0, alignedEnd - ALIGNMENT_WINDOW_SIZE)
+            int alignedStart = Math.max(0, alignedEnd - alignmentWindowSize)
             alignedSeq = extractSequence(record, alignedStart, alignedEnd)
             
             int softClipStart = alignedEnd
-            int softClipEnd = Math.min(readLength, softClipStart + ALIGNMENT_WINDOW_SIZE)
+            int softClipEnd = Math.min(readLength, softClipStart + alignmentWindowSize)
             softClipSeq = extractSequence(record, softClipStart, softClipEnd)
         } else {
-            // Leading soft clip: compare last 50bp of soft clip vs first 50bp of aligned
+            // Leading soft clip: compare last N bp of soft clip vs first N bp of aligned
             int softClipEnd = softClipLength
-            int softClipStart = Math.max(0, softClipEnd - ALIGNMENT_WINDOW_SIZE)
+            int softClipStart = Math.max(0, softClipEnd - alignmentWindowSize)
             softClipSeq = extractSequence(record, softClipStart, softClipEnd)
             
             int alignedStart = softClipEnd
-            int alignedEnd = Math.min(readLength, alignedStart + ALIGNMENT_WINDOW_SIZE)
+            int alignedEnd = Math.min(readLength, alignedStart + alignmentWindowSize)
             alignedSeq = extractSequence(record, alignedStart, alignedEnd)
         }
         
