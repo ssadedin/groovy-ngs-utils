@@ -237,19 +237,19 @@ class DuplexTrimmer extends ToolBase {
                     
                     if (useTrailing) {
                         int alignedEnd = readLength - softClipLength
-                        int alignedStart = Math.max(0, alignedEnd - 50)
+                        int alignedStart = Math.max(0, alignedEnd - threadDetector.alignmentWindowSize)
                         alignedSeq = threadDetector.extractSequence(wrapper.record, alignedStart, alignedEnd)
                         
                         int softClipStart = alignedEnd
-                        int softClipEnd = Math.min(readLength, softClipStart + 50)
+                        int softClipEnd = Math.min(readLength, softClipStart + threadDetector.alignmentWindowSize)
                         softClipSeq = threadDetector.extractSequence(wrapper.record, softClipStart, softClipEnd)
                     } else {
                         int softClipEnd = softClipLength
-                        int softClipStart = Math.max(0, softClipEnd - 50)
+                        int softClipStart = Math.max(0, softClipEnd - threadDetector.alignmentWindowSize)
                         softClipSeq = threadDetector.extractSequence(wrapper.record, softClipStart, softClipEnd)
                         
                         int alignedStart = softClipEnd
-                        int alignedEnd = Math.min(readLength, alignedStart + 50)
+                        int alignedEnd = Math.min(readLength, alignedStart + threadDetector.alignmentWindowSize)
                         alignedSeq = threadDetector.extractSequence(wrapper.record, alignedStart, alignedEnd)
                     }
                     
