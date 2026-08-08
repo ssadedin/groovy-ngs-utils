@@ -30,7 +30,7 @@ class DuplexDetector {
     /**
      * Default alignment threshold
      */
-    static final double DEFAULT_ALIGNMENT_THRESHOLD = 0.30
+    static final double DEFAULT_ALIGNMENT_THRESHOLD = 0.35
     
     /**
      * Default number of bases to compare for alignment check
@@ -163,7 +163,12 @@ class DuplexDetector {
      */
     double alignSequences(String seq1, String seq2) {
 
-        return Align.global(gapOpenPenalty: 1, seq1, seq2).score / seq1.length()
+        // Special tuning of the alignment parameters: we want a low penalty to open a gap to allow
+        // for inherent ONT indel errors, but a relatively high penalty to continue that gap, since
+        // in general indel errors should be small and there should be NO real indels. This is a
+        // very different case to alignment to real seequence where we expect there might be real
+        // insertions and dels
+        return Align.global(gapOpenPenalty: 2, gapExtensionPenalty:3, seq1, seq2).score / seq1.length()
     }
     
     /**
