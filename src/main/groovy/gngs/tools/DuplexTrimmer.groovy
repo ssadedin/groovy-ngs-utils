@@ -526,6 +526,14 @@ class DuplexTrimmer extends ToolBase {
             return null  // Nothing left after trimming
         }
         
+        // Remove base modification tags (MM/ML) since they refer to positions
+        // in the original untrimmed sequence and would be invalid after trimming
+        record.setAttribute("MM", (String)null)
+        record.setAttribute("ML", (Object)null)
+        // Also handle the older Mm/Ml tag variants
+        record.setAttribute("Mm", (String)null)
+        record.setAttribute("Ml", (Object)null)
+        
         // Trim the bases and qualities
         if (trimStart < trimEnd) {
             byte[] newBases = Arrays.copyOfRange(record.readBases, trimStart, trimEnd)
