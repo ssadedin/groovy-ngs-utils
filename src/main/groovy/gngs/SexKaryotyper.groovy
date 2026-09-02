@@ -51,6 +51,8 @@ class SexKaryotyper implements Runnable {
     
     double autosomeCoverage 
     
+    double minExpectedX = 20
+    
     List<String> autosomeChrs = ["chr1","chr22"]
     
     gngs.Sex sex = null
@@ -112,7 +114,7 @@ class SexKaryotyper implements Runnable {
         
         log.info "Means for $sample are: " + [chrX: xCoverage, chrY: yCoverage, autosomes: autosomeCoverage]
         
-        if(yCoverage < 5 && xCoverage > 20) {
+        if(yCoverage < 5 && xCoverage > minExpectedX) {
             sex = Sex.FEMALE
         }
         else
