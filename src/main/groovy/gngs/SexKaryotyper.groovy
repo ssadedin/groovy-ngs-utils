@@ -112,7 +112,7 @@ class SexKaryotyper implements Runnable {
         
         log.info "Means for $sample are: " + [chrX: xCoverage, chrY: yCoverage, autosomes: autosomeCoverage]
         
-        if(yCoverage < 5 && xCoverage > 30) {
+        if(yCoverage < 5 && xCoverage > 20) {
             sex = Sex.FEMALE
         }
         else
