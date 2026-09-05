@@ -468,7 +468,7 @@ class Cov extends ToolBase {
             final byte com = coverageOverlapMode
             final boolean addKmerinfo = (this.kmerFactors != null)
 
-            while(it.hasNext()) {
+            nextread: while(it.hasNext()) {
                 SAMRecord r = it.next()
                 if(r.getReadUnmappedFlag())
                     continue
@@ -480,15 +480,10 @@ class Cov extends ToolBase {
                     continue
 
                 if(requiredTags != null) {
-                    boolean hasAll = true
                     for(int t = 0; t < requiredTags.length; ++t) {
-                        if(r.getAttribute(requiredTags[t]) == null) {
-                            hasAll = false
-                            break
-                        }
+                        if(r.getAttribute(requiredTags[t]) == null)
+                            continue nextread
                     }
-                    if(!hasAll)
-                        continue
                 }
                     
                 final int mateStart = r.getMateAlignmentStart();
