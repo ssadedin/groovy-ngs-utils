@@ -138,11 +138,17 @@ class Cov extends ToolBase {
 
         initOverlapMode()
         
-        if(opts.minMQ)
-            this.minimumMappingQuality = opts.minMQ.toInteger()
+        if(opts['minMQ'])
+            this.minimumMappingQuality = opts['minMQ'].toInteger()
 
-        if(opts.allowDuplicates)
-            this.allowDuplicates = opts.allowDuplicates
+        if(opts['allowDuplicates'])
+            this.allowDuplicates = opts['allowDuplicates']
+
+        if(opts['requiredTags']) {
+            List<String> tagValues = opts['requiredTags'] instanceof List ? (List<String>)opts['requiredTags'] : [opts['requiredTags'].toString()]
+            this.requiredTags = tagValues as String[]
+            log.info "Only counting reads with tags: ${tagValues.join(', ')}"
+        }
             
         log.info "Analysing ${Utils.humanBp(scanRegions.size())} from ${opts.arguments()[0]}"
         log.info "Mapping quality threshold = $minimumMappingQuality"
