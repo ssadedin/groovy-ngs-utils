@@ -69,6 +69,12 @@ class Cov extends ToolBase {
 
     boolean allowDuplicates = false
     
+    /**
+     * When non-null, only reads possessing all of these SAM tags are counted.
+     * Stored as an array for tight iteration in the hot loop.
+     */
+    String[] requiredTags = null
+    
     SAM bam 
     
     Writer out
@@ -141,6 +147,8 @@ class Cov extends ToolBase {
         log.info "Analysing ${Utils.humanBp(scanRegions.size())} from ${opts.arguments()[0]}"
         log.info "Mapping quality threshold = $minimumMappingQuality"
         log.info "Duplicates allowed = $allowDuplicates"
+        if(requiredTags != null)
+            log.info "Required tags = ${requiredTags.join(', ')}"
         
         if(opts.kmer) {
             this.initKmerProfile()
@@ -464,6 +472,18 @@ class Cov extends ToolBase {
                     continue
                 if(r.getDuplicateReadFlag() && ! allowDuplicates)
                     continue
+
+                if(requiredTags != null) {
+                    boolean hasAll = true
+                    for(int t = 0; t < requiredTags.length; ++t) {
+                        if(r.getAttribute(requiredTags[t]) == null) {
+                            hasAll = false
+                            break
+                        }
+                    }
+                    if(!hasAll)
+                        continue
+                }
                     
                 final int mateStart = r.getMateAlignmentStart();
                 int alignmentEnd = r.alignmentEnd
@@ -585,6 +605,7 @@ class Cov extends ToolBase {
             'L' 'Regions over which to report coverage depth', args:1, required: true, longOpt: 'target'
             reference 'Reference to use when decoding crams', args:1, required: false, type:File
             a 'Flag to not discard reads which are considered duplicates', longOpt: 'allowDuplicates', args:0, required: false, type:boolean
+            requiredTags 'Only count reads having this SAM tag (may be specified multiple times, e.g. -requiredTags PS -requiredTags HP)', args:1, required: false, valueSeparator: ',' as char
         }
     }
     
