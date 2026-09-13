@@ -1188,6 +1188,28 @@ class VCF implements Iterable<Variant>, Serializable {
     }
     
     /**
+     * Add a header for describing an info value to be added to a
+     * VCF, with the type specified directly.
+     *
+     * @param id        the INFO field ID
+     * @param number    the Number attribute (e.g. "1", "A", ".", "0")
+     * @param type      the Type attribute (e.g. "String", "Integer", "Float", "Flag")
+     * @param desc      human readable description of the field
+     */
+    void addInfoHeader(String id, String number, String type, String desc) {
+        int lastInfo = this.headerLines.findLastIndexOf { it.startsWith("##INFO=") }
+        if(lastInfo < 0)
+            lastInfo = 1
+
+        this.headerLines = this.headerLines[0..<lastInfo] +
+            ["##INFO=<ID=$id,Number=$number,Type=${type},Description=\"$desc\">"] +
+            this.headerLines[lastInfo..-1]
+
+        // Clear any cached meta data so it will get reparsed
+        this.infoMetaDatas = null;
+    }
+
+    /**
      * Return true if this VCF file contains the specified INFO tags
      * <p>
      * Note: it only checks if the tag is described in the header,
