@@ -30,6 +30,7 @@ import java.nio.channels.FileChannel.MapMode
 import java.util.zip.GZIPInputStream;
 import java.util.regex.*
 
+import htsjdk.samtools.util.BlockCompressedOutputStream
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
 import htsjdk.tribble.index.IndexFactory
