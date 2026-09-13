@@ -1214,6 +1214,62 @@ class VCF implements Iterable<Variant>, Serializable {
     }
 
     /**
+     * Add a header for describing a FORMAT field to be added to a VCF,
+     * and optionally set the value for every variant already loaded.
+     * <p>
+     * When a closure is provided, it is called once per variant with the
+     * variant as its argument. The closure should return the value to append
+     * to <b>every</b> sample column for that variant. If the closure returns
+     * {@code null}, a '.' is used as the value.
+     * <p>
+     * Example:
+     * <pre>
+     * vcf.addFormatHeader('XF', '1', 'Integer', 'My custom field') { Variant v ->
+     *     v.info.DP ?: 0
+     * }
+     * </pre>
+     *
+     * @param id        the FORMAT field ID
+     * @param number    the Number attribute (e.g. "1", "A", ".", "0")
+     * @param type      the Type attribute (e.g. "String", "Integer", "Float")
+     * @param desc      human readable description of the field
+     * @param c         optional closure returning the value to set for each variant
+     */
+    void addFormatHeader(String id, String number, String type, String desc,
+                         @ClosureParams(value=SimpleType, options=['gngs.Variant']) Closure c = null) {
+
+        int lastFormat = this.headerLines.findLastIndexOf { it.startsWith("##FORMAT=") }
+        if(lastFormat < 0) {
+            lastFormat = this.headerLines.findLastIndexOf { it.startsWith("##INFO=") }
+        }
+        if(lastFormat < 0)
+            lastFormat = 1
+
+        this.headerLines = this.headerLines[0..<lastFormat] +
+            ["##FORMAT=<ID=$id,Number=$number,Type=${type},Description=\"$desc\">"] +
+            this.headerLines[lastFormat..-1]
+
+        // Clear cached format metadata so it will get reparsed
+        this.formatMetaData = null
+
+        if(c != null) {
+            for(Variant v in this.variants) {
+                String [] fields = v.line.split('\t', -1)
+                String formatField = fields[FORMAT_COLUMN_INDEX]
+                fields[FORMAT_COLUMN_INDEX] = formatField + ':' + id
+
+                Object result = c(v)
+                String value = result != null ? String.valueOf(result) : '.'
+
+                for(int i = SAMPLE_COLUMN_INDEX; i < fields.length; ++i) {
+                    fields[i] = fields[i] + ':' + value
+                }
+                v.line = fields.join('\t')
+            }
+        }
+    }
+
+    /**
      * Return true if this VCF file contains the specified INFO tags
      * <p>
      * Note: it only checks if the tag is described in the header,
