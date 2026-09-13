@@ -33,7 +33,10 @@ import java.util.regex.*
 import htsjdk.tribble.index.Block
 import htsjdk.tribble.index.Index
 import htsjdk.tribble.index.IndexFactory
-import htsjdk.tribble.readers.TabixReader;
+import htsjdk.tribble.index.tabix.TabixFormat
+import htsjdk.tribble.index.tabix.TabixIndexCreator
+import htsjdk.tribble.readers.TabixReader
+import htsjdk.variant.vcf.VCFCodec
 
 import org.codehaus.groovy.runtime.StackTraceUtils
 
@@ -1730,6 +1733,56 @@ class VCF implements Iterable<Variant>, Serializable {
             p.append(v.line)
             p.append('\n')
         }
+    }
+
+    /**
+     * Save this VCF as a bgzipped file with an accompanying tabix index.
+     * <p>
+     * The output file will be block-gzip compressed and a <code>.tbi</code>
+     * tabix index will be written alongside it. If the supplied path does
+     * not end with <code>.gz</code>, the extension will be appended automatically.
+     *
+     * @param filePath  path for the output bgzipped VCF file
+     */
+    void saveIndexed(String filePath) {
+        saveIndexed(new File(filePath))
+    }
+
+    /**
+     * Save this VCF as a bgzipped file with an accompanying tabix index.
+     * <p>
+     * The output file will be block-gzip compressed and a <code>.tbi</code>
+     * tabix index will be written alongside it. If the supplied path does
+     * not end with <code>.gz</code>, the extension will be appended automatically.
+     *
+     * @param file  File for the output bgzipped VCF
+     */
+    void saveIndexed(File file) {
+
+        if(!file.name.endsWith('.gz')) {
+            file = new File(file.path + '.gz')
+        }
+
+        // Write the bgzipped VCF
+        BlockCompressedOutputStream bgzOut = new BlockCompressedOutputStream(file)
+        try {
+            byte[] newlineBytes = '\n'.getBytes('UTF-8')
+            for(String headerLine in headerLines) {
+                bgzOut.write(headerLine.getBytes('UTF-8'))
+                bgzOut.write(newlineBytes)
+            }
+            for(Variant v in this) {
+                bgzOut.write(v.line.getBytes('UTF-8'))
+                bgzOut.write(newlineBytes)
+            }
+        }
+        finally {
+            bgzOut.close()
+        }
+
+        // Create the tabix index from the written bgzipped file
+        Index idx = IndexFactory.createTabixIndex(file, new VCFCodec(), TabixFormat.VCF, null)
+        idx.writeBasedOnFeatureFile(file)
     }
 
     /**
