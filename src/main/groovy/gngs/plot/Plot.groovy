@@ -106,12 +106,35 @@ class XYItem extends PlotItem {
     Iterable<Number> y
     
     Object color
-    
+
     /**
-     * For compatability with BeakerX. Tooltip is ignored.
+     * Tooltip text for each data point, in the same order as {@link #x} and {@link #y}.
+     * <p>
+     * Accepts either a list of values, or - as BeakerX does - a closure which is
+     * called for each point to build its text. The closure may declare any of
+     * {@code (x, y, index, base, displayName)}, and only as many arguments as it
+     * declares are passed.
+     * <p>
+     * Assigning tooltips does not by itself display them: see
+     * {@link #showTooltips(Map,Object)}.
      */
     Object toolTip
-    
+
+    /**
+     * Which tooltips to render, and where to put each one, keyed by the index of
+     * the data point within this series.
+     * <p>
+     * This is an extension beyond the BeakerX interface, which has no equivalent
+     * because it renders tooltips interactively.
+     */
+    Map<Integer, ToolTipPlacement> shownToolTips = null
+
+    /**
+     * Style used for this series' tooltips. If null, the style of the enclosing
+     * {@link Plot} is used.
+     */
+    ToolTipStyle toolTipStyle = null
+
     double maxX = Double.MIN_VALUE
     double maxY = Double.MIN_VALUE
     
@@ -144,6 +167,125 @@ class XYItem extends PlotItem {
     
     DataTable createTable(List<Column> columns) {
         return new DataTable(*columns)
+    }
+
+    /**
+     * Resolve {@link #toolTip} to one string per data point.
+     *
+     * @return list of tooltip text, which may be shorter than the data if no
+     *         tooltips were set, or contain nulls for points with no tooltip
+     */
+    List<String> resolveToolTips() {
+
+        if(toolTip == null)
+            return []
+
+        if(toolTip instanceof Closure) {
+
+            Closure builder = (Closure)toolTip
+            List xList = x as List
+            List yList = y as List
+            int argCount = Math.min(builder.maximumNumberOfParameters, 5)
+
+            return (0..<xList.size()).collect { int i ->
+                List args = [xList[i], yList[i], i, null, displayName]
+                Object result = builder.call(*args[0..<argCount])
+                return result?.toString()
+            }
+        }
+
+        if(toolTip instanceof Iterable)
+            return ((Iterable)toolTip).collect { it?.toString() }
+
+        throw new IllegalArgumentException(
+            'toolTip should be a list of values or a closure, but was: ' + toolTip.class.name)
+    }
+
+    /**
+     * Display the tooltips at the given data points.
+     * <p>
+     * The points to annotate may be given as:
+     * <ul>
+     *   <li>a list of indices, eg: {@code [1,3]}, placed automatically</li>
+     *   <li>a map of index to placement, eg: {@code [1: 'NW', 3: [angle:20, distance:60]]}</li>
+     *   <li>a single index</li>
+     *   <li>a closure, called with any of {@code (x, y, toolTip, index)}, returning
+     *       a falsy value to skip the point, {@code true} to place it automatically,
+     *       or a placement such as {@code 'NW'}</li>
+     * </ul>
+     * Placements are described in {@link ToolTipPlacement#from(Object)}.
+     *
+     * @param style optional named arguments overriding {@link ToolTipStyle} properties
+     * @param which which tooltips to show
+     */
+    XYItem showTooltips(Map style = null, Object which) {
+
+        if(style)
+            this.toolTipStyle = (this.toolTipStyle ?: new ToolTipStyle()).copy(style)
+
+        if(this.shownToolTips == null)
+            this.shownToolTips = new LinkedHashMap<Integer, ToolTipPlacement>()
+
+        this.shownToolTips.putAll(selectToolTips(which))
+
+        return this
+    }
+
+    /**
+     * Display every tooltip that has been set on this series
+     *
+     * @param style optional named arguments overriding {@link ToolTipStyle} properties
+     */
+    XYItem showAllTooltips(Map style = null) {
+        List<String> tips = resolveToolTips()
+        return showTooltips(style?:[:], (0..<tips.size()).grep { int i -> tips[i] } )
+    }
+
+    /**
+     * Interpret a tooltip selection into indices and their placements
+     */
+    private Map<Integer, ToolTipPlacement> selectToolTips(Object which) {
+
+        Map<Integer, ToolTipPlacement> result = new LinkedHashMap<Integer, ToolTipPlacement>()
+
+        if(which instanceof Closure) {
+
+            Closure filter = (Closure)which
+            List xList = x as List
+            List yList = y as List
+            List<String> tips = resolveToolTips()
+            int argCount = Math.min(filter.maximumNumberOfParameters, 4)
+
+            for(int i = 0; i < xList.size(); ++i) {
+                List args = [xList[i], yList[i], i < tips.size() ? tips[i] : null, i]
+                Object outcome = filter.call(*args[0..<argCount])
+                if(outcome)
+                    result[i] = ToolTipPlacement.from(outcome instanceof Boolean ? null : outcome)
+            }
+        }
+        else
+        if(which instanceof Map) {
+            ((Map)which).each { Object index, Object placement ->
+                result[((Number)index).intValue()] = ToolTipPlacement.from(placement)
+            }
+        }
+        else
+        if(which instanceof Number) {
+            result[((Number)which).intValue()] = new ToolTipPlacement()
+        }
+        else
+        if(which instanceof Iterable) {
+            ((Iterable)which).each { Object index ->
+                result[((Number)index).intValue()] = new ToolTipPlacement()
+            }
+        }
+        else {
+            throw new IllegalArgumentException(
+                'Tooltips to show should be given as a list of indices, a map of index to placement, ' +
+                'or a closure, but was: ' + which?.class?.name)
+        }
+
+        return result
     }
 }
 
@@ -428,7 +570,13 @@ class Plot {
     List<ConstantLine> constantLines = []
     
     Palette palette = new DefaultPalette()
-    
+
+    /**
+     * Default style for tooltips displayed on this plot. Individual series may
+     * override it via {@link XYItem#toolTipStyle}.
+     */
+    ToolTipStyle toolTipStyle = new ToolTipStyle()
+
     /**
      * For compatibility with BeakerX
      */
@@ -496,6 +644,84 @@ class Plot {
 
      Plot leftShift(ConstantLine item) {
         this.constantLines << item
+        return this
+    }
+
+    /**
+     * Display tooltips on every series of this plot that has them.
+     * <p>
+     * Example:
+     * <pre>
+     * def p = new Plot(title: 'An example of showing a tooltip') &lt;&lt;
+     *     new Points(x: [1,2,3,4], y: [5,6,7,8], toolTip: [1,2,3,4].collect { "X value is: $it" })
+     *
+     * p.showTooltips([0,2])
+     * p.save('plot.png')
+     * </pre>
+     *
+     * @param style optional named arguments overriding {@link ToolTipStyle} properties
+     * @param which which tooltips to show, see {@link XYItem#showTooltips(Map,Object)}
+     */
+    Plot showTooltips(Map style = null, Object which) {
+        List<XYItem> annotatable = this.items.grep { it instanceof XYItem && it.toolTip != null } as List<XYItem>
+
+        if(annotatable.isEmpty())
+            throw new IllegalStateException('No series in this plot has any toolTip set')
+
+        for(XYItem item in annotatable) {
+            item.showTooltips(style?:[:], which)
+        }
+        return this
+    }
+
+    /**
+     * Display tooltips on the series having the given display name
+     *
+     * @param style       optional named arguments overriding {@link ToolTipStyle} properties
+     * @param displayName display name of the series to annotate
+     * @param which       which tooltips to show, see {@link XYItem#showTooltips(Map,Object)}
+     */
+    Plot showTooltips(Map style = null, String displayName, Object which) {
+        // Note: an explicit cast, not "as XYItem", because XYItem overrides
+        // asType and returns null for anything that is not a DataTable
+        XYItem item = (XYItem)this.items.find { it instanceof XYItem && it.displayName == displayName }
+
+        if(item == null)
+            throw new IllegalArgumentException(
+                "No series found with display name '$displayName'. Available: " +
+                (this.items*.displayName.grep { it } .join(', ') ?: '<none set>'))
+
+        item.showTooltips(style?:[:], which)
+        return this
+    }
+
+    /**
+     * Display tooltips on the series at the given index, counting only the
+     * items that are plotted as x/y data
+     *
+     * @param style  optional named arguments overriding {@link ToolTipStyle} properties
+     * @param series index of the series to annotate
+     * @param which  which tooltips to show, see {@link XYItem#showTooltips(Map,Object)}
+     */
+    Plot showTooltips(Map style = null, int series, Object which) {
+        List<XYItem> xys = this.items.grep { it instanceof XYItem } as List<XYItem>
+
+        if(series < 0 || series >= xys.size())
+            throw new IllegalArgumentException("Series $series does not exist: this plot has ${xys.size()} series")
+
+        xys[series].showTooltips(style?:[:], which)
+        return this
+    }
+
+    /**
+     * Display every tooltip set on every series of this plot
+     *
+     * @param style optional named arguments overriding {@link ToolTipStyle} properties
+     */
+    Plot showAllTooltips(Map style = null) {
+        for(XYItem item in this.items.grep { it instanceof XYItem && it.toolTip != null }) {
+            item.showAllTooltips(style?:[:])
+        }
         return this
     }
 
@@ -590,8 +816,16 @@ class Plot {
      
             if(!item)
                 return
- 
+
             setProps(g, item, i)
+
+            // Tooltips do not transfer via setProps because BeakerX exposes them
+            // as the read only property toolTips, while ours is called toolTip
+            if(item instanceof XYItem) {
+                Object tips = beakerXToolTips(g)
+                if(tips != null)
+                    ((XYItem)item).toolTip = tips
+            }
 
             p << item
             ++i
@@ -607,6 +841,20 @@ class Plot {
         return p
     }
     
+    /**
+     * Extract the tooltips from a BeakerX graphics item.
+     * <p>
+     * BeakerX accepts tooltips either as a literal list or as a closure which
+     * builds the text for each point, but it resolves the closure eagerly at the
+     * point it is assigned, so there is always a resolved list to read here.
+     *
+     * @return the tooltips, or null if the item has none
+     */
+    private static Object beakerXToolTips(XYGraphics g) {
+        List<String> tips = g.getToolTips()
+        return tips ?: null
+    }
+
     BufferedImage getImage() {
         getImage(initWidth?:800,initHeight?:600)
     }
@@ -843,11 +1091,58 @@ class Plot {
         double height = (double)imageHeight
         addTextsToXY(xyPlot, xAxis, yAxis, width, height)
         
-        clDatas.each { 
+        clDatas.each {
             addConstantLinesToXYPlot(it, xyPlot, xAxis, yAxis, width, height)
         }
 
+        addToolTipsToXYPlot(xyPlot, xys)
+
         return xyPlot
+    }
+
+    /**
+     * Add an annotation layer for any tooltips that have been selected for display.
+     * <p>
+     * The layer resolves its own positions when it is drawn, because the plot
+     * has not been laid out at the point where it is added here.
+     */
+    void addToolTipsToXYPlot(XYPlot xyPlot, List<XYItem> xys) {
+
+        List<ToolTipAnnotation> annotations = []
+
+        xys.eachWithIndex { XYItem item, int series ->
+
+            if(!item.shownToolTips)
+                return
+
+            List<String> tips = item.resolveToolTips()
+            ToolTipStyle style = item.toolTipStyle ?: this.toolTipStyle
+
+            item.shownToolTips.each { Integer index, ToolTipPlacement placement ->
+
+                if(index < 0 || index >= tips.size())
+                    throw new IllegalArgumentException(
+                        "Tooltip index $index is out of range for series " +
+                        "'${item.displayName?:series}' which has ${tips.size()} tooltips")
+
+                String text = tips[index]
+                if(!text)
+                    return
+
+                annotations << new ToolTipAnnotation(
+                    series: series,
+                    index: index,
+                    text: text,
+                    placement: placement,
+                    style: style
+                )
+            }
+        }
+
+        if(annotations.isEmpty())
+            return
+
+        xyPlot.add(new ToolTipLayer(plot: xyPlot, items: xys, annotations: annotations))
     }
     
     void addConstantLinesToXYPlot(DataTable dt, XYPlot xyPlot, Axis xAxis, Axis yAxis, double width, double height) {

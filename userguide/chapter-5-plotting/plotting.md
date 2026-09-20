@@ -176,3 +176,110 @@ BufferedImage image = p.getImage(1600, 1200)
 
 
 
+
+# Annotating Points with Tooltips
+
+In a notebook, BeakerX plots support a `toolTip` attribute which displays text
+interactively as the mouse moves over data points. Groovy NGS accepts the same
+attribute, so that code written in a notebook transfers across unchanged.
+
+```groovy
+p << new Points(
+    x: [1,2,3,4],
+    y: [5,6,7,8],
+    toolTip: [1,2,3,4].collect { "X value is: $it" }
+)
+```
+
+Outside a notebook there is no mouse to hover with, so the tooltips are not
+displayed unless you ask for them. Calling `showTooltips` selects which ones to
+draw, by the index of the data point within the series:
+
+```groovy
+p.showTooltips([0,2])  // annotate the first and third points
+
+p.save('plot.png')
+```
+
+Note that `showTooltips` is an extension beyond the BeakerX interface and will
+not work inside a notebook.
+
+More often you will want to pick out points by their values rather than by
+counting positions, which you can do by passing a closure. It is called for
+each point with any of `(x, y, toolTip, index)` - declare only the parameters
+you need:
+
+```groovy
+p.showTooltips { x, y, tip, i -> y > 30 }
+```
+
+## Selecting a Series
+
+Where a plot has several sets of data, pass the `displayName` of the one you
+want to annotate, or its index:
+
+```groovy
+p.showTooltips('Coverage', [3,7])
+p.showTooltips(0, [3,7])
+```
+
+With no series given, every series that has tooltips set is annotated. The
+convenience method `showAllTooltips()` displays every tooltip that has been set.
+
+## Positioning
+
+By default each tooltip is positioned automatically, by searching for a spot
+that does not collide with the data, with the other tooltips, or with the edge
+of the plot. A line is drawn connecting the tooltip to its data point, so that
+it remains clear which point it describes even when it has to be placed some
+distance away.
+
+Where the automatic choice is not what you want, give a placement instead of a
+bare index, using a map. Only the points you name need a placement, so the rest
+stay automatic:
+
+```groovy
+p.showTooltips([3: 'NW', 7: 'below'])
+```
+
+A placement can be a compass point (`'N'`, `'NE'`, `'E'` ... or the equivalent
+`'north_east'` form), a readable direction (`'above'`, `'below'`, `'left'`,
+`'right'`), an angle in degrees counter-clockwise from east, or a map giving
+both the direction and how far away to put it:
+
+```groovy
+p.showTooltips([3: [anchor: 'NW', distance: 60], 7: [angle: 20]])
+```
+
+Distances are in pixels. Offsets are deliberately not expressed in data units,
+because a tooltip nudged into place that way would move as soon as the data or
+the axis range changed.
+
+## Formatting
+
+Tooltips written for notebooks commonly carry a little HTML, and the same subset
+is understood here: `<b>` and `<i>` (or `<strong>` and `<em>`) for emphasis,
+`<br>` and `<p>` for line breaks, and the usual character entities such as
+`&amp;`. Any other tag is stripped, leaving its text, so markup that is not
+supported degrades to plain text rather than appearing literally in the image.
+
+```groovy
+p << new Points(
+    x: positions,
+    y: depths,
+    toolTip: samples.collect { "<b>$it.id</b><br>depth: <i>${it.depth}x</i>" }
+)
+```
+
+## Styling
+
+Appearance is controlled by a `ToolTipStyle`, which may be set for the whole
+plot or overridden for one series by passing named arguments to `showTooltips`:
+
+```groovy
+p.toolTipStyle.maxWidth = 200       // wrap long text at 200 pixels
+
+p.showTooltips('Coverage', [3,7], fontSize: 13, background: Color.white, leader: false)
+```
+
+:include-image: tooltips.png {scale: 0.5}
