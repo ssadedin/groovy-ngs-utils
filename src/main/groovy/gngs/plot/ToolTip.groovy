@@ -44,6 +44,16 @@ class ToolTipStyle {
 
     Color background = new Color(255, 255, 240, 240)
 
+    /**
+     * Opacity of the tooltip background, from 0 for fully transparent to 1 for
+     * as opaque as {@link #background} itself allows.
+     * <p>
+     * This scales the alpha of the background colour rather than replacing it,
+     * so the two compose: a colour that is itself slightly translucent stays
+     * that way at an opacity of 1, and the two can be adjusted independently.
+     */
+    double backgroundOpacity = 1.0d
+
     Color border = new Color(110, 110, 110)
 
     Color textColor = Color.black
@@ -98,6 +108,7 @@ class ToolTipStyle {
             font: font,
             fontSize: fontSize,
             background: background,
+            backgroundOpacity: backgroundOpacity,
             border: border,
             textColor: textColor,
             leaderColor: leaderColor,
@@ -123,6 +134,30 @@ class ToolTipStyle {
         }
 
         return result
+    }
+
+    void setBackgroundOpacity(double opacity) {
+        if(opacity < 0.0d || opacity > 1.0d)
+            throw new IllegalArgumentException(
+                "backgroundOpacity should be between 0 and 1, but was: $opacity")
+
+        this.@backgroundOpacity = opacity
+    }
+
+    /**
+     * The background colour actually painted, being {@link #background} with its
+     * alpha scaled by {@link #backgroundOpacity}.
+     *
+     * @return the colour to fill with, or null if the background is not painted
+     */
+    Color resolveBackground() {
+
+        if(background == null || backgroundOpacity >= 1.0d)
+            return background
+
+        int alpha = (int)Math.round(background.alpha * backgroundOpacity)
+
+        return new Color(background.red, background.green, background.blue, alpha)
     }
 
     /**
@@ -822,8 +857,9 @@ class ToolTipLayer extends AbstractDrawable {
         RoundRectangle2D outline = new RoundRectangle2D.Double(
             box.x, box.y, box.width, box.height, style.cornerRadius, style.cornerRadius)
 
-        if(style.background != null) {
-            g.setColor(style.background)
+        Color background = style.resolveBackground()
+        if(background != null) {
+            g.setColor(background)
             g.fill(outline)
         }
 
