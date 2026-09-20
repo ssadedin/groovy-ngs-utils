@@ -591,34 +591,63 @@ class Plot {
     }
     
     Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Area item) {
-        
-        Map optionalAttributes = [:]
-        if(item.color)
-            optionalAttributes.color = new Color(item.color.RGB) 
-
-        this.items << new Area(
-            x: item.x,
-            y: item.y,
-            displayName: item.displayName,
-            * : optionalAttributes
-        )
-        return this
+        return addBeakerXItem(item, new Area())
     }
      
     Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Line item) {
-        
-        Map optionalAttributes = [:]
-        if(item.color)
-            optionalAttributes.color = new Color(item.color.RGB) 
-
-        this.items << new Line(
-            x: item.x,
-            y: item.y,
-            displayName: item.displayName,
-            width: item.width,
-            * : optionalAttributes
-        )
+        return addBeakerXItem(item, new Line())
+    }
+     
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Points item) {
+        return addBeakerXItem(item, new Points())
+    }
+     
+    Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Bars item) {
+        return addBeakerXItem(item, new Bars())
+    }
+     
+    /**
+     * Add the gngs equivalent of a BeakerX graphics item to this plot, carrying
+     * across every property the two have in common.
+     * 
+     * @param source    the BeakerX item
+     * @param item      the gngs item standing in for it, which is added to the plot
+     */
+    private Plot addBeakerXItem(XYGraphics source, XYItem item) {
+        copyBeakerXProperties(source, item, this.items.size())
+        this.items << item
         return this
+    }
+    
+    /**
+     * Copy the properties of a BeakerX chart object onto the gngs object that
+     * stands in for it, matching them by name.
+     * <p>
+     * Copying reflectively rather than naming the fields keeps the two sides
+     * from drifting apart as either gains attributes, which is how BeakerX line
+     * styles came to be silently dropped.
+     * 
+     * @param source    object to read properties from
+     * @param item      object to copy them onto, ignoring any it does not have
+     * @param index     position of the item, used to pick a palette colour
+     */
+    private void copyBeakerXProperties(Object source, Object item, int index) {
+        
+        source.properties.each { k, v ->
+            
+            if(k == "color" && v instanceof com.twosigma.beakerx.chart.Color) {
+                v = convertColor(v, index)
+            }
+
+            if(item.hasProperty(k)) {
+                try {
+                    item[k] = v
+                }
+                catch(ReadOnlyPropertyException exReadOnly) {
+                    // eg: the class property; nothing to be done and nothing wanted
+                }
+            }
+        }
     }
      
     Plot leftShift(com.twosigma.beakerx.chart.xychart.plotitem.Text item) {
@@ -775,20 +804,7 @@ class Plot {
             p.yBound = [bxPlot.getYLowerBound(), bxPlot.getYUpperBound()]
         
         def setProps = { g, item, i ->
-            g.properties.each { k,v ->
-                if(k == "color" && v instanceof com.twosigma.beakerx.chart.Color) {
-                    v = p.convertColor(v, i)
-                }
-
-                if(item.hasProperty(k)) {
-                    try {
-                        item[k] = v
-                    }
-                    catch(ReadOnlyPropertyException exReadOnly) {
-                        // ignore
-                    }
-                }
-            }
+            p.copyBeakerXProperties(g, item, (int)i)
         }
 
         int i = 0
