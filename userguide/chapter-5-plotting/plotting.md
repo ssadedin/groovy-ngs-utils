@@ -255,6 +255,16 @@ Distances are in pixels. Offsets are deliberately not expressed in data units,
 because a tooltip nudged into place that way would move as soon as the data or
 the axis range changed.
 
+The direction you give is always honoured exactly, but the distance is treated
+as a minimum. Annotating several series in the same direction is common - for
+example the first point of each line on a chart - and their points are often
+close together, so the boxes would otherwise land in a stack on top of each
+other. Each is instead stepped further out along its own direction until it is
+clear of the tooltips already placed, spreading them into a staircase. This is
+a best effort: where there is genuinely no room in the direction asked for,
+tooltips are placed as well as they can be and you may need to anchor some of
+them differently.
+
 ## Formatting
 
 Tooltips written for notebooks commonly carry a little HTML, and the same subset

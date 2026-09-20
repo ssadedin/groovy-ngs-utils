@@ -414,6 +414,48 @@ class ToolTipTest {
     }
 
     @Test
+    void 'an explicit anchor keeps its direction but steps out to avoid overlapping'() {
+
+        // Several series annotated in the same direction from points at a similar
+        // height: without stepping out, every box lands on top of the last one
+        Plot p = new Plot(xBound: [0, 10], yBound: [0, 10])
+        (0..3).each { int s ->
+            p << new Points(
+                x: [2 + s], y: [8],
+                displayName: "Series $s",
+                toolTip: ["a reasonably long tooltip for series $s"])
+        }
+
+        p.showTooltips([0: [anchor: 'south_east']])
+
+        List<ToolTipAnnotation> annotations = draw(p).layer.annotations
+        assert annotations.size() == 4
+
+        for(int i = 0; i < annotations.size(); ++i) {
+            // the requested direction is honoured for every one of them
+            assert annotations[i].bounds.centerX > annotations[i].anchor.x
+            assert annotations[i].bounds.centerY > annotations[i].anchor.y
+
+            for(int j = i + 1; j < annotations.size(); ++j) {
+                Rectangle2D overlap = annotations[i].bounds.createIntersection(annotations[j].bounds)
+                assert overlap.width <= 0 || overlap.height <= 0 :
+                    "tooltip $i overlaps tooltip $j"
+            }
+        }
+    }
+
+    @Test
+    void 'an explicit anchor is left exactly where asked when nothing is in the way'() {
+
+        Plot p = examplePlot()
+        p.showTooltips([1: [anchor: 'E', distance: 30]])
+
+        ToolTipAnnotation annotation = draw(p).layer.annotations[0]
+
+        assert Math.abs((annotation.bounds.minX - annotation.anchor.x) - 30.0d) < 1.0d
+    }
+
+    @Test
     void 'automatic placement keeps tooltips on adjacent points apart'() {
 
         Plot p = new Plot(xBound: [0, 10], yBound: [0, 10]) <<

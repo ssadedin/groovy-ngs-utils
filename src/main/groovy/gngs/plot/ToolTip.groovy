@@ -154,7 +154,10 @@ class ToolTipPlacement {
     Double angle = null
 
     /**
-     * Distance from the data point, overriding {@link ToolTipStyle#distance}
+     * Distance from the data point, overriding {@link ToolTipStyle#distance}.
+     * <p>
+     * This is a minimum: a tooltip is moved further out along the same direction
+     * where it would otherwise land on top of one that is already placed.
      */
     Double distance = null
 
@@ -318,11 +321,28 @@ class ToolTipLayer extends AbstractDrawable {
      */
     private static final double[] AUTO_DISTANCE_FACTORS = [1.0d, 1.9d, 2.8d] as double[]
 
-    private static final double PENALTY_ESCAPE = 4.0d
+    /**
+     * Weight for the part of a tooltip that falls outside the axes box. Spilling
+     * into the margin is untidy but still perfectly readable, so this is mild:
+     * it should always lose to covering another tooltip.
+     */
+    private static final double PENALTY_ESCAPE = 0.5d
+
+    /**
+     * Weight for the part of a tooltip that falls outside the plot altogether,
+     * where it would simply be cut off
+     */
+    private static final double PENALTY_CLIPPED = 8.0d
 
     private static final double PENALTY_OVERLAP = 6.0d
 
     private static final double PENALTY_OBSTACLE = 900.0d
+
+    /**
+     * How many times an explicitly placed tooltip may be stepped further out
+     * along its own direction to get clear of the tooltips already placed
+     */
+    private static final int EXPLICIT_PLACEMENT_STEPS = 8
 
     XYPlot plot
 
@@ -369,6 +389,10 @@ class ToolTipLayer extends AbstractDrawable {
             }
         }
 
+        // Beyond the axes box there is still the plot margin to spill into;
+        // beyond the plot itself a tooltip would just be cut off
+        Rectangle2D outerBounds = getBounds()
+
         List<Rectangle2D> fixed = fixedObstacles()
         List<Rectangle2D> placed = []
 
@@ -394,8 +418,8 @@ class ToolTipLayer extends AbstractDrawable {
                 if(text.lines.isEmpty())
                     continue
 
-                Rectangle2D box =
-                    place(anchor, text, annotation, style, plotBounds, positions, segments, fixed, placed)
+                Rectangle2D box = place(anchor, text, annotation, style, plotBounds, outerBounds,
+                                        positions, segments, fixed, placed)
 
                 placed.add(box)
 
@@ -587,13 +611,15 @@ class ToolTipLayer extends AbstractDrawable {
      * positions are scored and the least bad one chosen.
      */
     private Rectangle2D place(Point2D anchor, LaidOutText text, ToolTipAnnotation annotation,
-                              ToolTipStyle style, Rectangle2D plotBounds, List<double[][]> positions,
-                              List<double[]> segments, List<Rectangle2D> fixed, List<Rectangle2D> placed) {
+                              ToolTipStyle style, Rectangle2D plotBounds, Rectangle2D outerBounds,
+                              List<double[][]> positions, List<double[]> segments,
+                              List<Rectangle2D> fixed, List<Rectangle2D> placed) {
 
         double distance = annotation.placement.distance != null ? annotation.placement.distance : style.distance
 
         if(annotation.placement.angle != null)
-            return boxAt(anchor, text, annotation.placement.angle, distance)
+            return placeAtAngle(anchor, text, annotation.placement.angle, distance,
+                                plotBounds, outerBounds, fixed, placed)
 
         // Only obstacles that could possibly be reached by this tooltip matter.
         // Filtering them once per tooltip keeps placement viable on plots with
@@ -624,7 +650,8 @@ class ToolTipLayer extends AbstractDrawable {
             for(double angle in AUTO_ANGLES) {
                 Rectangle2D candidate = boxAt(anchor, text, angle, distance * factor)
 
-                double penalty = penalty(candidate, plotBounds, nearPoints, nearSegments, fixed, placed, style) +
+                double penalty = penalty(candidate, plotBounds, outerBounds, nearPoints, nearSegments,
+                                         fixed, placed, style) +
                                  (factor - 1.0d) * distance * 0.4d
 
                 if(penalty < bestPenalty) {
@@ -641,33 +668,100 @@ class ToolTipLayer extends AbstractDrawable {
     }
 
     /**
+     * Place a tooltip in the direction that was explicitly asked for.
+     * <p>
+     * The direction is taken as given, but the distance is treated as a minimum:
+     * where several tooltips are anchored in the same direction from points that
+     * are close together, their boxes would otherwise land on top of each other.
+     * Each one is stepped further out along its own ray until it is clear of the
+     * tooltips already placed, and of the legend and title, which spreads them
+     * into a staircase rather than a stack. Nothing cleverer is attempted - the
+     * direction is the caller's choice and only the distance is ours.
+     */
+    private Rectangle2D placeAtAngle(Point2D anchor, LaidOutText text, double angle, double distance,
+                                     Rectangle2D plotBounds, Rectangle2D outerBounds,
+                                     List<Rectangle2D> fixed, List<Rectangle2D> placed) {
+
+        // Stepping by the extent of the box along the ray is the smallest move
+        // that can clear a box of the same size
+        double radians = Math.toRadians(angle)
+        double step = Math.abs(Math.cos(radians)) * text.width + Math.abs(Math.sin(radians)) * text.height
+
+        Rectangle2D best = null
+        double bestPenalty = Double.MAX_VALUE
+
+        for(int i = 0; i <= EXPLICIT_PLACEMENT_STEPS; ++i) {
+
+            Rectangle2D candidate = boxAt(anchor, text, angle, distance + i * step)
+
+            double penalty = 0
+            for(Rectangle2D other in placed) {
+                penalty += area(other.createIntersection(candidate)) * PENALTY_OVERLAP
+            }
+            for(Rectangle2D other in fixed) {
+                penalty += area(other.createIntersection(candidate)) * PENALTY_OVERLAP
+            }
+            penalty += escapePenalty(candidate, plotBounds, outerBounds)
+
+            if(penalty == 0.0d)
+                return candidate
+
+            if(penalty < bestPenalty) {
+                bestPenalty = penalty
+                best = candidate
+            }
+        }
+
+        return best
+    }
+
+    /**
      * The box of the given size, offset from the anchor in the given direction
      * such that its nearest edge is approximately {@code distance} away.
      */
     private static Rectangle2D boxAt(Point2D anchor, LaidOutText text, double angleDegrees, double distance) {
+
         double radians = Math.toRadians(angleDegrees)
-        double centreX = anchor.x + Math.cos(radians) * (distance + text.width / 2.0d)
+        double dx = Math.cos(radians)
 
         // Screen y runs downwards, but angles are expressed the way a reader
         // expects, ie: 90 degrees is above the point
-        double centreY = anchor.y - Math.sin(radians) * (distance + text.height / 2.0d)
+        double dy = -Math.sin(radians)
+
+        // The point on the box nearest the data point sits at the requested
+        // distance along the ray, and the box extends away from there. Sideways
+        // the box is aligned by edge when the direction is mostly along an axis
+        // and centred when it is across it, so that eg: 'east' puts the left
+        // edge distance away and centres it vertically, while 'south_east' puts
+        // the top left corner distance away. Offsetting the box centre instead
+        // would let a wide box straddle its own data point on the diagonals.
+        double alignX = clampToUnit(dx * SQRT_2)
+        double alignY = clampToUnit(dy * SQRT_2)
+
+        double edgeX = anchor.x + dx * distance
+        double edgeY = anchor.y + dy * distance
 
         return new Rectangle2D.Double(
-            centreX - text.width / 2.0d, centreY - text.height / 2.0d, text.width, text.height)
+            edgeX - text.width * (1.0d - alignX) / 2.0d,
+            edgeY - text.height * (1.0d - alignY) / 2.0d,
+            text.width,
+            text.height)
+    }
+
+    private static final double SQRT_2 = Math.sqrt(2.0d)
+
+    private static double clampToUnit(double v) {
+        return v < -1.0d ? -1.0d : (v > 1.0d ? 1.0d : v)
     }
 
     /**
      * Score a candidate position. Lower is better, zero is unobstructed.
      */
-    private double penalty(Rectangle2D candidate, Rectangle2D plotBounds, List<double[]> points,
-                           List<double[]> segments, List<Rectangle2D> fixed, List<Rectangle2D> placed,
-                           ToolTipStyle style) {
+    private double penalty(Rectangle2D candidate, Rectangle2D plotBounds, Rectangle2D outerBounds,
+                           List<double[]> points, List<double[]> segments, List<Rectangle2D> fixed,
+                           List<Rectangle2D> placed, ToolTipStyle style) {
 
-        double result = 0
-
-        Rectangle2D inside = candidate.createIntersection(plotBounds)
-        double escaped = area(candidate) - area(inside)
-        result += escaped * PENALTY_ESCAPE
+        double result = escapePenalty(candidate, plotBounds, outerBounds)
 
         for(Rectangle2D other in placed) {
             result += area(other.createIntersection(candidate)) * PENALTY_OVERLAP
@@ -693,6 +787,17 @@ class ToolTipLayer extends AbstractDrawable {
         }
 
         return result
+    }
+
+    /**
+     * Cost of a tooltip falling outside the axes box, and of it falling outside
+     * the plot altogether where it would be cut off
+     */
+    private static double escapePenalty(Rectangle2D candidate, Rectangle2D plotBounds, Rectangle2D outerBounds) {
+        double total = area(candidate)
+        double outsideAxes = total - area(candidate.createIntersection(plotBounds))
+        double clipped = total - area(candidate.createIntersection(outerBounds))
+        return outsideAxes * PENALTY_ESCAPE + clipped * PENALTY_CLIPPED
     }
 
     private static double area(Rectangle2D r) {
