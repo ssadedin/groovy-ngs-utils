@@ -55,12 +55,11 @@ class MarkupTest {
     }
 
     @Test
-    void 'a literal newline breaks the line'() {
+    void 'a literal newline is whitespace, as it is in HTML'() {
         List<List<StyledRun>> lines = Markup.parse('a\nb')
 
-        assert lines.size() == 2
-        assert lines[0][0].text == 'a'
-        assert lines[1][0].text == 'b'
+        assert lines.size() == 1
+        assert lines[0][0].text == 'a b'
     }
 
     @Test
@@ -106,9 +105,60 @@ class MarkupTest {
     }
 
     @Test
-    void 'whitespace inside text is preserved'() {
-        // Tooltips often align values with spaces, so unlike HTML we must not collapse them
-        assert Markup.parse('a    b')[0][0].text == 'a    b'
+    void 'runs of whitespace collapse to a single space'() {
+        assert Markup.parse('a    b')[0][0].text == 'a b'
+        assert Markup.parse('a \t \n  b')[0][0].text == 'a b'
+    }
+
+    @Test
+    void 'whitespace is dropped at the start and end of a line'() {
+        assert Markup.parse('   a   ')[0][0].text == 'a'
+        assert Markup.parse('  a  <br>  b  ')*.text.flatten() == ['a', 'b']
+    }
+
+    @Test
+    void 'whitespace collapses across a style boundary'() {
+        assert Markup.parse('a <b>b</b>')[0]*.text.join('') == 'a b'
+        assert Markup.parse('<b>a</b>   <i>b</i>')[0]*.text.join('') == 'a b'
+        assert Markup.parse('<b>a</b>\n   <i>b</i>')[0]*.text.join('') == 'a b'
+    }
+
+    @Test
+    void 'a non breaking space is not collapsed'() {
+        assert Markup.parse('a&nbsp;&nbsp;&nbsp;b')[0]*.text.join('') == 'a   b'
+    }
+
+    @Test
+    void 'consecutive breaks produce a blank line'() {
+        List<List<StyledRun>> lines = Markup.parse('a<br><br>b')
+
+        assert lines.size() == 3
+        assert lines[0][0].text == 'a'
+        assert lines[1].isEmpty()
+        assert lines[2][0].text == 'b'
+    }
+
+    @Test
+    void 'an indented multi line groovy string renders like HTML'() {
+
+        // The shape tooltips naturally take when built with a multi line GString:
+        // the source newlines and indentation must not turn into layout
+        String text = """<b>HG002</b>
+                 <br>
+                 <b>Sensitivity:</b> 0.404
+                 <br>
+                 <b>Precision:</b> 0.999"""
+
+        List<List<StyledRun>> lines = Markup.parse(text)
+
+        assert lines.size() == 3
+        assert lines[0]*.text.join('') == 'HG002'
+        assert lines[1]*.text.join('') == 'Sensitivity: 0.404'
+        assert lines[2]*.text.join('') == 'Precision: 0.999'
+
+        // the labels stay bold, the values do not
+        assert lines[1][0].bold
+        assert !lines[1][1].bold
     }
 
     @Test
@@ -125,7 +175,8 @@ class MarkupTest {
         assert lines.size() == 3
         assert lines[0][0].text == 'NA12878'
         assert lines[0][0].bold
-        assert lines[1]*.text == ['depth: ', '62x']
+        // the collapsed space carries into the following run, so compare the whole line
+        assert lines[1]*.text.join('') == 'depth: 62x'
         assert lines[1][1].italic
         assert lines[2][0].text == 'chr1:1,000,000'
     }

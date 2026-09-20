@@ -41,15 +41,17 @@ class StyledRun {
  *   <li>{@code <br>}, {@code <br/>} - line break</li>
  *   <li>{@code <p>}, {@code </p>} - line break (a paragraph boundary)</li>
  *   <li>the entities {@code &lt; &gt; &amp; &quot; &apos; &nbsp;}</li>
- *   <li>literal newline characters, which break lines just like {@code <br>}</li>
  * </ul>
  * Any other tag is stripped, leaving its text content in place. Stray closing
  * tags are ignored rather than treated as an error, on the basis that a
  * malformed tooltip should not prevent a plot from rendering.
  * <p>
- * Note that, unlike HTML, whitespace inside text is preserved exactly. Tooltips
- * frequently contain deliberately aligned values, and collapsing runs of spaces
- * would destroy that.
+ * Whitespace is treated the way HTML treats it, so that text laid out as a
+ * multi line Groovy string renders the same here as it does in a notebook:
+ * newlines and indentation in the source are only whitespace, a run of
+ * whitespace collapses to a single space, and whitespace at the start or end of
+ * a line is dropped. Only {@code <br>} and {@code <p>} break a line. Use
+ * {@code &nbsp;} where a space must be preserved.
  * <p>
  * Example:
  * <pre>
@@ -75,7 +77,7 @@ class Markup {
 
     private static final char AMP = '&' as char
 
-    private static final char NEWLINE = '\n' as char
+    private static final char SPACE = ' ' as char
 
     /**
      * Parse the given source text into lines of styled runs.
@@ -96,19 +98,21 @@ class Markup {
         int bold = 0
         int italic = 0
 
+        // Whitespace follows the HTML rules: newlines and indentation in the
+        // source are just whitespace, a run of it collapses to a single space,
+        // and it disappears entirely at the start and end of a line. A space is
+        // therefore never emitted until some text actually turns up after it.
+        boolean pendingSpace = false
+        boolean lineHasContent = false
+
         int i = 0
         final int n = src.length()
         while(i < n) {
             char c = src.charAt(i)
 
-            if(c == LT) {
-                int close = src.indexOf('>', i)
-                if(close < 0) {
-                    // Unterminated tag: there is nothing sensible to do except
-                    // treat the remainder as literal text
-                    buf.append(src.substring(i))
-                    break
-                }
+            int close = (c == LT) ? src.indexOf('>', i) : -1
+
+            if(close >= 0) {
 
                 String tag = src.substring(i + 1, close).trim().toLowerCase()
                 boolean closing = tag.startsWith('/')
@@ -128,22 +132,37 @@ class Markup {
                     flush(line, buf, bold, italic)
                     lines.add(line)
                     line = []
+                    pendingSpace = false
+                    lineHasContent = false
                 }
                 else
                 if(name == 'p') {
                     // A paragraph boundary only breaks the line if there is
                     // something on the current line to break away from
-                    if(!line.isEmpty() || buf.length() > 0) {
+                    if(lineHasContent) {
                         flush(line, buf, bold, italic)
                         lines.add(line)
                         line = []
                     }
+                    pendingSpace = false
+                    lineHasContent = false
                 }
                 // else: unknown tag, strip it
 
                 i = close + 1
+                continue
             }
-            else
+
+            if(Character.isWhitespace(c)) {
+                if(lineHasContent)
+                    pendingSpace = true
+                ++i
+                continue
+            }
+
+            // Either an entity we recognise, or a single literal character. An
+            // unterminated '<' falls through to here and is treated as text.
+            String text = null
             if(c == AMP) {
                 int semi = src.indexOf(';', i)
                 String entity = null
@@ -152,25 +171,23 @@ class Markup {
 
                 String replacement = entity == null ? null : ENTITIES[entity]
                 if(replacement != null) {
-                    buf.append(replacement)
+                    text = replacement
                     i = semi + 1
                 }
-                else {
-                    buf.append(c)
-                    ++i
-                }
             }
-            else
-            if(c == NEWLINE) {
-                flush(line, buf, bold, italic)
-                lines.add(line)
-                line = []
+
+            if(text == null) {
+                text = String.valueOf(c)
                 ++i
             }
-            else {
-                buf.append(c)
-                ++i
+
+            if(pendingSpace) {
+                buf.append(SPACE)
+                pendingSpace = false
             }
+
+            buf.append(text)
+            lineHasContent = true
         }
 
         flush(line, buf, bold, italic)

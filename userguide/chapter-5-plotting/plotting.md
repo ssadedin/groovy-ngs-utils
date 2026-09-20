@@ -271,6 +271,23 @@ p << new Points(
 )
 ```
 
+Whitespace behaves as it does in HTML, so that a tooltip built as a multi-line
+Groovy string renders the same offline as it does in a notebook. Newlines and
+indentation in the source are only whitespace, runs of whitespace collapse to a
+single space, and whitespace at the start or end of a line is dropped. Only
+`<br>` and `<p>` break a line, and `&nbsp;` preserves a space:
+
+```groovy
+toolTip: points.collect { pnt ->
+    """<b>$name</b>
+         <br>
+         <b>Sensitivity:</b> ${String.format('%.3f', pnt.Sensitivity)}
+         <br>
+         <b>Precision:</b> ${String.format('%.3f', pnt.Precision)}
+    """
+}
+```
+
 ## Styling
 
 Appearance is controlled by a `ToolTipStyle`, which may be set for the whole
