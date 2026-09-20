@@ -515,6 +515,120 @@ class ToolTipTest {
     }
 
     @Test
+    void 'background opacity defaults to leaving the colour alone'() {
+        ToolTipStyle style = new ToolTipStyle()
+
+        assert style.backgroundOpacity == 1.0d
+        assert style.resolveBackground() == style.background
+        assert style.resolveBackground().alpha == 240
+    }
+
+    @Test
+    void 'background opacity scales the alpha of the background colour'() {
+        ToolTipStyle style = new ToolTipStyle(background: new Color(255, 255, 255, 200))
+
+        style.backgroundOpacity = 0.5d
+        assert style.resolveBackground().alpha == 100
+
+        style.backgroundOpacity = 0.0d
+        assert style.resolveBackground().alpha == 0
+    }
+
+    @Test
+    void 'background opacity and colour alpha are adjustable independently'() {
+        ToolTipStyle style = new ToolTipStyle()
+
+        // the two compose rather than one replacing the other
+        style.background = new Color(255, 255, 255, 100)
+        style.backgroundOpacity = 0.5d
+        assert style.resolveBackground().alpha == 50
+
+        // changing only the colour keeps the opacity applied
+        style.background = new Color(255, 255, 255, 200)
+        assert style.resolveBackground().alpha == 100
+
+        // changing only the opacity keeps the colour's own alpha applied
+        style.backgroundOpacity = 0.25d
+        assert style.resolveBackground().alpha == 50
+    }
+
+    @Test
+    void 'background opacity leaves the colour itself untouched'() {
+        ToolTipStyle style = new ToolTipStyle(background: new Color(10, 20, 30, 200))
+        style.backgroundOpacity = 0.5d
+
+        Color resolved = style.resolveBackground()
+        assert [resolved.red, resolved.green, resolved.blue] == [10, 20, 30]
+        assert style.background.alpha == 200 : 'the configured colour should not be mutated'
+    }
+
+    @Test
+    void 'a background opacity outside 0 to 1 is rejected'() {
+        for(double bad in [-0.1d, 1.5d, 50.0d]) {
+            try {
+                new ToolTipStyle().backgroundOpacity = bad
+                assert false : "expected $bad to be rejected"
+            }
+            catch(IllegalArgumentException e) {
+                assert e.message.contains('backgroundOpacity')
+            }
+        }
+    }
+
+    @Test
+    void 'background opacity survives a style copy and works as a named option'() {
+        ToolTipStyle copied = new ToolTipStyle(backgroundOpacity: 0.4d).copy()
+        assert copied.backgroundOpacity == 0.4d
+
+        Points points = new Points(x: [1], y: [1], toolTip: ['a'])
+        points.showTooltips([0], backgroundOpacity: 0.3d)
+        assert points.toolTipStyle.backgroundOpacity == 0.3d
+
+        assert ToolTipStyle.styleOptions().contains('backgroundOpacity')
+    }
+
+    @Test
+    void 'background opacity shows through to what is painted'() {
+
+        Color under = new Color(39, 119, 180)
+
+        // The annotated point, then a dense block of points covering the region
+        // the tooltip will be placed into, so that it is painted over real data
+        List xs = [5.0d]
+        List ys = [5.0d]
+        for(double gx = 4.0d; gx <= 6.0d; gx += 0.02d) {
+            for(double gy = 5.2d; gy <= 7.0d; gy += 0.02d) {
+                xs.add(gx)
+                ys.add(gy)
+            }
+        }
+
+        Map painted = [:]
+        for(double opacity in [1.0d, 0.5d, 0.0d]) {
+
+            Plot p = new Plot(xBound: [0, 10], yBound: [0, 10])
+            p << new Points(x: xs, y: ys, color: under, toolTip: xs.collect { 'text' })
+
+            p.showTooltips([0: [anchor: 'north']],
+                background: new Color(255, 255, 255, 255),
+                backgroundOpacity: opacity)
+
+            Map rendered = draw(p)
+            Rectangle2D bounds = rendered.layer.annotations[0].bounds
+            painted[opacity] = new Color(
+                rendered.image.getRGB((int)bounds.centerX, (int)(bounds.maxY - 3)))
+        }
+
+        // fully opaque hides what is beneath, fully transparent shows it exactly
+        assert painted[0.0d] == under : 'the tooltip should be painted over the data for this to mean anything'
+        assert painted[1.0d] == Color.white
+
+        // and half way is between the two
+        assert painted[0.5d].red > under.red && painted[0.5d].red < 255
+        assert painted[0.5d].blue < 255 && painted[0.5d].blue > under.blue
+    }
+
+    @Test
     void 'maxWidth wraps text into a narrower and taller tooltip'() {
 
         String text = 'a fairly long tooltip that will certainly need to be wrapped somewhere'

@@ -309,4 +309,26 @@ p.toolTipStyle.maxWidth = 200       // wrap long text at 200 pixels
 p.showTooltips('Coverage', [3,7], fontSize: 13, background: Color.white, leader: false)
 ```
 
+Where tooltips sit over dense data it is often useful to let some of it show
+through. `backgroundOpacity` runs from 0 for fully transparent to 1:
+
+```groovy
+p.toolTipStyle.backgroundOpacity = 0.6
+```
+
+This scales the alpha of the background colour rather than replacing it, so
+the two compose and can be set independently - a colour that is itself
+translucent stays that way at an opacity of 1. Note that the default
+background is already very slightly translucent. Colours may of course also
+carry their own alpha directly, which applies equally to `border`, `textColor`
+and `leaderColor`:
+
+```groovy
+p.toolTipStyle.background = new Color(255, 255, 255, 200)
+```
+
+Dropping the background opacity much below about a half usually reads better
+with the border softened to match, or it appears as a hard outline floating
+over the data.
+
 :include-image: tooltips.png {scale: 0.5}
