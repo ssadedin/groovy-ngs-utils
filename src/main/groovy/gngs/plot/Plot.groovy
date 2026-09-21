@@ -880,24 +880,39 @@ class Plot {
     }
 
     BufferedImage getImage() {
-        getImage(initWidth?:800,initHeight?:600)
+        return getImage([:])
     }
 
     BufferedImage getImage(int width, int height) {
+        return getImage(width: width, height: height)
+    }
 
-        int eastLegendWidth = estimateLegendWidth(width)
-
-        int rasterFormat = BufferedImage.TYPE_INT_RGB;
-        BufferedImage image = new BufferedImage(
-                (int)Math.ceil(width + eastLegendWidth), (int)Math.ceil(height), rasterFormat);
-
-        DrawingContext context = PlotUtils.createDrawingContext(image)
-
-        XYPlot xyPlot = toXYPlot(width,height)
+    /**
+     * Render the plot to an image.
+     * <p>
+     * Takes the same options as {@link #save(Map,String)}, and defaults them the
+     * same way, so that what is displayed matches what would be written out.
+     * 
+     * @param options optional {@code width}, {@code height} and {@code marginRight}
+     */
+    BufferedImage getImage(Map options) {
         
-        Rectangle2D boundsOld = xyPlot.getBounds();
-        xyPlot.setBounds(0, 0, width, height);
-        xyPlot.draw(context)
+        options = options?:[:]
+        
+        int width = (int)(options.width?:initWidth?:1024)
+        int height = (int)(options.height?:initHeight?:800)
+        
+        XYPlot xyPlot = toXYPlot(width, height)
+        
+        // Lay out before measuring, because until it is laid out the legend has
+        // no position to measure
+        xyPlot.setBounds(0, 0, width, height)
+        
+        int marginRight = (int)(options.marginRight ?: legendOverflowWidth(xyPlot, width))
+
+        BufferedImage image = new BufferedImage(width + marginRight, height, BufferedImage.TYPE_INT_RGB)
+
+        xyPlot.draw(PlotUtils.createDrawingContext(image))
         
         return image
     }
@@ -1266,20 +1281,56 @@ class Plot {
         
         XYPlot xyPlot = toXYPlot(width, height)
         
-        int eastLegendWidth = (int)(options.marginRight ?: this.estimateLegendWidth(width))
+        // Lay out before measuring, because until it is laid out the legend has
+        // no position to measure
+        xyPlot.setBounds(0, 0, width, height)
+        
+        int marginRight = (int)(options.marginRight ?: legendOverflowWidth(xyPlot, width))
 
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
-            PlotUtils.write(xyPlot, w, 0,0, width, height, eastLegendWidth);
+            PlotUtils.write(xyPlot, w, 0,0, width, height, marginRight);
         } 
         
         return this
     }
     
+    /**
+     * How far the legend extends past the right hand edge of the plot, which is
+     * the margin the image needs beyond the plot itself for it to be visible.
+     * <p>
+     * Measured from the legend rather than guessed from the length of the
+     * display names, so it is right for any legend location, font or content.
+     * The plot must already have been laid out, ie: had its bounds set.
+     * 
+     * @param xyPlot    a laid out plot
+     * @param width     width of the plot
+     * @return          pixels of margin needed on the right, zero if none
+     */
+    @CompileStatic
+    int legendOverflowWidth(XYPlot xyPlot, int width) {
+        
+        if(!xyPlot.isLegendVisible() || xyPlot.getLegend() == null)
+            return 0
+        
+        Rectangle2D bounds = xyPlot.getLegend().getBounds()
+        if(bounds == null)
+            return 0
+        
+        return (int)Math.ceil(Math.max(0.0d, bounds.getMaxX() - width))
+    }
+    
+    /**
+     * Estimate from the length of the display names how much room a legend on
+     * the east side needs.
+     * <p>
+     * Superseded by {@link #legendOverflowWidth(XYPlot,int)}, which measures the
+     * real thing. Kept because it can be called without a laid out plot.
+     */
     @CompileStatic
     int estimateLegendWidth(int width) {
         int eastLegendWidth = 0
-        if(this.legendLocation in ["east","north_east","south_east"]) {
+        if(this.legendLocation?.toLowerCase() in ["east","north_east","south_east"]) {
             int maxDisplayNameLength = this.items*.displayName.collect { it?.size()?:0 }.max()
             eastLegendWidth = (int)(maxDisplayNameLength*10 * (width/1024)) // hack / guess, use about 15% of width
         }
