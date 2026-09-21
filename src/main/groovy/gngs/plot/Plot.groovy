@@ -625,7 +625,8 @@ class Plot {
      * <p>
      * Copying reflectively rather than naming the fields keeps the two sides
      * from drifting apart as either gains attributes, which is how BeakerX line
-     * styles came to be silently dropped.
+     * styles came to be silently dropped. Tooltips are the one thing that has
+     * to be carried over by hand, because the two sides do not agree on the name.
      * 
      * @param source    object to read properties from
      * @param item      object to copy them onto, ignoring any it does not have
@@ -647,6 +648,14 @@ class Plot {
                     // eg: the class property; nothing to be done and nothing wanted
                 }
             }
+        }
+
+        // Not matched by name above: BeakerX exposes tooltips as the read only
+        // property toolTips, while ours is called toolTip
+        if(source instanceof XYGraphics && item instanceof XYItem) {
+            Object tips = beakerXToolTips((XYGraphics)source)
+            if(tips != null)
+                ((XYItem)item).toolTip = tips
         }
     }
      
@@ -834,14 +843,6 @@ class Plot {
                 return
 
             setProps(g, item, i)
-
-            // Tooltips do not transfer via setProps because BeakerX exposes them
-            // as the read only property toolTips, while ours is called toolTip
-            if(item instanceof XYItem) {
-                Object tips = beakerXToolTips(g)
-                if(tips != null)
-                    ((XYItem)item).toolTip = tips
-            }
 
             p << item
             ++i
