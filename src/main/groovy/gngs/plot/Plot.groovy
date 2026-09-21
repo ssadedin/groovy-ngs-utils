@@ -430,7 +430,12 @@ class Histogram {
         return bImage
      }
     
-    void save(final String fileName) {
+    /**
+     * Write the histogram to the given PNG file
+     * 
+     * @return this histogram, so that it can be captured while being saved
+     */
+    Histogram save(final String fileName) {
         
         BarPlot plot = createPlot()
 
@@ -444,6 +449,8 @@ class Histogram {
                 drawHistogramLegend(plot, ctx)
             }
         }        
+        
+        return this
     }
     
     void drawHistogramLegend(BarPlot plot, DrawingContext ctx) {
@@ -1240,8 +1247,15 @@ class Plot {
             return palette.colors[ i % palette.colors.size()]
     }
     
+    /**
+     * Write the plot to the given PNG file
+     * 
+     * @param options optional {@code width}, {@code height} and {@code marginRight}
+     * @return this plot, so that it can be captured while being saved, eg:
+     *         {@code def p = new Plot(..) << new Points(..) << ... .save('p.png')}
+     */
     @CompileStatic
-    void save(Map options=null, final String fileName) {
+    Plot save(Map options=null, final String fileName) {
         
         assert fileName.endsWith('.png')
 
@@ -1258,6 +1272,8 @@ class Plot {
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
             PlotUtils.write(xyPlot, w, 0,0, width, height, eastLegendWidth);
         } 
+        
+        return this
     }
     
     @CompileStatic

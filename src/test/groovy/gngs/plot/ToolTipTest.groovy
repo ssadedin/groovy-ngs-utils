@@ -689,6 +689,36 @@ class ToolTipTest {
     }
 
     @Test
+    void 'save returns the plot so it can be captured while being built'() {
+
+        File out = new File('test.fluent.png')
+        if(out.exists())
+            out.delete()
+
+        Plot p = (new Plot(title: 'fluent') << new Points(x: [1, 2], y: [3, 4])).save(out.path)
+
+        assert p != null
+        assert p.title == 'fluent'
+        assert out.exists() && out.length() > 0
+
+        // and it really is the same object, not a copy
+        assert p.save(out.path).is(p)
+    }
+
+    @Test
+    void 'histogram save also returns the histogram'() {
+
+        File out = new File('test.fluent.hist.png')
+        if(out.exists())
+            out.delete()
+
+        Histogram h = new Histogram(data: [1, 2, 2, 3, 3, 3, 4], binCount: 4, title: 'fluent hist')
+
+        assert h.save(out.path).is(h)
+        assert out.exists() && out.length() > 0
+    }
+
+    @Test
     void 'tooltips render on a multi series plot with lines and markup'() {
 
         Plot p = new Plot(
