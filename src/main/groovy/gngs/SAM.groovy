@@ -256,6 +256,21 @@ class SAM {
         }
     } 
     
+    @CompileStatic
+    def withIterator(Regions regions, @ClosureParams(value=SimpleType, options=['htsjdk.samtools.SAMRecordIterator']) Closure c) {
+        List<QueryInterval> intervals = toQueryIntervals(regions)
+        QueryInterval[] optimizedIntervals = QueryInterval.optimizeIntervals(intervals as QueryInterval[])
+        withReader { SamReader r ->
+            SAMRecordIterator i = r.query(optimizedIntervals, false)
+            try {
+                c(i)
+            }
+            finally {
+                i.close()
+            }
+        }
+    }
+    
     /**
      * Return a new SAMFileWriter configured with the same settings as this 
      * SAM. It is the caller's responsibility to close the writer.
