@@ -207,13 +207,78 @@ class BeakerXItemsTest {
         assert viaFrom.color instanceof Color
     }
 
+    // ---------------------------------------------------------- tooltips --
+
     @Test
-    void 'tooltips are still not carried across by left shift'() {
-        // Documents a known gap rather than endorsing it: BeakerX exposes
-        // toolTips while gngs calls it toolTip, so the names do not match
+    void 'tooltips are carried across by left shift'() {
+        // The names do not match - BeakerX exposes toolTips, gngs calls it
+        // toolTip - so this cannot come from the reflective copy
         Plot p = new Plot()
         p << bxLine(toolTip: ['a', 'b', 'c'])
 
+        assert p.items[0].toolTip == ['a', 'b', 'c']
+        assert p.items[0].resolveToolTips() == ['a', 'b', 'c']
+    }
+
+    @Test
+    void 'tooltips are carried across for every graphics type'() {
+
+        Plot p = new Plot()
+        p << new com.twosigma.beakerx.chart.xychart.plotitem.Points(
+            x: [1, 2], y: [3, 4], toolTip: ['p1', 'p2'])
+        p << new com.twosigma.beakerx.chart.xychart.plotitem.Bars(
+            x: [1, 2], y: [3, 4], toolTip: ['b1', 'b2'])
+        p << new com.twosigma.beakerx.chart.xychart.plotitem.Area(
+            x: [1, 2], y: [3, 4], toolTip: ['a1', 'a2'])
+        p << bxLine(toolTip: ['l1', 'l2', 'l3'])
+
+        assert p.items*.resolveToolTips() == [['p1', 'p2'], ['b1', 'b2'], ['a1', 'a2'], ['l1', 'l2', 'l3']]
+    }
+
+    @Test
+    void 'a tooltip closure is carried across as the text BeakerX resolved'() {
+        // BeakerX resolves a tooltip closure eagerly when it is assigned, so by
+        // the time we see the item there is a list of strings to take
+        Plot p = new Plot()
+        p << bxLine(toolTip: { x, y, i -> 'x is ' + x })
+
+        assert p.items[0].resolveToolTips() == ['x is 1', 'x is 2', 'x is 3']
+    }
+
+    @Test
+    void 'an item with no tooltips is left alone'() {
+        Plot p = new Plot()
+        p << bxLine()
+
         assert p.items[0].toolTip == null
+        assert p.items[0].resolveToolTips() == []
+    }
+
+    @Test
+    void 'tooltips carried from BeakerX can then be displayed'() {
+
+        Plot p = new Plot(title: 'from a notebook', xBound: [0, 4], yBound: [0, 8])
+        p << bxLine(displayName: 'Bananas', toolTip: ['first', 'second', 'third'])
+
+        p.showTooltips('Bananas', [0, 2])
+
+        XYPlotHolder holder = render(p)
+        assert holder.layer != null
+        assert holder.layer.annotations*.text == ['first', 'third']
+    }
+
+    /**
+     * Draw the plot so that the tooltip layer resolves, and hand back the layer
+     */
+    private XYPlotHolder render(Plot p) {
+        def xyPlot = p.toXYPlot(600, 400)
+        def image = new java.awt.image.BufferedImage(600, 400, java.awt.image.BufferedImage.TYPE_INT_RGB)
+        xyPlot.setBounds(0, 0, 600, 400)
+        xyPlot.draw(PlotUtils.createDrawingContext(image))
+        return new XYPlotHolder(layer: xyPlot.find { it instanceof ToolTipLayer })
+    }
+
+    private static class XYPlotHolder {
+        ToolTipLayer layer
     }
 }
