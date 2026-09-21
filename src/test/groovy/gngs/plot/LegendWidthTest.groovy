@@ -188,6 +188,76 @@ class LegendWidthTest {
         assert p.getImage(marginRight: 500).width == 1524
     }
 
+    // ------------------------------------------------- histogram sizing --
+
+    private Histogram histogram() {
+        return new Histogram(
+            data: [1, 2, 2, 3, 3, 3, 4, 4, 5], binCount: 5, title: 'Sizes')
+    }
+
+    @Test
+    void 'histogram getImage returns an image of the size asked for'() {
+        // it used to return 1024x800 whatever was asked for, with the plot
+        // drawn small into the corner of it
+        BufferedImage image = histogram().getImage(400, 300)
+
+        assert image.width == 400
+        assert image.height == 300
+    }
+
+    @Test
+    void 'histogram getImage takes the same options as save'() {
+        BufferedImage image = histogram().getImage(width: 640, height: 480)
+
+        assert image.width == 640
+        assert image.height == 480
+    }
+
+    @Test
+    void 'histogram save writes an image of the size asked for'() {
+
+        File out = new File('test.hist.size.png')
+        if(out.exists())
+            out.delete()
+
+        histogram().save(out.path, width: 500, height: 350)
+
+        BufferedImage written = ImageIO.read(out)
+        assert written.width == 500
+        assert written.height == 350
+    }
+
+    @Test
+    void 'histogram getImage and save default their size the same way'() {
+
+        File out = new File('test.hist.default.png')
+        if(out.exists())
+            out.delete()
+
+        Histogram h = histogram()
+        h.save(out.path)
+
+        BufferedImage written = ImageIO.read(out)
+        BufferedImage shown = h.getImage()
+
+        assert shown.width == written.width
+        assert shown.height == written.height
+
+        // and the same defaults a Plot uses
+        assert shown.width == PlotUtils.DEFAULT_WIDTH
+        assert shown.height == PlotUtils.DEFAULT_HEIGHT
+    }
+
+    @Test
+    void 'histogram save without options still works'() {
+        File out = new File('test.hist.plain.png')
+        if(out.exists())
+            out.delete()
+
+        assert histogram().save(out.path) != null
+        assert out.exists() && out.length() > 0
+    }
+
     @Test
     void 'a wide legend is accommodated however long the names are'() {
 

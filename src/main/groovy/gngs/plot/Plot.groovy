@@ -417,25 +417,52 @@ class Histogram {
     }
     
     BufferedImage getImage() {
-        getImage(800,600)
+        return getImage([:])
     }
 
     BufferedImage getImage(int width, int height) {
+        return getImage(width: width, height: height)
+    }
+
+    /**
+     * Render the histogram to an image.
+     * <p>
+     * Takes the same size options as {@link #save(Map,String)}, and defaults
+     * them the same way, so that what is displayed matches what is written out.
+     * 
+     * @param options optional {@code width} and {@code height}
+     */
+    BufferedImage getImage(Map options) {
+        
+        options = options?:[:]
+        
+        int width = (int)(options.width?:PlotUtils.DEFAULT_WIDTH)
+        int height = (int)(options.height?:PlotUtils.DEFAULT_HEIGHT)
+        
         BarPlot plot = createPlot()
-        BufferedImage bImage = new BufferedImage(1024, 800, BufferedImage.TYPE_INT_ARGB);
-        DrawingContext context = PlotUtils.createDrawingContext(bImage)
-        plot.setBounds(0, 0, width, height);
+        
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB)
+        DrawingContext context = PlotUtils.createDrawingContext(image)
+        
+        plot.setBounds(0, 0, width, height)
         plot.draw(context)
         drawHistogramLegend(plot, context)
-        return bImage
+        
+        return image
      }
     
     /**
      * Write the histogram to the given PNG file
      * 
+     * @param options optional {@code width} and {@code height}
      * @return this histogram, so that it can be captured while being saved
      */
-    Histogram save(final String fileName) {
+    Histogram save(Map options = null, final String fileName) {
+        
+        options = options?:[:]
+        
+        int width = (int)(options.width?:PlotUtils.DEFAULT_WIDTH)
+        int height = (int)(options.height?:PlotUtils.DEFAULT_HEIGHT)
         
         BarPlot plot = createPlot()
 
@@ -445,7 +472,7 @@ class Histogram {
         
         new File(fileName).withOutputStream { w ->
             DrawableWriter wr = DrawableWriterFactory.getInstance().get("image/png");
-            PlotUtils.write(plot, w, 0,0, 1024, 800, 0) { DrawingContext ctx ->
+            PlotUtils.write(plot, w, 0, 0, width, height, 0) { DrawingContext ctx ->
                 drawHistogramLegend(plot, ctx)
             }
         }        
@@ -899,8 +926,8 @@ class Plot {
         
         options = options?:[:]
         
-        int width = (int)(options.width?:initWidth?:1024)
-        int height = (int)(options.height?:initHeight?:800)
+        int width = (int)(options.width?:initWidth?:PlotUtils.DEFAULT_WIDTH)
+        int height = (int)(options.height?:initHeight?:PlotUtils.DEFAULT_HEIGHT)
         
         XYPlot xyPlot = toXYPlot(width, height)
         
@@ -1276,8 +1303,8 @@ class Plot {
 
         options = options?:[:]
 
-        int width = (int)(options.width?:initWidth?:1024)
-        int height = (int)(options.height?:initHeight?:800)
+        int width = (int)(options.width?:initWidth?:PlotUtils.DEFAULT_WIDTH)
+        int height = (int)(options.height?:initHeight?:PlotUtils.DEFAULT_HEIGHT)
         
         XYPlot xyPlot = toXYPlot(width, height)
         
@@ -1339,6 +1366,14 @@ class Plot {
 }
     
 class PlotUtils {
+    
+    /**
+     * Default size of a rendered image, used by both {@link Plot} and
+     * {@link Histogram} so that the two cannot drift apart
+     */
+    static final int DEFAULT_WIDTH = 1024
+    
+    static final int DEFAULT_HEIGHT = 800
     
     @CompileStatic
     static double roundUpToOOM(double x) {
