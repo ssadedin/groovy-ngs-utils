@@ -373,7 +373,7 @@ class WebService {
         }
             
         if(verbose)
-            log.info "Sent $connection.requestMethod to URL $connection.url"
+            log.info "Sent $connection.requestMethod to URL ${connection.getURL()}"
                     
         int code = connection.getResponseCode()
         if(verbose)
@@ -381,7 +381,7 @@ class WebService {
                 
         String responseText = (code < 400) ? connection.inputStream.text : connection.errorStream.text
         if(code >= 400) {
-            WebServiceException e = new WebServiceException("Request to $connection.url failed with status code $code (response=${responseText?.take(80)}...)", code, connection.responseMessage, responseText)
+            WebServiceException e = new WebServiceException("Request to ${connection.getURL()} failed with status code $code (response=${responseText?.take(80)}...)", code, connection.responseMessage, responseText)
 //            if(body != null)
 //                e.body = body
             throw e
